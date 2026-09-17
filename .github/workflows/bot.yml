@@ -38,7 +38,7 @@ jobs:
           VOL_MANAGED_SIZING: ${{ vars.VOL_MANAGED_SIZING }}
           RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
-          GITHUB_USERNAME: kshitij406
+          GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
 
       - name: Persist trades.db and stats.json
