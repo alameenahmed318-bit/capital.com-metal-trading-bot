@@ -54,7 +54,7 @@ MACRO_HOURS_UTC = (12, 13, 14, 15)  # measured >1.2x mean volatility on all 3 me
 VOL_MANAGED_SIZING = os.environ.get("VOL_MANAGED_SIZING", "false").lower() == "true"
 
 _ALL_EPICS = ["GOLD", "SILVER", "COPPER"]
-EPICS = FORWARD_TEST_EPICS if STRATEGY == "vol_regime" else _ALL_EPICS
+EPICS = FORWARD_TEST_EPICS
 
 RESOLUTION = "MINUTE_15"
 # vol_regime needs ATR(200) plus the ATR period itself, so the candle request must
