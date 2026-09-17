@@ -6,7 +6,7 @@ load_dotenv()
 CAPITAL_API_KEY = os.environ["CAPITAL_API_KEY"]
 CAPITAL_EMAIL = os.environ["CAPITAL_EMAIL"]
 CAPITAL_PASSWORD = os.environ["CAPITAL_PASSWORD"]
-DISCORD_WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 IS_DEMO = os.environ["IS_DEMO"].lower() == "true"
 
 CAPITAL_BASE_URL = os.environ["CAPITAL_BASE_DEMO_URL"] if IS_DEMO else os.environ["CAPITAL_BASE_URL"]
