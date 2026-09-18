@@ -925,6 +925,7 @@ def process_epic(
     api,
     epic,
     positions,
+    balance,
 ):
 
     log("")
@@ -1254,6 +1255,7 @@ def run_cycle():
             api=api,
             epic=epic,
             positions=positions,
+            balance=balance,
         )
 
         # Small delay between markets.
