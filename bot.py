@@ -87,16 +87,11 @@ MARKET_RSI_SETTINGS = {
     "US500": (42, 65, 28, 55),
 }
 
-# Directional regime filter. The EMA/HTF/volatility rules still have to
-# confirm the entry; this only blocks signals against the current regime.
-MARKET_BIAS = {
-    "GOLD": "BUY",
-    "EURUSD": "SELL",
-    "SILVER": "BUY",
-    "OIL_CRUDE": "SELL",
-    "US100": "SELL",
-    "US500": "SELL",
-}
+# No fixed BUY/SELL bias is imposed.
+# Direction is decided dynamically from the current closed-candle
+# EMA crossover plus the H1 trend filter and volatility/RSI checks.
+# This lets the bot adapt when the market regime changes.
+MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
 
 # ============================================================
@@ -620,15 +615,17 @@ def generate_signal(df, epic, htf_df=None):
         current["ema_slow"]
     )
 
-    bias = MARKET_BIAS.get(epic, "BOTH")
-
+    # Dynamic direction:
+    # - BUY only on a fresh bullish 15m EMA crossover with H1 bullish trend
+    # - SELL only on a fresh bearish 15m EMA crossover with H1 bearish trend
+    # - RSI and volatility filters must also confirm
     if bullish_cross and htf_fast > htf_slow:
 
         if (
             long_min
             <= current["rsi"]
             <= long_max
-        ) and bias in ("BUY", "BOTH"):
+        ):
             return "BUY"
 
     if bearish_cross and htf_fast < htf_slow:
@@ -637,7 +634,7 @@ def generate_signal(df, epic, htf_df=None):
             short_min
             <= current["rsi"]
             <= short_max
-        ) and bias in ("SELL", "BOTH"):
+        ):
             return "SELL"
 
     return None
