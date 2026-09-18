@@ -114,7 +114,7 @@ class BinanceFuturesAPI:
             signed=True,
         )
 
-    def protective_algo_order(self, symbol, side, trigger_price, close_position=True):
+    def protective_algo_order(self, symbol, side, order_type, trigger_price):
         return self._request(
             "POST",
             "/fapi/v1/algoOrder",
@@ -122,10 +122,11 @@ class BinanceFuturesAPI:
                 "algoType": "CONDITIONAL",
                 "symbol": symbol,
                 "side": side,
-                "type": "STOP_MARKET" if side in {"SELL", "BUY"} else "STOP_MARKET",
+                "type": order_type,
                 "triggerPrice": trigger_price,
-                "closePosition": "true" if close_position else "false",
+                "closePosition": "true",
                 "workingType": "MARK_PRICE",
+                "priceProtect": "TRUE",
             },
             signed=True,
         )
