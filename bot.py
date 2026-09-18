@@ -18,10 +18,20 @@ from capital_api import CapitalAPI
 # Demo only while testing. Live trading remains disabled.
 DEMO_ONLY = True
 
-# Explicitly disabled.
-ALLOW_GRID = False
-ALLOW_MARTINGALE = False
-ALLOW_AVERAGING = False
+# Aggressive Demo mode with hard exposure limits.
+# Grid/Averaging add positions only when price moves against the
+# existing basket. Martingale increases the next basket leg, but
+# the total planned stop-loss exposure is capped.
+ALLOW_GRID = True
+ALLOW_MARTINGALE = True
+ALLOW_AVERAGING = True
+
+MAX_POSITIONS_PER_EPIC = 4
+GRID_STEP_R = 0.5
+MARTINGALE_MULTIPLIER = 1.5
+AGGRESSIVE_BASE_RISK = 0.015       # 1.5% starting risk per basket leg
+MAX_BASKET_RISK = 0.06            # hard cap: 6% of sizing balance per epic
+
 
 
 # ============================================================
@@ -727,13 +737,51 @@ def has_position_for_epic(
     positions,
     epic,
 ):
+    return len(get_positions_for_epic(positions, epic)) > 0
 
-    return len(
-        get_positions_for_epic(
-            positions,
-            epic,
-        )
-    ) > 0
+
+def position_size_value(position):
+    value = (
+        position.get("size")
+        or position.get("position", {}).get("size")
+    )
+    return safe_float(value, 0.0) or 0.0
+
+
+def estimated_position_risk_account(position, api, fallback_risk=None):
+    """Estimate the loss at the position's initial SL in account currency."""
+    entry = position_open_level(position)
+    stop = position_stop_level(position)
+    size = position_size_value(position)
+
+    if entry is None or stop is None or size <= 0:
+        return 0.0
+
+    distance = abs(entry - stop)
+    try:
+        market = api.get_market(position_epic(position))
+        lot_size = safe_float(
+            market.get("instrument", {}).get("lotSize"), 1.0
+        ) or 1.0
+        return distance * size * lot_size * 3.6725
+    except Exception:
+        if fallback_risk is not None:
+            return float(fallback_risk)
+        return 0.0
+
+
+def basket_reserved_risk(api, positions, epic):
+    total = 0.0
+    for position in get_positions_for_epic(positions, epic):
+        total += estimated_position_risk_account(api, position)
+    return total
+
+
+def same_direction_positions(positions, epic, direction):
+    return [
+        p for p in get_positions_for_epic(positions, epic)
+        if position_direction(p) == direction
+    ]
 
 
 # ============================================================
@@ -1041,16 +1089,6 @@ def process_epic(
         )
 
         # ----------------------------------------------------
-        # Multiple positions
-        #
-        # No per-epic position-count limit.
-        # A new position is allowed when a NEW EMA crossover
-        # signal occurs. This is not Grid/Martingale/Averaging:
-        # there is no averaging-in and no repeated entry merely
-        # because an existing position is still open.
-        # ----------------------------------------------------
-
-        # ----------------------------------------------------
         # Higher-timeframe trend confirmation
         # ----------------------------------------------------
         htf_raw = api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT)
@@ -1061,17 +1099,34 @@ def process_epic(
         # ----------------------------------------------------
         signal = generate_signal(df, epic, htf_df)
 
-        if signal is None:
+        epic_positions = get_positions_for_epic(positions, epic)
 
-            log(
-                f"No signal this cycle for {epic}."
-            )
-
+        if signal is None and not epic_positions:
+            log(f"No signal this cycle for {epic}.")
             return None
 
-        log(
-            f"{epic}: SIGNAL = {signal}"
-        )
+        # For an existing basket, only add in the same direction.
+        # A fresh signal can start a new basket when no position exists.
+        if epic_positions:
+            directions = {
+                position_direction(p) for p in epic_positions
+                if position_direction(p)
+            }
+            if len(directions) != 1:
+                log(f"{epic}: mixed-direction basket detected; no new leg.")
+                return None
+
+            basket_direction = next(iter(directions))
+            if signal is None:
+                signal = basket_direction
+            elif signal != basket_direction:
+                log(
+                    f"{epic}: signal {signal} conflicts with existing "
+                    f"basket {basket_direction}; no new leg."
+                )
+                return None
+
+        log(f"{epic}: SIGNAL = {signal}")
 
         # ----------------------------------------------------
         # Calculate SL / TP
@@ -1095,11 +1150,59 @@ def process_epic(
             float(getattr(config, "BALANCE_CAP", balance)),
         )
 
-        risk_percent = float(
-            getattr(config, "RISK_PER_TRADE", 0.03)
-        )
+        # Aggressive basket sizing:
+        # first leg = 1.5%, next legs grow by 1.5x, but total
+        # planned stop-loss exposure can never exceed 6%.
+        existing_count = len(epic_positions)
+        if existing_count >= MAX_POSITIONS_PER_EPIC:
+            log(
+                f"{epic}: max {MAX_POSITIONS_PER_EPIC} basket positions reached."
+            )
+            return None
 
-        risk_amount = sizing_balance * risk_percent
+        reserved_risk = basket_reserved_risk(api, positions, epic)
+        max_basket_amount = sizing_balance * MAX_BASKET_RISK
+        remaining_basket_risk = max_basket_amount - reserved_risk
+
+        leg_multiplier = (
+            MARTINGALE_MULTIPLIER ** existing_count
+            if ALLOW_MARTINGALE else 1.0
+        )
+        requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK * leg_multiplier
+        risk_amount = min(requested_risk, max(0.0, remaining_basket_risk))
+
+        if risk_amount <= 0:
+            log(
+                f"{epic}: basket risk cap reached ({MAX_BASKET_RISK * 100:.1f}%)."
+            )
+            return None
+
+        # Grid/Averaging gate: once a basket exists, only add the next
+        # leg after price has moved against the basket by GRID_STEP_R
+        # of the latest leg's original risk distance.
+        if epic_positions:
+            latest = epic_positions[-1]
+            latest_entry = position_open_level(latest)
+            latest_stop = position_stop_level(latest)
+            latest_r = abs(latest_entry - latest_stop) if (
+                latest_entry is not None and latest_stop is not None
+            ) else trade["risk_distance"]
+
+            if latest_entry is None or latest_r <= 0:
+                return None
+
+            adverse_move = (
+                latest_entry - trade["entry"]
+                if signal == "BUY"
+                else trade["entry"] - latest_entry
+            )
+
+            if adverse_move < latest_r * GRID_STEP_R:
+                log(
+                    f"{epic}: basket exists but grid distance not reached; "
+                    "no averaging leg."
+                )
+                return None
 
         size = get_position_size(
             api=api,
@@ -1255,20 +1358,14 @@ def run_cycle():
     # Safety assertions
     # --------------------------------------------------------
 
-    if ALLOW_GRID:
-        raise RuntimeError(
-            "Grid trading must remain disabled."
-        )
-
-    if ALLOW_MARTINGALE:
-        raise RuntimeError(
-            "Martingale must remain disabled."
-        )
-
-    if ALLOW_AVERAGING:
-        raise RuntimeError(
-            "Averaging must remain disabled."
-        )
+    # These strategies are enabled only inside the hard basket limits
+    # defined above. Live trading is still impossible while DEMO_ONLY=True.
+    log(
+        f"Aggressive basket mode: Grid={ALLOW_GRID}, "
+        f"Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; "
+        f"max positions/epic={MAX_POSITIONS_PER_EPIC}, "
+        f"max basket risk={MAX_BASKET_RISK * 100:.1f}%."
+    )
 
     # --------------------------------------------------------
     # API
