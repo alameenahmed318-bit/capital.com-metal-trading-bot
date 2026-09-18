@@ -55,6 +55,9 @@ TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
 TRAILING_ENABLED = True
 TRAILING_START_R = 1.0
 TRAILING_DISTANCE_R = 1.0
+# When enabled, a profitable existing basket can add legs immediately
+# (without waiting for the normal grid distance) until the per-epic cap.
+ADD_TO_PROFITABLE_BASKET = True
 
 MIN_TRADE_SIZE = {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01}
 STATE_FILE = "trades_state.json"
@@ -392,15 +395,28 @@ def process_epic(api, epic, positions, balance, account_currency):
             log(f"{epic}: basket risk cap reached ({MAX_BASKET_RISK * 100:.1f}%).")
             return None
         if epic_positions:
-            latest = epic_positions[-1]
-            latest_entry, latest_stop = position_open_level(latest), position_stop_level(latest)
-            latest_r = abs(latest_entry - latest_stop) if latest_entry is not None and latest_stop is not None else trade["risk_distance"]
-            if latest_entry is None or latest_r <= 0:
-                return None
-            adverse_move = latest_entry - trade["entry"] if signal == "BUY" else trade["entry"] - latest_entry
-            if adverse_move < latest_r * GRID_STEP_R:
-                log(f"{epic}: basket exists but grid distance not reached; no averaging leg.")
-                return None
+            profitable_position = False
+            for position in epic_positions:
+                entry = position_open_level(position)
+                direction = position_direction(position)
+                if entry is None or direction != signal:
+                    continue
+                if (signal == "BUY" and current_price > entry) or (signal == "SELL" and current_price < entry):
+                    profitable_position = True
+                    break
+
+            if ADD_TO_PROFITABLE_BASKET and profitable_position:
+                log(f"{epic}: profitable basket detected; adding next leg up to max {MAX_POSITIONS_PER_EPIC}.")
+            else:
+                latest = epic_positions[-1]
+                latest_entry, latest_stop = position_open_level(latest), position_stop_level(latest)
+                latest_r = abs(latest_entry - latest_stop) if latest_entry is not None and latest_stop is not None else trade["risk_distance"]
+                if latest_entry is None or latest_r <= 0:
+                    return None
+                adverse_move = latest_entry - trade["entry"] if signal == "BUY" else trade["entry"] - latest_entry
+                if adverse_move < latest_r * GRID_STEP_R:
+                    log(f"{epic}: basket exists but grid distance not reached; no averaging leg.")
+                    return None
         size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency)
         if size is None:
             log(f"{epic}: minimum trade size would exceed risk budget. Trade skipped.")
@@ -435,7 +451,7 @@ def process_epic(api, epic, positions, balance, account_currency):
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
-    log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
+    log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
     log("Logging in to Capital.com...")
     api.login()
