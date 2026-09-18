@@ -246,13 +246,69 @@ def position_profit_level(position):
     )
 
 
-def get_position_size(epic):
-    return float(
-        MIN_TRADE_SIZE.get(
-            epic,
-            0.01,
-        )
+def get_position_size(api, epic, risk_amount_account, risk_distance):
+    """
+    Size the position so the initial SL risks approximately RISK_PER_TRADE
+    of the sizing balance.
+
+    GOLD and EURUSD are USD-quoted on Capital.com while this account is AED.
+    The AED/USD peg is used for the sizing conversion. The size is rounded
+    down to Capital.com's minimum increment so we never intentionally exceed
+    the requested risk. If the broker minimum would exceed the risk budget,
+    the trade is skipped.
+    """
+    risk_amount_account = safe_float(risk_amount_account)
+    risk_distance = safe_float(risk_distance)
+
+    if risk_amount_account is None or risk_amount_account <= 0:
+        return None
+
+    if risk_distance is None or risk_distance <= 0:
+        return None
+
+    market = api.get_market(epic)
+    instrument = market.get("instrument", {})
+    dealing = market.get("dealingRules", {})
+
+    lot_size = safe_float(instrument.get("lotSize"), 1.0) or 1.0
+    min_size = safe_float(
+        dealing.get("minDealSize", {}).get("value"),
+        MIN_TRADE_SIZE.get(epic, 0.01),
     )
+    step = safe_float(
+        dealing.get("minSizeIncrement", {}).get("value"),
+        min_size,
+    )
+
+    if min_size <= 0 or step <= 0 or lot_size <= 0:
+        return None
+
+    # Both GOLD and EURUSD are USD-quoted here.
+    # 1 USD ~= 3.6725 AED.
+    account_to_quote = 3.6725
+    risk_amount_quote = risk_amount_account / account_to_quote
+
+    raw_size = risk_amount_quote / (risk_distance * lot_size)
+
+    if raw_size < min_size:
+        return None
+
+    steps = math.floor((raw_size - min_size) / step + 1e-12)
+    size = min_size + max(0, steps) * step
+
+    # Avoid floating-point artifacts.
+    decimals = max(0, int(round(-math.log10(step)))) if step < 1 else 0
+    size = round(size, decimals)
+
+    estimated_risk_account = size * risk_distance * lot_size * account_to_quote
+
+    if estimated_risk_account > risk_amount_account * 1.000001:
+        size = round(max(0, size - step), decimals)
+
+    if size < min_size:
+        return None
+
+    return size
 
 
 # ============================================================
@@ -999,8 +1055,34 @@ def process_epic(
 
             return None
 
+        sizing_balance = min(
+            float(balance),
+            float(getattr(config, "BALANCE_CAP", balance)),
+        )
+
+        risk_percent = float(
+            getattr(config, "RISK_PER_TRADE", 0.03)
+        )
+
+        risk_amount = sizing_balance * risk_percent
+
         size = get_position_size(
-            epic
+            api=api,
+            epic=epic,
+            risk_amount_account=risk_amount,
+            risk_distance=trade["risk_distance"],
+        )
+
+        if size is None:
+            log(
+                f"{epic}: minimum trade size would exceed "
+                f"the {risk_percent * 100:.2f}% risk budget. "
+                "Trade skipped."
+            )
+            return None
+
+        log(
+            f"{epic}: risk budget={risk_amount:.2f} account currency"
         )
 
         log(
