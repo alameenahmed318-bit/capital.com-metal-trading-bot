@@ -100,19 +100,17 @@ class BinanceFuturesAPI:
             signed=True,
         )
 
-    def market_order(self, symbol, side, quantity):
-        return self._request(
-            "POST",
-            "/fapi/v1/order",
-            {
-                "symbol": symbol,
-                "side": side,
-                "type": "MARKET",
-                "quantity": quantity,
-                "newOrderRespType": "RESULT",
-            },
-            signed=True,
-        )
+    def market_order(self, symbol, side, quantity, reduce_only=False):
+        params = {
+            "symbol": symbol,
+            "side": side,
+            "type": "MARKET",
+            "quantity": quantity,
+            "newOrderRespType": "RESULT",
+        }
+        if reduce_only:
+            params["reduceOnly"] = "true"
+        return self._request("POST", "/fapi/v1/order", params, signed=True)
 
     def protective_algo_order(self, symbol, side, order_type, trigger_price):
         return self._request(
