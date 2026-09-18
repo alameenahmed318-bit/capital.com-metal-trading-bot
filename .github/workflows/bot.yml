@@ -31,6 +31,7 @@ jobs:
           for i in 1 2 3 4 5; do
             echo "=== Bot check $i/5 ==="
             python bot.py
+            python binance_bot.py
             if [ "$i" -lt 5 ]; then
               sleep 60
             fi
@@ -50,6 +51,15 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
+          BINANCE_ENABLED: ${{ vars.BINANCE_ENABLED }}
+          BINANCE_TRADING_ENABLED: ${{ vars.BINANCE_TRADING_ENABLED }}
+          BINANCE_TESTNET: ${{ vars.BINANCE_TESTNET }}
+          BINANCE_SYMBOLS: ${{ vars.BINANCE_SYMBOLS }}
+          BINANCE_RISK_PER_TRADE: ${{ vars.BINANCE_RISK_PER_TRADE }}
+          BINANCE_MAX_POSITION_RISK: ${{ vars.BINANCE_MAX_POSITION_RISK }}
+          BINANCE_LEVERAGE: ${{ vars.BINANCE_LEVERAGE }}
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
+          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
       - name: Persist bot state
         run: |
           git config user.name "github-actions[bot]"
