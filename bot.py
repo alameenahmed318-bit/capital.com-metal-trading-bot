@@ -138,6 +138,7 @@ def safety_allows_new_entry(balance, positions):
     if not KILL_SWITCH_ENABLED:
         return True
     reset_daily_safety(balance)
+    update_loss_cooldowns_from_history(api)
     equity = account_equity(balance, positions)
     peak = safe_float(SAFETY.get("peak_equity"), equity) or equity
     if equity > peak:
@@ -378,7 +379,8 @@ def generate_signal(df, epic, htf_df=None):
     atr_slow = df["atr"].rolling(VOL_REGIME_SLOW).mean().iloc[-2]
     if pd.isna(atr_fast) or pd.isna(atr_slow) or atr_slow <= 0 or atr_fast / atr_slow < VOL_REGIME_MIN:
         return None
-    if SIDEWAYS_FILTER_ENABLED and atr_fast / atr_slow < SIDEWAYS_ATR_RATIO_MAX:
+    ema_gap = abs(float(df["ema_fast"].iloc[-2] - df["ema_slow"].iloc[-2]))
+    if SIDEWAYS_FILTER_ENABLED and ema_gap < float(df["atr"].iloc[-2]) * 0.15:
         return None
 
     previous, current = df.iloc[-3], df.iloc[-2]
@@ -650,6 +652,32 @@ def process_epic(api, epic, positions, balance, account_currency):
         log(f"{epic}: ERROR ({SAFETY['consecutive_errors']}/{MAX_CONSECUTIVE_ERRORS}): {exc}")
         traceback.print_exc()
         return None
+
+def update_loss_cooldowns_from_history(api):
+    """Use Capital.com history to pause an epic after a recently closed loss.
+    This uses Capital.com's own API only; no paid external service is required.
+    """
+    try:
+        now = datetime.now(timezone.utc)
+        start = (now.timestamp() - 3600)
+        from_date = datetime.fromtimestamp(start, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        to_date = now.strftime("%Y-%m-%dT%H:%M:%S")
+        transactions = api.get_transactions(from_date, to_date)
+        for tx in transactions:
+            note = str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
+            if "close" not in note and "closed" not in note:
+                continue
+            epic = tx.get("instrumentName") or tx.get("epic")
+            pnl = safe_float(tx.get("profitAndLoss"))
+            if pnl is None:
+                pnl = safe_float(tx.get("profitLoss"))
+            if pnl is None:
+                pnl = safe_float(tx.get("profit"))
+            if epic and pnl is not None and pnl < 0 and epic in EPICS:
+                set_loss_cooldown(epic)
+                log(f"{epic}: recent closed loss detected ({pnl}); cooldown applied for {LOSS_COOLDOWN_MINUTES}m.")
+    except Exception as exc:
+        log(f"Loss-history check unavailable; continuing safely: {exc}")
 
 def run_cycle():
     log("Starting trading cycle...")
