@@ -336,7 +336,19 @@ def run_cycle():
     stats_data = stats.update_stats()
     send_daily_summary_if_due(stats_data)
 
-
 if __name__ == "__main__":
     logger.init_db()
     run_cycle()
+import time
+
+if __name__ == "__main__":
+    logger.init_db()
+
+    while True:
+        try:
+            run_cycle()
+        except Exception as e:
+            print(f"MAIN LOOP ERROR: {e}")
+            notify_discord(f"ERROR: Main loop - {e}")
+
+        time.sleep(15 * 60)
