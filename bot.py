@@ -3,6 +3,9 @@ import math
 import os
 import time
 import traceback
+from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 import numpy as np
 import pandas as pd
@@ -39,6 +42,14 @@ VOL_REGIME_SLOW = getattr(config, "VOL_REGIME_SLOW", 200)
 MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
 XAU_WORKING_ORDER_ENABLED = getattr(config, "XAU_WORKING_ORDER_ENABLED", True)
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
+
+# Optional trusted macro-event filter. If the secret is absent, the bot keeps
+# running normally rather than failing the trading cycle.
+TRADING_ECONOMICS_ENABLED = True
+TRADING_ECONOMICS_API_KEY = os.getenv("TRADING_ECONOMICS_API_KEY", "").strip()
+NEWS_BLOCK_MINUTES_BEFORE = 20
+NEWS_BLOCK_MINUTES_AFTER = 10
+NEWS_HIGH_IMPACT_ONLY = True
 
 MARKET_RSI_SETTINGS = {
     "GOLD": (42, 68, 32, 58),
@@ -223,6 +234,49 @@ def add_indicators(df):
     df["atr"] = true_range.ewm(alpha=1 / ATR_PERIOD, min_periods=ATR_PERIOD, adjust=False).mean()
     return df
 
+def high_impact_news_blocked(epic):
+    """Return True when a relevant high-impact macro event is near.
+
+    Trading Economics is used only as a safety filter: it can block new
+    entries around major events but never creates a BUY/SELL signal.
+    """
+    if not TRADING_ECONOMICS_ENABLED or not TRADING_ECONOMICS_API_KEY:
+        return False
+    try:
+        now = datetime.now(timezone.utc)
+        start = (now - timedelta(minutes=NEWS_BLOCK_MINUTES_BEFORE)).strftime("%Y-%m-%dT%H:%M:%S")
+        end = (now + timedelta(minutes=NEWS_BLOCK_MINUTES_AFTER)).strftime("%Y-%m-%dT%H:%M:%S")
+        url = (
+            "https://api.tradingeconomics.com/calendar/country/united%20states/"
+            f"{quote(start, safe='')}/{quote(end, safe='')}?c={quote(TRADING_ECONOMICS_API_KEY, safe='')}&f=json"
+        )
+        request = Request(url, headers={"User-Agent": "capital-metal-trading-bot/2"})
+        with urlopen(request, timeout=5) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        if not isinstance(data, list):
+            return False
+        relevant_keywords = {
+            "GOLD": ("fed", "fomc", "interest rate", "inflation", "cpi", "ppi", "jobs", "payroll", "employment", "gdp"),
+            "EURUSD": ("fed", "fomc", "interest rate", "inflation", "cpi", "ecb", "jobs", "payroll", "employment", "gdp"),
+            "SILVER": ("fed", "fomc", "interest rate", "inflation", "cpi", "ppi", "jobs", "payroll", "employment", "gdp"),
+            "OIL_CRUDE": ("opec", "inventory", "crude", "oil", "fed", "interest rate", "gdp"),
+            "US100": ("fed", "fomc", "interest rate", "inflation", "cpi", "jobs", "payroll", "employment", "gdp"),
+            "US500": ("fed", "fomc", "interest rate", "inflation", "cpi", "jobs", "payroll", "employment", "gdp"),
+        }
+        keywords = relevant_keywords.get(epic, ())
+        for event in data:
+            importance = str(event.get("Importance") or event.get("importance") or "").lower()
+            if NEWS_HIGH_IMPACT_ONLY and importance not in {"3", "high"}:
+                continue
+            name = str(event.get("Event") or event.get("event") or event.get("Category") or "").lower()
+            if any(keyword in name for keyword in keywords):
+                log(f"{epic}: high-impact macro event nearby ({event.get('Event') or event.get('event')}); new entry blocked.")
+                return True
+        return False
+    except Exception as exc:
+        log(f"Macro calendar unavailable; continuing without news filter: {exc}")
+        return False
+
 def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
 
@@ -396,6 +450,9 @@ def process_epic(api, epic, positions, balance, account_currency):
             return None
         manage_trailing_stops(api, positions, epic, current_price)
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
+        if high_impact_news_blocked(epic):
+            log(f"{epic}: new entry blocked by macro calendar; existing positions remain managed.")
+            return None
         signal = generate_signal(df, epic, htf_df)
         epic_positions = get_positions_for_epic(positions, epic)
         if signal is None and not epic_positions:
