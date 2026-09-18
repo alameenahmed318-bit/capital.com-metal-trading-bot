@@ -202,9 +202,7 @@ def breakeven_stops(api, positions, epic, current_price):
         current_sl = position_stop_level(position)
         if not deal_id or entry is None or not direction:
             continue
-        risk = safe_float(STATE["risk_distance"].get(str(deal_id)))
-        if risk is None and current_sl is not None:
-            risk = abs(entry - current_sl)
+        risk = original_risk_distance(position)
         if risk is None or risk <= 0:
             continue
         favorable = current_price - entry if direction == "BUY" else entry - current_price
@@ -274,6 +272,31 @@ def position_open_level(position):
 
 def position_stop_level(position):
     return safe_float(position.get("stopLevel") or position.get("position", {}).get("stopLevel"))
+
+def position_profit_level(position):
+    return safe_float(position.get("profitLevel") or position.get("position", {}).get("profitLevel"))
+
+def original_risk_distance(position):
+    """Recover the original SL distance even after break-even/trailing moved the SL."""
+    deal_id = position_deal_id(position)
+    if deal_id:
+        stored = safe_float(STATE.get("risk_distance", {}).get(str(deal_id)))
+        if stored is not None and stored > 0:
+            return stored
+
+    entry = position_open_level(position)
+    take_profit = position_profit_level(position)
+    rr_ratio = TP_ATR_MULT / SL_ATR_MULT if SL_ATR_MULT else 0.0
+    if entry is not None and take_profit is not None and rr_ratio > 0:
+        inferred = abs(take_profit - entry) / rr_ratio
+        if inferred > 0:
+            return inferred
+
+    stop = position_stop_level(position)
+    if entry is not None and stop is not None:
+        inferred = abs(entry - stop)
+        return inferred if inferred > 0 else None
+    return None
 
 def quote_to_account_rate(market, account_currency):
     """Convert P/L quoted in the instrument currency into account currency.
@@ -536,14 +559,10 @@ def manage_trailing_stops(api, positions, epic, current_price):
         if not deal_id or not direction or entry is None:
             continue
         deal_key = str(deal_id)
-        stored_risk = safe_float(STATE["risk_distance"].get(deal_key))
-        if stored_risk is None:
-            if current_sl is None:
-                continue
-            stored_risk = abs(entry - current_sl)
-            if stored_risk <= 0:
-                continue
-            STATE["risk_distance"][deal_key] = stored_risk
+        stored_risk = original_risk_distance(position)
+        if stored_risk is None or stored_risk <= 0:
+            continue
+        STATE["risk_distance"][deal_key] = stored_risk
         r = stored_risk
         if direction == "BUY":
             if current_price - entry < TRAILING_START_R * r:
@@ -595,14 +614,17 @@ def process_epic(api, epic, positions, balance, account_currency):
         if current_price is None:
             log(f"{epic}: invalid current price.")
             return None
+        # Position management must continue even when new entries are blocked
+        # by daily loss, cooldown, spread, or kill-switch protections.
+        breakeven_stops(api, positions, epic, current_price)
+        manage_trailing_stops(api, positions, epic, current_price)
+
         if not safety_allows_new_entry(balance, positions):
             return None
         if cooldown_active(epic):
             return None
         if not spread_allows_entry(api, epic):
             return None
-        manage_trailing_stops(api, positions, epic, current_price)
-        breakeven_stops(api, positions, epic, current_price)
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
         # The selector chooses Trend/Breakout/Range from current market structure.
         signal = generate_signal(df, epic, htf_df)
@@ -699,6 +721,19 @@ def process_epic(api, epic, positions, balance, account_currency):
         response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
+
+        # Capital.com documents that a successful POST /positions response is
+        # not by itself proof that the position was opened. Confirm the deal.
+        deal_reference = response.get("dealReference") if isinstance(response, dict) else None
+        if deal_reference:
+            confirmation = api.get_confirmation(deal_reference)
+            log(f"{epic}: DEAL CONFIRMATION = {confirmation}")
+            deal_status = str(confirmation.get("dealStatus") or confirmation.get("status") or "").upper()
+            if deal_status in {"REJECTED", "FAILED"}:
+                raise RuntimeError(f"Capital.com rejected deal {deal_reference}: {confirmation}")
+        else:
+            log(f"{epic}: WARNING - no dealReference returned; order confirmation unavailable.")
+
         SAFETY["consecutive_errors"] = 0
         save_safety_state(SAFETY)
         return response
