@@ -50,6 +50,14 @@ EMA_SLOW = getattr(config, "EMA_SLOW", 21)
 
 RSI_PERIOD = getattr(config, "RSI_PERIOD", 14)
 ATR_PERIOD = getattr(config, "ATR_PERIOD", 14)
+HTF_RESOLUTION = getattr(config, "HTF_RESOLUTION", "HOUR")
+HTF_CANDLE_COUNT = getattr(config, "HTF_CANDLE_COUNT", 250)
+HTF_EMA_FAST = getattr(config, "HTF_EMA_FAST", 50)
+HTF_EMA_SLOW = getattr(config, "HTF_EMA_SLOW", 200)
+VOL_REGIME_MIN = getattr(config, "VOL_REGIME_MIN", 1.05)
+VOL_REGIME_FAST = getattr(config, "VOL_REGIME_FAST", 20)
+VOL_REGIME_SLOW = getattr(config, "VOL_REGIME_SLOW", 200)
+MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
 
 
 # GOLD
@@ -530,7 +538,7 @@ def get_rsi_settings(epic):
 # SIGNAL
 # ============================================================
 
-def generate_signal(df, epic):
+def generate_signal(df, epic, htf_df=None):
 
     minimum_rows = max(
         EMA_SLOW + 5,
@@ -539,6 +547,15 @@ def generate_signal(df, epic):
     )
 
     if len(df) < minimum_rows:
+        return None
+
+    if htf_df is None or len(htf_df) < HTF_EMA_SLOW + 5:
+        return None
+    htf_fast = htf_df["close"].ewm(span=HTF_EMA_FAST, adjust=False).mean().iloc[-2]
+    htf_slow = htf_df["close"].ewm(span=HTF_EMA_SLOW, adjust=False).mean().iloc[-2]
+    atr_fast = df["atr"].rolling(VOL_REGIME_FAST).mean().iloc[-2]
+    atr_slow = df["atr"].rolling(VOL_REGIME_SLOW).mean().iloc[-2]
+    if pd.isna(atr_fast) or pd.isna(atr_slow) or atr_slow <= 0 or atr_fast / atr_slow < VOL_REGIME_MIN:
         return None
 
     # IMPORTANT:
@@ -584,7 +601,7 @@ def generate_signal(df, epic):
         current["ema_slow"]
     )
 
-    if bullish_cross:
+    if bullish_cross and htf_fast > htf_slow:
 
         if (
             long_min
@@ -593,7 +610,7 @@ def generate_signal(df, epic):
         ):
             return "BUY"
 
-    if bearish_cross:
+    if bearish_cross and htf_fast < htf_slow:
 
         if (
             short_min
@@ -1016,13 +1033,15 @@ def process_epic(
         # ----------------------------------------------------
 
         # ----------------------------------------------------
+        # Higher-timeframe trend confirmation
+        # ----------------------------------------------------
+        htf_raw = api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT)
+        htf_df = candles_to_dataframe(htf_raw)
+
+        # ----------------------------------------------------
         # Generate signal
         # ----------------------------------------------------
-
-        signal = generate_signal(
-            df,
-            epic,
-        )
+        signal = generate_signal(df, epic, htf_df)
 
         if signal is None:
 
