@@ -50,7 +50,7 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
-      - name: Persist trades.db and stats.json
+      - name: Persist bot state
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
