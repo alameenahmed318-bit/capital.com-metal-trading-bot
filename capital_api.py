@@ -152,6 +152,12 @@ class CapitalAPI:
             "/api/v1/positions",
         )["positions"]
 
+    def place_working_order(self, epic, direction, size, level, stop_level=None, profit_level=None):
+        payload = {"epic": epic, "direction": direction, "size": size, "type": "STOP", "level": level, "guaranteedStop": False}
+        if stop_level is not None: payload["stopLevel"] = stop_level
+        if profit_level is not None: payload["profitLevel"] = profit_level
+        return self._request("POST", "/api/v1/workingorders", json=payload)
+
     def place_order(
         self,
         direction,
