@@ -73,12 +73,29 @@ GOLD_RSI_SHORT_MAX = 60
 # Other markets use the same baseline RSI filters initially.
 # They are kept as explicit per-market settings so each market can be tuned later.
 MARKET_RSI_SETTINGS = {
-    "GOLD": (40, 70, 30, 60),
-    "EURUSD": (40, 70, 30, 60),
-    "SILVER": (40, 70, 30, 60),
-    "OIL_CRUDE": (40, 70, 30, 60),
-    "US100": (40, 70, 30, 60),
-    "US500": (40, 70, 30, 60),
+    # Current market regime tuning (18 Sep 2026):
+    # GOLD: bullish recovery, but 4,400 is the breakout trigger.
+    "GOLD": (42, 68, 32, 58),
+    # EURUSD: USD rate differential remains bearish for EURUSD.
+    "EURUSD": (38, 62, 28, 55),
+    # SILVER: strong rebound; allow longs but avoid chasing extreme RSI.
+    "SILVER": (45, 72, 30, 58),
+    # CRUDE: volatile and elevated; favor confirmed downside signals.
+    "OIL_CRUDE": (40, 62, 28, 55),
+    # US indices: mixed but yields near/above 5% are a headwind.
+    "US100": (42, 65, 28, 55),
+    "US500": (42, 65, 28, 55),
+}
+
+# Directional regime filter. The EMA/HTF/volatility rules still have to
+# confirm the entry; this only blocks signals against the current regime.
+MARKET_BIAS = {
+    "GOLD": "BUY",
+    "EURUSD": "SELL",
+    "SILVER": "BUY",
+    "OIL_CRUDE": "SELL",
+    "US100": "SELL",
+    "US500": "SELL",
 }
 
 
@@ -603,13 +620,15 @@ def generate_signal(df, epic, htf_df=None):
         current["ema_slow"]
     )
 
+    bias = MARKET_BIAS.get(epic, "BOTH")
+
     if bullish_cross and htf_fast > htf_slow:
 
         if (
             long_min
             <= current["rsi"]
             <= long_max
-        ):
+        ) and bias in ("BUY", "BOTH"):
             return "BUY"
 
     if bearish_cross and htf_fast < htf_slow:
@@ -618,7 +637,7 @@ def generate_signal(df, epic, htf_df=None):
             short_min
             <= current["rsi"]
             <= short_max
-        ):
+        ) and bias in ("SELL", "BOTH"):
             return "SELL"
 
     return None
