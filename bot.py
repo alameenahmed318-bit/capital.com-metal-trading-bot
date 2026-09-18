@@ -17,6 +17,8 @@ CLOSE_TOLERANCE = 0.5
 
 
 def notify_discord(message):
+    if not config.DISCORD_WEBHOOK_URL:
+        return
     try:
         resp = requests.post(config.DISCORD_WEBHOOK_URL, json={"content": message})
         if resp.status_code >= 300:
