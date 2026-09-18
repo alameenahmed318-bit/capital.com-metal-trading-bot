@@ -15,7 +15,7 @@ from capital_api import CapitalAPI
 # SAFETY
 # ============================================================
 
-# Demo only while testing.
+# Demo only while testing. Live trading remains disabled.
 DEMO_ONLY = True
 
 # Explicitly disabled.
@@ -31,6 +31,10 @@ ALLOW_AVERAGING = False
 EPICS = [
     "GOLD",
     "EURUSD",
+    "SILVER",
+    "OIL_CRUDE",
+    "US100",
+    "US500",
 ]
 
 
@@ -56,13 +60,16 @@ GOLD_RSI_SHORT_MIN = 30
 GOLD_RSI_SHORT_MAX = 60
 
 
-# EUR/USD
-# Independent settings so they can be tuned separately.
-EURUSD_RSI_LONG_MIN = 40
-EURUSD_RSI_LONG_MAX = 70
-
-EURUSD_RSI_SHORT_MIN = 30
-EURUSD_RSI_SHORT_MAX = 60
+# Other markets use the same baseline RSI filters initially.
+# They are kept as explicit per-market settings so each market can be tuned later.
+MARKET_RSI_SETTINGS = {
+    "GOLD": (40, 70, 30, 60),
+    "EURUSD": (40, 70, 30, 60),
+    "SILVER": (40, 70, 30, 60),
+    "OIL_CRUDE": (40, 70, 30, 60),
+    "US100": (40, 70, 30, 60),
+    "US500": (40, 70, 30, 60),
+}
 
 
 # ============================================================
@@ -96,6 +103,10 @@ TRAILING_DISTANCE_R = 1.0
 MIN_TRADE_SIZE = {
     "GOLD": 0.01,
     "EURUSD": 0.01,
+    "SILVER": 1.0,
+    "OIL_CRUDE": 0.01,
+    "US100": 0.01,
+    "US500": 0.01,
 }
 
 
@@ -283,7 +294,7 @@ def get_position_size(api, epic, risk_amount_account, risk_distance):
     if min_size <= 0 or step <= 0 or lot_size <= 0:
         return None
 
-    # Both GOLD and EURUSD are USD-quoted here.
+    # These Capital.com markets are USD-quoted here.
     # 1 USD ~= 3.6725 AED.
     account_to_quote = 3.6725
     risk_amount_quote = risk_amount_account / account_to_quote
@@ -498,14 +509,14 @@ def add_indicators(df):
 
 def get_rsi_settings(epic):
 
-    if epic == "EURUSD":
+    settings = getattr(
+        config,
+        "MARKET_RSI_SETTINGS",
+        {},
+    ).get(epic)
 
-        return (
-            EURUSD_RSI_LONG_MIN,
-            EURUSD_RSI_LONG_MAX,
-            EURUSD_RSI_SHORT_MIN,
-            EURUSD_RSI_SHORT_MAX,
-        )
+    if settings:
+        return settings
 
     return (
         GOLD_RSI_LONG_MIN,
@@ -1231,7 +1242,7 @@ def run_cycle():
     # --------------------------------------------------------
     # Process every market independently.
     #
-    # GOLD and EURUSD can both trade
+    # All configured markets can trade independently
     # in the same cycle.
     # --------------------------------------------------------
 
