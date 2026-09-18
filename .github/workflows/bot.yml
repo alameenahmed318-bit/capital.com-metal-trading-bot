@@ -37,6 +37,7 @@ jobs:
           done
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          TRADING_ECONOMICS_API_KEY: ${{ secrets.TRADING_ECONOMICS_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
