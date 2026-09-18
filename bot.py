@@ -58,6 +58,8 @@ VOL_REGIME_MIN = getattr(config, "VOL_REGIME_MIN", 1.05)
 VOL_REGIME_FAST = getattr(config, "VOL_REGIME_FAST", 20)
 VOL_REGIME_SLOW = getattr(config, "VOL_REGIME_SLOW", 200)
 MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
+XAU_WORKING_ORDER_ENABLED = getattr(config, "XAU_WORKING_ORDER_ENABLED", True)
+XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
 
 # GOLD
@@ -1153,29 +1155,57 @@ def process_epic(
                 )
 
         # ----------------------------------------------------
-        # OPEN POSITION
+        # WORKING ORDER FOR XAUUSD / GOLD
+        #
+        # Match the manual analysis: BUY only after a confirmed
+        # break above the 4,400 trigger. The order is placed as a
+        # STOP working order and is not activated unless price
+        # reaches the trigger.
         # ----------------------------------------------------
+        if epic == "GOLD" and XAU_WORKING_ORDER_ENABLED:
+            if signal != "BUY":
+                log(f"{epic}: working-order rule requires BUY; no order placed.")
+                return None
 
+            trigger = float(XAU_WORKING_TRIGGER)
+
+            if trigger <= trade["entry"]:
+                log(
+                    f"{epic}: price is already at/above the working trigger "
+                    f"{trigger}; no new working order placed."
+                )
+                return None
+
+            stop_level = trigger - trade["risk_distance"]
+            profit_level = trigger + (trade["risk_distance"] * (TP_ATR_MULT / SL_ATR_MULT))
+
+            response = api.place_working_order(
+                epic=epic,
+                direction="BUY",
+                size=size,
+                level=trigger,
+                stop_level=stop_level,
+                profit_level=profit_level,
+            )
+
+            log(f"{epic}: WORKING BUY ORDER SENT | trigger={trigger}")
+            log(f"{epic}: SL={stop_level} | TP={profit_level}")
+            log(f"{epic}: {response}")
+            return response
+
+        # ----------------------------------------------------
+        # OPEN POSITION FOR OTHER MARKETS
+        # ----------------------------------------------------
         response = api.place_order(
             direction=signal,
             size=size,
-            stop_level=trade[
-                "stop_level"
-            ],
-            profit_level=trade[
-                "profit_level"
-            ],
+            stop_level=trade["stop_level"],
+            profit_level=trade["profit_level"],
             epic=epic,
         )
 
-        log(
-            f"{epic}: ORDER SENT"
-        )
-
-        log(
-            f"{epic}: {response}"
-        )
-
+        log(f"{epic}: ORDER SENT")
+        log(f"{epic}: {response}")
         return response
 
     except Exception as exc:
