@@ -19,11 +19,11 @@ BINANCE_SYMBOLS = [
     if s.strip()
 ]
 
-BINANCE_RISK_PER_TRADE = float(os.getenv("BINANCE_RISK_PER_TRADE", "0.015"))
-BINANCE_MAX_POSITION_RISK = float(os.getenv("BINANCE_MAX_POSITION_RISK", "0.04"))
-BINANCE_LEVERAGE = int(os.getenv("BINANCE_LEVERAGE", "1"))
-BINANCE_SL_ATR_MULT = float(os.getenv("BINANCE_SL_ATR_MULT", str(getattr(config, "SL_ATR_MULT", 1.5))))
-BINANCE_TP_ATR_MULT = float(os.getenv("BINANCE_TP_ATR_MULT", str(getattr(config, "TP_ATR_MULT", 3.0))))
+BINANCE_RISK_PER_TRADE = float(os.getenv("BINANCE_RISK_PER_TRADE") or "0.015")
+BINANCE_MAX_POSITION_RISK = float(os.getenv("BINANCE_MAX_POSITION_RISK") or "0.04")
+BINANCE_LEVERAGE = int(os.getenv("BINANCE_LEVERAGE") or "1")
+BINANCE_SL_ATR_MULT = float(os.getenv("BINANCE_SL_ATR_MULT") or str(getattr(config, "SL_ATR_MULT", 1.5)))
+BINANCE_TP_ATR_MULT = float(os.getenv("BINANCE_TP_ATR_MULT") or str(getattr(config, "TP_ATR_MULT", 3.0)))
 
 
 def log(message):
