@@ -23,13 +23,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Test Capital.com connection
+            - name: Test Capital.com connection
         run: |
-          python -c "from capital_api import CapitalAPI; api=CapitalAPI(); print('Testing Capital.com login...'); api.login(); print('LOGIN SUCCESS'); print('Balance:', api.get_balance()); print('GOLD candles:', len(api.get_candles('GOLD').get('prices', [])))"
+          python -c "import requests, os; url=os.environ['CAPITAL_BASE_DEMO_URL'].rstrip('/') + '/api/v1/session'; headers={'X-CAP-API-KEY': os.environ['CAPITAL_API_KEY'], 'Content-Type':'application/json'}; data={'identifier':os.environ['CAPITAL_EMAIL'],'password':os.environ['CAPITAL_PASSWORD'],'encryptedPassword':False}; r=requests.post(url,headers=headers,json=data,timeout=20); print('HTTP STATUS:',r.status_code); print('RESPONSE:',r.text[:1000]); r.raise_for_status()"
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
-          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
           CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
-          IS_DEMO: ${{ secrets.IS_DEMO }}
