@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-18T15:51:47.253870+00:00",
+  "last_updated": null,
   "overall": {
     "total_trades": 0,
     "open_trades": 0,
@@ -17,26 +17,11 @@
     "current_streak": 0
   },
   "by_epic": {
-    "GOLD": {
-      "trades": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "SILVER": {
-      "trades": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "COPPER": {
-      "trades": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    }
+    "GOLD": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
+    "EURUSD": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
+    "SILVER": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
+    "OIL_CRUDE": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
+    "US100": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
+    "US500": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0}
   }
 }
