@@ -145,7 +145,6 @@ def safety_allows_new_entry(balance, positions):
     if not KILL_SWITCH_ENABLED:
         return True
     reset_daily_safety(balance)
-    update_loss_cooldowns_from_history(api)
     equity = account_equity(balance, positions)
     peak = safe_float(SAFETY.get("peak_equity"), equity) or equity
     if equity > peak:
@@ -749,6 +748,7 @@ def run_cycle():
     account_currency = api.get_account_currency()
     log(f"Account balance: {balance} {account_currency}")
     reset_daily_safety(balance)
+    update_loss_cooldowns_from_history(api)
     for cycle_epic in EPICS:
         # Refresh account state before EVERY epic so newly opened/closed positions
         # are immediately reflected in subsequent decisions within this run.
