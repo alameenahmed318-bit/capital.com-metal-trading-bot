@@ -3,8 +3,7 @@ name: Metals Trading Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"
-
+    - cron: "* * * * *"
 
 permissions:
   contents: write
@@ -13,19 +12,15 @@ jobs:
   trade:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Run bot
         run: python bot.py
         env:
@@ -43,7 +38,6 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
-
       - name: Persist trades.db and stats.json
         run: |
           git config user.name "github-actions[bot]"
