@@ -995,28 +995,14 @@ def process_epic(
         )
 
         # ----------------------------------------------------
-        # Existing position check
+        # Multiple positions
         #
-        # PER EPIC.
-        #
-        # GOLD does not block EURUSD.
-        # EURUSD does not block GOLD.
+        # No per-epic position-count limit.
+        # A new position is allowed when a NEW EMA crossover
+        # signal occurs. This is not Grid/Martingale/Averaging:
+        # there is no averaging-in and no repeated entry merely
+        # because an existing position is still open.
         # ----------------------------------------------------
-
-        if has_position_for_epic(
-            positions,
-            epic,
-        ):
-
-            log(
-                f"{epic}: existing position found."
-            )
-
-            log(
-                f"{epic}: no new position."
-            )
-
-            return None
 
         # ----------------------------------------------------
         # Generate signal
