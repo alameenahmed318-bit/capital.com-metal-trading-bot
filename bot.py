@@ -55,6 +55,13 @@ TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
 TRAILING_ENABLED = True
 TRAILING_START_R = 1.0
 TRAILING_DISTANCE_R = 1.0
+
+# Strategy v2 filters
+USE_SUPPORT_RESISTANCE = True
+USE_BREAKOUT_CONFIRMATION = True
+SR_LOOKBACK = 60
+SR_BUFFER_ATR = 0.35
+BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
 ADD_TO_PROFITABLE_BASKET = True
@@ -220,23 +227,62 @@ def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
 
 def generate_signal(df, epic, htf_df=None):
-    if len(df) < max(EMA_SLOW + 5, RSI_PERIOD + 5, ATR_PERIOD + 5) or htf_df is None or len(htf_df) < HTF_EMA_SLOW + 5:
+    if len(df) < max(EMA_SLOW + 5, RSI_PERIOD + 5, ATR_PERIOD + 5, SR_LOOKBACK + 5, BREAKOUT_LOOKBACK + 5) or htf_df is None or len(htf_df) < HTF_EMA_SLOW + 5:
         return None
+
     htf_fast = htf_df["close"].ewm(span=HTF_EMA_FAST, adjust=False).mean().iloc[-2]
     htf_slow = htf_df["close"].ewm(span=HTF_EMA_SLOW, adjust=False).mean().iloc[-2]
     atr_fast = df["atr"].rolling(VOL_REGIME_FAST).mean().iloc[-2]
     atr_slow = df["atr"].rolling(VOL_REGIME_SLOW).mean().iloc[-2]
     if pd.isna(atr_fast) or pd.isna(atr_slow) or atr_slow <= 0 or atr_fast / atr_slow < VOL_REGIME_MIN:
         return None
+
     previous, current = df.iloc[-3], df.iloc[-2]
     if any(pd.isna(current[key]) or pd.isna(previous[key]) for key in ["ema_fast", "ema_slow"]) or pd.isna(current["rsi"]) or pd.isna(current["atr"]):
         return None
+
     long_min, long_max, short_min, short_max = get_rsi_settings(epic)
     bullish_cross = previous["ema_fast"] <= previous["ema_slow"] and current["ema_fast"] > current["ema_slow"]
     bearish_cross = previous["ema_fast"] >= previous["ema_slow"] and current["ema_fast"] < current["ema_slow"]
-    if bullish_cross and htf_fast > htf_slow and long_min <= current["rsi"] <= long_max:
+
+    # Dynamic support/resistance from recent closed candles.
+    recent = df.iloc[-(SR_LOOKBACK + 1):-1]
+    support = recent["low"].min()
+    resistance = recent["high"].max()
+    atr = float(current["atr"])
+    price = float(current["close"])
+    near_support = price <= support + SR_BUFFER_ATR * atr
+    near_resistance = price >= resistance - SR_BUFFER_ATR * atr
+
+    # Breakout confirmation: closed candle must clear the recent range.
+    breakout_high = recent["high"].max()
+    breakout_low = recent["low"].min()
+    bullish_breakout = price > breakout_high
+    bearish_breakout = price < breakout_low
+
+    buy_trend = htf_fast > htf_slow
+    sell_trend = htf_fast < htf_slow
+
+    # Primary entry: fresh EMA cross + higher-timeframe trend + RSI.
+    buy_setup = bullish_cross and buy_trend and long_min <= current["rsi"] <= long_max
+    sell_setup = bearish_cross and sell_trend and short_min <= current["rsi"] <= short_max
+
+    if USE_BREAKOUT_CONFIRMATION:
+        # Accept either a fresh cross or a confirmed range breakout, but keep
+        # the higher-timeframe and RSI filters.
+        buy_setup = (buy_setup or (bullish_breakout and buy_trend and long_min <= current["rsi"] <= long_max))
+        sell_setup = (sell_setup or (bearish_breakout and sell_trend and short_min <= current["rsi"] <= short_max))
+
+    if USE_SUPPORT_RESISTANCE:
+        # Avoid buying directly into resistance or selling directly into support.
+        if buy_setup and near_resistance and not bullish_breakout:
+            buy_setup = False
+        if sell_setup and near_support and not bearish_breakout:
+            sell_setup = False
+
+    if buy_setup:
         return "BUY"
-    if bearish_cross and htf_fast < htf_slow and short_min <= current["rsi"] <= short_max:
+    if sell_setup:
         return "SELL"
     return None
 
@@ -451,6 +497,7 @@ def process_epic(api, epic, positions, balance, account_currency):
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
+    log(f"Strategy v2: MTF trend + S/R + breakout; S/R={USE_SUPPORT_RESISTANCE}, breakout={USE_BREAKOUT_CONFIRMATION}.")
     log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
     log("Logging in to Capital.com...")
