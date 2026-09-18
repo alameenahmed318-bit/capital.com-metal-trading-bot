@@ -97,6 +97,20 @@ class CapitalAPI:
 
         return resp.json()["accounts"]
 
+    def get_account_currency(self):
+        """Return the selected account's base currency (e.g. USD or AED)."""
+        accounts = self.get_accounts()
+        account = next(
+            (a for a in accounts if a["accountId"] == self.account_id),
+            None,
+        )
+        if account is None:
+            raise RuntimeError(f"Selected account {self.account_id} was not found.")
+        currency = account.get("balance", {}).get("currency") or account.get("currency")
+        if not currency:
+            raise RuntimeError("Capital.com did not return the account currency.")
+        return str(currency).upper()
+
     def get_balance(self):
         accounts = self.get_accounts()
 
