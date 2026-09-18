@@ -57,6 +57,13 @@ TRAILING_ENABLED = True
 TRAILING_START_R = 1.0
 TRAILING_DISTANCE_R = 1.0
 
+# Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
+STRATEGY_SELECTOR_ENABLED = True
+TREND_EMA_GAP_ATR = 0.35
+RANGE_EMA_GAP_ATR = 0.15
+RANGE_RSI_BUY_MAX = 42
+RANGE_RSI_SELL_MIN = 58
+
 # Strategy v2 filters
 USE_SUPPORT_RESISTANCE = True
 USE_BREAKOUT_CONFIRMATION = True
@@ -369,66 +376,115 @@ def add_indicators(df):
 def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
 
+def market_regime(df, htf_df):
+    """Classify the closed-candle market into TREND, BREAKOUT, or RANGE."""
+    if len(df) < max(VOL_REGIME_SLOW + 5, SR_LOOKBACK + 5) or len(htf_df) < HTF_EMA_SLOW + 5:
+        return "RANGE"
+
+    current = df.iloc[-2]
+    atr = safe_float(current["atr"])
+    if atr is None or atr <= 0:
+        return "RANGE"
+
+    htf_fast = htf_df["close"].ewm(span=HTF_EMA_FAST, adjust=False).mean().iloc[-2]
+    htf_slow = htf_df["close"].ewm(span=HTF_EMA_SLOW, adjust=False).mean().iloc[-2]
+    ema_gap = abs(float(current["ema_fast"] - current["ema_slow"]))
+    recent = df.iloc[-(BREAKOUT_LOOKBACK + 1):-1]
+    price = float(current["close"])
+    breakout_high = float(recent["high"].max())
+    breakout_low = float(recent["low"].min())
+
+    if price > breakout_high or price < breakout_low:
+        return "BREAKOUT"
+
+    htf_aligned = (htf_fast > htf_slow and current["ema_fast"] > current["ema_slow"]) or (
+        htf_fast < htf_slow and current["ema_fast"] < current["ema_slow"]
+    )
+    if htf_aligned and ema_gap >= TREND_EMA_GAP_ATR * atr:
+        return "TREND"
+
+    return "RANGE"
+
+
 def generate_signal(df, epic, htf_df=None):
     if len(df) < max(EMA_SLOW + 5, RSI_PERIOD + 5, ATR_PERIOD + 5, SR_LOOKBACK + 5, BREAKOUT_LOOKBACK + 5) or htf_df is None or len(htf_df) < HTF_EMA_SLOW + 5:
         return None
 
+    current = df.iloc[-2]
+    previous = df.iloc[-3]
+    atr = safe_float(current["atr"])
+    if atr is None or atr <= 0:
+        return None
+
     htf_fast = htf_df["close"].ewm(span=HTF_EMA_FAST, adjust=False).mean().iloc[-2]
     htf_slow = htf_df["close"].ewm(span=HTF_EMA_SLOW, adjust=False).mean().iloc[-2]
-    atr_fast = df["atr"].rolling(VOL_REGIME_FAST).mean().iloc[-2]
-    atr_slow = df["atr"].rolling(VOL_REGIME_SLOW).mean().iloc[-2]
-    if pd.isna(atr_fast) or pd.isna(atr_slow) or atr_slow <= 0 or atr_fast / atr_slow < VOL_REGIME_MIN:
-        return None
-    ema_gap = abs(float(df["ema_fast"].iloc[-2] - df["ema_slow"].iloc[-2]))
-    if SIDEWAYS_FILTER_ENABLED and ema_gap < float(df["atr"].iloc[-2]) * 0.15:
-        return None
-
-    previous, current = df.iloc[-3], df.iloc[-2]
-    if any(pd.isna(current[key]) or pd.isna(previous[key]) for key in ["ema_fast", "ema_slow"]) or pd.isna(current["rsi"]) or pd.isna(current["atr"]):
-        return None
 
     long_min, long_max, short_min, short_max = get_rsi_settings(epic)
-    bullish_cross = previous["ema_fast"] <= previous["ema_slow"] and current["ema_fast"] > current["ema_slow"]
-    bearish_cross = previous["ema_fast"] >= previous["ema_slow"] and current["ema_fast"] < current["ema_slow"]
+    rsi = safe_float(current["rsi"])
+    if rsi is None:
+        return None
 
-    # Dynamic support/resistance from recent closed candles.
     recent = df.iloc[-(SR_LOOKBACK + 1):-1]
-    support = recent["low"].min()
-    resistance = recent["high"].max()
-    atr = float(current["atr"])
+    support = float(recent["low"].min())
+    resistance = float(recent["high"].max())
     price = float(current["close"])
     near_support = price <= support + SR_BUFFER_ATR * atr
     near_resistance = price >= resistance - SR_BUFFER_ATR * atr
 
-    # Breakout confirmation: closed candle must clear the recent range.
-    breakout_high = recent["high"].max()
-    breakout_low = recent["low"].min()
+    breakout_high = float(df.iloc[-(BREAKOUT_LOOKBACK + 1):-1]["high"].max())
+    breakout_low = float(df.iloc[-(BREAKOUT_LOOKBACK + 1):-1]["low"].min())
     bullish_breakout = price > breakout_high
     bearish_breakout = price < breakout_low
 
-    buy_trend = htf_fast > htf_slow
-    sell_trend = htf_fast < htf_slow
+    regime = market_regime(df, htf_df)
+    if not STRATEGY_SELECTOR_ENABLED:
+        regime = "TREND"
 
-    # Primary entry: fresh EMA cross + higher-timeframe trend + RSI.
-    buy_setup = bullish_cross and buy_trend and long_min <= current["rsi"] <= long_max
-    sell_setup = bearish_cross and sell_trend and short_min <= current["rsi"] <= short_max
+    log(f"{epic}: STRATEGY SELECTOR = {regime}")
 
-    if USE_BREAKOUT_CONFIRMATION:
-        # Accept either a fresh cross or a confirmed range breakout, but keep
-        # the higher-timeframe and RSI filters.
-        buy_setup = (buy_setup or (bullish_breakout and buy_trend and long_min <= current["rsi"] <= long_max))
-        sell_setup = (sell_setup or (bearish_breakout and sell_trend and short_min <= current["rsi"] <= short_max))
+    if regime == "BREAKOUT":
+        # Breakout entries require confirmation from the closed candle, HTF direction,
+        # and RSI; this avoids treating every range touch as a breakout.
+        if bullish_breakout and htf_fast > htf_slow and long_min <= rsi <= long_max:
+            return "BUY"
+        if bearish_breakout and htf_fast < htf_slow and short_min <= rsi <= short_max:
+            return "SELL"
+        return None
 
-    if USE_SUPPORT_RESISTANCE:
-        # Avoid buying directly into resistance or selling directly into support.
-        if buy_setup and near_resistance and not bullish_breakout:
-            buy_setup = False
-        if sell_setup and near_support and not bearish_breakout:
-            sell_setup = False
+    if regime == "TREND":
+        bullish_cross = previous["ema_fast"] <= previous["ema_slow"] and current["ema_fast"] > current["ema_slow"]
+        bearish_cross = previous["ema_fast"] >= previous["ema_slow"] and current["ema_fast"] < current["ema_slow"]
+        buy_setup = bullish_cross and htf_fast > htf_slow and long_min <= rsi <= long_max
+        sell_setup = bearish_cross and htf_fast < htf_slow and short_min <= rsi <= short_max
 
-    if buy_setup:
+        # If the trend is already established, allow a clean pullback continuation
+        # rather than requiring a brand-new EMA cross on every opportunity.
+        ema_gap = abs(float(current["ema_fast"] - current["ema_slow"]))
+        if ema_gap >= TREND_EMA_GAP_ATR * atr:
+            buy_setup = buy_setup or (
+                current["ema_fast"] > current["ema_slow"]
+                and htf_fast > htf_slow
+                and long_min <= rsi <= long_max
+                and not near_resistance
+            )
+            sell_setup = sell_setup or (
+                current["ema_fast"] < current["ema_slow"]
+                and htf_fast < htf_slow
+                and short_min <= rsi <= short_max
+                and not near_support
+            )
+
+        if buy_setup:
+            return "BUY"
+        if sell_setup:
+            return "SELL"
+        return None
+
+    # RANGE: mean-reversion only near dynamic support/resistance.
+    # Do not combine this with the high-volatility gate used by trend/breakout.
+    if near_support and rsi <= RANGE_RSI_BUY_MAX:
         return "BUY"
-    if sell_setup:
+    if near_resistance and rsi >= RANGE_RSI_SELL_MIN:
         return "SELL"
     return None
 
@@ -549,6 +605,7 @@ def process_epic(api, epic, positions, balance, account_currency):
         manage_trailing_stops(api, positions, epic, current_price)
         breakeven_stops(api, positions, epic, current_price)
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
+        # The selector chooses Trend/Breakout/Range from current market structure.
         signal = generate_signal(df, epic, htf_df)
         epic_positions = get_positions_for_epic(positions, epic)
         if signal is None and not epic_positions:
@@ -683,7 +740,7 @@ def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
     log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
-    log(f"Strategy v2: MTF trend + S/R + breakout; S/R={USE_SUPPORT_RESISTANCE}, breakout={USE_BREAKOUT_CONFIRMATION}.")
+    log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
     log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
     log("Logging in to Capital.com...")
