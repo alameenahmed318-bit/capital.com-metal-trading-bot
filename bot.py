@@ -91,6 +91,7 @@ SAFETY_STATE_FILE = "bot_safety_state.json"
 
 MIN_TRADE_SIZE = {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01}
 STATE_FILE = "trades_state.json"
+OPEN_POSITIONS_FILE = "open_positions.json"
 
 def log(message):
     print(f"[BOT] {message}")
@@ -286,6 +287,40 @@ def position_stop_level(position):
 
 def position_profit_level(position):
     return safe_float(position.get("profitLevel") or position.get("position", {}).get("profitLevel"))
+
+
+def position_summary(position):
+    return {
+        "dealId": position_deal_id(position),
+        "epic": position_epic(position),
+        "direction": position_direction(position),
+        "size": position_size_value(position),
+        "entry": position_open_level(position),
+        "current": safe_float(position.get("level") or position.get("position", {}).get("level")),
+        "stopLoss": position_stop_level(position),
+        "takeProfit": position_profit_level(position),
+        "profitLoss": position_unrealized_pnl(position),
+    }
+
+def log_and_save_open_positions(positions):
+    summaries = [position_summary(p) for p in positions]
+    if not summaries:
+        log("OPEN POSITIONS: none")
+    for item in summaries:
+        pnl = item["profitLoss"]
+        status = "PROFIT" if pnl > 0 else "LOSS" if pnl < 0 else "FLAT"
+        log(
+            f"OPEN POSITION | {item['epic']} | {item['direction']} | "
+            f"entry={item['entry']} | current={item['current']} | "
+            f"P/L={pnl} | {status} | SL={item['stopLoss']} | TP={item['takeProfit']} | "
+            f"size={item['size']} | dealId={item['dealId']}"
+        )
+    try:
+        with open(OPEN_POSITIONS_FILE, "w", encoding="utf-8") as file:
+            json.dump({"updated_at": datetime.now(timezone.utc).isoformat(), "positions": summaries}, file, indent=2)
+    except Exception as exc:
+        log(f"Could not save open positions snapshot: {exc}")
+
 
 def original_risk_distance(position):
     """Recover the original SL distance even after break-even/trailing moved the SL."""
@@ -802,6 +837,7 @@ def run_cycle():
         # are immediately reflected in subsequent decisions within this run.
         positions = api.get_open_positions()
         log(f"Open positions before {cycle_epic}: {len(positions)}")
+        log_and_save_open_positions(positions)
         cleanup_state(positions)
         process_epic(
             api=api,
