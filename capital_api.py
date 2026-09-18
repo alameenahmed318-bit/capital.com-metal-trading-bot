@@ -34,16 +34,14 @@ class CapitalAPI:
         accounts = self.get_accounts()
         if not accounts:
             raise RuntimeError("No Capital.com accounts were returned.")
-        # Prefer the account explicitly marked as the active account.
         active_accounts = [
-            account for account in accounts
+            account
+            for account in accounts
             if account.get("preferred") is True
         ]
         if active_accounts:
             self.account_id = active_accounts[0]["accountId"]
         else:
-            # If Capital.com does not mark a preferred account,
-            # use the first returned account as the fallback.
             self.account_id = accounts[0]["accountId"]
         print(f"Using Capital.com account: {self.account_id}")
         return resp.json()
@@ -131,7 +129,6 @@ class CapitalAPI:
                 "guaranteedStop": False,
                 "stopLevel": stop_level,
                 "profitLevel": profit_level,
-                "epic": epic,
             },
         )
     def close_position(self, deal_id):
