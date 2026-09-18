@@ -3,7 +3,7 @@ name: Metals Trading Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "* * * * *"
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: write
@@ -21,8 +21,15 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run bot
-        run: python bot.py
+      - name: Run bot every minute (5 checks per scheduled run)
+        run: |
+          for i in 1 2 3 4 5; do
+            echo "=== Bot check $i/5 ==="
+            python bot.py
+            if [ "$i" -lt 5 ]; then
+              sleep 60
+            fi
+          done
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
