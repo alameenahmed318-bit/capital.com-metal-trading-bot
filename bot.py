@@ -3,6 +3,7 @@ import math
 import os
 import time
 import traceback
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -66,11 +67,152 @@ BREAKOUT_LOOKBACK = 20
 # (without waiting for the normal grid distance) until the per-epic cap.
 ADD_TO_PROFITABLE_BASKET = True
 
+# Free, local risk/execution protections (no external paid service).
+SPREAD_FILTER_ENABLED = True
+MAX_SPREAD_PCT = 0.08
+DAILY_LOSS_LIMIT_PCT = 0.03
+EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
+LOSS_COOLDOWN_MINUTES = 20
+SIDEWAYS_FILTER_ENABLED = True
+SIDEWAYS_ATR_RATIO_MAX = 0.90
+BREAKEVEN_ENABLED = True
+BREAKEVEN_START_R = 0.75
+BREAKEVEN_OFFSET_R = 0.05
+KILL_SWITCH_ENABLED = True
+MAX_CONSECUTIVE_ERRORS = 3
+SAFETY_STATE_FILE = "bot_safety_state.json"
+
 MIN_TRADE_SIZE = {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01}
 STATE_FILE = "trades_state.json"
 
 def log(message):
     print(f"[BOT] {message}")
+
+def load_safety_state():
+    if not os.path.exists(SAFETY_STATE_FILE):
+        return {"day": "", "day_start_balance": None, "peak_equity": None, "consecutive_errors": 0, "cooldown_until": {}}
+    try:
+        with open(SAFETY_STATE_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+        state.setdefault("day", "")
+        state.setdefault("day_start_balance", None)
+        state.setdefault("peak_equity", None)
+        state.setdefault("consecutive_errors", 0)
+        state.setdefault("cooldown_until", {})
+        return state
+    except Exception as exc:
+        log(f"Could not load safety state: {exc}")
+        return {"day": "", "day_start_balance": None, "peak_equity": None, "consecutive_errors": 0, "cooldown_until": {}}
+
+def save_safety_state(state):
+    temp_file = f"{SAFETY_STATE_FILE}.tmp"
+    with open(temp_file, "w", encoding="utf-8") as file:
+        json.dump(state, file, indent=2)
+    os.replace(temp_file, SAFETY_STATE_FILE)
+
+SAFETY = load_safety_state()
+
+def utc_day():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+def reset_daily_safety(balance):
+    today = utc_day()
+    if SAFETY.get("day") != today:
+        SAFETY["day"] = today
+        SAFETY["day_start_balance"] = float(balance)
+        SAFETY["peak_equity"] = float(balance)
+        SAFETY["consecutive_errors"] = 0
+        SAFETY["cooldown_until"] = {}
+        save_safety_state(SAFETY)
+
+def position_unrealized_pnl(position):
+    value = position.get("profitLoss")
+    if value is None:
+        value = position.get("position", {}).get("profitLoss")
+    return safe_float(value, 0.0) or 0.0
+
+def account_equity(balance, positions):
+    return float(balance) + sum(position_unrealized_pnl(p) for p in positions)
+
+def safety_allows_new_entry(balance, positions):
+    if not KILL_SWITCH_ENABLED:
+        return True
+    reset_daily_safety(balance)
+    equity = account_equity(balance, positions)
+    peak = safe_float(SAFETY.get("peak_equity"), equity) or equity
+    if equity > peak:
+        SAFETY["peak_equity"] = equity
+        peak = equity
+        save_safety_state(SAFETY)
+    start_balance = safe_float(SAFETY.get("day_start_balance"), balance) or balance
+    daily_floor = start_balance * (1.0 - DAILY_LOSS_LIMIT_PCT)
+    drawdown_floor = peak * (1.0 - EQUITY_DRAWDOWN_LIMIT_PCT)
+    if balance <= daily_floor or equity <= drawdown_floor:
+        log(f"SAFETY STOP: new entries disabled | balance={balance:.2f} equity={equity:.2f} day_floor={daily_floor:.2f} drawdown_floor={drawdown_floor:.2f}")
+        return False
+    if int(SAFETY.get("consecutive_errors", 0)) >= MAX_CONSECUTIVE_ERRORS:
+        log(f"KILL SWITCH: {SAFETY['consecutive_errors']} consecutive errors; new entries disabled.")
+        return False
+    return True
+
+def cooldown_active(epic):
+    until = safe_float(SAFETY.get("cooldown_until", {}).get(epic))
+    if until and datetime.now(timezone.utc).timestamp() < until:
+        log(f"{epic}: cooldown active after recent loss; no new entry.")
+        return True
+    return False
+
+def set_loss_cooldown(epic):
+    SAFETY.setdefault("cooldown_until", {})[epic] = datetime.now(timezone.utc).timestamp() + LOSS_COOLDOWN_MINUTES * 60
+    save_safety_state(SAFETY)
+
+def market_spread_pct(market):
+    bid = safe_float(market.get("snapshot", {}).get("bid") or market.get("bid"))
+    ask = safe_float(market.get("snapshot", {}).get("ask") or market.get("ask"))
+    if bid is None or ask is None or bid <= 0 or ask <= 0 or ask < bid:
+        return None
+    return ((ask - bid) / ((ask + bid) / 2.0)) * 100.0
+
+def spread_allows_entry(api, epic):
+    if not SPREAD_FILTER_ENABLED:
+        return True
+    spread = market_spread_pct(api.get_market(epic))
+    if spread is None:
+        log(f"{epic}: spread unavailable; entry blocked for safety.")
+        return False
+    if spread > MAX_SPREAD_PCT:
+        log(f"{epic}: spread too wide ({spread:.4f}% > {MAX_SPREAD_PCT:.4f}%); entry blocked.")
+        return False
+    return True
+
+def breakeven_stops(api, positions, epic, current_price):
+    if not BREAKEVEN_ENABLED:
+        return
+    for position in get_positions_for_epic(positions, epic):
+        deal_id = position_deal_id(position)
+        direction = position_direction(position)
+        entry = position_open_level(position)
+        current_sl = position_stop_level(position)
+        if not deal_id or entry is None or not direction:
+            continue
+        risk = safe_float(STATE["risk_distance"].get(str(deal_id)))
+        if risk is None and current_sl is not None:
+            risk = abs(entry - current_sl)
+        if risk is None or risk <= 0:
+            continue
+        favorable = current_price - entry if direction == "BUY" else entry - current_price
+        if favorable < BREAKEVEN_START_R * risk:
+            continue
+        new_stop = entry + BREAKEVEN_OFFSET_R * risk if direction == "BUY" else entry - BREAKEVEN_OFFSET_R * risk
+        if direction == "BUY" and current_sl is not None and new_stop <= current_sl:
+            continue
+        if direction == "SELL" and current_sl is not None and new_stop >= current_sl:
+            continue
+        try:
+            api.modify_position(deal_id=deal_id, stop_level=new_stop)
+            log(f"{epic}: BREAK-EVEN STOP UPDATED | {direction} | new SL={new_stop}")
+        except Exception as exc:
+            log(f"{epic}: break-even update failed: {exc}")
 
 def load_state():
     if not os.path.exists(STATE_FILE):
@@ -236,6 +378,8 @@ def generate_signal(df, epic, htf_df=None):
     atr_slow = df["atr"].rolling(VOL_REGIME_SLOW).mean().iloc[-2]
     if pd.isna(atr_fast) or pd.isna(atr_slow) or atr_slow <= 0 or atr_fast / atr_slow < VOL_REGIME_MIN:
         return None
+    if SIDEWAYS_FILTER_ENABLED and atr_fast / atr_slow < SIDEWAYS_ATR_RATIO_MAX:
+        return None
 
     previous, current = df.iloc[-3], df.iloc[-2]
     if any(pd.isna(current[key]) or pd.isna(previous[key]) for key in ["ema_fast", "ema_slow"]) or pd.isna(current["rsi"]) or pd.isna(current["atr"]):
@@ -394,7 +538,14 @@ def process_epic(api, epic, positions, balance, account_currency):
         if current_price is None:
             log(f"{epic}: invalid current price.")
             return None
+        if not safety_allows_new_entry(balance, positions):
+            return None
+        if cooldown_active(epic):
+            return None
+        if not spread_allows_entry(api, epic):
+            return None
         manage_trailing_stops(api, positions, epic, current_price)
+        breakeven_stops(api, positions, epic, current_price)
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
         signal = generate_signal(df, epic, htf_df)
         epic_positions = get_positions_for_epic(positions, epic)
@@ -484,19 +635,26 @@ def process_epic(api, epic, positions, balance, account_currency):
             log(f"{epic}: WORKING BUY ORDER SENT | trigger={trigger}")
             log(f"{epic}: SL={stop_level} | TP={profit_level}")
             log(f"{epic}: {response}")
+            SAFETY["consecutive_errors"] = 0
+            save_safety_state(SAFETY)
             return response
         response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
+        SAFETY["consecutive_errors"] = 0
+        save_safety_state(SAFETY)
         return response
     except Exception as exc:
-        log(f"{epic}: ERROR: {exc}")
+        SAFETY["consecutive_errors"] = int(SAFETY.get("consecutive_errors", 0)) + 1
+        save_safety_state(SAFETY)
+        log(f"{epic}: ERROR ({SAFETY['consecutive_errors']}/{MAX_CONSECUTIVE_ERRORS}): {exc}")
         traceback.print_exc()
         return None
 
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
+    log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
     log(f"Strategy v2: MTF trend + S/R + breakout; S/R={USE_SUPPORT_RESISTANCE}, breakout={USE_BREAKOUT_CONFIRMATION}.")
     log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
@@ -505,6 +663,7 @@ def run_cycle():
     balance = api.get_balance()
     account_currency = api.get_account_currency()
     log(f"Account balance: {balance} {account_currency}")
+    reset_daily_safety(balance)
     for cycle_epic in EPICS:
         # Refresh account state before EVERY epic so newly opened/closed positions
         # are immediately reflected in subsequent decisions within this run.
