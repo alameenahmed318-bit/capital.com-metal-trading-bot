@@ -64,7 +64,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f trades.db stats.json trades_state.json bot_safety_state.json
+          git add -f trades.db stats.json trades_state.json bot_safety_state.json open_positions.json
           git diff --cached --quiet || git commit -m "Update trades.db and stats.json [skip ci]"
           git pull --rebase origin main && git push origin main || \
             (git pull --rebase origin main && git push origin main)
