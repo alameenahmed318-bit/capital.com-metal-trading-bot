@@ -60,17 +60,9 @@ class CapitalAPI:
         return resp.json()
 
     def _request(self, method, path, **kwargs):
-        resp = requests.request(
-            method,
-            f"{self.base_url}{path}",
-            headers=self._headers(),
-            timeout=20,
-            **kwargs,
-        )
-
-        if resp.status_code == 401:
-            self.login()
-
+        # Retry once after refreshing the 10-minute Capital.com session.
+        # A bounded retry prevents recursive login loops on persistent 401s.
+        for attempt in range(2):
             resp = requests.request(
                 method,
                 f"{self.base_url}{path}",
@@ -78,6 +70,11 @@ class CapitalAPI:
                 timeout=20,
                 **kwargs,
             )
+            if resp.status_code != 401:
+                break
+            if attempt == 1:
+                break
+            self.login()
 
         resp.raise_for_status()
 
