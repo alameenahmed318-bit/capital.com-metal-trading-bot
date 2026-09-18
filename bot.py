@@ -1,4 +1,6 @@
+import json
 import math
+import os
 import time
 import traceback
 
@@ -13,10 +15,10 @@ from capital_api import CapitalAPI
 # SAFETY
 # ============================================================
 
-# Keep this bot on Demo while testing.
+# Demo only while testing.
 DEMO_ONLY = True
 
-# No Grid / Martingale / Averaging.
+# Explicitly disabled.
 ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
@@ -26,10 +28,6 @@ ALLOW_AVERAGING = False
 # MARKETS
 # ============================================================
 
-# Capital.com epic names.
-# GOLD is already confirmed in your account.
-# EURUSD should be verified by the Capital.com instrument search
-# if your account uses a different epic name.
 EPICS = [
     "GOLD",
     "EURUSD",
@@ -47,18 +45,19 @@ EMA_FAST = getattr(config, "EMA_FAST", 9)
 EMA_SLOW = getattr(config, "EMA_SLOW", 21)
 
 RSI_PERIOD = getattr(config, "RSI_PERIOD", 14)
-
 ATR_PERIOD = getattr(config, "ATR_PERIOD", 14)
 
-# GOLD settings
+
+# GOLD
 GOLD_RSI_LONG_MIN = 40
 GOLD_RSI_LONG_MAX = 70
 
 GOLD_RSI_SHORT_MIN = 30
 GOLD_RSI_SHORT_MAX = 60
 
-# EUR/USD settings
-# Kept separate so EUR/USD can be tuned independently later.
+
+# EUR/USD
+# Independent settings so they can be tuned separately.
 EURUSD_RSI_LONG_MIN = 40
 EURUSD_RSI_LONG_MAX = 70
 
@@ -70,11 +69,7 @@ EURUSD_RSI_SHORT_MAX = 60
 # SL / TP
 # ============================================================
 
-# Initial stop = 1.5 ATR
 SL_ATR_MULT = getattr(config, "SL_ATR_MULT", 1.5)
-
-# Initial target = 3 ATR
-# This gives approximately 1:2 risk/reward.
 TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
 
 
@@ -84,10 +79,10 @@ TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
 
 TRAILING_ENABLED = True
 
-# Start trailing after price has moved 1R in our favour.
+# Start trailing after +1R.
 TRAILING_START_R = 1.0
 
-# Keep SL 1R away from current price.
+# Keep the stop 1R behind current price.
 TRAILING_DISTANCE_R = 1.0
 
 
@@ -95,11 +90,9 @@ TRAILING_DISTANCE_R = 1.0
 # POSITION SIZE
 # ============================================================
 
-# We deliberately use fixed minimum sizes here rather than
-# pretending we can calculate exact monetary risk without
-# Capital.com's instrument contract metadata.
-#
-# These are small Demo sizes.
+# Small Demo sizes.
+# Exact monetary risk sizing should only be enabled after
+# verifying Capital.com's instrument contract specifications.
 MIN_TRADE_SIZE = {
     "GOLD": 0.01,
     "EURUSD": 0.01,
@@ -107,16 +100,86 @@ MIN_TRADE_SIZE = {
 
 
 # ============================================================
-# HELPERS
+# PERSISTENT STATE
+# ============================================================
+
+# GitHub Actions runs are separate processes.
+# Therefore trailing-stop R values must be persisted.
+STATE_FILE = "trades_state.json"
+
+
+def load_state():
+    if not os.path.exists(STATE_FILE):
+        return {
+            "risk_distance": {}
+        }
+
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+
+        if not isinstance(state, dict):
+            return {
+                "risk_distance": {}
+            }
+
+        if "risk_distance" not in state:
+            state["risk_distance"] = {}
+
+        return state
+
+    except Exception as exc:
+        log(f"Could not load state file: {exc}")
+
+        return {
+            "risk_distance": {}
+        }
+
+
+def save_state(state):
+    temp_file = f"{STATE_FILE}.tmp"
+
+    with open(
+        temp_file,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            state,
+            file,
+            indent=2,
+        )
+
+    os.replace(
+        temp_file,
+        STATE_FILE,
+    )
+
+
+STATE = load_state()
+
+
+# ============================================================
+# LOGGING
 # ============================================================
 
 def log(message):
     print(f"[BOT] {message}")
 
 
+# ============================================================
+# HELPERS
+# ============================================================
+
 def safe_float(value, default=None):
     try:
-        return float(value)
+        number = float(value)
+
+        if not math.isfinite(number):
+            return default
+
+        return number
+
     except (TypeError, ValueError):
         return default
 
@@ -137,16 +200,13 @@ def normalize_direction(value):
 
 
 def position_epic(position):
-    """
-    Capital.com normally returns the instrument as position.epic.
-    """
-    return position.get("epic") or position.get("position", {}).get("epic")
+    return (
+        position.get("epic")
+        or position.get("position", {}).get("epic")
+    )
 
 
 def position_deal_id(position):
-    """
-    Supports the common Capital.com response structures.
-    """
     return (
         position.get("dealId")
         or position.get("position", {}).get("dealId")
@@ -155,9 +215,6 @@ def position_deal_id(position):
 
 
 def position_direction(position):
-    """
-    Supports both direct and nested position responses.
-    """
     direction = (
         position.get("direction")
         or position.get("position", {}).get("direction")
@@ -167,9 +224,6 @@ def position_direction(position):
 
 
 def position_open_level(position):
-    """
-    Entry/open price.
-    """
     return safe_float(
         position.get("level")
         or position.get("openLevel")
@@ -193,7 +247,12 @@ def position_profit_level(position):
 
 
 def get_position_size(epic):
-    return float(MIN_TRADE_SIZE.get(epic, 0.01))
+    return float(
+        MIN_TRADE_SIZE.get(
+            epic,
+            0.01,
+        )
+    )
 
 
 # ============================================================
@@ -201,22 +260,6 @@ def get_position_size(epic):
 # ============================================================
 
 def candles_to_dataframe(raw):
-    """
-    Convert Capital.com candle response into a DataFrame.
-
-    Capital.com normally returns:
-        {
-            "prices": [
-                {
-                    "snapshotTime": "...",
-                    "openPrice": {"bid": ..., "ask": ...},
-                    "closePrice": {"bid": ..., "ask": ...},
-                    "highPrice": {"bid": ..., "ask": ...},
-                    "lowPrice": {"bid": ..., "ask": ...},
-                }
-            ]
-        }
-    """
 
     prices = raw.get("prices", [])
 
@@ -226,23 +269,51 @@ def candles_to_dataframe(raw):
     rows = []
 
     for candle in prices:
-        open_price = candle.get("openPrice", {})
-        close_price = candle.get("closePrice", {})
-        high_price = candle.get("highPrice", {})
-        low_price = candle.get("lowPrice", {})
+
+        open_price = candle.get(
+            "openPrice",
+            {},
+        )
+
+        close_price = candle.get(
+            "closePrice",
+            {},
+        )
+
+        high_price = candle.get(
+            "highPrice",
+            {},
+        )
+
+        low_price = candle.get(
+            "lowPrice",
+            {},
+        )
 
         def mid(price):
-            bid = safe_float(price.get("bid"))
-            ask = safe_float(price.get("ask"))
+
+            bid = safe_float(
+                price.get("bid")
+            )
+
+            ask = safe_float(
+                price.get("ask")
+            )
 
             if bid is not None and ask is not None:
                 return (bid + ask) / 2
 
-            return bid if bid is not None else ask
+            return (
+                bid
+                if bid is not None
+                else ask
+            )
 
         rows.append(
             {
-                "time": candle.get("snapshotTime"),
+                "time": candle.get(
+                    "snapshotTime"
+                ),
                 "open": mid(open_price),
                 "high": mid(high_price),
                 "low": mid(low_price),
@@ -255,14 +326,24 @@ def candles_to_dataframe(raw):
     if df.empty:
         return df
 
-    for column in ["open", "high", "low", "close"]:
+    for column in [
+        "open",
+        "high",
+        "low",
+        "close",
+    ]:
         df[column] = pd.to_numeric(
             df[column],
             errors="coerce",
         )
 
     df = df.dropna(
-        subset=["open", "high", "low", "close"]
+        subset=[
+            "open",
+            "high",
+            "low",
+            "close",
+        ]
     ).reset_index(drop=True)
 
     return df
@@ -273,6 +354,7 @@ def candles_to_dataframe(raw):
 # ============================================================
 
 def add_indicators(df):
+
     df = df.copy()
 
     df["ema_fast"] = (
@@ -295,8 +377,13 @@ def add_indicators(df):
 
     delta = df["close"].diff()
 
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
+    gain = delta.clip(
+        lower=0
+    )
+
+    loss = -delta.clip(
+        upper=0
+    )
 
     avg_gain = gain.ewm(
         alpha=1 / RSI_PERIOD,
@@ -310,7 +397,10 @@ def add_indicators(df):
         adjust=False,
     ).mean()
 
-    rs = avg_gain / avg_loss.replace(0, np.nan)
+    rs = avg_gain / avg_loss.replace(
+        0,
+        np.nan,
+    )
 
     df["rsi"] = 100 - (
         100 / (1 + rs)
@@ -321,8 +411,14 @@ def add_indicators(df):
     true_range = pd.concat(
         [
             df["high"] - df["low"],
-            (df["high"] - previous_close).abs(),
-            (df["low"] - previous_close).abs(),
+            (
+                df["high"]
+                - previous_close
+            ).abs(),
+            (
+                df["low"]
+                - previous_close
+            ).abs(),
         ],
         axis=1,
     ).max(axis=1)
@@ -341,11 +437,13 @@ def add_indicators(df):
 
 
 # ============================================================
-# SIGNAL
+# SIGNAL SETTINGS
 # ============================================================
 
 def get_rsi_settings(epic):
+
     if epic == "EURUSD":
+
         return (
             EURUSD_RSI_LONG_MIN,
             EURUSD_RSI_LONG_MAX,
@@ -361,22 +459,28 @@ def get_rsi_settings(epic):
     )
 
 
+# ============================================================
+# SIGNAL
+# ============================================================
+
 def generate_signal(df, epic):
-    """
-    EMA 9/21 cross + RSI filter.
 
-    Only a NEW crossover produces a signal.
-    """
-
-    if len(df) < max(
+    minimum_rows = max(
         EMA_SLOW + 5,
         RSI_PERIOD + 5,
         ATR_PERIOD + 5,
-    ):
+    )
+
+    if len(df) < minimum_rows:
         return None
 
-    previous = df.iloc[-2]
-    current = df.iloc[-1]
+    # IMPORTANT:
+    # Use the last CLOSED candle for the signal.
+    #
+    # df.iloc[-1] may be the currently forming candle.
+    # Therefore crossover is checked using -3 -> -2.
+    previous = df.iloc[-3]
+    current = df.iloc[-2]
 
     if (
         pd.isna(previous["ema_fast"])
@@ -396,21 +500,39 @@ def generate_signal(df, epic):
     ) = get_rsi_settings(epic)
 
     bullish_cross = (
-        previous["ema_fast"] <= previous["ema_slow"]
-        and current["ema_fast"] > current["ema_slow"]
+        previous["ema_fast"]
+        <= previous["ema_slow"]
+        and
+        current["ema_fast"]
+        >
+        current["ema_slow"]
     )
 
     bearish_cross = (
-        previous["ema_fast"] >= previous["ema_slow"]
-        and current["ema_fast"] < current["ema_slow"]
+        previous["ema_fast"]
+        >= previous["ema_slow"]
+        and
+        current["ema_fast"]
+        <
+        current["ema_slow"]
     )
 
     if bullish_cross:
-        if long_min <= current["rsi"] <= long_max:
+
+        if (
+            long_min
+            <= current["rsi"]
+            <= long_max
+        ):
             return "BUY"
 
     if bearish_cross:
-        if short_min <= current["rsi"] <= short_max:
+
+        if (
+            short_min
+            <= current["rsi"]
+            <= short_max
+        ):
             return "SELL"
 
     return None
@@ -421,27 +543,58 @@ def generate_signal(df, epic):
 # ============================================================
 
 def calculate_trade(df, direction):
+
+    # Use the latest available candle for price/ATR.
     current = df.iloc[-1]
 
-    price = float(current["close"])
-    atr = float(current["atr"])
+    price = safe_float(
+        current["close"]
+    )
 
-    if not math.isfinite(price) or not math.isfinite(atr):
+    atr = safe_float(
+        current["atr"]
+    )
+
+    if price is None or atr is None:
         return None
 
     if atr <= 0:
         return None
 
-    sl_distance = atr * SL_ATR_MULT
-    tp_distance = atr * TP_ATR_MULT
+    sl_distance = (
+        atr * SL_ATR_MULT
+    )
+
+    tp_distance = (
+        atr * TP_ATR_MULT
+    )
 
     if direction == "BUY":
-        stop_level = price - sl_distance
-        profit_level = price + tp_distance
+
+        stop_level = (
+            price
+            - sl_distance
+        )
+
+        profit_level = (
+            price
+            + tp_distance
+        )
+
+    elif direction == "SELL":
+
+        stop_level = (
+            price
+            + sl_distance
+        )
+
+        profit_level = (
+            price
+            - tp_distance
+        )
 
     else:
-        stop_level = price + sl_distance
-        profit_level = price - tp_distance
+        return None
 
     return {
         "entry": price,
@@ -453,10 +606,14 @@ def calculate_trade(df, direction):
 
 
 # ============================================================
-# OPEN POSITIONS
+# POSITIONS
 # ============================================================
 
-def get_positions_for_epic(positions, epic):
+def get_positions_for_epic(
+    positions,
+    epic,
+):
+
     return [
         position
         for position in positions
@@ -464,7 +621,11 @@ def get_positions_for_epic(positions, epic):
     ]
 
 
-def has_position_for_epic(positions, epic):
+def has_position_for_epic(
+    positions,
+    epic,
+):
+
     return len(
         get_positions_for_epic(
             positions,
@@ -483,28 +644,50 @@ def manage_trailing_stops(
     epic,
     current_price,
 ):
+
     if not TRAILING_ENABLED:
         return
 
-    epic_positions = get_positions_for_epic(
-        positions,
-        epic,
+    epic_positions = (
+        get_positions_for_epic(
+            positions,
+            epic,
+        )
     )
 
     if not epic_positions:
         return
 
+    current_price = safe_float(
+        current_price
+    )
+
+    if current_price is None:
+        return
+
+    state_changed = False
+
     for position in epic_positions:
 
-        deal_id = position_deal_id(position)
-        direction = position_direction(position)
-        entry = position_open_level(position)
-        current_sl = position_stop_level(position)
+        deal_id = position_deal_id(
+            position
+        )
+
+        direction = position_direction(
+            position
+        )
+
+        entry = position_open_level(
+            position
+        )
+
+        current_sl = position_stop_level(
+            position
+        )
 
         if not deal_id:
             log(
-                f"{epic}: Cannot trail position - "
-                f"missing deal ID."
+                f"{epic}: missing deal ID."
             )
             continue
 
@@ -514,32 +697,20 @@ def manage_trailing_stops(
         if entry is None:
             continue
 
-        current_price = safe_float(current_price)
-
-        if current_price is None:
-            continue
+        deal_key = str(deal_id)
 
         # ----------------------------------------------------
-        # We need the ORIGINAL risk distance.
-        #
-        # If a current stop exists, we can estimate the original
-        # risk distance from entry -> stop.
-        #
-        # Once trailing has moved the stop, that value changes,
-        # so we intentionally don't use a moved stop as the
-        # trailing distance.
-        #
-        # Therefore the bot stores the original R in memory
-        # during this process.
+        # Recover original R from persistent state.
         # ----------------------------------------------------
 
-        risk_distance = getattr(
-            manage_trailing_stops,
-            "_risk_distance",
-            {},
+        stored_risk = safe_float(
+            STATE["risk_distance"].get(
+                deal_key
+            )
         )
 
-        if deal_id not in risk_distance:
+        if stored_risk is None:
+
             if current_sl is None:
                 continue
 
@@ -550,12 +721,24 @@ def manage_trailing_stops(
             if initial_distance <= 0:
                 continue
 
-            risk_distance[deal_id] = initial_distance
+            STATE[
+                "risk_distance"
+            ][deal_key] = (
+                initial_distance
+            )
 
-        r = risk_distance[deal_id]
+            stored_risk = initial_distance
+
+            state_changed = True
+
+        r = stored_risk
 
         if r <= 0:
             continue
+
+        # ----------------------------------------------------
+        # BUY
+        # ----------------------------------------------------
 
         if direction == "BUY":
 
@@ -570,13 +753,19 @@ def manage_trailing_stops(
 
             new_stop = (
                 current_price
-                - TRAILING_DISTANCE_R * r
+                -
+                TRAILING_DISTANCE_R * r
             )
 
             # Never move SL backwards.
             if current_sl is not None:
+
                 if new_stop <= current_sl:
                     continue
+
+        # ----------------------------------------------------
+        # SELL
+        # ----------------------------------------------------
 
         elif direction == "SELL":
 
@@ -591,18 +780,25 @@ def manage_trailing_stops(
 
             new_stop = (
                 current_price
-                + TRAILING_DISTANCE_R * r
+                +
+                TRAILING_DISTANCE_R * r
             )
 
             # Never move SL backwards.
             if current_sl is not None:
+
                 if new_stop >= current_sl:
                     continue
 
         else:
             continue
 
+        # ----------------------------------------------------
+        # Update Capital.com
+        # ----------------------------------------------------
+
         try:
+
             api.modify_position(
                 deal_id=deal_id,
                 stop_level=new_stop,
@@ -616,14 +812,57 @@ def manage_trailing_stops(
             )
 
         except Exception as exc:
+
             log(
-                f"{epic}: trailing stop update failed: "
+                f"{epic}: trailing update failed: "
                 f"{exc}"
             )
 
+    if state_changed:
+        save_state(STATE)
+
 
 # ============================================================
-# ONE MARKET CYCLE
+# CLEAN OLD STATE
+# ============================================================
+
+def cleanup_state(positions):
+
+    active_deals = set()
+
+    for position in positions:
+
+        deal_id = position_deal_id(
+            position
+        )
+
+        if deal_id:
+            active_deals.add(
+                str(deal_id)
+            )
+
+    stored_deals = list(
+        STATE["risk_distance"].keys()
+    )
+
+    changed = False
+
+    for deal_id in stored_deals:
+
+        if deal_id not in active_deals:
+
+            del STATE[
+                "risk_distance"
+            ][deal_id]
+
+            changed = True
+
+    if changed:
+        save_state(STATE)
+
+
+# ============================================================
+# PROCESS ONE EPIC
 # ============================================================
 
 def process_epic(
@@ -631,34 +870,64 @@ def process_epic(
     epic,
     positions,
 ):
+
     log("")
     log("=" * 60)
-    log(f"PROCESSING {epic}")
+    log(
+        f"PROCESSING {epic}"
+    )
     log("=" * 60)
 
     try:
+
+        # ----------------------------------------------------
+        # Get candles
+        # ----------------------------------------------------
+
         raw = api.get_candles(
             epic=epic,
             resolution=RESOLUTION,
             max_candles=CANDLE_COUNT,
         )
 
-        df = candles_to_dataframe(raw)
+        df = candles_to_dataframe(
+            raw
+        )
 
         if df.empty:
+
             log(
                 f"{epic}: no candle data."
             )
-            return
 
-        df = add_indicators(df)
+            return None
 
-        current_price = float(
+        df = add_indicators(
+            df
+        )
+
+        if len(df) < 3:
+
+            log(
+                f"{epic}: insufficient candles."
+            )
+
+            return None
+
+        current_price = safe_float(
             df.iloc[-1]["close"]
         )
 
+        if current_price is None:
+
+            log(
+                f"{epic}: invalid current price."
+            )
+
+            return None
+
         # ----------------------------------------------------
-        # TRAILING FIRST
+        # Trailing stop first
         # ----------------------------------------------------
 
         manage_trailing_stops(
@@ -669,32 +938,31 @@ def process_epic(
         )
 
         # ----------------------------------------------------
-        # EXISTING POSITION CHECK
+        # Existing position check
         #
-        # IMPORTANT:
-        # This check is PER EPIC.
+        # PER EPIC.
         #
-        # Therefore:
-        #
-        # GOLD position existing
-        # does NOT block EURUSD.
-        #
-        # EURUSD position existing
-        # does NOT block GOLD.
+        # GOLD does not block EURUSD.
+        # EURUSD does not block GOLD.
         # ----------------------------------------------------
 
         if has_position_for_epic(
             positions,
             epic,
         ):
+
             log(
-                f"{epic}: existing position found. "
-                f"No new position for this epic."
+                f"{epic}: existing position found."
             )
-            return
+
+            log(
+                f"{epic}: no new position."
+            )
+
+            return None
 
         # ----------------------------------------------------
-        # SIGNAL
+        # Generate signal
         # ----------------------------------------------------
 
         signal = generate_signal(
@@ -703,14 +971,20 @@ def process_epic(
         )
 
         if signal is None:
+
             log(
                 f"No signal this cycle for {epic}."
             )
-            return
+
+            return None
 
         log(
             f"{epic}: SIGNAL = {signal}"
         )
+
+        # ----------------------------------------------------
+        # Calculate SL / TP
+        # ----------------------------------------------------
 
         trade = calculate_trade(
             df,
@@ -718,13 +992,16 @@ def process_epic(
         )
 
         if trade is None:
-            log(
-                f"{epic}: could not calculate "
-                f"trade levels."
-            )
-            return
 
-        size = get_position_size(epic)
+            log(
+                f"{epic}: trade calculation failed."
+            )
+
+            return None
+
+        size = get_position_size(
+            epic
+        )
 
         log(
             f"{epic}: entry={trade['entry']}"
@@ -739,6 +1016,15 @@ def process_epic(
         )
 
         log(
+            f"{epic}: ATR={trade['atr']}"
+        )
+
+        log(
+            f"{epic}: R distance="
+            f"{trade['risk_distance']}"
+        )
+
+        log(
             f"{epic}: size={size}"
         )
 
@@ -747,6 +1033,7 @@ def process_epic(
         # ----------------------------------------------------
 
         if DEMO_ONLY:
+
             is_demo = str(
                 getattr(
                     config,
@@ -760,9 +1047,10 @@ def process_epic(
                 "1",
                 "yes",
             ):
+
                 raise RuntimeError(
-                    "DEMO_ONLY=True but IS_DEMO "
-                    "is not enabled."
+                    "DEMO_ONLY=True but "
+                    "IS_DEMO is not enabled."
                 )
 
         # ----------------------------------------------------
@@ -772,8 +1060,12 @@ def process_epic(
         response = api.place_order(
             direction=signal,
             size=size,
-            stop_level=trade["stop_level"],
-            profit_level=trade["profit_level"],
+            stop_level=trade[
+                "stop_level"
+            ],
+            profit_level=trade[
+                "profit_level"
+            ],
             epic=epic,
         )
 
@@ -788,9 +1080,11 @@ def process_epic(
         return response
 
     except Exception as exc:
+
         log(
             f"{epic}: ERROR: {exc}"
         )
+
         traceback.print_exc()
 
         return None
@@ -801,14 +1095,45 @@ def process_epic(
 # ============================================================
 
 def run_cycle():
-    log("Starting trading cycle...")
+
+    log(
+        "Starting trading cycle..."
+    )
 
     if DEMO_ONLY:
-        log("DEMO MODE / LIVE TRADING DISABLED")
+
+        log(
+            "DEMO MODE / LIVE TRADING DISABLED"
+        )
+
+    # --------------------------------------------------------
+    # Safety assertions
+    # --------------------------------------------------------
+
+    if ALLOW_GRID:
+        raise RuntimeError(
+            "Grid trading must remain disabled."
+        )
+
+    if ALLOW_MARTINGALE:
+        raise RuntimeError(
+            "Martingale must remain disabled."
+        )
+
+    if ALLOW_AVERAGING:
+        raise RuntimeError(
+            "Averaging must remain disabled."
+        )
+
+    # --------------------------------------------------------
+    # API
+    # --------------------------------------------------------
 
     api = CapitalAPI()
 
-    log("Logging in to Capital.com...")
+    log(
+        "Logging in to Capital.com..."
+    )
 
     api.login()
 
@@ -818,25 +1143,27 @@ def run_cycle():
         f"Account balance: {balance}"
     )
 
+    # --------------------------------------------------------
+    # Get positions ONCE at start.
+    # --------------------------------------------------------
+
     positions = api.get_open_positions()
 
     log(
         f"Open positions: {len(positions)}"
     )
 
+    # Clean state for positions
+    # that no longer exist.
+    cleanup_state(
+        positions
+    )
+
     # --------------------------------------------------------
-    # IMPORTANT:
+    # Process every market independently.
     #
-    # GOLD and EURUSD are processed independently.
-    #
-    # We DO NOT stop after the first trade.
-    #
-    # Example:
-    #
-    # GOLD -> BUY signal
-    # EURUSD -> BUY signal
-    #
-    # Both can be opened during the same cycle.
+    # GOLD and EURUSD can both trade
+    # in the same cycle.
     # --------------------------------------------------------
 
     for epic in EPICS:
@@ -847,11 +1174,13 @@ def run_cycle():
             positions=positions,
         )
 
-        # Small delay between API operations.
+        # Small delay between markets.
         time.sleep(1)
 
     log("")
-    log("Trading cycle completed.")
+    log(
+        "Trading cycle completed."
+    )
 
 
 # ============================================================
@@ -861,6 +1190,7 @@ def run_cycle():
 if __name__ == "__main__":
 
     try:
+
         run_cycle()
 
     except Exception as exc:
