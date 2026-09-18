@@ -761,7 +761,9 @@ def update_loss_cooldowns_from_history(api):
     """
     try:
         now = datetime.now(timezone.utc)
-        start = (now.timestamp() - 3600)
+        # Only inspect the cooldown window itself. A fixed one-hour lookback
+        # would repeatedly reset the same loss and extend the cooldown forever.
+        start = now.timestamp() - (LOSS_COOLDOWN_MINUTES * 60)
         from_date = datetime.fromtimestamp(start, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
         to_date = now.strftime("%Y-%m-%dT%H:%M:%S")
         transactions = api.get_transactions(from_date, to_date)
