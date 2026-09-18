@@ -174,11 +174,22 @@ def set_loss_cooldown(epic):
     save_safety_state(SAFETY)
 
 def market_spread_pct(market):
-    bid = safe_float(market.get("snapshot", {}).get("bid") or market.get("bid"))
-    ask = safe_float(market.get("snapshot", {}).get("ask") or market.get("ask"))
-    if bid is None or ask is None or bid <= 0 or ask <= 0 or ask < bid:
+    # Capital.com calls the sell-side quote "offer" (not "ask") in its
+    # REST market snapshot. Support both nested and top-level responses.
+    snapshot = market.get("snapshot", {}) or {}
+    bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
+    offer = safe_float(
+        snapshot.get("offer")
+        if snapshot.get("offer") is not None
+        else snapshot.get("ask")
+        if snapshot.get("ask") is not None
+        else market.get("offer")
+        if market.get("offer") is not None
+        else market.get("ask")
+    )
+    if bid is None or offer is None or bid <= 0 or offer <= 0 or offer < bid:
         return None
-    return ((ask - bid) / ((ask + bid) / 2.0)) * 100.0
+    return ((offer - bid) / ((offer + bid) / 2.0)) * 100.0
 
 def spread_allows_entry(api, epic):
     if not SPREAD_FILTER_ENABLED:
