@@ -112,6 +112,12 @@ class CapitalAPI:
 
         return account["balance"]["balance"]
 
+    def get_market(self, epic):
+        return self._request(
+            "GET",
+            f"/api/v1/markets/{epic}",
+        )
+
     def get_candles(
         self,
         epic,
