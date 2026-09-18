@@ -116,7 +116,35 @@ def position_open_level(position):
 def position_stop_level(position):
     return safe_float(position.get("stopLevel") or position.get("position", {}).get("stopLevel"))
 
-def get_position_size(api, epic, risk_amount_account, risk_distance):
+def quote_to_account_rate(market, account_currency):
+    """Convert P/L quoted in the instrument currency into account currency.
+
+    The enabled portfolio instruments are normally USD-quoted. We only use a
+    fixed USD/AED conversion for the AED account case; unknown currency pairs
+    return None instead of silently using an incorrect conversion.
+    """
+    instrument = market.get("instrument", {})
+    quote_currency = (
+        instrument.get("currency")
+        or instrument.get("currencyCode")
+        or instrument.get("quoteCurrency")
+        or market.get("currency")
+        or "USD"
+    )
+    if isinstance(quote_currency, dict):
+        quote_currency = quote_currency.get("code") or quote_currency.get("currencyCode")
+    quote_currency = str(quote_currency).upper()
+    account_currency = str(account_currency).upper()
+    if quote_currency == account_currency:
+        return 1.0
+    if quote_currency == "USD" and account_currency == "AED":
+        return 3.6725
+    if quote_currency == "AED" and account_currency == "USD":
+        return 1.0 / 3.6725
+    return None
+
+
+def get_position_size(api, epic, risk_amount_account, risk_distance, account_currency):
     risk_amount_account = safe_float(risk_amount_account)
     risk_distance = safe_float(risk_distance)
     if risk_amount_account is None or risk_amount_account <= 0 or risk_distance is None or risk_distance <= 0:
@@ -129,7 +157,10 @@ def get_position_size(api, epic, risk_amount_account, risk_distance):
     step = safe_float(dealing.get("minSizeIncrement", {}).get("value"), min_size)
     if min_size <= 0 or step <= 0 or lot_size <= 0:
         return None
-    account_to_quote = 3.6725
+    account_to_quote = quote_to_account_rate(market, account_currency)
+    if account_to_quote is None or account_to_quote <= 0:
+        log(f"{epic}: unsupported currency conversion for account {account_currency}; trade skipped.")
+        return None
     raw_size = (risk_amount_account / account_to_quote) / (risk_distance * lot_size)
     if raw_size < min_size:
         return None
@@ -226,19 +257,26 @@ def get_positions_for_epic(positions, epic):
 def position_size_value(position):
     return safe_float(position.get("size") or position.get("position", {}).get("size"), 0.0) or 0.0
 
-def estimated_position_risk_account(position, api):
+def estimated_position_risk_account(position, api, account_currency):
     entry, stop, size = position_open_level(position), position_stop_level(position), position_size_value(position)
     if entry is None or stop is None or size <= 0:
         return 0.0
     try:
         market = api.get_market(position_epic(position))
         lot_size = safe_float(market.get("instrument", {}).get("lotSize"), 1.0) or 1.0
-        return abs(entry - stop) * size * lot_size * 3.6725
+        quote_to_account = quote_to_account_rate(market, account_currency)
+        if quote_to_account is None:
+            return 0.0
+        return abs(entry - stop) * size * lot_size * quote_to_account
     except Exception:
         return 0.0
 
-def basket_reserved_risk(api, positions, epic):
-    return sum(estimated_position_risk_account(p, api) for p in get_positions_for_epic(positions, epic))
+def basket_reserved_risk(api, positions, epic, account_currency):
+    return sum(estimated_position_risk_account(p, api, account_currency) for p in get_positions_for_epic(positions, epic))
+
+
+def portfolio_reserved_risk(api, positions, account_currency):
+    return sum(estimated_position_risk_account(p, api, account_currency) for p in positions)
 
 def manage_trailing_stops(api, positions, epic, current_price):
     if not TRAILING_ENABLED:
@@ -288,7 +326,7 @@ def cleanup_state(positions):
     if changed:
         save_state(STATE)
 
-def process_epic(api, epic, positions, balance):
+def process_epic(api, epic, positions, balance, account_currency):
     log("")
     log("=" * 60)
     log(f"PROCESSING {epic}")
@@ -334,12 +372,22 @@ def process_epic(api, epic, positions, balance):
         if existing_count >= MAX_POSITIONS_PER_EPIC:
             log(f"{epic}: max {MAX_POSITIONS_PER_EPIC} basket positions reached.")
             return None
-        reserved_risk = basket_reserved_risk(api, positions, epic)
+        reserved_risk = basket_reserved_risk(api, positions, epic, account_currency)
+        portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
+        max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
         remaining_basket_risk = max_basket_amount - reserved_risk
+        remaining_portfolio_risk = max_portfolio_amount - portfolio_reserved
+        if remaining_portfolio_risk <= 0:
+            log(f"{epic}: portfolio risk cap reached ({MAX_PORTFOLIO_RISK * 100:.1f}%).")
+            return None
         leg_multiplier = MARTINGALE_MULTIPLIER ** existing_count if ALLOW_MARTINGALE else 1.0
         requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK * leg_multiplier
-        risk_amount = min(requested_risk, max(0.0, remaining_basket_risk))
+        risk_amount = min(
+            requested_risk,
+            max(0.0, remaining_basket_risk),
+            max(0.0, remaining_portfolio_risk),
+        )
         if risk_amount <= 0:
             log(f"{epic}: basket risk cap reached ({MAX_BASKET_RISK * 100:.1f}%).")
             return None
@@ -353,7 +401,7 @@ def process_epic(api, epic, positions, balance):
             if adverse_move < latest_r * GRID_STEP_R:
                 log(f"{epic}: basket exists but grid distance not reached; no averaging leg.")
                 return None
-        size = get_position_size(api, epic, risk_amount, trade["risk_distance"])
+        size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency)
         if size is None:
             log(f"{epic}: minimum trade size would exceed risk budget. Trade skipped.")
             return None
@@ -392,14 +440,21 @@ def run_cycle():
     log("Logging in to Capital.com...")
     api.login()
     balance = api.get_balance()
-    log(f"Account balance: {balance}")
+    account_currency = api.get_account_currency()
+    log(f"Account balance: {balance} {account_currency}")
     for cycle_epic in EPICS:
         # Refresh account state before EVERY epic so newly opened/closed positions
         # are immediately reflected in subsequent decisions within this run.
         positions = api.get_open_positions()
         log(f"Open positions before {cycle_epic}: {len(positions)}")
         cleanup_state(positions)
-        process_epic(api=api, epic=cycle_epic, positions=positions, balance=balance)
+        process_epic(
+            api=api,
+            epic=cycle_epic,
+            positions=positions,
+            balance=balance,
+            account_currency=account_currency,
+        )
         time.sleep(1)
     log("Trading cycle completed.")
 
