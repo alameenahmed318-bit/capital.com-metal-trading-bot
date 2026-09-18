@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-            - name: Test Capital.com connection
+      - name: Test Capital.com connection
         run: |
           python -c "import requests, os; url=os.environ['CAPITAL_BASE_DEMO_URL'].rstrip('/') + '/api/v1/session'; headers={'X-CAP-API-KEY': os.environ['CAPITAL_API_KEY'], 'Content-Type':'application/json'}; data={'identifier':os.environ['CAPITAL_EMAIL'],'password':os.environ['CAPITAL_PASSWORD'],'encryptedPassword':False}; r=requests.post(url,headers=headers,json=data,timeout=20); print('HTTP STATUS:',r.status_code); print('RESPONSE:',r.text[:1000]); r.raise_for_status()"
         env:
