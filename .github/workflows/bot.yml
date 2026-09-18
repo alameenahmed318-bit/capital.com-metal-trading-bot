@@ -1,15 +1,15 @@
-name: Metals Trading Bot
+name: Capital.com Connection Test
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  trade:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repo
@@ -23,29 +23,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run bot
-        run: python bot.py
+      - name: Test Capital.com connection
+        run: |
+          python -c "from capital_api import CapitalAPI; api=CapitalAPI(); print('Testing Capital.com login...'); api.login(); print('LOGIN SUCCESS'); print('Balance:', api.get_balance()); print('GOLD candles:', len(api.get_candles('GOLD').get('prices', [])))"
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
           CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           IS_DEMO: ${{ secrets.IS_DEMO }}
-          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
-          STRATEGY: ${{ vars.STRATEGY }}
-          VOL_MANAGED_SIZING: ${{ vars.VOL_MANAGED_SIZING }}
-          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
-          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
-          GITHUB_USERNAME: alameenahmed318-bit
-          GITHUB_REPO: capital.com-metal-trading-bot
-
-      - name: Persist trades.db and stats.json
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f trades.db stats.json
-          git diff --cached --quiet || git commit -m "Update trades.db and stats.json [skip ci]"
-          git pull --rebase origin main && git push origin main || \
-            (git pull --rebase origin main && git push origin main)
