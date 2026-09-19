@@ -42,12 +42,12 @@ XAU_WORKING_ORDER_ENABLED = getattr(config, "XAU_WORKING_ORDER_ENABLED", True)
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
 MARKET_RSI_SETTINGS = {
-    "GOLD": (42, 68, 32, 58),
-    "EURUSD": (38, 62, 28, 55),
-    "SILVER": (45, 72, 30, 58),
-    "OIL_CRUDE": (40, 62, 28, 55),
-    "US100": (42, 65, 28, 55),
-    "US500": (42, 65, 28, 55),
+    "GOLD": (38, 72, 28, 62),
+    "EURUSD": (35, 65, 25, 58),
+    "SILVER": (40, 75, 25, 62),
+    "OIL_CRUDE": (35, 66, 25, 58),
+    "US100": (38, 70, 25, 60),
+    "US500": (38, 70, 25, 60),
 }
 MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
@@ -59,16 +59,16 @@ TRAILING_DISTANCE_R = 1.0
 
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
-TREND_EMA_GAP_ATR = 0.35
-RANGE_EMA_GAP_ATR = 0.15
-RANGE_RSI_BUY_MAX = 42
-RANGE_RSI_SELL_MIN = 58
+TREND_EMA_GAP_ATR = 0.25
+RANGE_EMA_GAP_ATR = 0.10
+RANGE_RSI_BUY_MAX = 48
+RANGE_RSI_SELL_MIN = 52
 
 # Strategy v2 filters
 USE_SUPPORT_RESISTANCE = True
 USE_BREAKOUT_CONFIRMATION = True
 SR_LOOKBACK = 60
-SR_BUFFER_ATR = 0.35
+SR_BUFFER_ATR = 0.25
 BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
