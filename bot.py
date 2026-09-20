@@ -11,10 +11,10 @@ import pandas as pd
 import config
 from capital_api import CapitalAPI
 
-DEMO_ONLY = True
-ALLOW_GRID = True
-ALLOW_MARTINGALE = True
-ALLOW_AVERAGING = True
+DEMO_ONLY = False
+ALLOW_GRID = False
+ALLOW_MARTINGALE = False
+ALLOW_AVERAGING = False
 
 MAX_POSITIONS_PER_EPIC = 3
 GRID_STEP_R = 0.75
@@ -820,7 +820,7 @@ def update_loss_cooldowns_from_history(api):
 
 def run_cycle():
     log("Starting trading cycle...")
-    log("DEMO MODE / LIVE TRADING DISABLED")
+    log("LIVE MODE / REAL TRADING ENABLED")
     log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
     log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
     log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
