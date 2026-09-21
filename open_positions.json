@@ -1,55 +1,22 @@
 {
-  "updated_at": "2026-09-21T07:55:56.336933+00:00",
+  "updated_at": "2026-09-21T08:05:23.518262+00:00",
   "positions": [
     {
-      "dealId": "00000000-646a-2ca1-0493-972c0004511e",
+      "dealId": "00000000-64da-0c21-0493-972c0004511e",
       "epic": null,
-      "direction": "BUY",
-      "size": 4.7,
-      "entry": 93.453,
-      "current": 93.453,
-      "stopLoss": 92.73263689743636,
-      "takeProfit": 94.86372620512725,
-      "profitLoss": 0.0
-    },
-    {
-      "dealId": "00000000-646a-2f64-0493-972c0004511e",
-      "epic": null,
-      "direction": "BUY",
-      "size": 4.7,
-      "entry": 93.473,
-      "current": 93.473,
-      "stopLoss": 92.75263689743636,
-      "takeProfit": 94.88372620512725,
-      "profitLoss": 0.0
-    },
-    {
-      "dealId": "00000000-646a-4480-0493-972c0004511e",
-      "epic": null,
-      "direction": "BUY",
-      "size": 4.6,
-      "entry": 93.413,
-      "current": 93.413,
-      "stopLoss": 92.68388689743637,
-      "takeProfit": 94.82622620512726,
-      "profitLoss": 0.0
-    },
-    {
-      "dealId": "00000000-646a-46f4-0493-972c0004511e",
-      "epic": null,
-      "direction": "BUY",
-      "size": 4.6,
-      "entry": 93.453,
-      "current": 93.453,
-      "stopLoss": 92.69888689743638,
-      "takeProfit": 94.84122620512727,
+      "direction": "SELL",
+      "size": 7300.0,
+      "entry": 1.14765,
+      "current": 1.14765,
+      "stopLoss": 1.1481485500270883,
+      "takeProfit": 1.1467578999458237,
       "profitLoss": 0.0
     },
     {
       "dealId": "00000000-646a-499c-0493-972c0004511e",
       "epic": null,
       "direction": "BUY",
-      "size": 4.7,
+      "size": 0.6,
       "entry": 93.528,
       "current": 93.528,
       "stopLoss": 92.78888689743637,
@@ -98,17 +65,6 @@
       "current": 1.14775,
       "stopLoss": 1.148258550027088,
       "takeProfit": 1.1468678999458235,
-      "profitLoss": 0.0
-    },
-    {
-      "dealId": "00000000-646a-2834-0493-972c0004511e",
-      "epic": null,
-      "direction": "BUY",
-      "size": 4.9,
-      "entry": 93.62,
-      "current": 93.62,
-      "stopLoss": 92.92781546886495,
-      "takeProfit": 94.98336906227011,
       "profitLoss": 0.0
     }
   ]
