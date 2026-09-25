@@ -55,6 +55,7 @@ TRAILING_DISTANCE_R = 1.0
 
 # Profit-lock: once a position reaches +$10 account profit, remember its
 # highest profit and close it if profit falls $2 from that peak.
+# Profit-lock amounts are in the account currency (AED for an AED account).
 PROFIT_TRAIL_ENABLED = True
 PROFIT_TRAIL_START = 10.0
 PROFIT_TRAIL_DISTANCE = 2.0
