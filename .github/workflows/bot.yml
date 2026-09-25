@@ -7,7 +7,9 @@ on:
 
 # Prevent overlapping runs so two bot instances cannot trade at the same time.
 concurrency:
-  group: capital-metal-trading-bot
+  # All three bots share the same GitHub branch/state files.
+  # Serialize the entire workflow so state commits cannot race each other.
+  group: capital-metal-trading-bots-state
   cancel-in-progress: false
 
 permissions:
