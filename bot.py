@@ -143,6 +143,8 @@ ADAPTIVE_RISK_HIGH_VOL_2 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_2", 1.50)
 ADAPTIVE_RISK_LOW_VOL = getattr(config, "ADAPTIVE_RISK_LOW_VOL", 0.75)
 BREAKOUT_CONFIRM_ATR = getattr(config, "BREAKOUT_CONFIRM_ATR", 0.05)
 MIN_ENTRY_SCORE = getattr(config, "MIN_ENTRY_SCORE", 65.0)
+# Strategy-specific execution gate; V1/V2/V3 keep the existing 0.75 default.
+MIN_ENTRY_STRENGTH = 0.75
 
 MIN_TRADE_SIZE = getattr(config, "MIN_TRADE_SIZE", {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01})
 STATE_FILE = "trades_state.json"
@@ -1478,7 +1480,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # If the native HOUR response is short, rebuild 1H candles from the
         # already-fetched 15m history instead of skipping the signal engine.
         native_htf_count = len(htf_df)
-        if STRATEGY_ID in {"CAPITAL_V2_QUANT_HYBRID", "CAPITAL_V3_RAPID_PROFIT"} and native_htf_count < 205:
+        if STRATEGY_ID in {"CAPITAL_V2_QUANT_HYBRID", "CAPITAL_V3_RAPID_PROFIT", "CAPITAL_V4_SMART_OPPORTUNITY"} and native_htf_count < 205:
             try:
                 # Capital.com may return only a few native HOUR candles. Rebuild
                 # from a larger 15m window, but count only complete 4-candle hours.
@@ -1544,11 +1546,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         order_spread_pct = market_spread_pct(api.get_market(epic))
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         strength = market_entry_strength(df, htf_df, signal)
-        if strength < 0.75:
+        required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.75))
+        if strength < required_strength:
             record_entry_rejection(
                 epic,
                 "WEAK_ALIGNMENT",
-                f"strength={strength:.2f}; required=0.75",
+                f"strength={strength:.2f}; required={required_strength:.2f}",
             )
             return None
         trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic)
