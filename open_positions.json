@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-25T01:38:49.638616+00:00",
+  "updated_at": "2026-09-25T01:50:58.035136+00:00",
   "positions": [
     {
       "dealId": "00000000-659b-662e-0493-972c0004511e",
@@ -167,6 +167,28 @@
       "profitLoss": 0.0
     },
     {
+      "dealId": "00000000-659b-9f79-0493-972c0004511e",
+      "epic": null,
+      "direction": "BUY",
+      "size": 0.057,
+      "entry": 30527.9,
+      "current": 30527.9,
+      "stopLoss": 30461.90912750049,
+      "takeProfit": 30644.581744999028,
+      "profitLoss": 0.0
+    },
+    {
+      "dealId": "00000000-659b-9f26-0493-972c0004511e",
+      "epic": null,
+      "direction": "SELL",
+      "size": 6.4,
+      "entry": 92.305,
+      "current": 92.305,
+      "stopLoss": 92.86917985914687,
+      "takeProfit": 91.25164028170624,
+      "profitLoss": 0.0
+    },
+    {
       "dealId": "00000000-659b-6f7c-0493-972c0004511e",
       "epic": null,
       "direction": "SELL",
@@ -197,6 +219,39 @@
       "current": 92.83,
       "stopLoss": 93.41940920966871,
       "takeProfit": 91.75618158066261,
+      "profitLoss": 0.0
+    },
+    {
+      "dealId": "00000000-659b-a3ed-0493-972c0004511e",
+      "epic": null,
+      "direction": "BUY",
+      "size": 0.062,
+      "entry": 30517.4,
+      "current": 30517.4,
+      "stopLoss": 30463.119955125352,
+      "takeProfit": 30634.9600897493,
+      "profitLoss": 0.0
+    },
+    {
+      "dealId": "00000000-659b-a540-0493-972c0004511e",
+      "epic": null,
+      "direction": "BUY",
+      "size": 0.063,
+      "entry": 30507.4,
+      "current": 30507.4,
+      "stopLoss": 30458.98424083964,
+      "takeProfit": 30632.43151832073,
+      "profitLoss": 0.0
+    },
+    {
+      "dealId": "00000000-659b-a6aa-0493-972c0004511e",
+      "epic": null,
+      "direction": "BUY",
+      "size": 0.06,
+      "entry": 30513.9,
+      "current": 30513.9,
+      "stopLoss": 30452.152097982496,
+      "takeProfit": 30628.395804035015,
       "profitLoss": 0.0
     },
     {
