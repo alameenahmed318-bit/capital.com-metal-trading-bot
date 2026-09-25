@@ -855,6 +855,53 @@ def cleanup_state(positions):
     if changed:
         save_state(STATE)
 
+OPEN_POSITION_MONITOR_SECONDS = 10
+OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
+
+def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
+    """Monitor existing positions every 10 seconds between 15-minute entry scans."""
+    started = time.monotonic()
+    log(f"OPEN POSITION MONITOR | interval={OPEN_POSITION_MONITOR_SECONDS}s | window={duration_seconds}s")
+    while time.monotonic() - started < duration_seconds:
+        try:
+            positions = api.get_open_positions()
+            if not positions:
+                time.sleep(OPEN_POSITION_MONITOR_SECONDS)
+                continue
+            for epic in sorted({position_epic(p) for p in positions if position_epic(p)}):
+                epic_positions = get_positions_for_epic(positions, epic)
+                if not epic_positions:
+                    continue
+                market = api.get_market(epic)
+                snapshot = market.get("snapshot", {}) or {}
+                bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
+                offer = safe_float(
+                    snapshot.get("offer")
+                    if snapshot.get("offer") is not None
+                    else snapshot.get("ask")
+                    if snapshot.get("ask") is not None
+                    else market.get("offer")
+                    if market.get("offer") is not None
+                    else market.get("ask")
+                )
+                if bid is None or offer is None or bid <= 0 or offer <= 0 or offer < bid:
+                    log(f"{epic}: monitor quote unavailable; retrying in {OPEN_POSITION_MONITOR_SECONDS}s.")
+                    continue
+                current_price = (bid + offer) / 2.0
+                log(f"{epic}: MONITOR | positions={len(epic_positions)} | price={current_price}")
+                enforce_max_position_loss(api, positions, epic, account_currency)
+                positions = api.get_open_positions()
+                manage_profit_trailing(api, positions, epic, account_currency)
+                breakeven_stops(api, positions, epic, current_price)
+                manage_trailing_stops(api, positions, epic, current_price)
+                cleanup_state(positions)
+        except Exception as exc:
+            log(f"OPEN POSITION MONITOR ERROR: {exc}")
+        elapsed = time.monotonic() - started
+        if elapsed < duration_seconds:
+            time.sleep(min(OPEN_POSITION_MONITOR_SECONDS, duration_seconds - elapsed))
+    log("OPEN POSITION MONITOR | 15-minute scan window completed.")
+
 def process_epic(api, epic, positions, balance, account_currency):
     log("")
     log("=" * 60)
@@ -1235,6 +1282,9 @@ def run_cycle():
         time.sleep(1)
     # Refresh the persisted report after all markets have been processed so
     # closures that happened during this cycle are included.
+    # Keep managing any open positions every 10 seconds until the next
+    # scheduled 15-minute entry scan. New entries are NOT rescanned here.
+    monitor_open_positions(api, account_currency)
     save_live_stats(api, account_currency)
     log("Trading cycle completed.")
 
