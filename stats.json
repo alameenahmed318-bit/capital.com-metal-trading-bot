@@ -1,10 +1,10 @@
 {
-  "last_updated": "2026-09-25T14:42:51.184966+00:00",
+  "last_updated": "2026-09-25T15:07:43.483734+00:00",
   "currency": "AED",
-  "source": "Repository snapshot; live API refresh occurs on next bot cycle",
+  "source": "Capital.com API",
   "overall": {
-    "total_trades": 1,
-    "open_trades": 1,
+    "total_trades": 0,
+    "open_trades": 0,
     "closed_trades": 0,
     "winners": 0,
     "losers": 0,
@@ -31,7 +31,7 @@
       "pnl": 0
     },
     "SILVER": {
-      "trades": 1,
+      "trades": 0,
       "winners": 0,
       "losers": 0,
       "win_rate": 0,
