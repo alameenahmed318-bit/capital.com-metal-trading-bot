@@ -5,10 +5,10 @@ on:
   schedule:
     - cron: "07,22,37,52 * * * *"
 
-# V4 has its own state files, but serializing with the other bots prevents
-# concurrent GitHub state commits from racing on main.
+# V4 owns separate state files, so it has its own concurrency lane.
+# It cannot block or cancel V1/V2/V3 runs.
 concurrency:
-  group: capital-metal-trading-bots-state
+  group: capital-v4-state
   cancel-in-progress: false
 
 permissions:
