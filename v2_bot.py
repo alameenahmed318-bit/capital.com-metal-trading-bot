@@ -356,9 +356,23 @@ def market_entry_strength_v2(df, htf_df, direction):
     # Risk, spread, cost, portfolio and basket controls remain in base.py.
     return min(1.0, raw_strength + 0.25)
 
-# V1's process_epic resolves quant_signal_score from bot.py's global namespace.
-# This monkey patch is scoped to the V2 process only; V1 source remains unchanged.
-base.quant_signal_score = quant_signal_score_v2
+def quant_signal_score_v2_base(df, htf_df, epic):
+    """Adapt V2's diagnostic tuple to bot.py's direction-only signal contract."""
+    result = quant_signal_score_v2(df, htf_df, epic)
+    if isinstance(result, tuple):
+        signal = result[0] if len(result) > 0 else None
+        score = result[1] if len(result) > 1 else None
+        diag = result[2] if len(result) > 2 else None
+        if signal is None and isinstance(diag, dict):
+            base.log(f"{epic}: V2 SIGNAL DIAG | {diag}")
+        elif score is not None:
+            base.log(f"{epic}: V2 SIGNAL SCORE | score={score:.2f}")
+        return signal
+    return result
+
+# bot.py expects generate_signal()/quant_signal_score() to return only BUY/SELL/None.
+# Keep V2 diagnostics internal while exposing a clean direction to the execution layer.
+base.quant_signal_score = quant_signal_score_v2_base
 base.market_entry_strength = market_entry_strength_v2
 base.STRATEGY_ID = V2_STRATEGY_ID
 
