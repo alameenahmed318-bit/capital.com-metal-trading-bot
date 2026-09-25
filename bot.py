@@ -1462,7 +1462,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # If the native HOUR response is short, rebuild 1H candles from the
         # already-fetched 15m history instead of skipping the signal engine.
         native_htf_count = len(htf_df)
-        if STRATEGY_ID == "CAPITAL_V2_QUANT_HYBRID" and native_htf_count < 60:
+        if STRATEGY_ID in {"CAPITAL_V2_QUANT_HYBRID", "CAPITAL_V3_RAPID_PROFIT"} and native_htf_count < 60:
             try:
                 tmp = df[["time", "open", "high", "low", "close"]].copy()
                 tmp["time"] = pd.to_datetime(tmp["time"], utc=True, errors="coerce")
@@ -1477,16 +1477,16 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 if len(rebuilt) >= 60:
                     htf_df = rebuilt
                     log(
-                        f"{epic}: V2 HTF FALLBACK | native 1h={native_htf_count} | "
+                        f"{epic}: {STRATEGY_ID} HTF FALLBACK | native 1h={native_htf_count} | "
                         f"rebuilt 1h={len(htf_df)} from 15m={len(df)}"
                     )
                 else:
                     log(
-                        f"{epic}: V2 HTF FALLBACK insufficient | native 1h={native_htf_count} | "
+                        f"{epic}: {STRATEGY_ID} HTF FALLBACK insufficient | native 1h={native_htf_count} | "
                         f"rebuilt 1h={len(rebuilt)} from 15m={len(df)}"
                     )
             except Exception as exc:
-                log(f"{epic}: V2 HTF FALLBACK failed: {exc}")
+                log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
         # The selector chooses Trend/Breakout/Range from current market structure.
         signal = generate_signal(df, epic, htf_df)
         epic_positions = get_positions_for_epic(positions, epic)
