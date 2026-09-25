@@ -329,7 +329,7 @@ def quant_signal_score_v2(df, htf_df, epic):
 
 def market_entry_strength_v2(df, htf_df, direction):
     """V2-compatible 0..1 alignment score using available HTF history."""
-    if df is None or htf_df is None or len(df) < 55 or len(htf_df) < 60:
+    if df is None or htf_df is None or len(df) < 55 or len(htf_df) < 205:
         return 0.0
     close = pd.to_numeric(df["close"], errors="coerce")
     hclose = pd.to_numeric(htf_df["close"], errors="coerce")
