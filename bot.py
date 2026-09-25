@@ -17,10 +17,10 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 3
+MAX_POSITIONS_PER_EPIC = 1
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
-AGGRESSIVE_BASE_RISK = 0.015
+AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.015)
 MAX_BASKET_RISK = 0.04
 
 EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
@@ -74,7 +74,7 @@ SR_BUFFER_ATR = 0.25
 BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
-ADD_TO_PROFITABLE_BASKET = True
+ADD_TO_PROFITABLE_BASKET = False
 
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
