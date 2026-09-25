@@ -75,7 +75,7 @@ PROFIT_TRAIL_DISTANCE = 8.0
 
 # Hard per-position loss guard in account currency (AED for an AED account).
 # This is a secondary protection; the broker-side ATR stop remains the primary stop.
-MAX_LOSS_PER_POSITION = 5.0
+MAX_LOSS_PER_POSITION = 2.0
 
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
@@ -1227,10 +1227,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         risk_multiplier = adaptive_risk_multiplier(df)
         requested_risk *= risk_multiplier
         log(f"{epic}: ADAPTIVE RISK | multiplier={risk_multiplier:.2f} | requested={requested_risk:.2f}")
+        # Hard cap: every new position may risk at most 2 AED.
+        # This caps position sizing as well as the secondary loss guard below.
         base_risk_amount = min(
             requested_risk,
             max(0.0, remaining_basket_risk),
             max(0.0, remaining_portfolio_risk),
+            MAX_LOSS_PER_POSITION,
         )
         if base_risk_amount <= 0:
             risk_amount = 0.0
