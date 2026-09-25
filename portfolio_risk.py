@@ -31,7 +31,8 @@ def _mid_series(raw):
 def portfolio_risk_overlay(api, candidate_epic, existing_positions, candidate_risk_amount,
                            target_vol=DEFAULT_TARGET_VOL, lookback=DEFAULT_LOOKBACK,
                            min_multiplier=DEFAULT_MIN_MULTIPLIER,
-                           max_multiplier=DEFAULT_MAX_MULTIPLIER):
+                           max_multiplier=DEFAULT_MAX_MULTIPLIER,
+                           candle_cache=None, candle_cache_ttl=8.0):
     """Return (multiplier, diagnostics).
 
     Risk-budget weights are based on stop-defined account risk, then combined with
@@ -67,8 +68,18 @@ def portfolio_risk_overlay(api, candidate_epic, existing_positions, candidate_ri
     annual_vol = {}
     for epic in epics:
         try:
-            raw = api.get_candles(epic=epic, resolution="MINUTE_15", max_candles=lookback + 1)
-            s = _mid_series(raw)
+            cached_df = None
+            if candle_cache is not None:
+                now = __import__("time").monotonic()
+                key = (epic, "MINUTE_15", int(lookback + 1))
+                item = candle_cache.get(key)
+                if item is not None and now - item[0] < max(0.0, float(candle_cache_ttl)):
+                    cached_df = item[1]
+            if cached_df is not None and not cached_df.empty and "close" in cached_df.columns:
+                s = cached_df["close"].astype(float)
+            else:
+                raw = api.get_candles(epic=epic, resolution="MINUTE_15", max_candles=lookback + 1)
+                s = _mid_series(raw)
             if len(s) < max(60, lookback // 2):
                 continue
             r = np.log(s).diff().dropna()
