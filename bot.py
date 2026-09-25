@@ -1457,25 +1457,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
     log(f"PROCESSING {epic}")
     log("=" * 60)
     try:
-        if not safety_allows_new_entry(balance, positions):
-            record_entry_rejection(epic, "SAFETY_STOP")
-            return None
-        if cooldown_active(epic):
-            record_entry_rejection(epic, "LOSS_COOLDOWN")
-            return None
-        if not spread_allows_entry(api, epic, market=market):
-            record_entry_rejection(epic, "SPREAD_FILTER")
-            return None
-        df = get_cached_candles(api, epic, RESOLUTION, CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
-        if df.empty:
-            log(f"{epic}: no candle data.")
-            return None
-        df = add_indicators(df)
-        if len(df) < 3:
-            log(f"{epic}: insufficient candles.")
-            return None
-        # Use the live market snapshot for position management instead of
-        # treating the last candle close as the current executable price.
+        # Keep a fresh executable quote and existing-position protection ahead of
+        # entry gates. New-entry-only epics can skip expensive candle work when
+        # safety/cooldown/spread blocks the entry.
         if market is None:
             market = api.get_market(epic)
         snapshot = market.get("snapshot", {}) or {}
@@ -1493,20 +1477,59 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: invalid live market quote.")
             return None
         current_price = (live_bid + live_offer) / 2.0
-        # Position management must continue even when new entries are blocked
-        # by daily loss, cooldown, spread, or kill-switch protections.
-        # Profit lock is checked before normal entry logic on every bot pass.
-        # Hard loss guard runs before all other management so a position cannot
-        # remain beyond the configured account-currency loss ceiling.
+
+        epic_positions = get_positions_for_epic(owned_positions, epic)
+        df = None
+
+        # Existing positions must continue to be managed even when entry gates
+        # block new entries, so load the 15m data only for those positions.
+        if epic_positions:
+            df = get_cached_candles(
+                api, epic, RESOLUTION, CANDLE_COUNT,
+                cache=candle_cache, ttl_seconds=candle_cache_ttl
+            )
+            if df.empty:
+                log(f"{epic}: no candle data.")
+                return None
+            df = add_indicators(df)
+            if len(df) < 3:
+                log(f"{epic}: insufficient candles.")
+                return None
+
         hard_loss_closed = enforce_max_position_loss(api, owned_positions, epic, account_currency)
-        # Only refresh positions when the hard-loss guard actually closed one.
-        # Otherwise reuse the already-fetched scan snapshot and save an API round trip.
         if hard_loss_closed:
             positions = api.get_open_positions()
             owned_positions = filter_owned_positions(positions)
+            epic_positions = get_positions_for_epic(owned_positions, epic)
+
         manage_profit_trailing(api, owned_positions, epic, account_currency)
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
+
+        if not safety_allows_new_entry(balance, positions):
+            record_entry_rejection(epic, "SAFETY_STOP")
+            return None
+        if cooldown_active(epic):
+            record_entry_rejection(epic, "LOSS_COOLDOWN")
+            return None
+        if not spread_allows_entry(api, epic, market=market):
+            record_entry_rejection(epic, "SPREAD_FILTER")
+            return None
+
+        # No existing position: only now spend the candle API/indicator work
+        # needed to search for a fresh entry.
+        if df is None:
+            df = get_cached_candles(
+                api, epic, RESOLUTION, CANDLE_COUNT,
+                cache=candle_cache, ttl_seconds=candle_cache_ttl
+            )
+            if df.empty:
+                log(f"{epic}: no candle data.")
+                return None
+            df = add_indicators(df)
+            if len(df) < 3:
+                log(f"{epic}: insufficient candles.")
+                return None
 
         htf_df = get_cached_candles(api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         # Capital.com can return only a handful of HOUR candles for some
