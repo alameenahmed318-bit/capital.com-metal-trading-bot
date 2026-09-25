@@ -79,7 +79,7 @@ def update_stats():
     # from the per-epic breakdown.
     by_epic = {
         epic: _epic_stats([pnl for e, pnl in closed_rows if e == epic])
-        for epic in config._ALL_EPICS
+        for epic in config.EPICS
     }
 
     stats = {
