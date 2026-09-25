@@ -699,6 +699,59 @@ def adaptive_risk_multiplier(df):
     return 1.0
 
 
+def pullback_confirmation_score(df, direction, atr):
+    """Score a pullback/reclaim setup without blocking an otherwise valid signal.
+
+    Returns 0..5. This is a quality bonus only: it never rejects a trade.
+    """
+    if len(df) < 30 or atr is None or atr <= 0:
+        return 0.0
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    close = safe_float(cur["close"])
+    ema21 = float(df["close"].ewm(span=21, adjust=False).mean().iloc[-2])
+    ema50 = float(df["close"].ewm(span=50, adjust=False).mean().iloc[-2])
+    if close is None:
+        return 0.0
+    if direction == "BUY":
+        touched = float(cur["low"]) <= ema21 + 0.20 * atr or float(prev["low"]) <= ema21 + 0.20 * atr
+        reclaimed = close > ema21 and close > float(prev["close"])
+        aligned = ema21 > ema50
+    else:
+        touched = float(cur["high"]) >= ema21 - 0.20 * atr or float(prev["high"]) >= ema21 - 0.20 * atr
+        reclaimed = close < ema21 and close < float(prev["close"])
+        aligned = ema21 < ema50
+    return 5.0 if touched and reclaimed and aligned else 0.0
+
+
+def breakout_quality_score(df, direction, atr):
+    """Score breakout strength without blocking an otherwise valid signal.
+
+    Returns 0..5 based on candle body, close location and follow-through.
+    """
+    if len(df) < BREAKOUT_LOOKBACK + 4 or atr is None or atr <= 0:
+        return 0.0
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    body = abs(float(cur["close"]) - float(cur["open"]))
+    candle_range = max(float(cur["high"]) - float(cur["low"]), 1e-12)
+    body_ratio = body / candle_range
+    if direction == "BUY":
+        close_location = (float(cur["close"]) - float(cur["low"])) / candle_range
+        follow = float(cur["close"]) > float(prev["close"])
+    else:
+        close_location = (float(cur["high"]) - float(cur["close"])) / candle_range
+        follow = float(cur["close"]) < float(prev["close"])
+    quality = 0.0
+    if body_ratio >= 0.55:
+        quality += 2.0
+    if close_location >= 0.70:
+        quality += 2.0
+    if follow:
+        quality += 1.0
+    return min(5.0, quality)
+
+
 def breakout_confirmation(df, direction, atr):
     if not USE_BREAKOUT_CONFIRMATION:
         return True
@@ -880,6 +933,17 @@ def quant_signal_score(df, epic, htf_df):
     log(f"{epic}: SPEED ENSEMBLE | BUY={speed_votes_buy}/4 SELL={speed_votes_sell}/4")
 
     regime = market_regime(df, htf_df)
+
+    # Entry-quality bonuses. These are deliberately non-blocking: they improve
+    # scoring when a pullback/reclaim or high-quality breakout is present, but
+    # they never reject a signal by themselves.
+    pullback_buy = pullback_confirmation_score(df, "BUY", atr)
+    pullback_sell = pullback_confirmation_score(df, "SELL", atr)
+    breakout_quality_buy = breakout_quality_score(df, "BUY", atr) if buy_breakout else 0.0
+    breakout_quality_sell = breakout_quality_score(df, "SELL", atr) if sell_breakout else 0.0
+    scores["BUY"] += pullback_buy + breakout_quality_buy
+    scores["SELL"] += pullback_sell + breakout_quality_sell
+    log(f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}")
 
     # Regime-aware weighting without adding new indicators.
     if regime == "TREND":
