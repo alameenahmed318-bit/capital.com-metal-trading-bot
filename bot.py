@@ -22,7 +22,7 @@ MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = 0.015
 MAX_BASKET_RISK = 0.04
 
-EPICS = ["GOLD", "EURUSD", "SILVER"]
+EPICS = ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"]
 
 RESOLUTION = getattr(config, "RESOLUTION", "MINUTE_15")
 CANDLE_COUNT = getattr(config, "CANDLE_COUNT", 300)
@@ -52,7 +52,7 @@ MARKET_RSI_SETTINGS = {
 MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
 SL_ATR_MULT = getattr(config, "SL_ATR_MULT", 1.5)
-TP_ATR_MULT = 999999.0  # No fixed take-profit; profit trail controls profitable exits.
+TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
 TRAILING_ENABLED = True
 TRAILING_START_R = 1.0
 TRAILING_DISTANCE_R = 1.0
@@ -125,7 +125,6 @@ def save_safety_state(state):
     os.replace(temp_file, SAFETY_STATE_FILE)
 
 SAFETY = load_safety_state()
-API_CLIENT = None
 
 def utc_day():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -248,8 +247,7 @@ def load_state():
             return {"risk_distance": {}, "profit_trail": {}}
         state.setdefault("risk_distance", {})
         state.setdefault("profit_trail", {})
-        return state
-    except Exception as exc:
+        return state    except Exception as exc:
         log(f"Could not load state file: {exc}")
         return {"risk_distance": {}}
 
@@ -499,7 +497,6 @@ def generate_signal(df, epic, htf_df=None):
     rsi = safe_float(current["rsi"])
     if rsi is None:
         return None
-
     recent = df.iloc[-(SR_LOOKBACK + 1):-1]
     support = float(recent["low"].min())
     resistance = float(recent["high"].max())
@@ -572,8 +569,8 @@ def calculate_trade(df, direction):
 
     sl_distance = atr * SL_ATR_MULT
 
-    # Fixed TP is intentionally disabled. Do not calculate a fake/huge TP
-    # value; profit is managed by the profit-trail and trailing-stop logic.
+    # Fixed TP is intentionally disabled. Profit is managed by the
+    # profit-trail and trailing-stop logic.
     profit_level = None
 
     if direction == "BUY":
@@ -656,7 +653,7 @@ def manage_profit_trailing(api, positions, epic):
             )
 
         floor = peak - PROFIT_TRAIL_DISTANCE
-        if pnl <= floor and pnl >= PROFIT_TRAIL_START - PROFIT_TRAIL_DISTANCE:
+        if pnl <= floor:
             try:
                 response = api.close_position(deal_id)
                 log(
@@ -761,8 +758,7 @@ def process_epic(api, epic, positions, balance, account_currency):
         if epic_positions:
             directions = {position_direction(p) for p in epic_positions if position_direction(p)}
             if len(directions) != 1:
-                log(f"{epic}: mixed-direction basket detected; no new leg.")
-                return None
+                log(f"{epic}: mixed-direction basket detected; no new leg.")                return None
             basket_direction = next(iter(directions))
             if signal is None:
                 signal = basket_direction
@@ -809,36 +805,7 @@ def process_epic(api, epic, positions, balance, account_currency):
                     break
 
             if ADD_TO_PROFITABLE_BASKET and profitable_position:
-                log(f"{epic}: profitable basket detected; filling basket to {MAX_POSITIONS_PER_EPIC} positions.")
-                legs_to_open = MAX_POSITIONS_PER_EPIC - existing_count
-                if legs_to_open > 0:
-                    for leg_no in range(legs_to_open):
-                        current_remaining_basket = max_basket_amount - basket_reserved_risk(api, positions, epic, account_currency)
-                        current_remaining_portfolio = max_portfolio_amount - portfolio_reserved_risk(api, positions, account_currency)
-                        leg_risk = min(
-                            sizing_balance * AGGRESSIVE_BASE_RISK,
-                            max(0.0, current_remaining_basket),
-                            max(0.0, current_remaining_portfolio),
-                        )
-                        if leg_risk <= 0:
-                            log(f"{epic}: no remaining risk budget for profitable basket leg {leg_no + 1}.")
-                            break
-                        leg_size = get_position_size(api, epic, leg_risk, trade["risk_distance"], account_currency)
-                        if leg_size is None:
-                            log(f"{epic}: profitable basket leg {leg_no + 1} skipped; minimum size exceeds risk budget.")
-                            break
-                        response = api.place_order(
-                            direction=signal,
-                            size=leg_size,
-                            stop_level=trade["stop_level"],
-                            profit_level=None,
-                            epic=epic,
-                        )
-                        log(f"{epic}: PROFITABLE BASKET LEG {leg_no + 1}/{legs_to_open} SENT | size={leg_size}")
-                        log(f"{epic}: {response}")
-                    SAFETY["consecutive_errors"] = 0
-                    save_safety_state(SAFETY)
-                    return {"basketFilled": True, "legsOpened": legs_to_open}
+                log(f"{epic}: profitable basket detected; adding next leg up to max {MAX_POSITIONS_PER_EPIC}.")
             else:
                 latest = epic_positions[-1]
                 latest_entry, latest_stop = position_open_level(latest), position_stop_level(latest)
@@ -865,14 +832,15 @@ def process_epic(api, epic, positions, balance, account_currency):
                 log(f"{epic}: price is already at/above the working trigger {trigger}; no new working order placed.")
                 return None
             stop_level = trigger - trade["risk_distance"]
-            response = api.place_working_order(epic=epic, direction="BUY", size=size, level=trigger, stop_level=stop_level, profit_level=None)
+            profit_level = trigger + trade["risk_distance"] * (TP_ATR_MULT / SL_ATR_MULT)
+            response = api.place_working_order(epic=epic, direction="BUY", size=size, level=trigger, stop_level=stop_level, profit_level=profit_level)
             log(f"{epic}: WORKING BUY ORDER SENT | trigger={trigger}")
-            log(f"{epic}: SL={stop_level} | NO FIXED TP")
+            log(f"{epic}: SL={stop_level} | TP={profit_level}")
             log(f"{epic}: {response}")
             SAFETY["consecutive_errors"] = 0
             save_safety_state(SAFETY)
             return response
-        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=None, epic=epic)
+        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
 
@@ -911,3 +879,55 @@ def update_loss_cooldowns_from_history(api):
         to_date = now.strftime("%Y-%m-%dT%H:%M:%S")
         transactions = api.get_transactions(from_date, to_date)
         for tx in transactions:
+            note = str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
+            if "close" not in note and "closed" not in note:
+                continue
+            epic = tx.get("instrumentName") or tx.get("epic")
+            pnl = safe_float(tx.get("profitAndLoss"))
+            if pnl is None:
+                pnl = safe_float(tx.get("profitLoss"))
+            if pnl is None:
+                pnl = safe_float(tx.get("profit"))
+            if epic and pnl is not None and pnl < 0 and epic in EPICS:
+                set_loss_cooldown(epic)
+                log(f"{epic}: recent closed loss detected ({pnl}); cooldown applied for {LOSS_COOLDOWN_MINUTES}m.")
+    except Exception as exc:
+        log(f"Loss-history check unavailable; continuing safely: {exc}")
+
+def run_cycle():
+    log("Starting trading cycle...")
+    log("DEMO MODE / LIVE TRADING DISABLED")
+    log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
+    log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
+    log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
+    api = CapitalAPI()
+    log("Logging in to Capital.com...")
+    api.login()
+    balance = api.get_balance()
+    account_currency = api.get_account_currency()
+    log(f"Account balance: {balance} {account_currency}")
+    reset_daily_safety(balance)
+    update_loss_cooldowns_from_history(api)
+    for cycle_epic in EPICS:
+        # Refresh account state before EVERY epic so newly opened/closed positions
+        # are immediately reflected in subsequent decisions within this run.
+        positions = api.get_open_positions()
+        log(f"Open positions before {cycle_epic}: {len(positions)}")
+        log_and_save_open_positions(positions)
+        cleanup_state(positions)
+        process_epic(
+            api=api,
+            epic=cycle_epic,
+            positions=positions,
+            balance=balance,
+            account_currency=account_currency,
+        )
+        time.sleep(1)
+    log("Trading cycle completed.")
+
+if __name__ == "__main__":
+    try:
+        run_cycle()
+    except Exception as exc:
+        log(f"MAIN ERROR: {exc}")
+        traceback.print_exc()
