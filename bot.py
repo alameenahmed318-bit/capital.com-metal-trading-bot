@@ -981,6 +981,15 @@ def process_epic(api, epic, positions, balance, account_currency):
             return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
+        if epic_positions:
+            last_entry = LAST_ENTRY_AT.get(epic)
+            if (
+                last_entry is not None
+                and time.monotonic() - last_entry < PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS
+            ):
+                remaining = PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS - (time.monotonic() - last_entry)
+                log(f"{epic}: profitable-basket add cooldown active; {remaining:.0f}s remaining.")
+                return None
         if existing_count >= MAX_POSITIONS_PER_EPIC:
             log(f"{epic}: max {MAX_POSITIONS_PER_EPIC} basket positions reached.")
             return None
@@ -1055,6 +1064,7 @@ def process_epic(api, epic, positions, balance, account_currency):
             log(f"{epic}: WARNING - no dealReference returned; order confirmation unavailable.")
 
         SAFETY["consecutive_errors"] = 0
+        LAST_ENTRY_AT[epic] = time.monotonic()
         save_safety_state(SAFETY)
         return response
     except Exception as exc:
