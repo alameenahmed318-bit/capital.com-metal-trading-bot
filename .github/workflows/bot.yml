@@ -43,21 +43,6 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
-      - name: Run Binance bot when explicitly enabled
-        if: ${{ vars.BINANCE_ENABLED == 'true' }}
-        run: python binance_bot.py
-        env:
-          GITHUB_USERNAME: alameenahmed318-bit
-          GITHUB_REPO: capital.com-metal-trading-bot
-          BINANCE_ENABLED: ${{ vars.BINANCE_ENABLED }}
-          BINANCE_TRADING_ENABLED: ${{ vars.BINANCE_TRADING_ENABLED }}
-          BINANCE_TESTNET: ${{ vars.BINANCE_TESTNET }}
-          BINANCE_SYMBOLS: ${{ vars.BINANCE_SYMBOLS }}
-          BINANCE_RISK_PER_TRADE: ${{ vars.BINANCE_RISK_PER_TRADE }}
-          BINANCE_MAX_POSITION_RISK: ${{ vars.BINANCE_MAX_POSITION_RISK }}
-          BINANCE_LEVERAGE: ${{ vars.BINANCE_LEVERAGE }}
-          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
       - name: Run quant validation
         run: python quant_validation.py
         env:
