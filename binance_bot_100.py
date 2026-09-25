@@ -11,7 +11,10 @@ from bot import add_indicators, generate_signal, safe_float
 
 BINANCE_ENABLED = str(os.getenv("BINANCE_ENABLED", "false")).lower() in {"1", "true", "yes"}
 BINANCE_TRADING_ENABLED = str(os.getenv("BINANCE_TRADING_ENABLED", "false")).lower() in {"1", "true", "yes"}
-BINANCE_TESTNET = str(os.getenv("BINANCE_TESTNET", "true")).lower() in {"1", "true", "yes"}\n# This dedicated 100 USDT profile is isolated from the Capital bot.\n# Initial operation is Binance Futures Testnet only.\nBINANCE_PROFILE = "100_USDT_TESTNET"
+BINANCE_TESTNET = str(os.getenv("BINANCE_TESTNET", "true")).lower() in {"1", "true", "yes"}
+# This dedicated 100 USDT profile is isolated from the Capital bot.
+# Initial operation is Binance Futures Testnet only.
+BINANCE_PROFILE = "100_USDT_TESTNET"
 
 BINANCE_SYMBOLS = [
     s.strip().upper()
@@ -21,7 +24,10 @@ BINANCE_SYMBOLS = [
 
 BINANCE_RISK_PER_TRADE = float(os.getenv("BINANCE_RISK_PER_TRADE") or "0.01")
 BINANCE_MAX_POSITION_RISK = float(os.getenv("BINANCE_MAX_POSITION_RISK") or "0.02")
-BINANCE_LEVERAGE = int(os.getenv("BINANCE_LEVERAGE") or "1")\nBINANCE_CAPITAL_USDT = float(os.getenv("BINANCE_CAPITAL_USDT") or "100")\nBINANCE_MAX_DAILY_LOSS_PCT = float(os.getenv("BINANCE_MAX_DAILY_LOSS_PCT") or "0.03")\nBINANCE_MAX_PORTFOLIO_RISK = float(os.getenv("BINANCE_MAX_PORTFOLIO_RISK") or "0.03")
+BINANCE_LEVERAGE = int(os.getenv("BINANCE_LEVERAGE") or "1")
+BINANCE_CAPITAL_USDT = float(os.getenv("BINANCE_CAPITAL_USDT") or "100")
+BINANCE_MAX_DAILY_LOSS_PCT = float(os.getenv("BINANCE_MAX_DAILY_LOSS_PCT") or "0.03")
+BINANCE_MAX_PORTFOLIO_RISK = float(os.getenv("BINANCE_MAX_PORTFOLIO_RISK") or "0.03")
 BINANCE_SL_ATR_MULT = float(os.getenv("BINANCE_SL_ATR_MULT") or str(getattr(config, "SL_ATR_MULT", 1.5)))
 BINANCE_TP_ATR_MULT = float(os.getenv("BINANCE_TP_ATR_MULT") or str(getattr(config, "TP_ATR_MULT", 3.0)))
 
@@ -152,7 +158,8 @@ def process_symbol(api, symbol, exchange_info):
     tp = round_tick(tp, rules["tick_size"], "up" if signal == "BUY" else "down")
 
     balance = usdt_balance(api)
-    effective_balance = min(balance, BINANCE_CAPITAL_USDT)\n    risk_amount = min(effective_balance * BINANCE_RISK_PER_TRADE, effective_balance * BINANCE_MAX_POSITION_RISK)
+    effective_balance = min(balance, BINANCE_CAPITAL_USDT)
+    risk_amount = min(effective_balance * BINANCE_RISK_PER_TRADE, effective_balance * BINANCE_MAX_POSITION_RISK)
     quantity = floor_step(risk_amount / risk_distance, rules["step_size"])
 
     if quantity < rules["min_qty"]:
