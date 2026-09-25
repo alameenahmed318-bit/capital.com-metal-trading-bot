@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 import time
 import traceback
 from datetime import datetime, timezone
@@ -252,9 +253,25 @@ def save_state(state):
 STATE = load_state()
 
 def safe_float(value, default=None):
+    """Safely parse numeric values, including Capital.com strings with currency text."""
     try:
-        number = float(value)
-        return number if math.isfinite(number) else default
+        if value is None or value == "":
+            return default
+        if isinstance(value, bool):
+            return float(value)
+        if isinstance(value, (int, float)):
+            number = float(value)
+            return number if math.isfinite(number) else default
+        text_value = str(value).strip().replace(",", "")
+        try:
+            number = float(text_value)
+            return number if math.isfinite(number) else default
+        except ValueError:
+            match = re.search(r"[-+]?\\d+(?:\\.\\d+)?", text_value)
+            if not match:
+                return default
+            number = float(match.group(0))
+            return number if math.isfinite(number) else default
     except (TypeError, ValueError):
         return default
 
@@ -935,11 +952,14 @@ def update_loss_cooldowns_from_history(api):
             if "close" not in note and "closed" not in note:
                 continue
             epic = tx.get("instrumentName") or tx.get("epic")
-            pnl = safe_float(tx.get("profitAndLoss"))
-            if pnl is None:
-                pnl = safe_float(tx.get("profitLoss"))
-            if pnl is None:
-                pnl = safe_float(tx.get("profit"))
+            pnl = safe_float(_first_value(
+                tx.get("profitAndLoss"),
+                tx.get("profitLoss"),
+                tx.get("profit"),
+                tx.get("pnl"),
+                tx.get("realizedProfitLoss"),
+                tx.get("realisedProfitLoss"),
+            ))
             if epic and pnl is not None and pnl < 0 and epic in EPICS:
                 set_loss_cooldown(epic)
                 log(f"{epic}: recent closed loss detected ({pnl}); cooldown applied for {LOSS_COOLDOWN_MINUTES}m.")
@@ -992,14 +1012,24 @@ def get_closed_trade_report(api, from_date, to_date):
     closed = 0
 
     for tx in transactions:
+        transaction_type = str(tx.get("transactionType") or "").upper()
         note = str(
             tx.get("note")
             or tx.get("description")
-            or tx.get("transactionType")
+            or transaction_type
             or ""
         ).lower()
 
-        if "close" not in note and "closed" not in note:
+        # Capital.com transaction history represents completed trades as
+        # transaction records and exposes P/L as profitAndLoss. Accept the
+        # documented close types as well as textual close descriptions.
+        is_closed_trade = (
+            "CLOSE" in transaction_type
+            or "CLOSED" in transaction_type
+            or "close" in note
+            or "closed" in note
+        )
+        if not is_closed_trade:
             continue
 
         closed += 1
@@ -1009,6 +1039,8 @@ def get_closed_trade_report(api, from_date, to_date):
             tx.get("profitLoss"),
             tx.get("profit"),
             tx.get("pnl"),
+            tx.get("realizedProfitLoss"),
+            tx.get("realisedProfitLoss"),
         ))
 
         if pnl is None:
