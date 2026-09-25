@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-25T01:57:10.486787+00:00",
+  "updated_at": "2026-09-25T02:05:51.453173+00:00",
   "positions": [
     {
       "dealId": "00000000-659b-662e-0493-972c0004511e",
@@ -329,6 +329,28 @@
       "current": 92.84,
       "stopLoss": 93.40820140897145,
       "takeProfit": 91.8010971820571,
+      "profitLoss": 0.0
+    },
+    {
+      "dealId": "00000000-659b-ae1a-0493-972c0004511e",
+      "epic": null,
+      "direction": "SELL",
+      "size": 6.9,
+      "entry": 92.325,
+      "current": 92.325,
+      "stopLoss": 92.82591820228538,
+      "takeProfit": 91.27816359542925,
+      "profitLoss": 0.0
+    },
+    {
+      "dealId": "00000000-659b-aea0-0493-972c0004511e",
+      "epic": null,
+      "direction": "BUY",
+      "size": 0.063,
+      "entry": 30511.9,
+      "current": 30511.9,
+      "stopLoss": 30455.13307058122,
+      "takeProfit": 30626.933858837565,
       "profitLoss": 0.0
     },
     {
