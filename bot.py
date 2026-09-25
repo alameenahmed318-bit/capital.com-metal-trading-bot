@@ -11,6 +11,7 @@ import pandas as pd
 
 import config
 from capital_api import CapitalAPI
+from correlation_risk import portfolio_correlation_multiplier
 
 DEMO_ONLY = True
 ALLOW_GRID = False
@@ -39,6 +40,8 @@ VOL_REGIME_MIN = getattr(config, "VOL_REGIME_MIN", 1.05)
 VOL_REGIME_FAST = getattr(config, "VOL_REGIME_FAST", 20)
 VOL_REGIME_SLOW = getattr(config, "VOL_REGIME_SLOW", 200)
 MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
+CORRELATION_RISK_ENABLED = True
+CORRELATION_RISK_MIN_MULTIPLIER = 0.50
 XAU_WORKING_ORDER_ENABLED = False  # Gold uses market orders on BUY and SELL signals
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
@@ -662,6 +665,13 @@ def quant_signal_score(df, epic, htf_df):
 
     buy_score = max(0.0, min(100.0, scores["BUY"]))
     sell_score = max(0.0, min(100.0, scores["SELL"]))
+
+    speed_votes_buy = sum([ema9 > ema21, ema21 > ema50, ema50 > ema200, htf50 > htf200])
+    speed_votes_sell = sum([ema9 < ema21, ema21 < ema50, ema50 < ema200, htf50 < htf200])
+    if speed_votes_buy < 3: buy_score = min(buy_score, 69.0)
+    if speed_votes_sell < 3: sell_score = min(sell_score, 69.0)
+    log(f"{epic}: SPEED ENSEMBLE | BUY={speed_votes_buy}/4 SELL={speed_votes_sell}/4")
+
     regime = market_regime(df, htf_df)
 
     # Regime-aware gate: trend needs alignment; breakout needs a real break;
@@ -928,6 +938,12 @@ def process_epic(api, epic, positions, balance, account_currency):
             log(f"{epic}: max {MAX_POSITIONS_PER_EPIC} basket positions reached.")
             return None
         reserved_risk = basket_reserved_risk(api, positions, epic, account_currency)
+        corr_mult = 1.0
+        if CORRELATION_RISK_ENABLED:
+            existing_epics = [position_epic(p) for p in positions if position_epic(p)]
+            corr_mult, corr_pairs = portfolio_correlation_multiplier(api, epic, existing_epics)
+            if corr_pairs: log(f"{epic}: CORRELATION OVERLAY | multiplier={corr_mult:.2f} | pairs={corr_pairs}")
+            corr_mult = max(CORRELATION_RISK_MIN_MULTIPLIER, corr_mult)
         portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
@@ -945,7 +961,7 @@ def process_epic(api, epic, positions, balance, account_currency):
             requested_risk,
             max(0.0, remaining_basket_risk),
             max(0.0, remaining_portfolio_risk),
-        )
+        ) * corr_mult
         if risk_amount <= 0:
             log(f"{epic}: basket risk cap reached ({MAX_BASKET_RISK * 100:.1f}%).")
             return None
