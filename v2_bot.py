@@ -69,17 +69,17 @@ def quant_signal_score_v2(df, htf_df, epic):
     # Keep the 15m slow-EMA requirement, but allow the HTF ensemble to use
     # the history actually returned by Capital.com. Log exact counts instead
     # of hiding the real data problem behind a generic failure.
-    if df is None or df_len < 100 or htf_df is None or htf_len < 60:
+    if df is None or df_len < 100 or htf_df is None or htf_len < 205:
         diag = {
             "reason": "insufficient_data",
             "strategy_id": V2_STRATEGY_ID,
             "m15_candles": df_len,
             "htf_candles": htf_len,
             "required_m15": 100,
-            "required_htf": 60,
+            "required_htf": 205,
         }
         base.log(
-            f"{epic}: V2 DATA CHECK | 15m={df_len}/100 | 1h={htf_len}/60 | "
+            f"{epic}: V2 DATA CHECK | 15m={df_len}/100 | 1h={htf_len}/205 | "
             "signal engine skipped until minimum history is available"
         )
         return None, None, diag
@@ -109,19 +109,23 @@ def quant_signal_score_v2(df, htf_df, epic):
     htf100 = htf_close.ewm(span=100, adjust=False).mean()
     htf200 = htf_close.ewm(span=200, adjust=False).mean()
 
-    price = float(close.iloc[-1])
-    prev = float(close.iloc[-2])
-    a = float(atr.iloc[-1]) if pd.notna(atr.iloc[-1]) else None
-    r = float(rsi.iloc[-1]) if pd.notna(rsi.iloc[-1]) else 50.0
-    m = float(mid.iloc[-1]) if pd.notna(mid.iloc[-1]) else price
-    sd = float(std.iloc[-1]) if pd.notna(std.iloc[-1]) else 0.0
-    u = float(upper.iloc[-1]) if pd.notna(upper.iloc[-1]) else price
-    lo = float(lower.iloc[-1]) if pd.notna(lower.iloc[-1]) else price
+    # Use completed candles only; never build a signal from the still-forming 15m candle.
+    signal_idx = -2
+    prev_idx = -3
+    price = float(close.iloc[signal_idx])
+    prev = float(close.iloc[prev_idx])
+    a = float(atr.iloc[signal_idx]) if pd.notna(atr.iloc[signal_idx]) else None
+    r = float(rsi.iloc[signal_idx]) if pd.notna(rsi.iloc[signal_idx]) else 50.0
+    m = float(mid.iloc[signal_idx]) if pd.notna(mid.iloc[signal_idx]) else price
+    sd = float(std.iloc[signal_idx]) if pd.notna(std.iloc[signal_idx]) else 0.0
+    u = float(upper.iloc[signal_idx]) if pd.notna(upper.iloc[signal_idx]) else price
+    lo = float(lower.iloc[signal_idx]) if pd.notna(lower.iloc[signal_idx]) else price
 
-    h20 = float(htf20.iloc[-1])
-    h50 = float(htf50.iloc[-1])
-    h100 = float(htf100.iloc[-1])
-    h200 = float(htf200.iloc[-1])
+    htf_idx = -2
+    h20 = float(htf20.iloc[htf_idx])
+    h50 = float(htf50.iloc[htf_idx])
+    h100 = float(htf100.iloc[htf_idx])
+    h200 = float(htf200.iloc[htf_idx])
 
     if a is None or a <= 0 or sd <= 0:
         return None, None, {"reason": "invalid_indicators", "strategy_id": V2_STRATEGY_ID}
@@ -129,13 +133,13 @@ def quant_signal_score_v2(df, htf_df, epic):
         return None, None, {"reason": "invalid_indicators", "strategy_id": V2_STRATEGY_ID}
 
     # --- Quant state / regime ---
-    ema_gap = abs(float(ema20.iloc[-1] - ema50.iloc[-1])) / a
+    ema_gap = abs(float(ema20.iloc[signal_idx] - ema50.iloc[signal_idx])) / a
     htf_gap = abs(h50 - h200) / a
     atr_fast = float(atr.tail(20).mean()) if atr.tail(20).notna().any() else a
     atr_slow = float(atr.tail(100).mean()) if atr.tail(100).notna().any() else a
     vol_ratio = atr_fast / max(atr_slow, 1e-9)
 
-    if htf_gap >= 1.25 and abs(h50 - h200) / max(h200, 1e-9) > 0.0005:
+    if htf_gap >= 1.25 and abs(h50 - h200) / max(abs(h200), 1e-9) > 0.0005:
         regime = "TREND"
     elif vol_ratio >= 1.20:
         regime = "BREAKOUT"
