@@ -18,13 +18,19 @@ quant_signal_score_v2 = v2.quant_signal_score_v2
 market_entry_strength_v2 = v2.market_entry_strength_v2
 
 def v3_signal(df, htf_df, epic):
-    signal, score, diag = quant_signal_score_v2(df, htf_df, epic)
-    if score is not None and score >= V3_MIN_SCORE:
-        if isinstance(diag, dict):
-            diag = dict(diag)
-            diag["v3_min_score"] = V3_MIN_SCORE
-        return signal, score, diag
-    return None, score, diag
+    result = quant_signal_score_v2(df, htf_df, epic)
+    if isinstance(result, tuple):
+        signal = result[0] if len(result) > 0 else None
+        score = result[1] if len(result) > 1 else None
+        diag = result[2] if len(result) > 2 else None
+    else:
+        signal, score, diag = result, None, None
+    if score is not None and score >= V3_MIN_SCORE and signal in ("BUY", "SELL"):
+        base.log(f"{epic}: V3 SIGNAL SCORE | score={score:.2f}")
+        return signal
+    if isinstance(diag, dict):
+        base.log(f"{epic}: V3 SIGNAL DIAG | {diag}")
+    return None
 
 def v3_entry_strength(df, htf_df, direction):
     raw = market_entry_strength_v2(df, htf_df, direction)
