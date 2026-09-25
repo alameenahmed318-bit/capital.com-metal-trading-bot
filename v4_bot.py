@@ -122,6 +122,7 @@ base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
 base.MIN_ENTRY_SCORE = V4_MIN_SCORE
+base.MIN_ENTRY_STRENGTH = V4_MIN_ENTRY_STRENGTH
 
 
 def run_cycle():
