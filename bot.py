@@ -984,7 +984,8 @@ def get_closed_trade_report(api, from_date, to_date):
 def log_trade_report(api, account_currency):
     try:
         today = utc_day()
-        report = get_closed_trade_report(api, f"{today}T00:00:00", f"{today}T23:59:59")
+        now = datetime.now(timezone.utc)
+        report = get_closed_trade_report(api, f"{today}T00:00:00", now.strftime("%Y-%m-%dT%H:%M:%S"))
         log(
             f"TRADE REPORT | today={today} | closed={report['closed']} | "
             f"wins={report['wins']} | losses={report['losses']} | flat={report['flat']} | "
