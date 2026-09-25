@@ -795,7 +795,36 @@ def process_epic(api, epic, positions, balance, account_currency):
                     break
 
             if ADD_TO_PROFITABLE_BASKET and profitable_position:
-                log(f"{epic}: profitable basket detected; adding next leg up to max {MAX_POSITIONS_PER_EPIC}.")
+                log(f"{epic}: profitable basket detected; filling basket to {MAX_POSITIONS_PER_EPIC} positions.")
+                legs_to_open = MAX_POSITIONS_PER_EPIC - existing_count
+                if legs_to_open > 0:
+                    for leg_no in range(legs_to_open):
+                        current_remaining_basket = max_basket_amount - basket_reserved_risk(api, positions, epic, account_currency)
+                        current_remaining_portfolio = max_portfolio_amount - portfolio_reserved_risk(api, positions, account_currency)
+                        leg_risk = min(
+                            sizing_balance * AGGRESSIVE_BASE_RISK,
+                            max(0.0, current_remaining_basket),
+                            max(0.0, current_remaining_portfolio),
+                        )
+                        if leg_risk <= 0:
+                            log(f"{epic}: no remaining risk budget for profitable basket leg {leg_no + 1}.")
+                            break
+                        leg_size = get_position_size(api, epic, leg_risk, trade["risk_distance"], account_currency)
+                        if leg_size is None:
+                            log(f"{epic}: profitable basket leg {leg_no + 1} skipped; minimum size exceeds risk budget.")
+                            break
+                        response = api.place_order(
+                            direction=signal,
+                            size=leg_size,
+                            stop_level=trade["stop_level"],
+                            profit_level=None,
+                            epic=epic,
+                        )
+                        log(f"{epic}: PROFITABLE BASKET LEG {leg_no + 1}/{legs_to_open} SENT | size={leg_size}")
+                        log(f"{epic}: {response}")
+                    SAFETY["consecutive_errors"] = 0
+                    save_safety_state(SAFETY)
+                    return {"basketFilled": True, "legsOpened": legs_to_open}
             else:
                 latest = epic_positions[-1]
                 latest_entry, latest_stop = position_open_level(latest), position_stop_level(latest)
@@ -822,15 +851,14 @@ def process_epic(api, epic, positions, balance, account_currency):
                 log(f"{epic}: price is already at/above the working trigger {trigger}; no new working order placed.")
                 return None
             stop_level = trigger - trade["risk_distance"]
-            profit_level = trigger + trade["risk_distance"] * (TP_ATR_MULT / SL_ATR_MULT)
-            response = api.place_working_order(epic=epic, direction="BUY", size=size, level=trigger, stop_level=stop_level, profit_level=profit_level)
+            response = api.place_working_order(epic=epic, direction="BUY", size=size, level=trigger, stop_level=stop_level, profit_level=None)
             log(f"{epic}: WORKING BUY ORDER SENT | trigger={trigger}")
-            log(f"{epic}: SL={stop_level} | TP={profit_level}")
+            log(f"{epic}: SL={stop_level} | NO FIXED TP")
             log(f"{epic}: {response}")
             SAFETY["consecutive_errors"] = 0
             save_safety_state(SAFETY)
             return response
-        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
+        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=None, epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
 
