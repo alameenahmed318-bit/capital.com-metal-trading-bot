@@ -72,7 +72,7 @@ MARKET_RSI_SETTINGS = {
 }
 
 RISK_PER_TRADE = _float_env("RISK_PER_TRADE", 0.03)
-SL_ATR_MULT = 1.5
+SL_ATR_MULT = 2.0
 TP_ATR_MULT = 3.0
 
 DB_PATH = "trades.db"
