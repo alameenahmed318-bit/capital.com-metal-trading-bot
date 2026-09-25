@@ -338,10 +338,11 @@ def market_spread_pct(market):
         return None
     return ((offer - bid) / ((offer + bid) / 2.0)) * 100.0
 
-def spread_allows_entry(api, epic):
+def spread_allows_entry(api, epic, market=None):
     if not SPREAD_FILTER_ENABLED:
         return True
-    spread = market_spread_pct(api.get_market(epic))
+    market = market if market is not None else api.get_market(epic)
+    spread = market_spread_pct(market)
     if spread is None:
         log(f"{epic}: spread unavailable; entry blocked for safety.")
         return False
@@ -1423,7 +1424,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
             time.sleep(sleep_for)
     log("ENTRY+POSITION MONITOR | 15-minute scan window completed.")
 
-def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True):
+def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None):
     log("")
     owned_positions = filter_owned_positions(positions)
     if not session_allows_entry() and not get_positions_for_epic(owned_positions, epic):
@@ -1444,7 +1445,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             return None
         # Use the live market snapshot for position management instead of
         # treating the last candle close as the current executable price.
-        market = api.get_market(epic)
+        if market is None:
+            market = api.get_market(epic)
         snapshot = market.get("snapshot", {}) or {}
         live_bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
         live_offer = safe_float(
@@ -1480,7 +1482,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if cooldown_active(epic):
             record_entry_rejection(epic, "LOSS_COOLDOWN")
             return None
-        if not spread_allows_entry(api, epic):
+        if not spread_allows_entry(api, epic, market=market):
             record_entry_rejection(epic, "SPREAD_FILTER")
             return None
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
@@ -1552,7 +1554,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
-        order_spread_pct = market_spread_pct(api.get_market(epic))
+        order_spread_pct = market_spread_pct(market)
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         strength = market_entry_strength(df, htf_df, signal)
         if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
