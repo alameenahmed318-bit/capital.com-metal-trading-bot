@@ -64,8 +64,25 @@ def quant_signal_score_v2(df, htf_df, epic):
     rejection gates. This keeps V2 responsive while still adapting risk and
     conviction to market conditions.
     """
-    if df is None or len(df) < 100 or htf_df is None or len(htf_df) < 80:
-        return None, None, {"reason": "insufficient_data", "strategy_id": V2_STRATEGY_ID}
+    df_len = 0 if df is None else len(df)
+    htf_len = 0 if htf_df is None else len(htf_df)
+    # Keep the 15m slow-EMA requirement, but allow the HTF ensemble to use
+    # the history actually returned by Capital.com. Log exact counts instead
+    # of hiding the real data problem behind a generic failure.
+    if df is None or df_len < 100 or htf_df is None or htf_len < 60:
+        diag = {
+            "reason": "insufficient_data",
+            "strategy_id": V2_STRATEGY_ID,
+            "m15_candles": df_len,
+            "htf_candles": htf_len,
+            "required_m15": 100,
+            "required_htf": 60,
+        }
+        base.log(
+            f"{epic}: V2 DATA CHECK | 15m={df_len}/100 | 1h={htf_len}/60 | "
+            "signal engine skipped until minimum history is available"
+        )
+        return None, None, diag
 
     x = df.copy()
     close = pd.to_numeric(x["close"], errors="coerce")
@@ -304,9 +321,41 @@ def quant_signal_score_v2(df, htf_df, epic):
     return signal, score, diag
 
 
+
+def market_entry_strength_v2(df, htf_df, direction):
+    """V2-compatible 0..1 alignment score using available HTF history."""
+    if df is None or htf_df is None or len(df) < 55 or len(htf_df) < 60:
+        return 0.0
+    close = pd.to_numeric(df["close"], errors="coerce")
+    hclose = pd.to_numeric(htf_df["close"], errors="coerce")
+    last = -2 if len(df) >= 2 else -1
+    hlast = -2 if len(htf_df) >= 2 else -1
+    atr_series = _atr(df)
+    atr = float(atr_series.iloc[last]) if pd.notna(atr_series.iloc[last]) else 0.0
+    price = float(close.iloc[last]) if pd.notna(close.iloc[last]) else 0.0
+    if atr <= 0 or price <= 0:
+        return 0.0
+    ema9 = close.ewm(span=9, adjust=False).mean().iloc[last]
+    ema20 = close.ewm(span=20, adjust=False).mean().iloc[last]
+    ema50 = close.ewm(span=50, adjust=False).mean().iloc[last]
+    h20 = hclose.ewm(span=20, adjust=False).mean().iloc[hlast]
+    h50 = hclose.ewm(span=50, adjust=False).mean().iloc[hlast]
+    h100 = hclose.ewm(span=100, adjust=False).mean().iloc[hlast]
+    roc5 = price / max(float(close.iloc[-7]), 1e-9) - 1.0
+    sign = 1 if direction == "BUY" else -1
+    votes = [
+        sign * (ema9 - ema20) > 0,
+        sign * (ema20 - ema50) > 0,
+        sign * (h20 - h50) > 0,
+        sign * (h50 - h100) > 0,
+        sign * roc5 > 0,
+    ]
+    return sum(votes) / len(votes)
+
 # V1's process_epic resolves quant_signal_score from bot.py's global namespace.
 # This monkey patch is scoped to the V2 process only; V1 source remains unchanged.
 base.quant_signal_score = quant_signal_score_v2
+base.market_entry_strength = market_entry_strength_v2
 base.STRATEGY_ID = V2_STRATEGY_ID
 
 # V2 has independent operational state but shares the single ownership registry
