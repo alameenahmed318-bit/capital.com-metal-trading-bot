@@ -17,7 +17,7 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 3
+MAX_POSITIONS_PER_EPIC = 10
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.015)
@@ -82,6 +82,8 @@ BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
 ADD_TO_PROFITABLE_BASKET = True
+# Smaller incremental risk for additional legs while the existing basket is profitable.
+PROFITABLE_ADD_RISK = 0.002
 
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
@@ -574,86 +576,116 @@ def market_regime(df, htf_df):
     return "RANGE"
 
 
-def generate_signal(df, epic, htf_df=None):
-    if len(df) < max(EMA_SLOW + 5, RSI_PERIOD + 5, ATR_PERIOD + 5, SR_LOOKBACK + 5, BREAKOUT_LOOKBACK + 5) or htf_df is None or len(htf_df) < HTF_EMA_SLOW + 5:
+def quant_signal_score(df, epic, htf_df):
+    """Institutional-style multi-factor score inspired by trend, momentum,
+    breakout, volatility and disciplined risk frameworks.
+    This is our own implementation, not a copy of any firm's proprietary model.
+    """
+    if len(df) < 205 or len(htf_df) < HTF_EMA_SLOW + 5:
         return None
 
-    current = df.iloc[-2]
-    previous = df.iloc[-3]
-    atr = safe_float(current["atr"])
-    if atr is None or atr <= 0:
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    close = safe_float(cur["close"])
+    atr = safe_float(cur["atr"])
+    rsi = safe_float(cur["rsi"])
+    if close is None or atr is None or atr <= 0 or rsi is None:
         return None
 
-    htf_fast = htf_df["close"].ewm(span=HTF_EMA_FAST, adjust=False).mean().iloc[-2]
-    htf_slow = htf_df["close"].ewm(span=HTF_EMA_SLOW, adjust=False).mean().iloc[-2]
+    closes = df["close"]
+    ema9 = closes.ewm(span=9, adjust=False).mean().iloc[-2]
+    ema21 = closes.ewm(span=21, adjust=False).mean().iloc[-2]
+    ema50 = closes.ewm(span=50, adjust=False).mean().iloc[-2]
+    ema100 = closes.ewm(span=100, adjust=False).mean().iloc[-2]
+    ema200 = closes.ewm(span=200, adjust=False).mean().iloc[-2]
 
+    htf_close = htf_df["close"]
+    htf50 = htf_close.ewm(span=50, adjust=False).mean().iloc[-2]
+    htf200 = htf_close.ewm(span=200, adjust=False).mean().iloc[-2]
+
+    roc5 = (close / safe_float(df["close"].iloc[-7], close) - 1.0) if safe_float(df["close"].iloc[-7]) else 0.0
+    roc20 = (close / safe_float(df["close"].iloc[-22], close) - 1.0) if safe_float(df["close"].iloc[-22]) else 0.0
+
+    recent20 = df.iloc[-21:-1]
+    recent60 = df.iloc[-61:-1]
+    breakout_high = float(recent20["high"].max())
+    breakout_low = float(recent20["low"].min())
+    support = float(recent60["low"].min())
+    resistance = float(recent60["high"].max())
+
+    atr20 = float(df["atr"].rolling(20).mean().iloc[-2]) if "atr" in df else atr
+    atr100 = float(df["atr"].rolling(100).mean().iloc[-2]) if "atr" in df else atr
+    vol_ratio = atr20 / atr100 if atr100 > 0 else 1.0
+
+    scores = {"BUY": 0.0, "SELL": 0.0}
+
+    # Man-style multi-speed trend: fast, medium, slow/HTF.
+    if ema9 > ema21: scores["BUY"] += 15
+    elif ema9 < ema21: scores["SELL"] += 15
+
+    if ema21 > ema50: scores["BUY"] += 15
+    elif ema21 < ema50: scores["SELL"] += 15
+
+    if ema50 > ema100 > ema200: scores["BUY"] += 10
+    elif ema50 < ema100 < ema200: scores["SELL"] += 10
+
+    if htf50 > htf200: scores["BUY"] += 20
+    elif htf50 < htf200: scores["SELL"] += 20
+
+    # AQR-style separation of absolute trend from momentum.
+    if roc5 > 0: scores["BUY"] += 5
+    elif roc5 < 0: scores["SELL"] += 5
+    if roc20 > 0: scores["BUY"] += 10
+    elif roc20 < 0: scores["SELL"] += 10
+
+    # Breakout / structure.
+    if close > breakout_high: scores["BUY"] += 15
+    elif close < breakout_low: scores["SELL"] += 15
+
+    # Volatility regime: usable expansion, but reject extreme/noisy conditions.
+    if 0.85 <= vol_ratio <= 1.80:
+        if roc20 > 0: scores["BUY"] += 5
+        elif roc20 < 0: scores["SELL"] += 5
+
+    # RSI is a confirmation, not the primary signal.
     long_min, long_max, short_min, short_max = get_rsi_settings(epic)
-    rsi = safe_float(current["rsi"])
-    if rsi is None:
-        return None
-    recent = df.iloc[-(SR_LOOKBACK + 1):-1]
-    support = float(recent["low"].min())
-    resistance = float(recent["high"].max())
-    price = float(current["close"])
-    near_support = price <= support + SR_BUFFER_ATR * atr
-    near_resistance = price >= resistance - SR_BUFFER_ATR * atr
+    if long_min <= rsi <= long_max and roc5 >= 0:
+        scores["BUY"] += 5
+    if short_min <= rsi <= short_max and roc5 <= 0:
+        scores["SELL"] += 5
 
-    breakout_high = float(df.iloc[-(BREAKOUT_LOOKBACK + 1):-1]["high"].max())
-    breakout_low = float(df.iloc[-(BREAKOUT_LOOKBACK + 1):-1]["low"].min())
-    bullish_breakout = price > breakout_high
-    bearish_breakout = price < breakout_low
+    # Avoid chasing a trend directly into resistance/support unless a true breakout occurred.
+    if close >= resistance - 0.25 * atr and close <= resistance and close <= breakout_high:
+        scores["BUY"] -= 10
+    if close <= support + 0.25 * atr and close >= support and close >= breakout_low:
+        scores["SELL"] -= 10
 
+    buy_score = max(0.0, min(100.0, scores["BUY"]))
+    sell_score = max(0.0, min(100.0, scores["SELL"]))
     regime = market_regime(df, htf_df)
-    if not STRATEGY_SELECTOR_ENABLED:
-        regime = "TREND"
 
-    log(f"{epic}: STRATEGY SELECTOR = {regime}")
+    # Regime-aware gate: trend needs alignment; breakout needs a real break;
+    # range entries use the existing mean-reversion logic only near structure.
+    if regime == "RANGE":
+        if close <= support + SR_BUFFER_ATR * atr and rsi <= RANGE_RSI_BUY_MAX:
+            buy_score = max(buy_score, 72.0)
+        if close >= resistance - SR_BUFFER_ATR * atr and rsi >= RANGE_RSI_SELL_MIN:
+            sell_score = max(sell_score, 72.0)
 
-    if regime == "BREAKOUT":
-        # Breakout entries require confirmation from the closed candle, HTF direction,
-        # and RSI; this avoids treating every range touch as a breakout.
-        if bullish_breakout and htf_fast > htf_slow and long_min <= rsi <= long_max:
-            return "BUY"
-        if bearish_breakout and htf_fast < htf_slow and short_min <= rsi <= short_max:
-            return "SELL"
-        return None
+    log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f}")
 
-    if regime == "TREND":
-        bullish_cross = previous["ema_fast"] <= previous["ema_slow"] and current["ema_fast"] > current["ema_slow"]
-        bearish_cross = previous["ema_fast"] >= previous["ema_slow"] and current["ema_fast"] < current["ema_slow"]
-        buy_setup = bullish_cross and htf_fast > htf_slow and long_min <= rsi <= long_max
-        sell_setup = bearish_cross and htf_fast < htf_slow and short_min <= rsi <= short_max
-
-        # If the trend is already established, allow a clean pullback continuation
-        # rather than requiring a brand-new EMA cross on every opportunity.
-        ema_gap = abs(float(current["ema_fast"] - current["ema_slow"]))
-        if ema_gap >= TREND_EMA_GAP_ATR * atr:
-            buy_setup = buy_setup or (
-                current["ema_fast"] > current["ema_slow"]
-                and htf_fast > htf_slow
-                and long_min <= rsi <= long_max
-                and not near_resistance
-            )
-            sell_setup = sell_setup or (
-                current["ema_fast"] < current["ema_slow"]
-                and htf_fast < htf_slow
-                and short_min <= rsi <= short_max
-                and not near_support
-            )
-
-        if buy_setup:
-            return "BUY"
-        if sell_setup:
-            return "SELL"
-        return None
-
-    # RANGE: mean-reversion only near dynamic support/resistance.
-    # Do not combine this with the high-volatility gate used by trend/breakout.
-    if near_support and rsi <= RANGE_RSI_BUY_MAX:
+    if buy_score >= 75 and buy_score > sell_score + 8:
         return "BUY"
-    if near_resistance and rsi >= RANGE_RSI_SELL_MIN:
+    if sell_score >= 75 and sell_score > buy_score + 8:
         return "SELL"
     return None
+
+
+def generate_signal(df, epic, htf_df=None):
+    if not STRATEGY_SELECTOR_ENABLED:
+        return quant_signal_score(df, epic, htf_df)
+    return quant_signal_score(df, epic, htf_df)
+
 
 def calculate_trade(df, direction, entry_price=None):
     # ATR comes from the latest completed candle; entry is based on the
@@ -905,7 +937,10 @@ def process_epic(api, epic, positions, balance, account_currency):
             log(f"{epic}: portfolio risk cap reached ({MAX_PORTFOLIO_RISK * 100:.1f}%).")
             return None
         leg_multiplier = MARTINGALE_MULTIPLIER ** existing_count if ALLOW_MARTINGALE else 1.0
-        requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK * leg_multiplier
+        if epic_positions:
+            requested_risk = sizing_balance * PROFITABLE_ADD_RISK
+        else:
+            requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK
         risk_amount = min(
             requested_risk,
             max(0.0, remaining_basket_risk),
