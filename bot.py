@@ -15,6 +15,8 @@ from portfolio_risk import portfolio_risk_overlay
 from execution_costs import evaluate_pretrade_cost
 
 DEMO_ONLY = True
+STRATEGY_ID = "CAPITAL_V1"
+POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
@@ -147,6 +149,58 @@ OPEN_POSITIONS_FILE = "open_positions.json"
 
 def log(message):
     print(f"[BOT] {message}")
+\ndef _load_owned_deals():
+    if not os.path.exists(POSITION_OWNERSHIP_FILE):
+        return set()
+    try:
+        with open(POSITION_OWNERSHIP_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return {str(x) for x in data.get(STRATEGY_ID, [])} if isinstance(data, dict) else set()
+    except Exception as exc:
+        log(f"Could not load position ownership: {exc}")
+        return set()
+
+def _ownership_initialized():
+    if not os.path.exists(POSITION_OWNERSHIP_FILE):
+        return False
+    try:
+        with open(POSITION_OWNERSHIP_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return isinstance(data, dict) and STRATEGY_ID in data
+    except Exception:
+        return False
+
+def _save_owned_deals(deals):
+    try:
+        data = {}
+        if os.path.exists(POSITION_OWNERSHIP_FILE):
+            with open(POSITION_OWNERSHIP_FILE, "r", encoding="utf-8") as file:
+                data = json.load(file)
+        if not isinstance(data, dict): data = {}
+        data[STRATEGY_ID] = sorted({str(x) for x in deals})
+        temp_file = f"{POSITION_OWNERSHIP_FILE}.tmp"
+        with open(temp_file, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+        os.replace(temp_file, POSITION_OWNERSHIP_FILE)
+    except Exception as exc:
+        log(f"Could not save position ownership: {exc}")
+
+def filter_owned_positions(positions):
+    owned = _load_owned_deals()
+    if not _ownership_initialized():
+        if STRATEGY_ID == "CAPITAL_V1":
+            # V1 adopts only the positions that existed before ownership isolation.
+            owned = {str(position_deal_id(p)) for p in positions if position_deal_id(p)}
+        _save_owned_deals(owned)
+    filtered = [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
+    return filtered
+
+def register_owned_position(deal_id):
+    if deal_id:
+        owned = _load_owned_deals()
+        owned.add(str(deal_id))
+        _save_owned_deals(owned)
+
 
 def record_entry_rejection(epic, reason, details=""):
     """Persist every blocked new-entry decision with a machine-readable reason."""
@@ -1564,6 +1618,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 record_execution_quality(epic, signal, execution_price, None, order_spread_pct, deal_reference=deal_reference, deal_status=deal_status, size=size)
                 raise RuntimeError(f"Capital.com rejected deal {deal_reference}: {confirmation}")
             deal_id = confirmation.get("dealId") or confirmation.get("dealReference")
+            register_owned_position(deal_id)
             actual_fill_price = _confirmed_entry_level(confirmation)
             if actual_fill_price is None and deal_id:
                 try:
@@ -1703,7 +1758,7 @@ def save_live_stats(api, account_currency):
             epic = tx.get("epic") or tx.get("instrumentName") or "UNKNOWN"
             closed_rows.append((str(epic), float(pnl)))
 
-        open_positions = api.get_open_positions()
+        open_positions = filter_owned_positions(api.get_open_positions())
         broker_pnl, broker_currency = get_broker_account_profit_loss(api)
         winners = [p for _, p in closed_rows if p > 0]
         losers = [p for _, p in closed_rows if p < 0]
