@@ -608,9 +608,13 @@ def log_and_save_open_positions(positions):
 
 
 def enforce_max_position_loss(api, positions, epic, account_currency):
-    """Close any position whose current P/L reaches the hard account-currency loss cap."""
+    """Close any position whose current P/L reaches the hard account-currency loss cap.
+    Returns True only when a close was actually sent, so callers can refresh
+    broker positions only when the safety guard changed account state.
+    """
+    closed = False
     if MAX_LOSS_PER_POSITION is None or MAX_LOSS_PER_POSITION <= 0:
-        return
+        return closed
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
         pnl = position_unrealized_pnl(position)
@@ -618,6 +622,7 @@ def enforce_max_position_loss(api, positions, epic, account_currency):
             continue
         try:
             response = api.close_position(deal_id)
+            closed = True
             log(
                 f"{epic}: HARD LOSS LIMIT CLOSE | deal={deal_id} | "
                 f"P/L={pnl:.2f} {account_currency} | limit=-{MAX_LOSS_PER_POSITION:.2f} {account_currency}"
@@ -625,6 +630,7 @@ def enforce_max_position_loss(api, positions, epic, account_currency):
             log(f"{epic}: HARD LOSS CLOSE RESPONSE = {response}")
         except Exception as exc:
             log(f"{epic}: hard loss close failed | deal={deal_id} | {exc}")
+    return closed
 
 
 def original_risk_distance(position):
@@ -677,12 +683,14 @@ def quote_to_account_rate(market, account_currency):
     return None
 
 
-def get_position_size(api, epic, risk_amount_account, risk_distance, account_currency):
+def get_position_size(api, epic, risk_amount_account, risk_distance, account_currency, market=None):
     risk_amount_account = safe_float(risk_amount_account)
     risk_distance = safe_float(risk_distance)
     if risk_amount_account is None or risk_amount_account <= 0 or risk_distance is None or risk_distance <= 0:
         return None
-    market = api.get_market(epic)
+    # Reuse the live market snapshot already fetched by process_epic.
+    # This removes a duplicate market API request on every candidate entry.
+    market = market if market is not None else api.get_market(epic)
     instrument = market.get("instrument", {})
     dealing = market.get("dealingRules", {})
     lot_size = safe_float(instrument.get("lotSize"), 1.0) or 1.0
@@ -1481,11 +1489,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Profit lock is checked before normal entry logic on every bot pass.
         # Hard loss guard runs before all other management so a position cannot
         # remain beyond the configured account-currency loss ceiling.
-        enforce_max_position_loss(api, owned_positions, epic, account_currency)
-        # Refresh after hard-loss closures so trailing/break-even never tries to
-        # modify a position that was already closed in this same cycle.
-        positions = api.get_open_positions()
-        owned_positions = filter_owned_positions(positions)
+        hard_loss_closed = enforce_max_position_loss(api, owned_positions, epic, account_currency)
+        # Only refresh positions when the hard-loss guard actually closed one.
+        # Otherwise reuse the already-fetched scan snapshot and save an API round trip.
+        if hard_loss_closed:
+            positions = api.get_open_positions()
+            owned_positions = filter_owned_positions(positions)
         manage_profit_trailing(api, owned_positions, epic, account_currency)
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
@@ -1685,7 +1694,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 # an existing position in the same direction is profitable.
                 record_entry_rejection(epic, "BASKET_NOT_PROFITABLE")
                 return None
-        size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency)
+        size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency, market=market)
         if size is None:
             record_entry_rejection(epic, "MIN_TRADE_SIZE_EXCEEDS_RISK")
             return None
