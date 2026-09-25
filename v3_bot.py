@@ -12,6 +12,8 @@ import v2_bot as v2
 V3_STRATEGY_ID = "CAPITAL_V3_RAPID_PROFIT"
 V3_PROFIT_TARGET_AED = 0.20
 V3_MIN_SCORE = 42.0
+V3_MIN_ENTRY_STRENGTH = 0.55
+V3_LATE_ENTRY_MAX_ATR = 0.75
 
 v2.V2_MIN_SCORE = V3_MIN_SCORE
 quant_signal_score_v2 = v2.quant_signal_score_v2
