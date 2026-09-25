@@ -9,14 +9,13 @@ the configured profit target. Grid, averaging and martingale remain disabled.
 import bot as base
 import v2_bot as v2
 
-# Lower the underlying V2 scorer threshold for V3 before calling it.
-v2.V2_MIN_SCORE = V3_MIN_SCORE
-quant_signal_score_v2 = v2.quant_signal_score_v2
-market_entry_strength_v2 = v2.market_entry_strength_v2
-
 V3_STRATEGY_ID = "CAPITAL_V3_RAPID_PROFIT"
 V3_PROFIT_TARGET_AED = 0.20
 V3_MIN_SCORE = 42.0
+
+v2.V2_MIN_SCORE = V3_MIN_SCORE
+quant_signal_score_v2 = v2.quant_signal_score_v2
+market_entry_strength_v2 = v2.market_entry_strength_v2
 
 def v3_signal(df, htf_df, epic):
     signal, score, diag = quant_signal_score_v2(df, htf_df, epic)
@@ -51,7 +50,6 @@ def v3_profit_manager(api, positions, epic, account_currency):
             except Exception as exc:
                 base.log(f"{epic}: V3 profit-target close failed | deal={deal_id} | {exc}")
 
-# Scope all V3 behavior to this process only.
 base.quant_signal_score = v3_signal
 base.market_entry_strength = v3_entry_strength
 base.manage_profit_trailing = v3_profit_manager
@@ -63,8 +61,6 @@ base.SAFETY_STATE_FILE = "v3_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "v3_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "v3_entry_rejections.json"
 
-# Rapid-entry mode, while retaining broker SL, spread, cost, portfolio and
-# basket-risk controls from bot.py.
 base.SESSION_FILTER_ENABLED = False
 base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 5
 base.MAX_POSITIONS_PER_EPIC = 10
@@ -90,7 +86,7 @@ def run_cycle():
     base.update_loss_cooldowns_from_history(api)
     base.log_trade_report(api, account_currency)
 
-    scan_seconds = 30
+    scan_seconds = 10
     window_seconds = 14 * 60
     deadline = time.monotonic() + window_seconds
     while time.monotonic() < deadline:
@@ -112,7 +108,7 @@ def run_cycle():
         time.sleep(scan_seconds)
 
     base.save_live_stats(api, account_currency)
-    base.log("V3 quantity-focused scan window completed.")
+    base.log("V3 quantity-focused 10-second scan window completed.")
 
 if __name__ == "__main__":
     run_cycle()
