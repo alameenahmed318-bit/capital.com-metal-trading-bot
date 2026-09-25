@@ -177,18 +177,16 @@ class CapitalAPI:
         profit_level,
         epic,
     ):
-        return self._request(
-            "POST",
-            "/api/v1/positions",
-            json={
-                "epic": epic,
-                "direction": direction,
-                "size": size,
-                "guaranteedStop": False,
-                "stopLevel": stop_level,
-                "profitLevel": profit_level,
-            },
-        )
+        payload = {
+            "epic": epic,
+            "direction": direction,
+            "size": size,
+            "guaranteedStop": False,
+            "stopLevel": stop_level,
+        }
+        if profit_level is not None:
+            payload["profitLevel"] = profit_level
+        return self._request("POST", "/api/v1/positions", json=payload)
 
     def modify_position(
         self,
