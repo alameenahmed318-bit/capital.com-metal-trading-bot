@@ -1,8 +1,10 @@
 {
-  "last_updated": null,
+  "last_updated": "2026-09-25T14:42:51.184966+00:00",
+  "currency": "AED",
+  "source": "Repository snapshot; live API refresh occurs on next bot cycle",
   "overall": {
-    "total_trades": 0,
-    "open_trades": 0,
+    "total_trades": 1,
+    "open_trades": 1,
     "closed_trades": 0,
     "winners": 0,
     "losers": 0,
@@ -11,17 +13,50 @@
     "best_trade": 0,
     "worst_trade": 0,
     "average_win": 0,
-    "average_loss": 0,
-    "expectancy": 0.0,
-    "max_drawdown": 0,
-    "current_streak": 0
+    "average_loss": 0
   },
   "by_epic": {
-    "GOLD": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
-    "EURUSD": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
-    "SILVER": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
-    "OIL_CRUDE": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
-    "US100": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0},
-    "US500": {"trades": 0, "winners": 0, "losers": 0, "win_rate": 0, "pnl": 0}
+    "GOLD": {
+      "trades": 0,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    },
+    "EURUSD": {
+      "trades": 0,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    },
+    "SILVER": {
+      "trades": 1,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    },
+    "OIL_CRUDE": {
+      "trades": 0,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    },
+    "US100": {
+      "trades": 0,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    },
+    "US500": {
+      "trades": 0,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    }
   }
 }
