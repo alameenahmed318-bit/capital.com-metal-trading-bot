@@ -857,50 +857,52 @@ def cleanup_state(positions):
 
 OPEN_POSITION_MONITOR_SECONDS = 10
 OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
+# Prevent the 10-second signal loop from stacking the same profitable-basket
+# leg repeatedly; signals are still evaluated every 10 seconds.
+PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
+LAST_ENTRY_AT = {}
 
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
-    """Monitor existing positions every 10 seconds between 15-minute entry scans."""
+    """Check entry signals and manage open positions every 10 seconds until the next scheduled cycle."""
     started = time.monotonic()
-    log(f"OPEN POSITION MONITOR | interval={OPEN_POSITION_MONITOR_SECONDS}s | window={duration_seconds}s")
+    scan_number = 0
+    log(
+        f"ENTRY+POSITION MONITOR | interval={OPEN_POSITION_MONITOR_SECONDS}s | "
+        f"window={duration_seconds}s | markets={len(EPICS)}"
+    )
     while time.monotonic() - started < duration_seconds:
+        scan_started = time.monotonic()
+        scan_number += 1
+        log(f"10s ENTRY SCAN #{scan_number} | checking {len(EPICS)} markets")
         try:
-            positions = api.get_open_positions()
-            if not positions:
-                time.sleep(OPEN_POSITION_MONITOR_SECONDS)
-                continue
-            for epic in sorted({position_epic(p) for p in positions if position_epic(p)}):
-                epic_positions = get_positions_for_epic(positions, epic)
-                if not epic_positions:
-                    continue
-                market = api.get_market(epic)
-                snapshot = market.get("snapshot", {}) or {}
-                bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
-                offer = safe_float(
-                    snapshot.get("offer")
-                    if snapshot.get("offer") is not None
-                    else snapshot.get("ask")
-                    if snapshot.get("ask") is not None
-                    else market.get("offer")
-                    if market.get("offer") is not None
-                    else market.get("ask")
-                )
-                if bid is None or offer is None or bid <= 0 or offer <= 0 or offer < bid:
-                    log(f"{epic}: monitor quote unavailable; retrying in {OPEN_POSITION_MONITOR_SECONDS}s.")
-                    continue
-                current_price = (bid + offer) / 2.0
-                log(f"{epic}: MONITOR | positions={len(epic_positions)} | price={current_price}")
-                enforce_max_position_loss(api, positions, epic, account_currency)
-                positions = api.get_open_positions()
-                manage_profit_trailing(api, positions, epic, account_currency)
-                breakeven_stops(api, positions, epic, current_price)
-                manage_trailing_stops(api, positions, epic, current_price)
-                cleanup_state(positions)
+            for epic in EPICS:
+                try:
+                    positions = api.get_open_positions()
+                    balance = api.get_balance()
+                    process_epic(
+                        api=api,
+                        epic=epic,
+                        positions=positions,
+                        balance=balance,
+                        account_currency=account_currency,
+                    )
+                except Exception as exc:
+                    log(f"{epic}: 10s entry scan error: {exc}")
         except Exception as exc:
-            log(f"OPEN POSITION MONITOR ERROR: {exc}")
-        elapsed = time.monotonic() - started
-        if elapsed < duration_seconds:
-            time.sleep(min(OPEN_POSITION_MONITOR_SECONDS, duration_seconds - elapsed))
-    log("OPEN POSITION MONITOR | 15-minute scan window completed.")
+            log(f"10s ENTRY SCAN ERROR: {exc}")
+
+        elapsed = time.monotonic() - scan_started
+        remaining = duration_seconds - (time.monotonic() - started)
+        if remaining <= 0:
+            break
+        sleep_for = min(OPEN_POSITION_MONITOR_SECONDS, remaining)
+        # If API processing takes longer than 10 seconds, start the next scan
+        # immediately instead of overlapping workflow executions.
+        if elapsed >= OPEN_POSITION_MONITOR_SECONDS:
+            sleep_for = 0
+        if sleep_for > 0:
+            time.sleep(sleep_for)
+    log("ENTRY+POSITION MONITOR | 15-minute scan window completed.")
 
 def process_epic(api, epic, positions, balance, account_currency):
     log("")
