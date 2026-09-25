@@ -383,7 +383,7 @@ base.STRATEGY_ID = V2_STRATEGY_ID
 
 # V2 has independent operational state but shares the single ownership registry
 # so V1 and V2 do not adopt or manage each other's positions.
-base.POSITION_OWNERSHIP_FILE = "strategy_positions.json"
+base.POSITION_OWNERSHIP_FILE = "v2_strategy_positions.json"
 base.STATE_FILE = "v2_trades_state.json"
 base.OPEN_POSITIONS_FILE = "v2_open_positions.json"
 base.SAFETY_STATE_FILE = "v2_bot_safety_state.json"
