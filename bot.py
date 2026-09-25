@@ -112,7 +112,7 @@ BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
 BREAKEVEN_START_R = 1.25
 BREAKEVEN_OFFSET_R = 0.10
-KILL_SWITCH_ENABLED = True
+KILL_SWITCH_ENABLED = False
 MAX_CONSECUTIVE_ERRORS = 3
 SAFETY_STATE_FILE = "bot_safety_state.json"
 
