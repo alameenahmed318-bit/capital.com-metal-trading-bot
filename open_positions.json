@@ -1,4 +1,27 @@
 {
-  "updated_at": "2026-09-25T15:47:58.718994+00:00",
-  "positions": []
+  "updated_at": "2026-09-25T16:23:43.509541+00:00",
+  "positions": [
+    {
+      "dealId": "00000000-65fd-bf10-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "BUY",
+      "size": 0.32,
+      "entry": 7744.1,
+      "current": 7744.1,
+      "stopLoss": 7719.9570557882535,
+      "takeProfit": null,
+      "profitLoss": -10.22
+    },
+    {
+      "dealId": "00000000-65fd-c53d-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "BUY",
+      "size": 0.02,
+      "entry": 7745.6,
+      "current": 7745.6,
+      "stopLoss": 7721.085627216825,
+      "takeProfit": null,
+      "profitLoss": -0.75
+    }
+  ]
 }
