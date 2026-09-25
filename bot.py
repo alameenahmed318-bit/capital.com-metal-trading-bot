@@ -755,8 +755,8 @@ def manage_profit_trailing(api, positions, epic, account_currency):
                 response = api.close_position(deal_id)
                 log(
                     f"{epic}: PROFIT TRAIL CLOSE | deal={deal_id} | "
-                    f"peak=${peak:.2f} | current=${pnl:.2f} | "
-                    f"drop=${peak - pnl:.2f} | close_floor=${floor:.2f}"
+                    f"peak={peak:.2f} {account_currency} | current={pnl:.2f} {account_currency} | "
+                    f"drop={peak - pnl:.2f} {account_currency} | close_floor={floor:.2f} {account_currency}"
                 )
                 log(f"{epic}: CLOSE RESPONSE = {response}")
                 del STATE["profit_trail"][deal_key]
