@@ -6,7 +6,12 @@ the configured profit target. Grid, averaging and martingale remain disabled.
 """
 
 import bot as base
-from v2_bot import quant_signal_score_v2, market_entry_strength_v2
+import v2_bot as v2
+
+# Lower the underlying V2 scorer threshold for V3 before calling it.
+v2.V2_MIN_SCORE = 45.0
+quant_signal_score_v2 = v2.quant_signal_score_v2
+market_entry_strength_v2 = v2.market_entry_strength_v2
 
 V3_STRATEGY_ID = "CAPITAL_V3_RAPID_PROFIT"
 V3_PROFIT_TARGET_AED = 0.20
@@ -23,7 +28,7 @@ def v3_signal(df, htf_df, epic):
 
 def v3_entry_strength(df, htf_df, direction):
     raw = market_entry_strength_v2(df, htf_df, direction)
-    return min(1.0, raw + 0.25)
+    return min(1.0, raw + 0.35)
 
 def v3_profit_manager(api, positions, epic, account_currency):
     """Close V3 positions as soon as broker-reported P/L reaches +0.20."""
