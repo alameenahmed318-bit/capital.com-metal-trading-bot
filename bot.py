@@ -22,7 +22,7 @@ ALLOW_AVERAGING = False
 MAX_POSITIONS_PER_EPIC = 10
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
-AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.015)
+AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
 MAX_BASKET_RISK = 0.04
 
 EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
@@ -1227,7 +1227,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         risk_multiplier = adaptive_risk_multiplier(df)
         requested_risk *= risk_multiplier
         log(f"{epic}: ADAPTIVE RISK | multiplier={risk_multiplier:.2f} | requested={requested_risk:.2f}")
-        # Hard cap: every new position may risk at most 2 AED.
+        # Hard cap: every new position may risk at most 3 AED.
         # This caps position sizing as well as the secondary loss guard below.
         base_risk_amount = min(
             requested_risk,
