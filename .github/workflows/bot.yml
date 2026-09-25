@@ -29,12 +29,12 @@ jobs:
       - name: Run bot every minute (5 checks per scheduled run)
         run: |
           # Run frequent checks so the profit-lock manager can react quickly.
-          for i in $(seq 1 50); do
-            echo "=== Bot check $i/50 ==="
+          for i in $(seq 1 5); do
+            echo "=== Bot check $i/5 ==="
             python bot.py
             python binance_bot.py
-            if [ "$i" -lt 50 ]; then
-              sleep 5
+            if [ "$i" -lt 5 ]; then
+              sleep 60
             fi
           done
         env:
