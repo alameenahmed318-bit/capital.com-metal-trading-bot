@@ -1,0 +1,88 @@
+name: Capital V3 Rapid Profit Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17,32,47,02 * * * *"
+
+concurrency:
+  group: capital-metal-trading-bot-v3
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Capital V3 bot
+        run: python v3_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: ${{ vars.STRATEGY }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Persist V3 state
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          STATE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STATE_DIR"' EXIT
+
+          STATE_FILES=(
+            v3_trades_state.json
+            v3_bot_safety_state.json
+            v3_open_positions.json
+            v3_execution_quality.json
+            v3_entry_rejections.json
+            strategy_positions.json
+          )
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
+          done
+
+          git reset --hard HEAD
+          git pull --rebase -X theirs origin main
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$STATE_DIR/$f" ]; then cp -a "$STATE_DIR/$f" "$f"; fi
+          done
+
+          git add -f "${STATE_FILES[@]}"
+          if git diff --cached --quiet; then
+            echo "No V3 state changes to persist."
+            exit 0
+          fi
+
+          git commit -m "Update V3 bot state [skip ci]"
+          git push origin main || {
+            git pull --rebase -X theirs origin main
+            git push origin main
+          }
