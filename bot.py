@@ -102,6 +102,19 @@ MAX_SPREAD_PCT = 0.08
 EXECUTION_QUALITY_ENABLED = True
 EXECUTION_QUALITY_FILE = "execution_quality.json"
 MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
+
+# Entry-quality upgrades: allow a little more room for normal execution lag,
+# but block entries that are materially stretched or over-correlated with
+# existing exposure. All rejections are persisted with an exact reason.
+LATE_ENTRY_MAX_ATR = 0.50
+LATE_ENTRY_STRONG_MAX_ATR = 0.75
+CORRELATION_FILTER_ENABLED = True
+CORRELATION_LOOKBACK = 96
+CORRELATION_THRESHOLD = 0.80
+CORRELATION_CACHE_SECONDS = 60
+ENTRY_REJECTION_FILE = "entry_rejections.json"
+ENTRY_REJECTION_MAX_ROWS = 1000
+
 DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
 DAILY_LOSS_LIMIT_PCT = 0.03  # Fallback for non-AED accounts
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
@@ -134,6 +147,31 @@ OPEN_POSITIONS_FILE = "open_positions.json"
 
 def log(message):
     print(f"[BOT] {message}")
+
+def record_entry_rejection(epic, reason, details=""):
+    """Persist every blocked new-entry decision with a machine-readable reason."""
+    row = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "epic": epic,
+        "reason": str(reason),
+        "details": str(details),
+    }
+    try:
+        if os.path.exists(ENTRY_REJECTION_FILE):
+            with open(ENTRY_REJECTION_FILE, "r", encoding="utf-8") as file:
+                data = json.load(file)
+            if not isinstance(data, list):
+                data = []
+        else:
+            data = []
+        data = data[-(ENTRY_REJECTION_MAX_ROWS - 1):] + [row]
+        temp_file = f"{ENTRY_REJECTION_FILE}.tmp"
+        with open(temp_file, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+        os.replace(temp_file, ENTRY_REJECTION_FILE)
+    except Exception as exc:
+        log(f"{epic}: rejection log write failed: {exc}")
+    log(f"{epic}: ENTRY REJECTED | reason={reason}" + (f" | {details}" if details else ""))
 
 def load_safety_state():
     if not os.path.exists(SAFETY_STATE_FILE):
@@ -919,7 +957,82 @@ def market_entry_strength(df, htf_df, direction):
     return votes / 4.0
 
 
-def calculate_trade(df, direction, entry_price=None, strength=0.75):
+# Cache 15m closes for correlation checks so the 10-second monitor does not
+# repeatedly download the same history during one short monitoring window.
+CORRELATION_CACHE = {}
+
+def correlation_allows_entry(api, epic, df, positions, signal):
+    """Block only when the new trade materially duplicates existing directional risk."""
+    if not CORRELATION_FILTER_ENABLED:
+        return True
+
+    candidate = df[["close"]].copy()
+    if candidate.empty:
+        return True
+    candidate["ret"] = candidate["close"].astype(float).pct_change()
+    candidate_ret = candidate["ret"].dropna().tail(CORRELATION_LOOKBACK)
+    if len(candidate_ret) < max(30, CORRELATION_LOOKBACK // 2):
+        return True
+
+    open_epics = []
+    for position in positions:
+        other_epic = position_epic(position)
+        other_direction = position_direction(position)
+        if other_epic and other_epic != epic and other_direction in ("BUY", "SELL"):
+            open_epics.append((other_epic, other_direction))
+
+    checked = set()
+    for other_epic, other_direction in open_epics:
+        if other_epic in checked:
+            continue
+        checked.add(other_epic)
+        now = time.monotonic()
+        cached = CORRELATION_CACHE.get(other_epic)
+        if cached and now - cached["time"] < CORRELATION_CACHE_SECONDS:
+            other_df = cached["df"]
+        else:
+            try:
+                raw_other = api.get_candles(
+                    epic=other_epic,
+                    resolution=RESOLUTION,
+                    max_candles=max(CANDLE_COUNT, CORRELATION_LOOKBACK + 20),
+                )
+                other_df = candles_to_dataframe(raw_other)
+                CORRELATION_CACHE[other_epic] = {"time": now, "df": other_df}
+            except Exception as exc:
+                log(f"{epic}: correlation check skipped for {other_epic}; data unavailable: {exc}")
+                continue
+
+        if other_df is None or other_df.empty or "close" not in other_df.columns:
+            continue
+        other_ret = other_df["close"].astype(float).pct_change().dropna().tail(CORRELATION_LOOKBACK)
+        joined = pd.concat([candidate_ret.rename("candidate"), other_ret.rename("other")], axis=1).dropna()
+        if len(joined) < max(30, CORRELATION_LOOKBACK // 2):
+            continue
+        corr = safe_float(joined["candidate"].corr(joined["other"]))
+        if corr is None:
+            continue
+
+        # Positive correlation is relevant when both trades point the same way:
+        # BUY+BUY or SELL+SELL concentrates directional exposure. Opposite-side
+        # trades are not blocked by this filter merely because markets correlate.
+        same_direction = signal == other_direction
+        if same_direction and corr >= CORRELATION_THRESHOLD:
+            record_entry_rejection(
+                epic,
+                "HIGH_CORRELATION_EXPOSURE",
+                f"candidate={signal} vs {other_epic}={other_direction}; correlation={corr:.3f}; threshold={CORRELATION_THRESHOLD:.2f}",
+            )
+            return False
+
+        log(
+            f"{epic}: CORRELATION CHECK | vs={other_epic} | corr={corr:.3f} | "
+            f"candidate={signal} existing={other_direction} | blocked={same_direction and corr >= CORRELATION_THRESHOLD}"
+        )
+    return True
+
+
+def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None):
     # Use only the latest completed 15m candle for volatility.
     current = df.iloc[-2]
     atr = safe_float(current["atr"])
@@ -929,10 +1042,22 @@ def calculate_trade(df, direction, entry_price=None, strength=0.75):
         return None
 
     # Avoid chasing a stretched live quote. Recheck on the next scan.
-    max_chase_atr = 0.35 if strength < 1.0 else 0.50
+    max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
     if direction == "BUY" and price > reference + max_chase_atr * atr:
+        if epic:
+            record_entry_rejection(
+                epic,
+                "LATE_ENTRY",
+                f"BUY quote={price:.6f}; completed_close={reference:.6f}; distance={(price-reference)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
+            )
         return None
     if direction == "SELL" and price < reference - max_chase_atr * atr:
+        if epic:
+            record_entry_rejection(
+                epic,
+                "LATE_ENTRY",
+                f"SELL quote={price:.6f}; completed_close={reference:.6f}; distance={(reference-price)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
+            )
         return None
 
     # Strong aligned signals receive more volatility room; position sizing
@@ -1199,10 +1324,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         manage_trailing_stops(api, positions, epic, current_price, df=df)
 
         if not safety_allows_new_entry(balance, positions):
+            record_entry_rejection(epic, "SAFETY_STOP")
             return None
         if cooldown_active(epic):
+            record_entry_rejection(epic, "LOSS_COOLDOWN")
             return None
         if not spread_allows_entry(api, epic):
+            record_entry_rejection(epic, "SPREAD_FILTER")
             return None
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
         # The selector chooses Trend/Breakout/Range from current market structure.
@@ -1226,6 +1354,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
         log(f"{epic}: SIGNAL = {signal}")
+        if not correlation_allows_entry(api, epic, df, positions, signal):
+            return None
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
@@ -1233,9 +1363,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         strength = market_entry_strength(df, htf_df, signal)
         if strength < 0.75:
-            log(f"{epic}: signal direction not sufficiently aligned across 15m/1h; entry skipped.")
+            record_entry_rejection(
+                epic,
+                "WEAK_ALIGNMENT",
+                f"strength={strength:.2f}; required=0.75",
+            )
             return None
-        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength)
+        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
             return None
@@ -1252,7 +1386,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             )
             log(f"{epic}: PRE-TRADE COST | {cost_diag}")
             if not cost_ok:
-                log(f"{epic}: entry blocked because estimated execution cost is too large relative to the stop.")
+                record_entry_rejection(epic, "PRETRADE_COST", cost_diag)
                 return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
@@ -1263,10 +1397,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 and time.monotonic() - last_entry < PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS
             ):
                 remaining = PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS - (time.monotonic() - last_entry)
-                log(f"{epic}: profitable-basket add cooldown active; {remaining:.0f}s remaining.")
+                record_entry_rejection(epic, "PROFITABLE_ADD_COOLDOWN", f"remaining={remaining:.0f}s")
                 return None
         if existing_count >= MAX_POSITIONS_PER_EPIC:
-            log(f"{epic}: max {MAX_POSITIONS_PER_EPIC} basket positions reached.")
+            record_entry_rejection(epic, "MAX_POSITIONS_PER_EPIC", f"limit={MAX_POSITIONS_PER_EPIC}")
             return None
         reserved_risk = basket_reserved_risk(api, positions, epic, account_currency)
         portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency)
@@ -1275,7 +1409,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         remaining_basket_risk = max_basket_amount - reserved_risk
         remaining_portfolio_risk = max_portfolio_amount - portfolio_reserved
         if remaining_portfolio_risk <= 0:
-            log(f"{epic}: portfolio risk cap reached ({MAX_PORTFOLIO_RISK * 100:.1f}%).")
+            record_entry_rejection(epic, "PORTFOLIO_RISK_CAP", f"limit={MAX_PORTFOLIO_RISK * 100:.1f}%")
             return None
         leg_multiplier = MARTINGALE_MULTIPLIER ** existing_count if ALLOW_MARTINGALE else 1.0
         if epic_positions:
@@ -1315,7 +1449,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: PORTFOLIO RISK OVERLAY | multiplier={portfolio_mult:.3f} | {portfolio_diag}")
             risk_amount = base_risk_amount * portfolio_mult
         if risk_amount <= 0:
-            log(f"{epic}: basket risk cap reached ({MAX_BASKET_RISK * 100:.1f}%).")
+            record_entry_rejection(epic, "BASKET_RISK_CAP", f"limit={MAX_BASKET_RISK * 100:.1f}%")
             return None
         if epic_positions:
             profitable_position = False
@@ -1334,11 +1468,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 # Never add to a losing/flat basket. Grid, averaging, and
                 # martingale are disabled; extra legs are allowed only when
                 # an existing position in the same direction is profitable.
-                log(f"{epic}: existing basket is not profitable; no additional leg.")
+                record_entry_rejection(epic, "BASKET_NOT_PROFITABLE")
                 return None
         size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency)
         if size is None:
-            log(f"{epic}: minimum trade size would exceed risk budget. Trade skipped.")
+            record_entry_rejection(epic, "MIN_TRADE_SIZE_EXCEEDS_RISK")
             return None
         log(f"{epic}: risk budget={risk_amount:.2f}; entry={trade['entry']}; SL={trade['stop_level']}; TP={trade['profit_level']}; size={size}")
         if DEMO_ONLY and str(getattr(config, "IS_DEMO", "true")).lower() not in ("true", "1", "yes"):
