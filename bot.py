@@ -298,8 +298,11 @@ def safety_allows_new_entry(balance, positions):
     daily_loss_limit = DAILY_LOSS_LIMIT_AED if str(getattr(config, "ACCOUNT_CURRENCY", "AED")).upper() == "AED" else start_balance * DAILY_LOSS_LIMIT_PCT
     daily_floor = start_balance - daily_loss_limit
     drawdown_floor = peak * (1.0 - EQUITY_DRAWDOWN_LIMIT_PCT)
-    if balance <= daily_floor or equity <= drawdown_floor:
-        log(f"SAFETY STOP: new entries disabled | balance={balance:.2f} equity={equity:.2f} day_floor={daily_floor:.2f} drawdown_floor={drawdown_floor:.2f}")
+    # All Capital bots use one hard daily loss limit for new-entry safety.
+    # For AED accounts this is a fixed 300 AED per UTC day. Do not trigger
+    # SAFETY_STOP from the separate percentage peak-equity drawdown gate.
+    if balance <= daily_floor:
+        log(f"SAFETY STOP: new entries disabled | balance={balance:.2f} equity={equity:.2f} day_floor={daily_floor:.2f} daily_loss_limit={daily_loss_limit:.2f}")
         return False
     if int(SAFETY.get("consecutive_errors", 0)) >= MAX_CONSECUTIVE_ERRORS:
         log(f"KILL SWITCH: {SAFETY['consecutive_errors']} consecutive errors; new entries disabled.")
