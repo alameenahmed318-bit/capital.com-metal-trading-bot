@@ -1710,6 +1710,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 lookback=PORTFOLIO_COV_LOOKBACK,
                 min_multiplier=PORTFOLIO_RISK_MIN_MULTIPLIER,
                 max_multiplier=PORTFOLIO_RISK_MAX_MULTIPLIER,
+                candle_cache=candle_cache,
+                candle_cache_ttl=candle_cache_ttl,
             )
             log(f"{epic}: PORTFOLIO RISK OVERLAY | multiplier={portfolio_mult:.3f} | {portfolio_diag}")
             risk_amount = base_risk_amount * portfolio_mult
