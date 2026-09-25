@@ -1457,6 +1457,36 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             record_entry_rejection(epic, "SPREAD_FILTER")
             return None
         htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
+        # Capital.com can return only a handful of HOUR candles for some
+        # instruments/session windows. V2 needs at least 60 HTF observations.
+        # If the native HOUR response is short, rebuild 1H candles from the
+        # already-fetched 15m history instead of skipping the signal engine.
+        native_htf_count = len(htf_df)
+        if STRATEGY_ID == "CAPITAL_V2_QUANT_HYBRID" and native_htf_count < 60:
+            try:
+                tmp = df[["time", "open", "high", "low", "close"]].copy()
+                tmp["time"] = pd.to_datetime(tmp["time"], utc=True, errors="coerce")
+                tmp = tmp.dropna(subset=["time"]).set_index("time").sort_index()
+                rebuilt = tmp.resample("1h", label="right", closed="right").agg({
+                    "open": "first",
+                    "high": "max",
+                    "low": "min",
+                    "close": "last",
+                }).dropna(subset=["open", "high", "low", "close"]).reset_index()
+                rebuilt["time"] = rebuilt["time"].dt.strftime("%Y-%m-%dT%H:%M:%S")
+                if len(rebuilt) >= 60:
+                    htf_df = rebuilt
+                    log(
+                        f"{epic}: V2 HTF FALLBACK | native 1h={native_htf_count} | "
+                        f"rebuilt 1h={len(htf_df)} from 15m={len(df)}"
+                    )
+                else:
+                    log(
+                        f"{epic}: V2 HTF FALLBACK insufficient | native 1h={native_htf_count} | "
+                        f"rebuilt 1h={len(rebuilt)} from 15m={len(df)}"
+                    )
+            except Exception as exc:
+                log(f"{epic}: V2 HTF FALLBACK failed: {exc}")
         # The selector chooses Trend/Breakout/Range from current market structure.
         signal = generate_signal(df, epic, htf_df)
         epic_positions = get_positions_for_epic(positions, epic)
