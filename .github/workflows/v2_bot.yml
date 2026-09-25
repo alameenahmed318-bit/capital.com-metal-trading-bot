@@ -6,7 +6,9 @@ on:
     - cron: "12,27,42,57 * * * *"
 
 concurrency:
-  group: capital-metal-trading-bot-v2
+  # All three bots share the same GitHub branch/state files.
+  # Serialize the entire workflow so state commits cannot race each other.
+  group: capital-metal-trading-bots-state
   cancel-in-progress: false
 
 permissions:
