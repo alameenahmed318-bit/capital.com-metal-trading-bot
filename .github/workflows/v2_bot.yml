@@ -62,7 +62,7 @@ jobs:
             v2_open_positions.json
             v2_execution_quality.json
             v2_entry_rejections.json
-            strategy_positions.json
+
           )
 
           for f in "${STATE_FILES[@]}"; do
