@@ -627,9 +627,12 @@ def generate_signal(df, epic, htf_df=None):
         return "SELL"
     return None
 
-def calculate_trade(df, direction):
+def calculate_trade(df, direction, entry_price=None):
+    # ATR comes from the latest completed candle; entry is based on the
+    # current executable market quote when provided.
     current = df.iloc[-1]
-    price, atr = safe_float(current["close"]), safe_float(current["atr"])
+    atr = safe_float(current["atr"])
+    price = safe_float(entry_price) if entry_price is not None else safe_float(current["close"])
     if price is None or atr is None or atr <= 0:
         return None
 
@@ -797,10 +800,24 @@ def process_epic(api, epic, positions, balance, account_currency):
         if len(df) < 3:
             log(f"{epic}: insufficient candles.")
             return None
-        current_price = safe_float(df.iloc[-1]["close"])
-        if current_price is None:
-            log(f"{epic}: invalid current price.")
+        # Use the live market snapshot for position management instead of
+        # treating the last candle close as the current executable price.
+        market = api.get_market(epic)
+        snapshot = market.get("snapshot", {}) or {}
+        live_bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
+        live_offer = safe_float(
+            snapshot.get("offer")
+            if snapshot.get("offer") is not None
+            else snapshot.get("ask")
+            if snapshot.get("ask") is not None
+            else market.get("offer")
+            if market.get("offer") is not None
+            else market.get("ask")
+        )
+        if live_bid is None or live_offer is None or live_bid <= 0 or live_offer <= 0 or live_offer < live_bid:
+            log(f"{epic}: invalid live market quote.")
             return None
+        current_price = (live_bid + live_offer) / 2.0
         # Position management must continue even when new entries are blocked
         # by daily loss, cooldown, spread, or kill-switch protections.
         # Profit lock is checked before normal entry logic on every bot pass.
@@ -833,7 +850,10 @@ def process_epic(api, epic, positions, balance, account_currency):
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
         log(f"{epic}: SIGNAL = {signal}")
-        trade = calculate_trade(df, signal)
+        # Execute at the current executable side of the spread:
+        # BUY enters at offer/ask, SELL enters at bid.
+        execution_price = live_offer if signal == "BUY" else live_bid
+        trade = calculate_trade(df, signal, entry_price=execution_price)
         if trade is None:
             return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
@@ -1107,6 +1127,10 @@ def run_cycle():
         log(f"Open positions before {cycle_epic}: {len(positions)}")
         log_and_save_open_positions(positions)
         cleanup_state(positions)
+        # Refresh balance before EVERY epic so risk sizing reflects any
+        # positions opened/closed earlier in this same cycle.
+        balance = api.get_balance()
+        log(f"Refreshed balance before {cycle_epic}: {balance} {account_currency}")
         process_epic(
             api=api,
             epic=cycle_epic,
