@@ -706,6 +706,21 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
         size = round(max(0, size - step), decimals)
     return size if size >= min_size else None
 
+CANDLE_CACHE_DEFAULT_TTL_SECONDS = 8.0
+
+def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
+    """Short-lived historical-candle cache for rapid V3 scans. Live quotes remain uncached."""
+    if cache is None:
+        return candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
+    now = time.monotonic()
+    key = (epic, resolution, int(max_candles))
+    item = cache.get(key)
+    if item is not None and now - item[0] < max(0.0, float(ttl_seconds)):
+        return item[1].copy()
+    df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
+    cache[key] = (now, df.copy())
+    return df
+
 def candles_to_dataframe(raw):
     prices = raw.get("prices", [])
     if not prices:
@@ -1424,7 +1439,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
             time.sleep(sleep_for)
     log("ENTRY+POSITION MONITOR | 15-minute scan window completed.")
 
-def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None):
+def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
     log("")
     owned_positions = filter_owned_positions(positions)
     if not session_allows_entry() and not get_positions_for_epic(owned_positions, epic):
@@ -1434,8 +1449,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
     log(f"PROCESSING {epic}")
     log("=" * 60)
     try:
-        raw = api.get_candles(epic=epic, resolution=RESOLUTION, max_candles=CANDLE_COUNT)
-        df = candles_to_dataframe(raw)
+        df = get_cached_candles(api, epic, RESOLUTION, CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         if df.empty:
             log(f"{epic}: no candle data.")
             return None
@@ -1485,7 +1499,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if not spread_allows_entry(api, epic, market=market):
             record_entry_rejection(epic, "SPREAD_FILTER")
             return None
-        htf_df = candles_to_dataframe(api.get_candles(epic=epic, resolution=HTF_RESOLUTION, max_candles=HTF_CANDLE_COUNT))
+        htf_df = get_cached_candles(api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         # Capital.com can return only a handful of HOUR candles for some
         # instruments/session windows. V2 needs at least 60 HTF observations.
         # If the native HOUR response is short, rebuild 1H candles from the
@@ -1495,12 +1509,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             try:
                 # Capital.com may return only a few native HOUR candles. Rebuild
                 # from a larger 15m window, but count only complete 4-candle hours.
-                fallback_raw = api.get_candles(
-                    epic=epic,
-                    resolution=RESOLUTION,
-                    max_candles=max(1000, CANDLE_COUNT),
-                ) if len(df) < 600 else raw
-                fallback_df = candles_to_dataframe(fallback_raw)
+                fallback_df = get_cached_candles(
+                    api,
+                    epic,
+                    RESOLUTION,
+                    max(1000, CANDLE_COUNT),
+                    cache=candle_cache,
+                    ttl_seconds=candle_cache_ttl,
+                ) if len(df) < 600 else df
                 tmp = fallback_df[["time", "open", "high", "low", "close"]].copy()
                 tmp["time"] = pd.to_datetime(tmp["time"], utc=True, errors="coerce")
                 tmp = tmp.dropna(subset=["time"]).set_index("time").sort_index()
