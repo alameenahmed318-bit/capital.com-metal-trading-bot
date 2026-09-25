@@ -98,13 +98,13 @@ def run_cycle():
     window_seconds = 14 * 60
     deadline = time.monotonic() + window_seconds
     while time.monotonic() < deadline:
+        # Fetch account state once per scan pass instead of once per Epic.
+        # process_epic still refreshes positions internally after the hard-loss
+        # check, so this optimization does not remove the safety refresh.
+        cycle_positions = api.get_open_positions()
+        cycle_balance = api.get_balance()
         for epic in base.EPICS:
             try:
-                # Reuse the cycle-level account snapshot. process_epic still
-                # refreshes positions after any hard-loss closure for safety.
-                if 'cycle_positions' not in locals():
-                    cycle_positions = api.get_open_positions()
-                    cycle_balance = api.get_balance()
                 market = api.get_market(epic)
                 base.process_epic(
                     api=api,
