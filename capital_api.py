@@ -241,6 +241,18 @@ class CapitalAPI:
             },
         ).get("activities", [])
 
+    def get_deal_activity_window(self, from_date, to_date):
+        """Return detailed account activity for a maximum one-day window."""
+        return self._request(
+            "GET",
+            "/api/v1/history/activity",
+            params={
+                "from": from_date,
+                "to": to_date,
+                "detailed": "true",
+            },
+        ).get("activities", [])
+
     def get_transactions(
         self,
         from_date,
