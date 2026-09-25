@@ -1039,38 +1039,52 @@ def manage_profit_trailing(api, positions, epic, account_currency):
 
     save_state(STATE)
 
-def manage_trailing_stops(api, positions, epic, current_price):
-    if not TRAILING_ENABLED:
+def manage_trailing_stops(api, positions, epic, current_price, df=None):
+    """Tighten broker-side SL using completed-candle ATR and market structure.
+    Never widen an existing stop; never remove the original broker stop.
+    """
+    if not TRAILING_ENABLED or df is None or len(df) < 25:
         return
+    atr = safe_float(df["atr"].iloc[-2])
+    if atr is None or atr <= 0:
+        return
+    recent = df.iloc[-12:-1]  # completed candles only
+    swing_low = safe_float(recent["low"].min())
+    swing_high = safe_float(recent["high"].max())
     for position in get_positions_for_epic(positions, epic):
-        deal_id, direction, entry, current_sl = position_deal_id(position), position_direction(position), position_open_level(position), position_stop_level(position)
-        if not deal_id or not direction or entry is None:
+        deal_id = position_deal_id(position)
+        direction = position_direction(position)
+        entry = position_open_level(position)
+        current_sl = position_stop_level(position)
+        if not deal_id or direction not in ("BUY", "SELL") or entry is None:
             continue
-        deal_key = str(deal_id)
         stored_risk = original_risk_distance(position)
         if stored_risk is None or stored_risk <= 0:
             continue
-        STATE["risk_distance"][deal_key] = stored_risk
-        r = stored_risk
+        STATE["risk_distance"][str(deal_id)] = stored_risk
+        favorable = current_price - entry if direction == "BUY" else entry - current_price
+        # Wait for price to move at least 1R before tightening.
+        if favorable < stored_risk:
+            continue
+        volatility_gap = 1.4 * atr
         if direction == "BUY":
-            if current_price - entry < TRAILING_START_R * r:
-                continue
-            new_stop = current_price - TRAILING_DISTANCE_R * r
-            if current_sl is not None and new_stop <= current_sl:
-                continue
-        elif direction == "SELL":
-            if entry - current_price < TRAILING_START_R * r:
-                continue
-            new_stop = current_price + TRAILING_DISTANCE_R * r
-            if current_sl is not None and new_stop >= current_sl:
+            structure_stop = swing_low - 0.15 * atr if swing_low is not None else current_price - volatility_gap
+            candidate = max(current_price - volatility_gap, structure_stop)
+            # Preserve room for noise and avoid a stop above the market.
+            candidate = min(candidate, current_price - 0.75 * atr)
+            if current_sl is not None and candidate <= current_sl + 0.05 * atr:
                 continue
         else:
-            continue
+            structure_stop = swing_high + 0.15 * atr if swing_high is not None else current_price + volatility_gap
+            candidate = min(current_price + volatility_gap, structure_stop)
+            candidate = max(candidate, current_price + 0.75 * atr)
+            if current_sl is not None and candidate >= current_sl - 0.05 * atr:
+                continue
         try:
-            api.modify_position(deal_id=deal_id, stop_level=new_stop)
-            log(f"{epic}: TRAILING STOP UPDATED | {direction} | old SL={current_sl} | new SL={new_stop}")
+            api.modify_position(deal_id=deal_id, stop_level=candidate)
+            log(f"{epic}: ADAPTIVE SL | {direction} | old={current_sl} | new={candidate} | ATR={atr:.6f}")
         except Exception as exc:
-            log(f"{epic}: trailing update failed: {exc}")
+            log(f"{epic}: adaptive SL update rejected; previous broker SL retained | {exc}")
     save_state(STATE)
 
 def cleanup_state(positions):
@@ -1180,7 +1194,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         positions = api.get_open_positions()
         manage_profit_trailing(api, positions, epic, account_currency)
         breakeven_stops(api, positions, epic, current_price)
-        manage_trailing_stops(api, positions, epic, current_price)
+        manage_trailing_stops(api, positions, epic, current_price, df=df)
 
         if not safety_allows_new_entry(balance, positions):
             return None
