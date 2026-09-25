@@ -1,0 +1,806 @@
+[
+  {
+    "timestamp": "2026-09-25T20:14:37.549094+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:14:41.041187+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:14:44.940331+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:15:00.164953+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:15:04.958724+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:15:19.101360+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:15:21.772087+00:00",
+    "epic": "US100",
+    "reason": "MAX_POSITIONS_PER_EPIC",
+    "details": "limit=10"
+  },
+  {
+    "timestamp": "2026-09-25T20:15:35.188765+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:15:50.002402+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:15:52.410258+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:15:55.205638+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:16:09.319685+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:16:11.696045+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:16:14.051556+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:16:28.129874+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:16:30.488408+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:16:32.868074+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:16:47.437036+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:16:50.263608+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:16:53.136857+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:17:07.286431+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:17:09.656090+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:17:12.716899+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:17:26.743072+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:17:29.128074+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:17:31.492326+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:17:45.455325+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:17:47.845000+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:17:50.195365+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:18:05.079225+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:18:07.473726+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:18:09.822449+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:18:23.825282+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:18:26.202291+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:18:29.010035+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:18:43.065170+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:18:45.442537+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:18:47.821256+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:01.738282+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:19:04.518812+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:07.371888+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:21.398382+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:19:23.790814+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:26.190739+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:40.121662+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:19:42.517835+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:45.306373+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:19:59.312832+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:20:01.696994+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:20:04.062190+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:20:18.973436+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:20:21.335305+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:20:23.742668+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:20:37.722218+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:20:40.102128+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:20:42.726784+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:20:57.456783+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:20:59.855998+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:21:02.755773+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:21:17.061492+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:21:19.918870+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:21:22.695882+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:21:36.632864+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:21:38.985997+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:21:41.379052+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:21:55.319751+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:21:57.685872+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:00.079675+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:14.042277+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:22:16.413708+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:19.210527+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:34.025200+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:22:36.389254+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:38.776180+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:52.761998+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:22:55.134198+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:22:57.543028+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:23:11.655379+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:23:14.036117+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:23:16.423202+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:23:30.380535+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:23:33.189779+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:23:36.424020+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:23:50.410013+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:23:52.817772+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:23:55.194119+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:24:09.186100+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:24:11.550390+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:24:13.908287+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:24:27.912080+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:24:30.296999+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:24:32.655266+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:24:48.479559+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:24:50.983950+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:24:53.899188+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:08.132489+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:25:10.496852+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:12.901829+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:26.990509+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:25:29.369488+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:31.771078+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:45.714076+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:25:48.501378+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:51.276680+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:55.845526+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=91.760000; completed_close=92.060000; distance=0.60 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-25T20:25:58.231670+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:26:01.019026+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:26:25.036730+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:26:27.408985+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:26:29.756474+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:26:43.709454+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:26:46.071554+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:26:48.464453+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:03.324509+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:27:05.738115+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.960; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:08.519089+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:22.487854+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:27:24.852787+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:27.195985+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:41.174829+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:27:43.553382+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:45.923032+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:27:59.886702+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:28:02.684085+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:28:05.515382+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:28:19.497761+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:28:21.886290+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:28:24.679599+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:28:38.599260+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:28:40.982804+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:28:43.373384+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:28:58.232574+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-25T20:29:00.672308+00:00",
+    "epic": "US100",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US500=BUY; correlation=0.959; threshold=0.80"
+  },
+  {
+    "timestamp": "2026-09-25T20:29:03.109333+00:00",
+    "epic": "US500",
+    "reason": "HIGH_CORRELATION_EXPOSURE",
+    "details": "candidate=BUY vs US100=BUY; correlation=0.960; threshold=0.80"
+  }
+]
