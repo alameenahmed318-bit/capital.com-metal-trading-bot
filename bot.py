@@ -963,14 +963,13 @@ def quant_signal_score(df, epic, htf_df):
     pullback_sell = pullback_confirmation_score(df, "SELL", atr)
     breakout_quality_buy = breakout_quality_score(df, "BUY", atr) if buy_breakout else 0.0
     breakout_quality_sell = breakout_quality_score(df, "SELL", atr) if sell_breakout else 0.0
-    scores["BUY"] += pullback_buy + breakout_quality_buy
-    scores["SELL"] += pullback_sell + breakout_quality_sell
-    log(f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}")
-
-
+    # Entry-quality bonuses are applied exactly once and remain non-blocking.
     buy_score = max(0.0, min(100.0, buy_score + pullback_buy + breakout_quality_buy))
     sell_score = max(0.0, min(100.0, sell_score + pullback_sell + breakout_quality_sell))
-    log(f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}")
+    log(
+        f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | "
+        f"breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}"
+    )
 
     adaptive_mult = adaptive_risk_multiplier(df)
     log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
@@ -1490,8 +1489,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         risk_multiplier = adaptive_risk_multiplier(df)
         requested_risk *= risk_multiplier
         log(f"{epic}: ADAPTIVE RISK | multiplier={risk_multiplier:.2f} | requested={requested_risk:.2f}")
-        # Hard cap: every new position may risk at most 3 AED.
-        # This caps position sizing as well as the secondary loss guard below.
+        # Hard cap: every new position may risk at most MAX_LOSS_PER_POSITION
+        # in account currency. This also caps the secondary loss guard below.
         base_risk_amount = min(
             requested_risk,
             max(0.0, remaining_basket_risk),
