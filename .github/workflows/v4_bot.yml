@@ -71,6 +71,20 @@ jobs:
           done
 
           git reset --hard HEAD
+
+          # The V4 runtime may create state files that are not tracked yet.
+          # Remove only the conflicting untracked V4 state files before syncing.
+          # They are already backed up in STATE_DIR and will be restored below.
+          for f in \
+            v4_entry_rejections.json \
+            v4_strategy_positions.json \
+            v4_trades_state.json
+          do
+            if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              rm -f "$f"
+            fi
+          done
+
           git pull --rebase -X theirs origin main
 
           for f in "${STATE_FILES[@]}"; do
