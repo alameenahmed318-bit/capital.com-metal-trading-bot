@@ -971,15 +971,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 return None
             basket_direction = next(iter(directions))
             if signal is None:
-                signal = basket_direction
-            elif signal != basket_direction:
-                log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
-                return None
-            elif signal is None:
                 if not allow_entry_without_signal:
                     log(f"{epic}: no fresh entry signal; managing existing position only.")
                     return None
                 signal = basket_direction
+            elif signal != basket_direction:
+                log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
+                return None
         log(f"{epic}: SIGNAL = {signal}")
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
