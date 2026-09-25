@@ -1457,6 +1457,15 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
     log(f"PROCESSING {epic}")
     log("=" * 60)
     try:
+        if not safety_allows_new_entry(balance, positions):
+            record_entry_rejection(epic, "SAFETY_STOP")
+            return None
+        if cooldown_active(epic):
+            record_entry_rejection(epic, "LOSS_COOLDOWN")
+            return None
+        if not spread_allows_entry(api, epic, market=market):
+            record_entry_rejection(epic, "SPREAD_FILTER")
+            return None
         df = get_cached_candles(api, epic, RESOLUTION, CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         if df.empty:
             log(f"{epic}: no candle data.")
@@ -1499,15 +1508,6 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
-        if not safety_allows_new_entry(balance, positions):
-            record_entry_rejection(epic, "SAFETY_STOP")
-            return None
-        if cooldown_active(epic):
-            record_entry_rejection(epic, "LOSS_COOLDOWN")
-            return None
-        if not spread_allows_entry(api, epic, market=market):
-            record_entry_rejection(epic, "SPREAD_FILTER")
-            return None
         htf_df = get_cached_candles(api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         # Capital.com can return only a handful of HOUR candles for some
         # instruments/session windows. V2 needs at least 60 HTF observations.
