@@ -888,21 +888,57 @@ def generate_signal(df, epic, htf_df=None):
     return quant_signal_score(df, epic, htf_df)
 
 
-def calculate_trade(df, direction, entry_price=None):
-    # ATR comes from the latest completed candle; entry is based on the
-    # current executable market quote when provided.
-    current = df.iloc[-1]
+def market_entry_strength(df, htf_df, direction):
+    """Independent 0..1 confidence proxy using completed 15m/1h candles.
+    This is not a predicted probability of profit.
+    """
+    if len(df) < 55 or htf_df is None or len(htf_df) < 205:
+        return 0.0
+    close = df["close"]
+    hclose = htf_df["close"]
+    last = -2
+    atr = safe_float(df["atr"].iloc[last])
+    price = safe_float(close.iloc[last])
+    if not atr or not price:
+        return 0.0
+    ema9 = close.ewm(span=9, adjust=False).mean().iloc[last]
+    ema21 = close.ewm(span=21, adjust=False).mean().iloc[last]
+    ema50 = close.ewm(span=50, adjust=False).mean().iloc[last]
+    h50 = hclose.ewm(span=50, adjust=False).mean().iloc[last]
+    h200 = hclose.ewm(span=200, adjust=False).mean().iloc[last]
+    roc5 = price - close.iloc[-7]
+    sign = 1 if direction == "BUY" else -1
+    votes = sum([
+        sign * (ema9 - ema21) > 0,
+        sign * (ema21 - ema50) > 0,
+        sign * (h50 - h200) > 0,
+        sign * roc5 > 0,
+    ])
+    return votes / 4.0
+
+
+def calculate_trade(df, direction, entry_price=None, strength=0.75):
+    # Use only the latest completed 15m candle for volatility.
+    current = df.iloc[-2]
     atr = safe_float(current["atr"])
     price = safe_float(entry_price) if entry_price is not None else safe_float(current["close"])
-    if price is None or atr is None or atr <= 0:
+    reference = safe_float(current["close"])
+    if price is None or atr is None or atr <= 0 or reference is None:
         return None
 
-    sl_distance = atr * SL_ATR_MULT
+    # Avoid chasing a stretched live quote. Recheck on the next scan.
+    max_chase_atr = 0.35 if strength < 1.0 else 0.50
+    if direction == "BUY" and price > reference + max_chase_atr * atr:
+        return None
+    if direction == "SELL" and price < reference - max_chase_atr * atr:
+        return None
 
-    # Fixed TP is intentionally disabled. Profit is managed by the
-    # profit-trail and trailing-stop logic.
+    # Strong aligned signals receive more volatility room; position sizing
+    # automatically shrinks as stop distance widens.
+    sl_mult = 1.5 + 0.5 * min(1.0, max(0.0, strength))
+    sl_distance = atr * sl_mult
+    # No fixed take-profit: existing live profit trail controls the exit.
     profit_level = None
-
     if direction == "BUY":
         stop_level = price - sl_distance
     elif direction == "SELL":
@@ -916,6 +952,7 @@ def calculate_trade(df, direction, entry_price=None):
         "profit_level": profit_level,
         "risk_distance": sl_distance,
         "atr": atr,
+        "signal_strength": strength,
     }
 
 def get_positions_for_epic(positions, epic):
@@ -1178,9 +1215,15 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         execution_price = live_offer if signal == "BUY" else live_bid
         order_spread_pct = market_spread_pct(api.get_market(epic))
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
-        trade = calculate_trade(df, signal, entry_price=execution_price)
-        if trade is None:
+        strength = market_entry_strength(df, htf_df, signal)
+        if strength < 0.75:
+            log(f"{epic}: signal direction not sufficiently aligned across 15m/1h; entry skipped.")
             return None
+        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength)
+        if trade is None:
+            log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
+            return None
+        log(f"{epic}: DYNAMIC PRICE | strength={strength:.2f} | entry={trade['entry']} | SL={trade['stop_level']} | ATR={trade['atr']:.6f}")
         if PRETRADE_COST_FILTER_ENABLED:
             cost_ok, cost_diag = evaluate_pretrade_cost(
                 epic=epic,
