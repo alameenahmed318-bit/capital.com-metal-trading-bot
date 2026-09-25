@@ -50,7 +50,7 @@ HTF_EMA_FAST = 50
 HTF_EMA_SLOW = 200
 MAX_PORTFOLIO_RISK = _float_env("MAX_PORTFOLIO_RISK", 0.09)
 MACRO_HOURS_UTC = (12, 13, 14, 15)
-VOL_MANAGED_SIZING = os.environ.get("VOL_MANAGED_SIZING", "false").lower() == "true"
+VOL_MANAGED_SIZING = os.environ.get("VOL_MANAGED_SIZING", "true").lower() == "true"
 
 RESOLUTION = "MINUTE_15"
 CANDLE_COUNT = 300
