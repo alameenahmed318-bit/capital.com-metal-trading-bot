@@ -50,15 +50,15 @@ MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 SL_ATR_MULT = getattr(config, "SL_ATR_MULT", 1.5)
 TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
 TRAILING_ENABLED = True
-TRAILING_START_R = 1.0
-TRAILING_DISTANCE_R = 1.0
+# Give winning trades more room before the protective stop starts following price.
+TRAILING_START_R = 1.50
+TRAILING_DISTANCE_R = 1.25
 
-# Profit-lock: once a position reaches +$10 account profit, remember its
-# highest profit and close it if profit falls $2 from that peak.
-# Profit-lock amounts are in the account currency (AED for an AED account).
+# Profit-lock: activate only after meaningful profit, then allow a wider pullback.
+# Values are in the account currency (AED for an AED account).
 PROFIT_TRAIL_ENABLED = True
-PROFIT_TRAIL_START = 10.0
-PROFIT_TRAIL_DISTANCE = 2.0
+PROFIT_TRAIL_START = 20.0
+PROFIT_TRAIL_DISTANCE = 8.0
 
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
@@ -86,8 +86,9 @@ LOSS_COOLDOWN_MINUTES = 20
 SIDEWAYS_FILTER_ENABLED = True
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
-BREAKEVEN_START_R = 0.75
-BREAKEVEN_OFFSET_R = 0.05
+# Do not move to break-even too early; allow normal market pullbacks first.
+BREAKEVEN_START_R = 1.25
+BREAKEVEN_OFFSET_R = 0.10
 KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
 SAFETY_STATE_FILE = "bot_safety_state.json"
@@ -686,7 +687,7 @@ def portfolio_reserved_risk(api, positions, account_currency):
     return sum(estimated_position_risk_account(p, api, account_currency) for p in positions)
 
 def manage_profit_trailing(api, positions, epic):
-    """Lock realized profit dynamically after +$10; close on a $2 pullback."""
+    """Lock profit after +20 account-currency units; allow an 8-unit pullback."""
     if not PROFIT_TRAIL_ENABLED:
         return
 
@@ -709,7 +710,7 @@ def manage_profit_trailing(api, positions, epic):
                 }
                 log(
                     f"{epic}: PROFIT TRAIL ACTIVATED | deal={deal_id} | "
-                    f"profit=${pnl:.2f} | floor=${pnl - PROFIT_TRAIL_DISTANCE:.2f}"
+                    f"profit={pnl:.2f} account-currency | floor={pnl - PROFIT_TRAIL_DISTANCE:.2f} account-currency"
                 )
             continue
 
@@ -719,7 +720,7 @@ def manage_profit_trailing(api, positions, epic):
             state["peak_profit"] = round(peak, 2)
             log(
                 f"{epic}: PROFIT TRAIL MOVED | deal={deal_id} | "
-                f"peak=${peak:.2f} | floor=${peak - PROFIT_TRAIL_DISTANCE:.2f}"
+                f"peak={peak:.2f} account-currency | floor={peak - PROFIT_TRAIL_DISTANCE:.2f} account-currency"
             )
 
         floor = peak - PROFIT_TRAIL_DISTANCE
