@@ -64,11 +64,40 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Sync before creating the state commit. This avoids the old
-          # commit-then-rebase pattern that caused state-file conflicts.
+          # Preserve bot-generated state before syncing. The bot writes tracked
+          # JSON/DB files during the run, so a pull --rebase can fail if the
+          # workspace is dirty. Reset only the runner-local tracked changes,
+          # then restore the freshly generated state and commit it.
+          STATE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STATE_DIR"' EXIT
+
+          STATE_FILES=(
+            trades.db
+            stats.json
+            trades_state.json
+            bot_safety_state.json
+            open_positions.json
+            execution_quality.json
+            quant_validation.json
+            entry_rejections.json
+          )
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then
+              cp -a "$f" "$STATE_DIR/$f"
+            fi
+          done
+
+          git reset --hard HEAD
           git pull --rebase -X theirs origin main
 
-          git add -f trades.db stats.json trades_state.json bot_safety_state.json open_positions.json execution_quality.json quant_validation.json
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$STATE_DIR/$f" ]; then
+              cp -a "$STATE_DIR/$f" "$f"
+            fi
+          done
+
+          git add -f "${STATE_FILES[@]}"
           if git diff --cached --quiet; then
             echo "No state changes to persist."
             exit 0
