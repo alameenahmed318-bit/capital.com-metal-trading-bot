@@ -47,12 +47,14 @@ if not MARKET_RSI_SETTINGS:
     MARKET_RSI_SETTINGS = {epic: (40, 70, 30, 60) for epic in EPICS}
 MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
-SL_ATR_MULT = getattr(config, "SL_ATR_MULT", 1.5)
-TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
+# Give losing trades more breathing room while keeping risk sizing tied to the wider stop.
+# The position size is reduced automatically as risk distance increases.
+SL_ATR_MULT = 2.0
+TP_ATR_MULT = 3.0
 TRAILING_ENABLED = True
 # Give winning trades more room before the protective stop starts following price.
-TRAILING_START_R = 1.50
-TRAILING_DISTANCE_R = 1.25
+TRAILING_START_R = 2.00
+TRAILING_DISTANCE_R = 1.50
 
 # Profit-lock: activate only after meaningful profit, then allow a wider pullback.
 # Values are in the account currency (AED for an AED account).
