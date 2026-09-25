@@ -1034,120 +1034,58 @@ def update_loss_cooldowns_from_history(api):
             if "close" not in note and "closed" not in note:
                 continue
             epic = tx.get("instrumentName") or tx.get("epic")
-            pnl = safe_float(_first_value(
-                tx.get("profitAndLoss"),
-                tx.get("profitLoss"),
-                tx.get("profit"),
-                tx.get("pnl"),
-                tx.get("realizedProfitLoss"),
-                tx.get("realisedProfitLoss"),
-            ))
+            pnl = direct_transaction_pnl(tx)
             if epic and pnl is not None and pnl < 0 and epic in EPICS:
                 set_loss_cooldown(epic)
                 log(f"{epic}: recent closed loss detected ({pnl}); cooldown applied for {LOSS_COOLDOWN_MINUTES}m.")
     except Exception as exc:
         log(f"Loss-history check unavailable; continuing safely: {exc}")
 
-def _nested_numeric_profit_loss(value):
-    """Find a likely realized P/L number in detailed Capital.com activity."""
-    if isinstance(value, dict):
-        for key, item in value.items():
-            key_l = str(key).lower().replace("_", "").replace("-", "")
-            if any(token in key_l for token in (
-                "profitandloss",
-                "profitloss",
-                "realizedpnl",
-                "realisedpnl",
-                "realizedprofitloss",
-                "realisedprofitloss",
-                "realizedprofit",
-                "realisedprofit",
-                "realizedloss",
-                "realisedloss",
-                "pnl",
-            )):
-                number = safe_float(item)
-                if number is not None:
-                    return number
-        for item in value.values():
-            found = _nested_numeric_profit_loss(item)
-            if found is not None:
-                return found
-    elif isinstance(value, list):
-        for item in value:
-            found = _nested_numeric_profit_loss(item)
-            if found is not None:
-                return found
-    return None
+def direct_transaction_pnl(tx):
+    """Read P/L only when Capital.com returns it explicitly on the transaction.
+
+    No nested-field guessing and no reconstruction from price/size is used.
+    """
+    return safe_float(_first_value(
+        tx.get("profitAndLoss"),
+        tx.get("profitLoss"),
+        tx.get("realizedProfitLoss"),
+        tx.get("realisedProfitLoss"),
+        tx.get("realizedPnl"),
+        tx.get("realisedPnl"),
+    ))
+
+
+def get_broker_account_profit_loss(api):
+    """Return the broker-reported account P/L from GET /accounts."""
+    accounts = api.get_accounts()
+    account = next((a for a in accounts if a.get("accountId") == api.account_id), None)
+    if account is None:
+        raise RuntimeError(f"Selected Capital.com account {api.account_id} was not found.")
+    balance = account.get("balance") or {}
+    pnl = safe_float(balance.get("profitLoss"))
+    currency = str(balance.get("currency") or account.get("currency") or "").upper()
+    return pnl, currency
+
 
 
 def get_closed_trade_report(api, from_date, to_date):
-    """Build the report from transactions plus detailed activity per trade."""
+    """Build a report without inventing realized P/L."""
     transactions = api.get_transactions(from_date, to_date)
-    wins = 0
-    losses = 0
-    flat = 0
-    unknown_pnl = 0
-    total_pnl = 0.0
-    total_wins = 0.0
-    total_losses = 0.0
-    closed = 0
+    wins = losses = flat = unknown_pnl = closed = 0
+    total_pnl = total_wins = total_losses = 0.0
 
     for tx in transactions:
         transaction_type = str(tx.get("transactionType") or "").upper()
-        note = str(
-            tx.get("note")
-            or tx.get("description")
-            or transaction_type
-            or ""
-        ).lower()
-
-        # Capital.com transaction history represents completed trades as
-        # transaction records and exposes P/L as profitAndLoss. Accept the
-        # documented close types as well as textual close descriptions.
-        is_closed_trade = (
-            "CLOSE" in transaction_type
-            or "CLOSED" in transaction_type
-            or "close" in note
-            or "closed" in note
-        )
-        if not is_closed_trade:
+        note = str(tx.get("note") or tx.get("description") or transaction_type or "").lower()
+        if not ("CLOSE" in transaction_type or "CLOSED" in transaction_type or "close" in note or "closed" in note):
             continue
-
         closed += 1
-
-        pnl = safe_float(_first_value(
-            tx.get("profitAndLoss"),
-            tx.get("profitLoss"),
-            tx.get("profit"),
-            tx.get("pnl"),
-            tx.get("realizedProfitLoss"),
-            tx.get("realisedProfitLoss"),
-        ))
-
-        if pnl is None:
-            deal_id = (
-                tx.get("dealId")
-                or tx.get("dealReference")
-                or tx.get("reference")
-            )
-
-            if deal_id:
-                try:
-                    activities = api.get_deal_activity(str(deal_id))
-                    for activity in activities:
-                        pnl = _nested_numeric_profit_loss(activity)
-                        if pnl is not None:
-                            break
-                except Exception as exc:
-                    log(f"Detailed P/L lookup failed for {deal_id}: {exc}")
-
+        pnl = direct_transaction_pnl(tx)
         if pnl is None:
             unknown_pnl += 1
             continue
-
         total_pnl += pnl
-
         if pnl > 0:
             wins += 1
             total_wins += pnl
@@ -1157,6 +1095,7 @@ def get_closed_trade_report(api, from_date, to_date):
         else:
             flat += 1
 
+    broker_pnl, broker_currency = get_broker_account_profit_loss(api)
     return {
         "closed": closed,
         "wins": wins,
@@ -1166,90 +1105,89 @@ def get_closed_trade_report(api, from_date, to_date):
         "total_pnl": round(total_pnl, 2),
         "total_wins": round(total_wins, 2),
         "total_losses": round(total_losses, 2),
+        "broker_account_pnl": broker_pnl,
+        "broker_currency": broker_currency,
     }
 
+
 def save_live_stats(api, account_currency):
-    """Persist a live daily statistics snapshot from Capital.com, not the stale SQLite file."""
+    """Persist broker-direct statistics; never infer trade P/L."""
     try:
         today = utc_day()
         now = datetime.now(timezone.utc)
         transactions = api.get_transactions(f"{today}T00:00:00", now.strftime("%Y-%m-%dT%H:%M:%S"))
         closed_rows = []
+        unknown_closed = 0
         for tx in transactions:
             transaction_type = str(tx.get("transactionType") or "").upper()
             note = str(tx.get("note") or tx.get("description") or transaction_type or "").lower()
-            is_closed_trade = ("CLOSE" in transaction_type or "CLOSED" in transaction_type or "close" in note or "closed" in note)
-            if not is_closed_trade:
+            if not ("CLOSE" in transaction_type or "CLOSED" in transaction_type or "close" in note or "closed" in note):
                 continue
-            pnl = safe_float(_first_value(
-                tx.get("profitAndLoss"), tx.get("profitLoss"), tx.get("profit"), tx.get("pnl"),
-                tx.get("realizedProfitLoss"), tx.get("realisedProfitLoss")
-            ))
+            pnl = direct_transaction_pnl(tx)
             if pnl is None:
-                deal_id = tx.get("dealId") or tx.get("dealReference") or tx.get("reference")
-                if deal_id:
-                    try:
-                        for activity in api.get_deal_activity(str(deal_id)):
-                            pnl = _nested_numeric_profit_loss(activity)
-                            if pnl is not None:
-                                break
-                    except Exception:
-                        pass
-            if pnl is None:
+                unknown_closed += 1
                 continue
             epic = tx.get("epic") or tx.get("instrumentName") or "UNKNOWN"
             closed_rows.append((str(epic), float(pnl)))
 
         open_positions = api.get_open_positions()
+        broker_pnl, broker_currency = get_broker_account_profit_loss(api)
         winners = [p for _, p in closed_rows if p > 0]
         losers = [p for _, p in closed_rows if p < 0]
         by_epic = {}
         for epic in EPICS:
             vals = [p for e, p in closed_rows if e == epic]
             by_epic[epic] = {
-                "trades": len(vals),
+                "trades_with_explicit_pnl": len(vals),
                 "winners": sum(1 for p in vals if p > 0),
                 "losers": sum(1 for p in vals if p < 0),
                 "win_rate": round(sum(1 for p in vals if p > 0) / len(vals) * 100, 1) if vals else 0,
                 "pnl": round(sum(vals), 2),
             }
+
         closed_pnls = [p for _, p in closed_rows]
         stats = {
             "last_updated": now.isoformat(),
-            "currency": account_currency,
-            "source": "Capital.com API",
+            "currency": broker_currency or account_currency,
+            "source": "Capital.com API /accounts + /history/transactions",
+            "pnl_policy": "Broker-reported only; no inferred or reconstructed trade P/L",
+            "broker_account_profit_loss": broker_pnl,
             "overall": {
-                "total_trades": len(closed_pnls) + len(open_positions),
                 "open_trades": len(open_positions),
-                "closed_trades": len(closed_pnls),
+                "closed_trades_seen": len(closed_pnls) + unknown_closed,
+                "closed_trades_with_explicit_pnl": len(closed_pnls),
+                "closed_trades_without_explicit_pnl": unknown_closed,
                 "winners": len(winners),
                 "losers": len(losers),
                 "win_rate": round(len(winners) / len(closed_pnls) * 100, 1) if closed_pnls else 0,
-                "total_pnl": round(sum(closed_pnls), 2),
-                "best_trade": round(max(closed_pnls), 2) if closed_pnls else 0,
-                "worst_trade": round(min(closed_pnls), 2) if closed_pnls else 0,
-                "average_win": round(sum(winners) / len(winners), 2) if winners else 0,
-                "average_loss": round(sum(losers) / len(losers), 2) if losers else 0,
+                "explicit_closed_trade_pnl": round(sum(closed_pnls), 2),
+                "broker_account_profit_loss": broker_pnl,
+                "best_trade": round(max(closed_pnls), 2) if closed_pnls else None,
+                "worst_trade": round(min(closed_pnls), 2) if closed_pnls else None,
+                "average_win": round(sum(winners) / len(winners), 2) if winners else None,
+                "average_loss": round(sum(losers) / len(losers), 2) if losers else None,
             },
             "by_epic": by_epic,
         }
         with open("stats.json", "w", encoding="utf-8") as file:
             json.dump(stats, file, indent=2)
-        log(f"STATS SAVED | closed={len(closed_pnls)} | wins={len(winners)} | losses={len(losers)} | net={sum(closed_pnls):.2f} {account_currency}")
+        log(f"STATS SAVED | broker account P/L={broker_pnl:.2f} {broker_currency or account_currency} | closed seen={len(closed_pnls)+unknown_closed} | explicit trade P/L={len(closed_pnls)} | unknown={unknown_closed}")
     except Exception as exc:
         log(f"Live stats save failed; continuing safely: {exc}")
+
 
 def log_trade_report(api, account_currency):
     try:
         today = utc_day()
         now = datetime.now(timezone.utc)
         report = get_closed_trade_report(api, f"{today}T00:00:00", now.strftime("%Y-%m-%dT%H:%M:%S"))
+        broker_currency = report["broker_currency"] or account_currency
+        broker_pnl = report["broker_account_pnl"]
+        broker_pnl_text = f"{broker_pnl:.2f} {broker_currency}" if broker_pnl is not None else "UNAVAILABLE"
         log(
-            f"TRADE REPORT | today={today} | closed={report['closed']} | "
-            f"wins={report['wins']} | losses={report['losses']} | flat={report['flat']} | "
-            f"unknown P/L={report['unknown_pnl']} | "
-            f"gross wins={report['total_wins']:.2f} | gross losses={report['total_losses']:.2f} | "
-            f"net P/L={report['total_pnl']:.2f} {account_currency}"
+            f"TRADE REPORT | today={today} | closed seen={report['closed']} | "
+            f"closed with explicit P/L={report['closed'] - report['unknown_pnl']} | "
+            f"unknown P/L={report['unknown_pnl']} | broker account P/L={broker_pnl_text}"
         )
     except Exception as exc:
         log(f"Trade report unavailable; continuing safely: {exc}")
