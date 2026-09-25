@@ -23,7 +23,7 @@ MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = 0.015
 MAX_BASKET_RISK = 0.04
 
-EPICS = ["GOLD", "EURUSD", "SILVER"]
+EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
 
 RESOLUTION = getattr(config, "RESOLUTION", "MINUTE_15")
 CANDLE_COUNT = getattr(config, "CANDLE_COUNT", 300)
@@ -42,11 +42,9 @@ MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
 XAU_WORKING_ORDER_ENABLED = False  # Gold uses market orders on BUY and SELL signals
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
-MARKET_RSI_SETTINGS = {
-    "GOLD": (38, 72, 28, 62),
-    "EURUSD": (35, 65, 25, 58),
-    "SILVER": (40, 75, 25, 62),
-}
+MARKET_RSI_SETTINGS = getattr(config, "MARKET_RSI_SETTINGS", {})
+if not MARKET_RSI_SETTINGS:
+    MARKET_RSI_SETTINGS = {epic: (40, 70, 30, 60) for epic in EPICS}
 MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
 SL_ATR_MULT = getattr(config, "SL_ATR_MULT", 1.5)
@@ -93,7 +91,7 @@ KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
 SAFETY_STATE_FILE = "bot_safety_state.json"
 
-MIN_TRADE_SIZE = {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0}
+MIN_TRADE_SIZE = getattr(config, "MIN_TRADE_SIZE", {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01})
 STATE_FILE = "trades_state.json"
 OPEN_POSITIONS_FILE = "open_positions.json"
 
