@@ -86,7 +86,7 @@ def run_cycle():
     base.update_loss_cooldowns_from_history(api)
     base.log_trade_report(api, account_currency)
 
-    scan_seconds = 10
+    scan_seconds = 2
     window_seconds = 14 * 60
     deadline = time.monotonic() + window_seconds
     while time.monotonic() < deadline:
@@ -108,7 +108,7 @@ def run_cycle():
         time.sleep(scan_seconds)
 
     base.save_live_stats(api, account_currency)
-    base.log("V3 quantity-focused 10-second scan window completed.")
+    base.log("V3 quantity-focused 2-second scan window completed.")
 
 if __name__ == "__main__":
     run_cycle()
