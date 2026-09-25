@@ -125,6 +125,7 @@ def save_safety_state(state):
     os.replace(temp_file, SAFETY_STATE_FILE)
 
 SAFETY = load_safety_state()
+API_CLIENT = None
 
 def utc_day():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -913,14 +914,21 @@ def update_loss_cooldowns_from_history(api):
         log(f"Loss-history check unavailable; continuing safely: {exc}")
 
 def run_cycle():
+    global API_CLIENT
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
     log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
     log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
     log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
-    api = CapitalAPI()
+    if API_CLIENT is None:
+        API_CLIENT = CapitalAPI()
+    api = API_CLIENT
     log("Logging in to Capital.com...")
     api.login()
+    # A successful session refresh clears a previous transient error streak.
+    if int(SAFETY.get("consecutive_errors", 0)):
+        SAFETY["consecutive_errors"] = 0
+        save_safety_state(SAFETY)
     balance = api.get_balance()
     account_currency = api.get_account_currency()
     log(f"Account balance: {balance} {account_currency}")
