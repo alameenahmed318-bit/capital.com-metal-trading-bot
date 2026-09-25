@@ -68,7 +68,7 @@ base.EXECUTION_QUALITY_FILE = "v3_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "v3_entry_rejections.json"
 
 base.SESSION_FILTER_ENABLED = False
-base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 5
+base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 2
 base.MAX_POSITIONS_PER_EPIC = 10
 base.CORRELATION_FILTER_ENABLED = False
 base.PROFIT_TRAIL_ENABLED = False
@@ -107,8 +107,6 @@ def run_cycle():
                     balance=balance,
                     account_currency=account_currency,
                 )
-                latest = api.get_open_positions()
-                v3_profit_manager(api, latest, epic, account_currency)
             except Exception as exc:
                 base.log(f"{epic}: V3 scan error: {exc}")
         time.sleep(scan_seconds)
