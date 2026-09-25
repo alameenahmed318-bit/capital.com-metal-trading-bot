@@ -16,7 +16,8 @@ from execution_costs import evaluate_pretrade_cost
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_V1"
-POSITION_OWNERSHIP_FILE = "strategy_positions.json"
+POSITION_OWNERSHIP_FILE = "v1_strategy_positions.json"
+LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
@@ -186,15 +187,28 @@ def _save_owned_deals(deals):
     except Exception as exc:
         log(f"Could not save position ownership: {exc}")
 
+def _load_legacy_owned_deals():
+    if not os.path.exists(LEGACY_POSITION_OWNERSHIP_FILE):
+        return set()
+    try:
+        with open(LEGACY_POSITION_OWNERSHIP_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        if not isinstance(data, dict):
+            return set()
+        return {str(x) for x in data.get(STRATEGY_ID, [])}
+    except Exception as exc:
+        log(f"Could not load legacy position ownership: {exc}")
+        return set()
+
 def filter_owned_positions(positions):
+    # Each strategy has its own ownership registry. On first use, migrate only
+    # that strategy's entries from the old shared registry; never adopt every
+    # open account position.
+    if not os.path.exists(POSITION_OWNERSHIP_FILE):
+        legacy_owned = _load_legacy_owned_deals()
+        _save_owned_deals(legacy_owned)
     owned = _load_owned_deals()
-    if not _ownership_initialized():
-        if STRATEGY_ID == "CAPITAL_V1":
-            # V1 adopts only the positions that existed before ownership isolation.
-            owned = {str(position_deal_id(p)) for p in positions if position_deal_id(p)}
-        _save_owned_deals(owned)
-    filtered = [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
-    return filtered
+    return [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
 
 def register_owned_position(deal_id):
     if deal_id:
@@ -1400,7 +1414,8 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True):
     log("")
-    if not session_allows_entry() and not get_positions_for_epic(positions, epic):
+    owned_positions = filter_owned_positions(positions)
+    if not session_allows_entry() and not get_positions_for_epic(owned_positions, epic):
         log(f"{epic}: liquidity session filter active; no new entry now.")
         return None
     log("=" * 60)
@@ -1439,13 +1454,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Profit lock is checked before normal entry logic on every bot pass.
         # Hard loss guard runs before all other management so a position cannot
         # remain beyond the configured account-currency loss ceiling.
-        enforce_max_position_loss(api, positions, epic, account_currency)
+        enforce_max_position_loss(api, owned_positions, epic, account_currency)
         # Refresh after hard-loss closures so trailing/break-even never tries to
         # modify a position that was already closed in this same cycle.
         positions = api.get_open_positions()
-        manage_profit_trailing(api, positions, epic, account_currency)
-        breakeven_stops(api, positions, epic, current_price)
-        manage_trailing_stops(api, positions, epic, current_price, df=df)
+        owned_positions = filter_owned_positions(positions)
+        manage_profit_trailing(api, owned_positions, epic, account_currency)
+        breakeven_stops(api, owned_positions, epic, current_price)
+        manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
         if not safety_allows_new_entry(balance, positions):
             record_entry_rejection(epic, "SAFETY_STOP")
@@ -1501,7 +1517,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
         # The selector chooses Trend/Breakout/Range from current market structure.
         signal = generate_signal(df, epic, htf_df)
-        epic_positions = get_positions_for_epic(positions, epic)
+        epic_positions = get_positions_for_epic(owned_positions, epic)
         if signal is None and not epic_positions:
             log(f"No signal this cycle for {epic}.")
             return None
