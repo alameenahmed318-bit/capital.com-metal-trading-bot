@@ -1185,7 +1185,13 @@ def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None):
         return None
 
     # Avoid chasing a stretched live quote. Recheck on the next scan.
-    max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
+    # V3 rapid-entry mode allows a wider executable-price move after a completed-candle signal.
+    # Hard safety, spread, cost and risk controls remain unchanged.
+    if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
+        v3_late_entry_atr = float(getattr(globals(), "V3_LATE_ENTRY_MAX_ATR", 0.75))
+        max_chase_atr = max(v3_late_entry_atr, LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR)
+    else:
+        max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
     if direction == "BUY" and price > reference + max_chase_atr * atr:
         if epic:
             record_entry_rejection(
@@ -1549,7 +1555,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         order_spread_pct = market_spread_pct(api.get_market(epic))
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         strength = market_entry_strength(df, htf_df, signal)
-        required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.75))
+        if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
+            required_strength = float(getattr(globals(), "V3_MIN_ENTRY_STRENGTH", 0.55))
+        else:
+            required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.75))
         if strength < required_strength:
             record_entry_rejection(
                 epic,
