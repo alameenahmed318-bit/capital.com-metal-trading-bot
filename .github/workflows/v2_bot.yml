@@ -6,8 +6,6 @@ on:
     - cron: "12,27,42,57 * * * *"
 
 concurrency:
-  # All three bots share the same GitHub branch/state files.
-  # Serialize the entire workflow so state commits cannot race each other.
   group: capital-metal-trading-bots-state
   cancel-in-progress: false
 
@@ -21,15 +19,12 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Run Capital V2 bot
         run: python v2_bot.py
         env:
@@ -47,16 +42,13 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
-
       - name: Persist V2 state
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           STATE_DIR="$(mktemp -d)"
           trap 'rm -rf "$STATE_DIR"' EXIT
-
           STATE_FILES=(
             v2_strategy_positions.json
             v2_trades_state.json
@@ -64,26 +56,28 @@ jobs:
             v2_open_positions.json
             v2_execution_quality.json
             v2_entry_rejections.json
-
           )
-
           for f in "${STATE_FILES[@]}"; do
             if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
           done
-
           git reset --hard HEAD
           git pull --rebase -X theirs origin main
-
+          EXISTING_STATE_FILES=()
           for f in "${STATE_FILES[@]}"; do
-            if [ -e "$STATE_DIR/$f" ]; then cp -a "$STATE_DIR/$f" "$f"; fi
+            if [ -e "$STATE_DIR/$f" ]; then
+              cp -a "$STATE_DIR/$f" "$f"
+              EXISTING_STATE_FILES+=( "$f" )
+            fi
           done
-
-          git add -f "${STATE_FILES[@]}"
+          if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
+            echo "No V2 state files were generated."
+            exit 0
+          fi
+          git add -f "${EXISTING_STATE_FILES[@]}"
           if git diff --cached --quiet; then
             echo "No V2 state changes to persist."
             exit 0
           fi
-
           git commit -m "Update V2 bot state [skip ci]"
           git push origin main || {
             git pull --rebase -X theirs origin main
