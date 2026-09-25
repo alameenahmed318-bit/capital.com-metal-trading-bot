@@ -17,7 +17,7 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 1
+MAX_POSITIONS_PER_EPIC = 3
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.015)
@@ -74,7 +74,7 @@ SR_BUFFER_ATR = 0.25
 BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
-ADD_TO_PROFITABLE_BASKET = False
+ADD_TO_PROFITABLE_BASKET = True
 
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
@@ -874,15 +874,11 @@ def process_epic(api, epic, positions, balance, account_currency):
             if ADD_TO_PROFITABLE_BASKET and profitable_position:
                 log(f"{epic}: profitable basket detected; adding next leg up to max {MAX_POSITIONS_PER_EPIC}.")
             else:
-                latest = epic_positions[-1]
-                latest_entry, latest_stop = position_open_level(latest), position_stop_level(latest)
-                latest_r = abs(latest_entry - latest_stop) if latest_entry is not None and latest_stop is not None else trade["risk_distance"]
-                if latest_entry is None or latest_r <= 0:
-                    return None
-                adverse_move = latest_entry - trade["entry"] if signal == "BUY" else trade["entry"] - latest_entry
-                if adverse_move < latest_r * GRID_STEP_R:
-                    log(f"{epic}: basket exists but grid distance not reached; no averaging leg.")
-                    return None
+                # Never add to a losing/flat basket. Grid, averaging, and
+                # martingale are disabled; extra legs are allowed only when
+                # an existing position in the same direction is profitable.
+                log(f"{epic}: existing basket is not profitable; no additional leg.")
+                return None
         size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency)
         if size is None:
             log(f"{epic}: minimum trade size would exceed risk budget. Trade skipped.")
