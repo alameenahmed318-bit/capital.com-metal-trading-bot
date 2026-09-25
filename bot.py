@@ -52,7 +52,7 @@ MARKET_RSI_SETTINGS = {
 MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
 SL_ATR_MULT = getattr(config, "SL_ATR_MULT", 1.5)
-TP_ATR_MULT = getattr(config, "TP_ATR_MULT", 3.0)
+TP_ATR_MULT = 999999.0  # No fixed take-profit; profit trail controls profitable exits.
 TRAILING_ENABLED = True
 TRAILING_START_R = 1.0
 TRAILING_DISTANCE_R = 1.0
@@ -642,7 +642,7 @@ def manage_profit_trailing(api, positions, epic):
             )
 
         floor = peak - PROFIT_TRAIL_DISTANCE
-        if pnl <= floor:
+        if pnl <= floor and pnl >= PROFIT_TRAIL_START - PROFIT_TRAIL_DISTANCE:
             try:
                 response = api.close_position(deal_id)
                 log(
