@@ -78,7 +78,17 @@ jobs:
             if [ -e "$STATE_DIR/$f" ]; then cp -a "$STATE_DIR/$f" "$f"; fi
           done
 
-          git add -f "${STATE_FILES[@]}"
+          EXISTING_STATE_FILES=()
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then EXISTING_STATE_FILES+=( "$f" ); fi
+          done
+
+          if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
+            echo "No V3 state files exist to persist."
+            exit 0
+          fi
+
+          git add -f "${EXISTING_STATE_FILES[@]}"
           if git diff --cached --quiet; then
             echo "No V3 state changes to persist."
             exit 0
