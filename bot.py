@@ -70,8 +70,8 @@ TRAILING_DISTANCE_R = 1.50
 # Profit-lock: activate only after meaningful profit, then allow a wider pullback.
 # Values are in the account currency (AED for an AED account).
 PROFIT_TRAIL_ENABLED = True
-PROFIT_TRAIL_START = 20.0
-PROFIT_TRAIL_DISTANCE = 8.0
+PROFIT_TRAIL_START = 1.0
+PROFIT_TRAIL_DISTANCE = 1.0
 
 # Hard per-position loss guard in account currency (AED for an AED account).
 # This is a secondary protection; the broker-side ATR stop remains the primary stop.
