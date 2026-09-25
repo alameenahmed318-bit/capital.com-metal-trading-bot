@@ -11,7 +11,8 @@ import pandas as pd
 
 import config
 from capital_api import CapitalAPI
-from correlation_risk import portfolio_correlation_multiplier
+from portfolio_risk import portfolio_risk_overlay
+from execution_costs import evaluate_pretrade_cost
 
 DEMO_ONLY = True
 ALLOW_GRID = False
@@ -39,9 +40,16 @@ HTF_EMA_SLOW = getattr(config, "HTF_EMA_SLOW", 200)
 VOL_REGIME_MIN = getattr(config, "VOL_REGIME_MIN", 1.05)
 VOL_REGIME_FAST = getattr(config, "VOL_REGIME_FAST", 20)
 VOL_REGIME_SLOW = getattr(config, "VOL_REGIME_SLOW", 200)
-MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
-CORRELATION_RISK_ENABLED = True
-CORRELATION_RISK_MIN_MULTIPLIER = 0.50
+MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.06)
+PORTFOLIO_VOL_TARGET_ANNUAL = getattr(config, "PORTFOLIO_VOL_TARGET_ANNUAL", 0.10)
+PORTFOLIO_RISK_MIN_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MIN_MULTIPLIER", 0.35)
+PORTFOLIO_RISK_MAX_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MAX_MULTIPLIER", 1.00)
+PORTFOLIO_COV_LOOKBACK = getattr(config, "PORTFOLIO_COV_LOOKBACK", 192)
+PRETRADE_COST_FILTER_ENABLED = getattr(config, "PRETRADE_COST_FILTER_ENABLED", True)
+MAX_COST_TO_STOP_RATIO = getattr(config, "MAX_COST_TO_STOP_RATIO", 0.25)
+EXTRA_SLIPPAGE_BUFFER_PCT = getattr(config, "EXTRA_SLIPPAGE_BUFFER_PCT", 0.01)
+ALPHA_ENSEMBLE_ENABLED = getattr(config, "ALPHA_ENSEMBLE_ENABLED", True)
+ALPHA_MIN_AGREEMENT = getattr(config, "ALPHA_MIN_AGREEMENT", 2)
 XAU_WORKING_ORDER_ENABLED = False  # Gold uses market orders on BUY and SELL signals
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
@@ -703,6 +711,39 @@ def market_regime(df, htf_df):
     return "RANGE"
 
 
+def alpha_ensemble_confirmation(df, direction):
+    """Independent confirmation from trend, momentum, slope and structure."""
+    if len(df) < 80:
+        return False, {"reason": "insufficient_history"}
+    cur = df.iloc[-2]
+    close = safe_float(cur.get("close"))
+    if close is None or close <= 0:
+        return False, {"reason": "invalid_price"}
+    closes = df["close"].astype(float)
+    ema9 = closes.ewm(span=9, adjust=False).mean().iloc[-2]
+    ema21 = closes.ewm(span=21, adjust=False).mean().iloc[-2]
+    ema50 = closes.ewm(span=50, adjust=False).mean().iloc[-2]
+    ema200 = closes.ewm(span=200, adjust=False).mean().iloc[-2]
+    roc5 = close / float(closes.iloc[-7]) - 1.0
+    roc20 = close / float(closes.iloc[-22]) - 1.0
+    x20 = np.arange(20, dtype=float)
+    x60 = np.arange(60, dtype=float)
+    slope20 = float(np.polyfit(x20, closes.iloc[-21:-1].to_numpy(dtype=float), 1)[0])
+    slope60 = float(np.polyfit(x60, closes.iloc[-61:-1].to_numpy(dtype=float), 1)[0])
+    recent20 = df.iloc[-21:-1]
+    high20 = float(recent20["high"].max())
+    low20 = float(recent20["low"].min())
+    want = 1 if direction == "BUY" else -1
+    votes = {
+        "trend": 1 if (ema9 > ema21 and ema50 > ema200) else -1 if (ema9 < ema21 and ema50 < ema200) else 0,
+        "momentum": 1 if (roc5 > 0 and roc20 > 0) else -1 if (roc5 < 0 and roc20 < 0) else 0,
+        "slope": 1 if (slope20 > 0 and slope60 > 0) else -1 if (slope20 < 0 and slope60 < 0) else 0,
+        "structure": 1 if close > high20 else -1 if close < low20 else 0,
+    }
+    agreement = sum(1 for v in votes.values() if v == want)
+    opposed = sum(1 for v in votes.values() if v == -want)
+    return agreement >= ALPHA_MIN_AGREEMENT and agreement > opposed, {"votes": votes, "agreement": agreement, "opposed": opposed}
+
 def quant_signal_score(df, epic, htf_df):
     """Institutional-style multi-factor score inspired by trend, momentum,
     breakout, volatility and disciplined risk frameworks.
@@ -825,8 +866,18 @@ def quant_signal_score(df, epic, htf_df):
     log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
 
     if buy_score >= MIN_ENTRY_SCORE and buy_score > sell_score + 8:
+        if ALPHA_ENSEMBLE_ENABLED:
+            ok, details = alpha_ensemble_confirmation(df, "BUY")
+            log(f"{epic}: ALPHA ENSEMBLE BUY | {details}")
+            if not ok:
+                return None
         return "BUY"
     if sell_score >= MIN_ENTRY_SCORE and sell_score > buy_score + 8:
+        if ALPHA_ENSEMBLE_ENABLED:
+            ok, details = alpha_ensemble_confirmation(df, "SELL")
+            log(f"{epic}: ALPHA ENSEMBLE SELL | {details}")
+            if not ok:
+                return None
         return "SELL"
     return None
 
@@ -1130,6 +1181,20 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         trade = calculate_trade(df, signal, entry_price=execution_price)
         if trade is None:
             return None
+        if PRETRADE_COST_FILTER_ENABLED:
+            cost_ok, cost_diag = evaluate_pretrade_cost(
+                epic=epic,
+                market=market,
+                entry_price=execution_price,
+                risk_distance=trade["risk_distance"],
+                execution_quality_file=EXECUTION_QUALITY_FILE,
+                max_cost_to_risk=MAX_COST_TO_STOP_RATIO,
+                extra_slippage_buffer_pct=EXTRA_SLIPPAGE_BUFFER_PCT,
+            )
+            log(f"{epic}: PRE-TRADE COST | {cost_diag}")
+            if not cost_ok:
+                log(f"{epic}: entry blocked because estimated execution cost is too large relative to the stop.")
+                return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
         if epic_positions:
@@ -1145,12 +1210,6 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: max {MAX_POSITIONS_PER_EPIC} basket positions reached.")
             return None
         reserved_risk = basket_reserved_risk(api, positions, epic, account_currency)
-        corr_mult = 1.0
-        if CORRELATION_RISK_ENABLED:
-            existing_epics = [position_epic(p) for p in positions if position_epic(p)]
-            corr_mult, corr_pairs = portfolio_correlation_multiplier(api, epic, existing_epics)
-            if corr_pairs: log(f"{epic}: CORRELATION OVERLAY | multiplier={corr_mult:.2f} | pairs={corr_pairs}")
-            corr_mult = max(CORRELATION_RISK_MIN_MULTIPLIER, corr_mult)
         portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
@@ -1168,11 +1227,31 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         risk_multiplier = adaptive_risk_multiplier(df)
         requested_risk *= risk_multiplier
         log(f"{epic}: ADAPTIVE RISK | multiplier={risk_multiplier:.2f} | requested={requested_risk:.2f}")
-        risk_amount = min(
+        base_risk_amount = min(
             requested_risk,
             max(0.0, remaining_basket_risk),
             max(0.0, remaining_portfolio_risk),
-        ) * corr_mult
+        )
+        if base_risk_amount <= 0:
+            risk_amount = 0.0
+        else:
+            risk_positions = []
+            for p in positions:
+                rp = dict(p)
+                rp["risk_amount_account"] = estimated_position_risk_account(p, api, account_currency)
+                risk_positions.append(rp)
+            portfolio_mult, portfolio_diag = portfolio_risk_overlay(
+                api=api,
+                candidate_epic=epic,
+                existing_positions=risk_positions,
+                candidate_risk_amount=base_risk_amount,
+                target_vol=PORTFOLIO_VOL_TARGET_ANNUAL,
+                lookback=PORTFOLIO_COV_LOOKBACK,
+                min_multiplier=PORTFOLIO_RISK_MIN_MULTIPLIER,
+                max_multiplier=PORTFOLIO_RISK_MAX_MULTIPLIER,
+            )
+            log(f"{epic}: PORTFOLIO RISK OVERLAY | multiplier={portfolio_mult:.3f} | {portfolio_diag}")
+            risk_amount = base_risk_amount * portfolio_mult
         if risk_amount <= 0:
             log(f"{epic}: basket risk cap reached ({MAX_BASKET_RISK * 100:.1f}%).")
             return None
@@ -1476,4 +1555,3 @@ if __name__ == "__main__":
     except Exception as exc:
         log(f"MAIN ERROR: {exc}")
         traceback.print_exc()
-# institutional risk overlay modules added separately
