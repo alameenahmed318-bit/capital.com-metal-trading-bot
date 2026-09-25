@@ -276,24 +276,79 @@ def normalize_direction(value):
         return "SELL"
     return value
 
+def _position_nested(position):
+    nested = position.get("position")
+    return nested if isinstance(nested, dict) else {}
+
+def _first_value(*values):
+    for value in values:
+        if value is not None and value != "":
+            return value
+    return None
+
 def position_epic(position):
-    return position.get("epic") or position.get("position", {}).get("epic")
+    nested = _position_nested(position)
+    instrument = position.get("instrument") if isinstance(position.get("instrument"), dict) else {}
+    nested_instrument = nested.get("instrument") if isinstance(nested.get("instrument"), dict) else {}
+    return _first_value(
+        position.get("epic"),
+        position.get("instrumentName"),
+        instrument.get("epic"),
+        nested.get("epic"),
+        nested.get("instrumentName"),
+        nested_instrument.get("epic"),
+    )
 
 def position_deal_id(position):
-    return position.get("dealId") or position.get("position", {}).get("dealId") or position.get("dealReference")
+    nested = _position_nested(position)
+    return _first_value(position.get("dealId"), position.get("dealReference"), nested.get("dealId"), nested.get("dealReference"))
 
 def position_direction(position):
-    return normalize_direction(position.get("direction") or position.get("position", {}).get("direction"))
+    nested = _position_nested(position)
+    return normalize_direction(_first_value(position.get("direction"), nested.get("direction")))
 
 def position_open_level(position):
-    return safe_float(position.get("level") or position.get("openLevel") or position.get("position", {}).get("level") or position.get("position", {}).get("openLevel"))
+    nested = _position_nested(position)
+    return safe_float(_first_value(
+        position.get("openLevel"),
+        position.get("openPrice"),
+        position.get("level"),
+        nested.get("openLevel"),
+        nested.get("openPrice"),
+        nested.get("level"),
+    ))
+
+def position_current_level(position):
+    nested = _position_nested(position)
+    return safe_float(_first_value(
+        position.get("level"),
+        position.get("currentLevel"),
+        position.get("currentPrice"),
+        nested.get("level"),
+        nested.get("currentLevel"),
+        nested.get("currentPrice"),
+    ))
 
 def position_stop_level(position):
-    return safe_float(position.get("stopLevel") or position.get("position", {}).get("stopLevel"))
+    nested = _position_nested(position)
+    return safe_float(_first_value(position.get("stopLevel"), nested.get("stopLevel")))
 
 def position_profit_level(position):
-    return safe_float(position.get("profitLevel") or position.get("position", {}).get("profitLevel"))
+    nested = _position_nested(position)
+    return safe_float(_first_value(position.get("profitLevel"), nested.get("profitLevel")))
 
+def position_unrealized_pnl(position):
+    nested = _position_nested(position)
+    return safe_float(_first_value(
+        position.get("profitLoss"),
+        position.get("unrealizedProfitLoss"),
+        position.get("unrealizedPnl"),
+        position.get("profit"),
+        nested.get("profitLoss"),
+        nested.get("unrealizedProfitLoss"),
+        nested.get("unrealizedPnl"),
+        nested.get("profit"),
+    ), 0.0) or 0.0
 
 def position_summary(position):
     return {
@@ -302,7 +357,7 @@ def position_summary(position):
         "direction": position_direction(position),
         "size": position_size_value(position),
         "entry": position_open_level(position),
-        "current": safe_float(position.get("level") or position.get("position", {}).get("level")),
+        "current": position_current_level(position),
         "stopLoss": position_stop_level(position),
         "takeProfit": position_profit_level(position),
         "profitLoss": position_unrealized_pnl(position),
@@ -894,6 +949,57 @@ def update_loss_cooldowns_from_history(api):
     except Exception as exc:
         log(f"Loss-history check unavailable; continuing safely: {exc}")
 
+def get_closed_trade_report(api, from_date, to_date):
+    """Return a simple win/loss report from Capital.com transaction history."""
+    transactions = api.get_transactions(from_date, to_date)
+    wins = 0
+    losses = 0
+    flat = 0
+    total_pnl = 0.0
+    closed = 0
+    for tx in transactions:
+        note = str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
+        pnl = _first_value(
+            tx.get("profitAndLoss"),
+            tx.get("profitLoss"),
+            tx.get("profit"),
+            tx.get("pnl"),
+        )
+        pnl = safe_float(pnl)
+        # Capital.com may label the transaction differently, so a numeric P/L
+        # is the primary test for inclusion in the report.
+        if pnl is None:
+            continue
+        if "close" not in note and "closed" not in note and "profit" not in note and "loss" not in note:
+            continue
+        closed += 1
+        total_pnl += pnl
+        if pnl > 0:
+            wins += 1
+        elif pnl < 0:
+            losses += 1
+        else:
+            flat += 1
+    return {
+        "closed": closed,
+        "wins": wins,
+        "losses": losses,
+        "flat": flat,
+        "total_pnl": round(total_pnl, 2),
+    }
+
+def log_trade_report(api, account_currency):
+    try:
+        today = utc_day()
+        report = get_closed_trade_report(api, today, today)
+        log(
+            f"TRADE REPORT | today={today} | closed={report['closed']} | "
+            f"wins={report['wins']} | losses={report['losses']} | flat={report['flat']} | "
+            f"net P/L={report['total_pnl']:.2f} {account_currency}"
+        )
+    except Exception as exc:
+        log(f"Trade report unavailable; continuing safely: {exc}")
+
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
@@ -908,6 +1014,7 @@ def run_cycle():
     log(f"Account balance: {balance} {account_currency}")
     reset_daily_safety(balance)
     update_loss_cooldowns_from_history(api)
+    log_trade_report(api, account_currency)
     for cycle_epic in EPICS:
         # Refresh account state before EVERY epic so newly opened/closed positions
         # are immediately reflected in subsequent decisions within this run.
