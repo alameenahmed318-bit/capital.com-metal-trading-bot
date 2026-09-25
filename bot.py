@@ -62,6 +62,10 @@ PROFIT_TRAIL_ENABLED = True
 PROFIT_TRAIL_START = 20.0
 PROFIT_TRAIL_DISTANCE = 8.0
 
+# Hard per-position loss guard in account currency (AED for an AED account).
+# This is a secondary protection; the broker-side ATR stop remains the primary stop.
+MAX_LOSS_PER_POSITION = 5.0
+
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
 TREND_EMA_GAP_ATR = 0.25
@@ -396,6 +400,26 @@ def log_and_save_open_positions(positions):
             json.dump({"updated_at": datetime.now(timezone.utc).isoformat(), "positions": summaries}, file, indent=2)
     except Exception as exc:
         log(f"Could not save open positions snapshot: {exc}")
+
+
+def enforce_max_position_loss(api, positions, epic, account_currency):
+    """Close any position whose current P/L reaches the hard account-currency loss cap."""
+    if MAX_LOSS_PER_POSITION is None or MAX_LOSS_PER_POSITION <= 0:
+        return
+    for position in get_positions_for_epic(positions, epic):
+        deal_id = position_deal_id(position)
+        pnl = position_unrealized_pnl(position)
+        if not deal_id or pnl > -MAX_LOSS_PER_POSITION:
+            continue
+        try:
+            response = api.close_position(deal_id)
+            log(
+                f"{epic}: HARD LOSS LIMIT CLOSE | deal={deal_id} | "
+                f"P/L={pnl:.2f} {account_currency} | limit=-{MAX_LOSS_PER_POSITION:.2f} {account_currency}"
+            )
+            log(f"{epic}: HARD LOSS CLOSE RESPONSE = {response}")
+        except Exception as exc:
+            log(f"{epic}: hard loss close failed | deal={deal_id} | {exc}")
 
 
 def original_risk_distance(position):
@@ -825,6 +849,9 @@ def process_epic(api, epic, positions, balance, account_currency):
         # Position management must continue even when new entries are blocked
         # by daily loss, cooldown, spread, or kill-switch protections.
         # Profit lock is checked before normal entry logic on every bot pass.
+        # Hard loss guard runs before all other management so a position cannot
+        # remain beyond the configured account-currency loss ceiling.
+        enforce_max_position_loss(api, positions, epic, account_currency)
         manage_profit_trailing(api, positions, epic)
         breakeven_stops(api, positions, epic, current_price)
         manage_trailing_stops(api, positions, epic, current_price)
@@ -1087,6 +1114,77 @@ def get_closed_trade_report(api, from_date, to_date):
         "total_losses": round(total_losses, 2),
     }
 
+def save_live_stats(api, account_currency):
+    """Persist a live daily statistics snapshot from Capital.com, not the stale SQLite file."""
+    try:
+        today = utc_day()
+        now = datetime.now(timezone.utc)
+        transactions = api.get_transactions(f"{today}T00:00:00", now.strftime("%Y-%m-%dT%H:%M:%S"))
+        closed_rows = []
+        for tx in transactions:
+            transaction_type = str(tx.get("transactionType") or "").upper()
+            note = str(tx.get("note") or tx.get("description") or transaction_type or "").lower()
+            is_closed_trade = ("CLOSE" in transaction_type or "CLOSED" in transaction_type or "close" in note or "closed" in note)
+            if not is_closed_trade:
+                continue
+            pnl = safe_float(_first_value(
+                tx.get("profitAndLoss"), tx.get("profitLoss"), tx.get("profit"), tx.get("pnl"),
+                tx.get("realizedProfitLoss"), tx.get("realisedProfitLoss")
+            ))
+            if pnl is None:
+                deal_id = tx.get("dealId") or tx.get("dealReference") or tx.get("reference")
+                if deal_id:
+                    try:
+                        for activity in api.get_deal_activity(str(deal_id)):
+                            pnl = _nested_numeric_profit_loss(activity)
+                            if pnl is not None:
+                                break
+                    except Exception:
+                        pass
+            if pnl is None:
+                continue
+            epic = tx.get("epic") or tx.get("instrumentName") or "UNKNOWN"
+            closed_rows.append((str(epic), float(pnl)))
+
+        open_positions = api.get_open_positions()
+        winners = [p for _, p in closed_rows if p > 0]
+        losers = [p for _, p in closed_rows if p < 0]
+        by_epic = {}
+        for epic in EPICS:
+            vals = [p for e, p in closed_rows if e == epic]
+            by_epic[epic] = {
+                "trades": len(vals),
+                "winners": sum(1 for p in vals if p > 0),
+                "losers": sum(1 for p in vals if p < 0),
+                "win_rate": round(sum(1 for p in vals if p > 0) / len(vals) * 100, 1) if vals else 0,
+                "pnl": round(sum(vals), 2),
+            }
+        closed_pnls = [p for _, p in closed_rows]
+        stats = {
+            "last_updated": now.isoformat(),
+            "currency": account_currency,
+            "source": "Capital.com API",
+            "overall": {
+                "total_trades": len(closed_pnls) + len(open_positions),
+                "open_trades": len(open_positions),
+                "closed_trades": len(closed_pnls),
+                "winners": len(winners),
+                "losers": len(losers),
+                "win_rate": round(len(winners) / len(closed_pnls) * 100, 1) if closed_pnls else 0,
+                "total_pnl": round(sum(closed_pnls), 2),
+                "best_trade": round(max(closed_pnls), 2) if closed_pnls else 0,
+                "worst_trade": round(min(closed_pnls), 2) if closed_pnls else 0,
+                "average_win": round(sum(winners) / len(winners), 2) if winners else 0,
+                "average_loss": round(sum(losers) / len(losers), 2) if losers else 0,
+            },
+            "by_epic": by_epic,
+        }
+        with open("stats.json", "w", encoding="utf-8") as file:
+            json.dump(stats, file, indent=2)
+        log(f"STATS SAVED | closed={len(closed_pnls)} | wins={len(winners)} | losses={len(losers)} | net={sum(closed_pnls):.2f} {account_currency}")
+    except Exception as exc:
+        log(f"Live stats save failed; continuing safely: {exc}")
+
 def log_trade_report(api, account_currency):
     try:
         today = utc_day()
@@ -1143,6 +1241,9 @@ def run_cycle():
             account_currency=account_currency,
         )
         time.sleep(1)
+    # Refresh the persisted report after all markets have been processed so
+    # closures that happened during this cycle are included.
+    save_live_stats(api, account_currency)
     log("Trading cycle completed.")
 
 if __name__ == "__main__":
