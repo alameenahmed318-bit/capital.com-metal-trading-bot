@@ -160,6 +160,16 @@ def log(message):
         log(f"Could not load position ownership: {exc}")
         return set()
 
+def _ownership_initialized():
+    if not os.path.exists(POSITION_OWNERSHIP_FILE):
+        return False
+    try:
+        with open(POSITION_OWNERSHIP_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return isinstance(data, dict) and STRATEGY_ID in data
+    except Exception:
+        return False
+
 def _save_owned_deals(deals):
     try:
         data = {}
@@ -177,10 +187,10 @@ def _save_owned_deals(deals):
 
 def filter_owned_positions(positions):
     owned = _load_owned_deals()
-    if STRATEGY_ID == "CAPITAL_V1" and not owned and positions:
-        # V1 already owns the account's pre-existing bot positions; adopt them
-        # once. V2 never adopts unowned positions.
-        owned = {str(position_deal_id(p)) for p in positions if position_deal_id(p)}
+    if not _ownership_initialized():
+        if STRATEGY_ID == "CAPITAL_V1":
+            # V1 adopts only the positions that existed before ownership isolation.
+            owned = {str(position_deal_id(p)) for p in positions if position_deal_id(p)}
         _save_owned_deals(owned)
     filtered = [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
     return filtered
