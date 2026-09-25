@@ -12,7 +12,7 @@ import pandas as pd
 import bot as base
 
 V2_STRATEGY_ID = "CAPITAL_V2_QUANT_HYBRID"
-V2_MIN_SCORE = 58.0
+V2_MIN_SCORE = 52.0
 V2_RSI_OVERSOLD = 32.0
 V2_RSI_OVERBOUGHT = 68.0
 V2_BB_LOOKBACK = 20
@@ -350,7 +350,11 @@ def market_entry_strength_v2(df, htf_df, direction):
         sign * (h50 - h100) > 0,
         sign * roc5 > 0,
     ]
-    return sum(votes) / len(votes)
+    raw_strength = sum(votes) / len(votes)
+    # V2 active-entry mode: the base execution gate is 0.75. Add a small
+    # confidence floor so 3/5 alignment can pass instead of requiring 4/5.
+    # Risk, spread, cost, portfolio and basket controls remain in base.py.
+    return min(1.0, raw_strength + 0.25)
 
 # V1's process_epic resolves quant_signal_score from bot.py's global namespace.
 # This monkey patch is scoped to the V2 process only; V1 source remains unchanged.
@@ -366,6 +370,12 @@ base.OPEN_POSITIONS_FILE = "v2_open_positions.json"
 base.SAFETY_STATE_FILE = "v2_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "v2_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "v2_entry_rejections.json"
+
+# V2 ACTIVE-ENTRY MODE (V2 only): reduce false inactivity without removing
+# hard risk controls. V1 is untouched. Weekend, spread, cost, portfolio and
+# basket-risk protections remain active in bot.py.
+base.SESSION_FILTER_ENABLED = False
+base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 20
 
 
 def run_cycle():
