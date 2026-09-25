@@ -1,0 +1,65 @@
+{
+  "updated_at": "2026-09-25T17:50:41.185892+00:00",
+  "orders": [
+    {
+      "timestamp": "2026-09-25T17:45:20.730424+00:00",
+      "epic": "US100",
+      "direction": "BUY",
+      "requested_executable_price": 30625.3,
+      "actual_fill_price": 30627.8,
+      "spread_pct_at_order": 0.005877339915951664,
+      "slippage_price": 2.5,
+      "slippage_pct": 0.008163,
+      "deal_reference": "o_4474b11b-43b4-4e40-bceb-21b43dde9d14",
+      "deal_id": "00000000-65fe-34f7-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "B",
+      "size": 0.051
+    },
+    {
+      "timestamp": "2026-09-25T17:46:42.702462+00:00",
+      "epic": "US100",
+      "direction": "BUY",
+      "requested_executable_price": 30629.4,
+      "actual_fill_price": 30627.5,
+      "spread_pct_at_order": 0.005876994505007762,
+      "slippage_price": -1.9,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_0bd10c0c-7ac3-4ba7-a459-6479e4f05da1",
+      "deal_id": "00000000-65fe-38ff-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.003
+    },
+    {
+      "timestamp": "2026-09-25T17:49:11.526227+00:00",
+      "epic": "US100",
+      "direction": "BUY",
+      "requested_executable_price": 30632.3,
+      "actual_fill_price": 30633.4,
+      "spread_pct_at_order": 0.00587622707046991,
+      "slippage_price": 1.1,
+      "slippage_pct": 0.003591,
+      "deal_reference": "o_35844698-f290-49ae-9d80-c747e23429bd",
+      "deal_id": "00000000-65fe-3aea-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.003
+    },
+    {
+      "timestamp": "2026-09-25T17:50:41.185892+00:00",
+      "epic": "US100",
+      "direction": "BUY",
+      "requested_executable_price": 30638.2,
+      "actual_fill_price": 30638.4,
+      "spread_pct_at_order": 0.005875191351715955,
+      "slippage_price": 0.2,
+      "slippage_pct": 0.000653,
+      "deal_reference": "o_dd2804ef-8dc8-425b-b6f0-b92e9027c26a",
+      "deal_id": "00000000-65fe-3c37-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.003
+    }
+  ]
+}
