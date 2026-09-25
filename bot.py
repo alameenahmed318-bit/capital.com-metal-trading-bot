@@ -149,7 +149,8 @@ OPEN_POSITIONS_FILE = "open_positions.json"
 
 def log(message):
     print(f"[BOT] {message}")
-\ndef _load_owned_deals():
+
+def _load_owned_deals():
     if not os.path.exists(POSITION_OWNERSHIP_FILE):
         return set()
     try:
