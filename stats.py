@@ -74,9 +74,7 @@ def update_stats():
         else:
             break
 
-    # Use the full epic list, not config.EPICS - that narrows to ["GOLD"] under
-    # vol_regime, which would silently drop SILVER/COPPER's baseline-strategy history
-    # from the per-epic breakdown.
+    # Keep the per-epic breakdown aligned with the currently enabled markets.
     by_epic = {
         epic: _epic_stats([pnl for e, pnl in closed_rows if e == epic])
         for epic in config.EPICS
