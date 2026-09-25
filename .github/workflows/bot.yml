@@ -3,7 +3,7 @@ name: Metals Trading Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/15 * * * *"
 
 # Prevent overlapping runs so two bot instances cannot trade at the same time.
 concurrency:
@@ -26,17 +26,10 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Run bot every minute (5 checks per scheduled run)
+      - name: Run bot
         run: |
-          # Run frequent checks so the profit-lock manager can react quickly.
-          for i in $(seq 1 5); do
-            echo "=== Bot check $i/5 ==="
-            python bot.py
-            python binance_bot.py
-            if [ "$i" -lt 5 ]; then
-              sleep 60
-            fi
-          done
+          python bot.py
+          python binance_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
