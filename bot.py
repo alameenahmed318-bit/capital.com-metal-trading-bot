@@ -22,7 +22,7 @@ MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = 0.015
 MAX_BASKET_RISK = 0.04
 
-EPICS = ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"]
+EPICS = ["GOLD", "EURUSD", "SILVER"]
 
 RESOLUTION = getattr(config, "RESOLUTION", "MINUTE_15")
 CANDLE_COUNT = getattr(config, "CANDLE_COUNT", 300)
@@ -45,9 +45,6 @@ MARKET_RSI_SETTINGS = {
     "GOLD": (38, 72, 28, 62),
     "EURUSD": (35, 65, 25, 58),
     "SILVER": (40, 75, 25, 62),
-    "OIL_CRUDE": (35, 66, 25, 58),
-    "US100": (38, 70, 25, 60),
-    "US500": (38, 70, 25, 60),
 }
 MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
@@ -95,7 +92,7 @@ KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
 SAFETY_STATE_FILE = "bot_safety_state.json"
 
-MIN_TRADE_SIZE = {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01}
+MIN_TRADE_SIZE = {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0}
 STATE_FILE = "trades_state.json"
 OPEN_POSITIONS_FILE = "open_positions.json"
 
@@ -138,12 +135,6 @@ def reset_daily_safety(balance):
         SAFETY["consecutive_errors"] = 0
         SAFETY["cooldown_until"] = {}
         save_safety_state(SAFETY)
-
-def position_unrealized_pnl(position):
-    value = position.get("profitLoss")
-    if value is None:
-        value = position.get("position", {}).get("profitLoss")
-    return safe_float(value, 0.0) or 0.0
 
 def account_equity(balance, positions):
     return float(balance) + sum(position_unrealized_pnl(p) for p in positions)
@@ -250,7 +241,7 @@ def load_state():
         return state
     except Exception as exc:
         log(f"Could not load state file: {exc}")
-        return {"risk_distance": {}}
+        return {"risk_distance": {}, "profit_trail": {}}
 
 def save_state(state):
     temp_file = f"{STATE_FILE}.tmp"
