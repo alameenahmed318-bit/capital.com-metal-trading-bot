@@ -71,10 +71,21 @@ def portfolio_risk_overlay(api, candidate_epic, existing_positions, candidate_ri
             cached_df = None
             if candle_cache is not None:
                 now = __import__("time").monotonic()
-                key = (epic, "MINUTE_15", int(lookback + 1))
-                item = candle_cache.get(key)
-                if item is not None and now - item[0] < max(0.0, float(candle_cache_ttl)):
-                    cached_df = item[1]
+                # Base V3 scanning caches the same 15m market under its actual
+                # CANDLE_COUNT key. Reuse any fresh 15m snapshot for this epic
+                # instead of issuing a second history request just for risk.
+                candidates = [
+                    item for key, item in candle_cache.items()
+                    if isinstance(key, tuple)
+                    and len(key) >= 2
+                    and key[0] == epic
+                    and key[1] == "MINUTE_15"
+                    and item is not None
+                    and now - item[0] < max(0.0, float(candle_cache_ttl))
+                ]
+                if candidates:
+                    candidates.sort(key=lambda item: item[0], reverse=True)
+                    cached_df = candidates[0][1]
             if cached_df is not None and not cached_df.empty and "close" in cached_df.columns:
                 s = cached_df["close"].astype(float)
             else:
