@@ -247,7 +247,8 @@ def load_state():
             return {"risk_distance": {}, "profit_trail": {}}
         state.setdefault("risk_distance", {})
         state.setdefault("profit_trail", {})
-        return state    except Exception as exc:
+        return state
+    except Exception as exc:
         log(f"Could not load state file: {exc}")
         return {"risk_distance": {}}
 
