@@ -1,3 +1,4 @@
+import time
 """Capital.com V3 - rapid profit-take demo strategy.
 
 V3 is isolated from V1/V2. It reuses the V2 quantitative signal engine,
@@ -9,13 +10,13 @@ import bot as base
 import v2_bot as v2
 
 # Lower the underlying V2 scorer threshold for V3 before calling it.
-v2.V2_MIN_SCORE = 45.0
+v2.V2_MIN_SCORE = V3_MIN_SCORE
 quant_signal_score_v2 = v2.quant_signal_score_v2
 market_entry_strength_v2 = v2.market_entry_strength_v2
 
 V3_STRATEGY_ID = "CAPITAL_V3_RAPID_PROFIT"
 V3_PROFIT_TARGET_AED = 0.20
-V3_MIN_SCORE = 45.0
+V3_MIN_SCORE = 42.0
 
 def v3_signal(df, htf_df, epic):
     signal, score, diag = quant_signal_score_v2(df, htf_df, epic)
@@ -65,7 +66,9 @@ base.ENTRY_REJECTION_FILE = "v3_entry_rejections.json"
 # Rapid-entry mode, while retaining broker SL, spread, cost, portfolio and
 # basket-risk controls from bot.py.
 base.SESSION_FILTER_ENABLED = False
-base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 20
+base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 5
+base.MAX_POSITIONS_PER_EPIC = 10
+base.CORRELATION_FILTER_ENABLED = False
 base.PROFIT_TRAIL_ENABLED = False
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
@@ -73,10 +76,43 @@ base.ALLOW_AVERAGING = False
 
 def run_cycle():
     base.log(
-        f"STARTING {V3_STRATEGY_ID} | DEMO ONLY | "
-        f"rapid profit target=+{V3_PROFIT_TARGET_AED:.2f} {getattr(base.config, 'ACCOUNT_CURRENCY', 'AED')}"
+        f"STARTING {V3_STRATEGY_ID} | DEMO ONLY | QUANTITY-FOCUSED | "
+        f"rapid profit target=+{V3_PROFIT_TARGET_AED:.2f} "
+        f"{getattr(base.config, 'ACCOUNT_CURRENCY', 'AED')} | score>={V3_MIN_SCORE}"
     )
-    return base.run_cycle()
+    api = base.CapitalAPI()
+    base.log("Logging in to Capital.com...")
+    api.login()
+    balance = api.get_balance()
+    account_currency = api.get_account_currency()
+    base.log(f"Account balance: {balance} {account_currency}")
+    base.reset_daily_safety(balance)
+    base.update_loss_cooldowns_from_history(api)
+    base.log_trade_report(api, account_currency)
+
+    scan_seconds = 30
+    window_seconds = 14 * 60
+    deadline = time.monotonic() + window_seconds
+    while time.monotonic() < deadline:
+        for epic in base.EPICS:
+            try:
+                positions = api.get_open_positions()
+                balance = api.get_balance()
+                base.process_epic(
+                    api=api,
+                    epic=epic,
+                    positions=positions,
+                    balance=balance,
+                    account_currency=account_currency,
+                )
+                latest = api.get_open_positions()
+                v3_profit_manager(api, latest, epic, account_currency)
+            except Exception as exc:
+                base.log(f"{epic}: V3 scan error: {exc}")
+        time.sleep(scan_seconds)
+
+    base.save_live_stats(api, account_currency)
+    base.log("V3 quantity-focused scan window completed.")
 
 if __name__ == "__main__":
     run_cycle()
