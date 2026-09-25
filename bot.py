@@ -712,7 +712,7 @@ def basket_reserved_risk(api, positions, epic, account_currency):
 def portfolio_reserved_risk(api, positions, account_currency):
     return sum(estimated_position_risk_account(p, api, account_currency) for p in positions)
 
-def manage_profit_trailing(api, positions, epic):
+def manage_profit_trailing(api, positions, epic, account_currency):
     """Lock profit after +20 account-currency units; allow an 8-unit pullback."""
     if not PROFIT_TRAIL_ENABLED:
         return
@@ -852,7 +852,10 @@ def process_epic(api, epic, positions, balance, account_currency):
         # Hard loss guard runs before all other management so a position cannot
         # remain beyond the configured account-currency loss ceiling.
         enforce_max_position_loss(api, positions, epic, account_currency)
-        manage_profit_trailing(api, positions, epic)
+        # Refresh after hard-loss closures so trailing/break-even never tries to
+        # modify a position that was already closed in this same cycle.
+        positions = api.get_open_positions()
+        manage_profit_trailing(api, positions, epic, account_currency)
         breakeven_stops(api, positions, epic, current_price)
         manage_trailing_stops(api, positions, epic, current_price)
 
