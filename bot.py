@@ -1261,12 +1261,19 @@ def get_positions_for_epic(positions, epic):
 def position_size_value(position):
     return safe_float(position.get("size") or position.get("position", {}).get("size"), 0.0) or 0.0
 
-def estimated_position_risk_account(position, api, account_currency):
+def estimated_position_risk_account(position, api, account_currency, market_cache=None):
     entry, stop, size = position_open_level(position), position_stop_level(position), position_size_value(position)
     if entry is None or stop is None or size <= 0:
         return 0.0
     try:
-        market = api.get_market(position_epic(position))
+        epic = position_epic(position)
+        market = None
+        if market_cache is not None and epic in market_cache:
+            market = market_cache[epic]
+        if market is None:
+            market = api.get_market(epic)
+            if market_cache is not None:
+                market_cache[epic] = market
         lot_size = safe_float(market.get("instrument", {}).get("lotSize"), 1.0) or 1.0
         quote_to_account = quote_to_account_rate(market, account_currency)
         if quote_to_account is None:
@@ -1275,12 +1282,18 @@ def estimated_position_risk_account(position, api, account_currency):
     except Exception:
         return 0.0
 
-def basket_reserved_risk(api, positions, epic, account_currency):
-    return sum(estimated_position_risk_account(p, api, account_currency) for p in get_positions_for_epic(positions, epic))
+def basket_reserved_risk(api, positions, epic, account_currency, market_cache=None):
+    return sum(
+        estimated_position_risk_account(p, api, account_currency, market_cache=market_cache)
+        for p in get_positions_for_epic(positions, epic)
+    )
 
 
-def portfolio_reserved_risk(api, positions, account_currency):
-    return sum(estimated_position_risk_account(p, api, account_currency) for p in positions)
+def portfolio_reserved_risk(api, positions, account_currency, market_cache=None):
+    return sum(
+        estimated_position_risk_account(p, api, account_currency, market_cache=market_cache)
+        for p in positions
+    )
 
 def manage_profit_trailing(api, positions, epic, account_currency):
     """Lock profit after +20 account-currency units; allow an 8-unit pullback."""
@@ -1649,8 +1662,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if existing_count >= MAX_POSITIONS_PER_EPIC:
             record_entry_rejection(epic, "MAX_POSITIONS_PER_EPIC", f"limit={MAX_POSITIONS_PER_EPIC}")
             return None
-        reserved_risk = basket_reserved_risk(api, positions, epic, account_currency)
-        portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency)
+        # Reuse the current market snapshots already fetched for this scan.
+        # Risk calculations used to request the same market repeatedly.
+        risk_market_cache = {epic: market}
+        reserved_risk = basket_reserved_risk(api, positions, epic, account_currency, market_cache=risk_market_cache)
+        portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency, market_cache=risk_market_cache)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
         remaining_basket_risk = max_basket_amount - reserved_risk
@@ -1681,7 +1697,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             risk_positions = []
             for p in positions:
                 rp = dict(p)
-                rp["risk_amount_account"] = estimated_position_risk_account(p, api, account_currency)
+                rp["risk_amount_account"] = estimated_position_risk_account(
+                    p, api, account_currency, market_cache=risk_market_cache
+                )
                 risk_positions.append(rp)
             portfolio_mult, portfolio_diag = portfolio_risk_overlay(
                 api=api,
