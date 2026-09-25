@@ -569,14 +569,27 @@ def calculate_trade(df, direction):
     price, atr = safe_float(current["close"]), safe_float(current["atr"])
     if price is None or atr is None or atr <= 0:
         return None
-    sl_distance, tp_distance = atr * SL_ATR_MULT, atr * TP_ATR_MULT
+
+    sl_distance = atr * SL_ATR_MULT
+
+    # Fixed TP is intentionally disabled. Do not calculate a fake/huge TP
+    # value; profit is managed by the profit-trail and trailing-stop logic.
+    profit_level = None
+
     if direction == "BUY":
-        stop_level, profit_level = price - sl_distance, price + tp_distance
+        stop_level = price - sl_distance
     elif direction == "SELL":
-        stop_level, profit_level = price + sl_distance, price - tp_distance
+        stop_level = price + sl_distance
     else:
         return None
-    return {"entry": price, "stop_level": stop_level, "profit_level": profit_level, "risk_distance": sl_distance, "atr": atr}
+
+    return {
+        "entry": price,
+        "stop_level": stop_level,
+        "profit_level": profit_level,
+        "risk_distance": sl_distance,
+        "atr": atr,
+    }
 
 def get_positions_for_epic(positions, epic):
     return [p for p in positions if position_epic(p) == epic]
@@ -898,62 +911,3 @@ def update_loss_cooldowns_from_history(api):
         to_date = now.strftime("%Y-%m-%dT%H:%M:%S")
         transactions = api.get_transactions(from_date, to_date)
         for tx in transactions:
-            note = str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
-            if "close" not in note and "closed" not in note:
-                continue
-            epic = tx.get("instrumentName") or tx.get("epic")
-            pnl = safe_float(tx.get("profitAndLoss"))
-            if pnl is None:
-                pnl = safe_float(tx.get("profitLoss"))
-            if pnl is None:
-                pnl = safe_float(tx.get("profit"))
-            if epic and pnl is not None and pnl < 0 and epic in EPICS:
-                set_loss_cooldown(epic)
-                log(f"{epic}: recent closed loss detected ({pnl}); cooldown applied for {LOSS_COOLDOWN_MINUTES}m.")
-    except Exception as exc:
-        log(f"Loss-history check unavailable; continuing safely: {exc}")
-
-def run_cycle():
-    global API_CLIENT
-    log("Starting trading cycle...")
-    log("DEMO MODE / LIVE TRADING DISABLED")
-    log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
-    log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
-    log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
-    if API_CLIENT is None:
-        API_CLIENT = CapitalAPI()
-    api = API_CLIENT
-    log("Logging in to Capital.com...")
-    api.login()
-    # A successful session refresh clears a previous transient error streak.
-    if int(SAFETY.get("consecutive_errors", 0)):
-        SAFETY["consecutive_errors"] = 0
-        save_safety_state(SAFETY)
-    balance = api.get_balance()
-    account_currency = api.get_account_currency()
-    log(f"Account balance: {balance} {account_currency}")
-    reset_daily_safety(balance)
-    update_loss_cooldowns_from_history(api)
-    for cycle_epic in EPICS:
-        # Refresh account state before EVERY epic so newly opened/closed positions
-        # are immediately reflected in subsequent decisions within this run.
-        positions = api.get_open_positions()
-        log(f"Open positions before {cycle_epic}: {len(positions)}")
-        log_and_save_open_positions(positions)
-        cleanup_state(positions)
-        process_epic(
-            api=api,
-            epic=cycle_epic,
-            positions=positions,
-            balance=balance,
-            account_currency=account_currency,
-        )
-        time.sleep(1)
-    log("Trading cycle completed.")
-
-if __name__ == "__main__":
-    try:
-        run_cycle()
-    except Exception as exc:
-        log(f"MAIN ERROR: {exc}")
-        traceback.print_exc()
