@@ -57,6 +57,12 @@ TRAILING_ENABLED = True
 TRAILING_START_R = 1.0
 TRAILING_DISTANCE_R = 1.0
 
+# Profit-lock: once a position reaches +$10 account profit, remember its
+# highest profit and close it if profit falls $2 from that peak.
+PROFIT_TRAIL_ENABLED = True
+PROFIT_TRAIL_START = 10.0
+PROFIT_TRAIL_DISTANCE = 2.0
+
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
 TREND_EMA_GAP_ATR = 0.25
@@ -233,13 +239,14 @@ def breakeven_stops(api, positions, epic, current_price):
 
 def load_state():
     if not os.path.exists(STATE_FILE):
-        return {"risk_distance": {}}
+        return {"risk_distance": {}, "profit_trail": {}}
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as file:
             state = json.load(file)
         if not isinstance(state, dict):
-            return {"risk_distance": {}}
+            return {"risk_distance": {}, "profit_trail": {}}
         state.setdefault("risk_distance", {})
+        state.setdefault("profit_trail", {})
         return state
     except Exception as exc:
         log(f"Could not load state file: {exc}")
@@ -597,6 +604,63 @@ def basket_reserved_risk(api, positions, epic, account_currency):
 def portfolio_reserved_risk(api, positions, account_currency):
     return sum(estimated_position_risk_account(p, api, account_currency) for p in positions)
 
+def manage_profit_trailing(api, positions, epic):
+    """Lock realized profit dynamically after +$10; close on a $2 pullback."""
+    if not PROFIT_TRAIL_ENABLED:
+        return
+
+    active_deals = set()
+    for position in get_positions_for_epic(positions, epic):
+        deal_id = position_deal_id(position)
+        pnl = position_unrealized_pnl(position)
+        if not deal_id:
+            continue
+
+        deal_key = str(deal_id)
+        active_deals.add(deal_key)
+        state = STATE.setdefault("profit_trail", {}).get(deal_key)
+
+        if state is None:
+            if pnl >= PROFIT_TRAIL_START:
+                STATE["profit_trail"][deal_key] = {
+                    "peak_profit": round(float(pnl), 2),
+                    "activated": True,
+                }
+                log(
+                    f"{epic}: PROFIT TRAIL ACTIVATED | deal={deal_id} | "
+                    f"profit=${pnl:.2f} | floor=${pnl - PROFIT_TRAIL_DISTANCE:.2f}"
+                )
+            continue
+
+        peak = safe_float(state.get("peak_profit"), pnl) or pnl
+        if pnl > peak:
+            peak = float(pnl)
+            state["peak_profit"] = round(peak, 2)
+            log(
+                f"{epic}: PROFIT TRAIL MOVED | deal={deal_id} | "
+                f"peak=${peak:.2f} | floor=${peak - PROFIT_TRAIL_DISTANCE:.2f}"
+            )
+
+        floor = peak - PROFIT_TRAIL_DISTANCE
+        if pnl <= floor:
+            try:
+                response = api.close_position(deal_id)
+                log(
+                    f"{epic}: PROFIT TRAIL CLOSE | deal={deal_id} | "
+                    f"peak=${peak:.2f} | current=${pnl:.2f} | "
+                    f"drop=${peak - pnl:.2f} | close_floor=${floor:.2f}"
+                )
+                log(f"{epic}: CLOSE RESPONSE = {response}")
+                del STATE["profit_trail"][deal_key]
+            except Exception as exc:
+                log(f"{epic}: profit-trail close failed | deal={deal_id} | {exc}")
+
+    for deal_key in list(STATE.setdefault("profit_trail", {}).keys()):
+        if deal_key not in active_deals:
+            del STATE["profit_trail"][deal_key]
+
+    save_state(STATE)
+
 def manage_trailing_stops(api, positions, epic, current_price):
     if not TRAILING_ENABLED:
         return
@@ -662,6 +726,8 @@ def process_epic(api, epic, positions, balance, account_currency):
             return None
         # Position management must continue even when new entries are blocked
         # by daily loss, cooldown, spread, or kill-switch protections.
+        # Profit lock is checked before normal entry logic on every bot pass.
+        manage_profit_trailing(api, positions, epic)
         breakeven_stops(api, positions, epic, current_price)
         manage_trailing_stops(api, positions, epic, current_price)
 
