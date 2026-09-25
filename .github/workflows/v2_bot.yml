@@ -6,7 +6,8 @@ on:
     - cron: "12,27,42,57 * * * *"
 
 concurrency:
-  group: capital-metal-trading-bots-state
+  # This bot runs independently from the other Capital strategies.
+  group: capital-v2-state
   cancel-in-progress: false
 
 permissions:
