@@ -100,21 +100,26 @@ def run_cycle():
     while time.monotonic() < deadline:
         for epic in base.EPICS:
             try:
-                positions = api.get_open_positions()
-                balance = api.get_balance()
+                # Reuse the cycle-level account snapshot. process_epic still
+                # refreshes positions after any hard-loss closure for safety.
+                if 'cycle_positions' not in locals():
+                    cycle_positions = api.get_open_positions()
+                    cycle_balance = api.get_balance()
+                market = api.get_market(epic)
                 base.process_epic(
                     api=api,
                     epic=epic,
-                    positions=positions,
-                    balance=balance,
+                    positions=cycle_positions,
+                    balance=cycle_balance,
                     account_currency=account_currency,
+                    market=market,
                 )
             except Exception as exc:
                 base.log(f"{epic}: V3 scan error: {exc}")
         time.sleep(scan_seconds)
 
     base.save_live_stats(api, account_currency)
-    base.log("V3 quantity-focused 2-second scan window completed.")
+    base.log("V3 quantity-focused optimized scan window completed.")
 
 if __name__ == "__main__":
     run_cycle()
