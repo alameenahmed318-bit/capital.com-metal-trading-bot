@@ -391,7 +391,7 @@ base.SAFETY_STATE_FILE = "v2_bot_safety_state.json"
 # before disabling new entries. The previous 5% gate stopped this demo account
 # at 1314.57 AED against a 1411.57 AED peak (~6.9% drawdown), before V2 could
 # analyze fresh market data or test the 1H fallback.
-base.EQUITY_DRAWDOWN_LIMIT_PCT = 0.10
+base.EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
 base.EXECUTION_QUALITY_FILE = "v2_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "v2_entry_rejections.json"
 
