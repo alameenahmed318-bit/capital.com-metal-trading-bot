@@ -934,17 +934,6 @@ def quant_signal_score(df, epic, htf_df):
 
     regime = market_regime(df, htf_df)
 
-    # Entry-quality bonuses. These are deliberately non-blocking: they improve
-    # scoring when a pullback/reclaim or high-quality breakout is present, but
-    # they never reject a signal by themselves.
-    pullback_buy = pullback_confirmation_score(df, "BUY", atr)
-    pullback_sell = pullback_confirmation_score(df, "SELL", atr)
-    breakout_quality_buy = breakout_quality_score(df, "BUY", atr) if buy_breakout else 0.0
-    breakout_quality_sell = breakout_quality_score(df, "SELL", atr) if sell_breakout else 0.0
-    scores["BUY"] += pullback_buy + breakout_quality_buy
-    scores["SELL"] += pullback_sell + breakout_quality_sell
-    log(f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}")
-
     # Regime-aware weighting without adding new indicators.
     if regime == "TREND":
         if htf50 > htf200 and ema9 > ema21 and roc20 > 0:
@@ -965,6 +954,23 @@ def quant_signal_score(df, epic, htf_df):
             buy_score = max(buy_score, 72.0)
         if close >= resistance - SR_BUFFER_ATR * atr and rsi >= RANGE_RSI_SELL_MIN:
             sell_score = max(sell_score, 72.0)
+
+    # Entry-quality bonuses are non-blocking: they only improve the score.
+    # Entry-quality bonuses. These are deliberately non-blocking: they improve
+    # scoring when a pullback/reclaim or high-quality breakout is present, but
+    # they never reject a signal by themselves.
+    pullback_buy = pullback_confirmation_score(df, "BUY", atr)
+    pullback_sell = pullback_confirmation_score(df, "SELL", atr)
+    breakout_quality_buy = breakout_quality_score(df, "BUY", atr) if buy_breakout else 0.0
+    breakout_quality_sell = breakout_quality_score(df, "SELL", atr) if sell_breakout else 0.0
+    scores["BUY"] += pullback_buy + breakout_quality_buy
+    scores["SELL"] += pullback_sell + breakout_quality_sell
+    log(f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}")
+
+
+    buy_score = max(0.0, min(100.0, buy_score + pullback_buy + breakout_quality_buy))
+    sell_score = max(0.0, min(100.0, sell_score + pullback_sell + breakout_quality_sell))
+    log(f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}")
 
     adaptive_mult = adaptive_risk_multiplier(df)
     log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
