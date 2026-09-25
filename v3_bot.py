@@ -96,6 +96,10 @@ def run_cycle():
 
     scan_seconds = 2
     window_seconds = 14 * 60
+    # Reuse historical candle snapshots across rapid scan passes.
+    # Live market bid/offer is still fetched every pass.
+    candle_cache = {}
+    candle_cache_ttl = 8.0
     deadline = time.monotonic() + window_seconds
     while time.monotonic() < deadline:
         # Fetch account state once per scan pass instead of once per Epic.
@@ -113,6 +117,8 @@ def run_cycle():
                     balance=cycle_balance,
                     account_currency=account_currency,
                     market=market,
+                    candle_cache=candle_cache,
+                    candle_cache_ttl=candle_cache_ttl,
                 )
             except Exception as exc:
                 base.log(f"{epic}: V3 scan error: {exc}")
