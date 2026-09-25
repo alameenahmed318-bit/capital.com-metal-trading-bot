@@ -947,10 +947,10 @@ def update_loss_cooldowns_from_history(api):
         log(f"Loss-history check unavailable; continuing safely: {exc}")
 
 def _nested_numeric_profit_loss(value):
-    """Find an API-provided realized P/L value in nested activity details."""
+    """Find a likely realized P/L number in detailed Capital.com activity."""
     if isinstance(value, dict):
         for key, item in value.items():
-            key_l = str(key).lower().replace("_", "")
+            key_l = str(key).lower().replace("_", "").replace("-", "")
             if any(token in key_l for token in (
                 "profitandloss",
                 "profitloss",
@@ -958,6 +958,11 @@ def _nested_numeric_profit_loss(value):
                 "realisedpnl",
                 "realizedprofitloss",
                 "realisedprofitloss",
+                "realizedprofit",
+                "realisedprofit",
+                "realizedloss",
+                "realisedloss",
+                "pnl",
             )):
                 number = safe_float(item)
                 if number is not None:
@@ -975,32 +980,16 @@ def _nested_numeric_profit_loss(value):
 
 
 def get_closed_trade_report(api, from_date, to_date):
-    """Build a truthful closed-trade report from Capital.com history."""
+    """Build the report from transactions plus detailed activity per trade."""
     transactions = api.get_transactions(from_date, to_date)
     wins = 0
     losses = 0
     flat = 0
     unknown_pnl = 0
     total_pnl = 0.0
+    total_wins = 0.0
+    total_losses = 0.0
     closed = 0
-
-    activities = []
-    try:
-        activities = api.get_deal_activity_window(from_date, to_date)
-    except Exception as exc:
-        log(f"Detailed activity report unavailable; using transaction fields only: {exc}")
-
-    activity_by_deal = {}
-    for activity in activities:
-        if not isinstance(activity, dict):
-            continue
-        deal_id = (
-            activity.get("dealId")
-            or activity.get("dealReference")
-            or activity.get("reference")
-        )
-        if deal_id:
-            activity_by_deal.setdefault(str(deal_id), []).append(activity)
 
     for tx in transactions:
         note = str(
@@ -1009,10 +998,12 @@ def get_closed_trade_report(api, from_date, to_date):
             or tx.get("transactionType")
             or ""
         ).lower()
+
         if "close" not in note and "closed" not in note:
             continue
 
         closed += 1
+
         pnl = safe_float(_first_value(
             tx.get("profitAndLoss"),
             tx.get("profitLoss"),
@@ -1026,21 +1017,29 @@ def get_closed_trade_report(api, from_date, to_date):
                 or tx.get("dealReference")
                 or tx.get("reference")
             )
+
             if deal_id:
-                for activity in activity_by_deal.get(str(deal_id), []):
-                    pnl = _nested_numeric_profit_loss(activity)
-                    if pnl is not None:
-                        break
+                try:
+                    activities = api.get_deal_activity(str(deal_id))
+                    for activity in activities:
+                        pnl = _nested_numeric_profit_loss(activity)
+                        if pnl is not None:
+                            break
+                except Exception as exc:
+                    log(f"Detailed P/L lookup failed for {deal_id}: {exc}")
 
         if pnl is None:
             unknown_pnl += 1
             continue
 
         total_pnl += pnl
+
         if pnl > 0:
             wins += 1
+            total_wins += pnl
         elif pnl < 0:
             losses += 1
+            total_losses += pnl
         else:
             flat += 1
 
@@ -1051,6 +1050,8 @@ def get_closed_trade_report(api, from_date, to_date):
         "flat": flat,
         "unknown_pnl": unknown_pnl,
         "total_pnl": round(total_pnl, 2),
+        "total_wins": round(total_wins, 2),
+        "total_losses": round(total_losses, 2),
     }
 
 def log_trade_report(api, account_currency):
@@ -1061,7 +1062,9 @@ def log_trade_report(api, account_currency):
         log(
             f"TRADE REPORT | today={today} | closed={report['closed']} | "
             f"wins={report['wins']} | losses={report['losses']} | flat={report['flat']} | "
-            f"unknown P/L={report['unknown_pnl']} | net P/L={report['total_pnl']:.2f} {account_currency}"
+            f"unknown P/L={report['unknown_pnl']} | "
+            f"gross wins={report['total_wins']:.2f} | gross losses={report['total_losses']:.2f} | "
+            f"net P/L={report['total_pnl']:.2f} {account_currency}"
         )
     except Exception as exc:
         log(f"Trade report unavailable; continuing safely: {exc}")
