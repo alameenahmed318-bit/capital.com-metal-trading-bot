@@ -107,6 +107,18 @@ KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
 SAFETY_STATE_FILE = "bot_safety_state.json"
 
+# Conservative strategy-quality upgrades.
+SESSION_FILTER_ENABLED = getattr(config, "SESSION_FILTER_ENABLED", True)
+SESSION_START_UTC = getattr(config, "SESSION_START_UTC", 7)
+SESSION_END_UTC = getattr(config, "SESSION_END_UTC", 20)
+WEEKEND_FILTER_ENABLED = getattr(config, "WEEKEND_FILTER_ENABLED", True)
+ADAPTIVE_RISK_ENABLED = getattr(config, "ADAPTIVE_RISK_ENABLED", True)
+ADAPTIVE_RISK_HIGH_VOL_1 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_1", 1.25)
+ADAPTIVE_RISK_HIGH_VOL_2 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_2", 1.50)
+ADAPTIVE_RISK_LOW_VOL = getattr(config, "ADAPTIVE_RISK_LOW_VOL", 0.75)
+BREAKOUT_CONFIRM_ATR = getattr(config, "BREAKOUT_CONFIRM_ATR", 0.05)
+MIN_ENTRY_SCORE = getattr(config, "MIN_ENTRY_SCORE", 75.0)
+
 MIN_TRADE_SIZE = getattr(config, "MIN_TRADE_SIZE", {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01})
 STATE_FILE = "trades_state.json"
 OPEN_POSITIONS_FILE = "open_positions.json"
@@ -614,6 +626,53 @@ def add_indicators(df):
 def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
 
+def session_allows_entry():
+    if not SESSION_FILTER_ENABLED:
+        return True
+    now = datetime.now(timezone.utc)
+    if WEEKEND_FILTER_ENABLED and now.weekday() >= 5:
+        return False
+    hour = now.hour + now.minute / 60.0
+    return SESSION_START_UTC <= hour < SESSION_END_UTC
+
+
+def adaptive_risk_multiplier(df):
+    if not ADAPTIVE_RISK_ENABLED or len(df) < VOL_REGIME_SLOW + 5:
+        return 1.0
+    fast = safe_float(df["atr"].rolling(VOL_REGIME_FAST).mean().iloc[-2])
+    slow = safe_float(df["atr"].rolling(VOL_REGIME_SLOW).mean().iloc[-2])
+    if not fast or not slow or slow <= 0:
+        return 1.0
+    ratio = fast / slow
+    if ratio >= ADAPTIVE_RISK_HIGH_VOL_2:
+        return 0.50
+    if ratio >= ADAPTIVE_RISK_HIGH_VOL_1 or ratio <= ADAPTIVE_RISK_LOW_VOL:
+        return 0.75
+    return 1.0
+
+
+def breakout_confirmation(df, direction, atr):
+    if not USE_BREAKOUT_CONFIRMATION:
+        return True
+    if len(df) < BREAKOUT_LOOKBACK + 4 or atr is None or atr <= 0:
+        return False
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    recent = df.iloc[-(BREAKOUT_LOOKBACK + 1):-1]
+    high = safe_float(recent["high"].max())
+    low = safe_float(recent["low"].min())
+    close = safe_float(cur["close"])
+    open_price = safe_float(cur["open"])
+    prev_close = safe_float(prev["close"])
+    if None in (high, low, close, open_price, prev_close):
+        return False
+    if direction == "BUY":
+        return close > high + BREAKOUT_CONFIRM_ATR * atr and close > open_price and close > prev_close
+    if direction == "SELL":
+        return close < low - BREAKOUT_CONFIRM_ATR * atr and close < open_price and close < prev_close
+    return False
+
+
 def market_regime(df, htf_df):
     """Classify the closed-candle market into TREND, BREAKOUT, or RANGE."""
     if len(df) < max(VOL_REGIME_SLOW + 5, SR_LOOKBACK + 5) or len(htf_df) < HTF_EMA_SLOW + 5:
@@ -706,9 +765,11 @@ def quant_signal_score(df, epic, htf_df):
     if roc20 > 0: scores["BUY"] += 10
     elif roc20 < 0: scores["SELL"] += 10
 
-    # Breakout / structure.
-    if close > breakout_high: scores["BUY"] += 15
-    elif close < breakout_low: scores["SELL"] += 15
+    # Breakout gets full weight only after a completed-candle confirmation.
+    buy_breakout = close > breakout_high and breakout_confirmation(df, "BUY", atr)
+    sell_breakout = close < breakout_low and breakout_confirmation(df, "SELL", atr)
+    if buy_breakout: scores["BUY"] += 15
+    elif sell_breakout: scores["SELL"] += 15
 
     # Volatility regime: usable expansion, but reject extreme/noisy conditions.
     if 0.85 <= vol_ratio <= 1.80:
@@ -739,19 +800,33 @@ def quant_signal_score(df, epic, htf_df):
 
     regime = market_regime(df, htf_df)
 
-    # Regime-aware gate: trend needs alignment; breakout needs a real break;
-    # range entries use the existing mean-reversion logic only near structure.
-    if regime == "RANGE":
+    # Regime-aware weighting without adding new indicators.
+    if regime == "TREND":
+        if htf50 > htf200 and ema9 > ema21 and roc20 > 0:
+            buy_score += 4
+        if htf50 < htf200 and ema9 < ema21 and roc20 < 0:
+            sell_score += 4
+    elif regime == "BREAKOUT":
+        if buy_breakout and roc5 > 0:
+            buy_score += 5
+        if sell_breakout and roc5 < 0:
+            sell_score += 5
+    else:
+        if not buy_breakout:
+            buy_score = min(buy_score, 78.0)
+        if not sell_breakout:
+            sell_score = min(sell_score, 78.0)
         if close <= support + SR_BUFFER_ATR * atr and rsi <= RANGE_RSI_BUY_MAX:
             buy_score = max(buy_score, 72.0)
         if close >= resistance - SR_BUFFER_ATR * atr and rsi >= RANGE_RSI_SELL_MIN:
             sell_score = max(sell_score, 72.0)
 
-    log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f}")
+    adaptive_mult = adaptive_risk_multiplier(df)
+    log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
 
-    if buy_score >= 75 and buy_score > sell_score + 8:
+    if buy_score >= MIN_ENTRY_SCORE and buy_score > sell_score + 8:
         return "BUY"
-    if sell_score >= 75 and sell_score > buy_score + 8:
+    if sell_score >= MIN_ENTRY_SCORE and sell_score > buy_score + 8:
         return "SELL"
     return None
 
@@ -972,6 +1047,9 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True):
     log("")
+    if not session_allows_entry() and not get_positions_for_epic(positions, epic):
+        log(f"{epic}: liquidity session filter active; no new entry now.")
+        return None
     log("=" * 60)
     log(f"PROCESSING {epic}")
     log("=" * 60)
@@ -1086,6 +1164,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             requested_risk = sizing_balance * PROFITABLE_ADD_RISK
         else:
             requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK
+
+        risk_multiplier = adaptive_risk_multiplier(df)
+        requested_risk *= risk_multiplier
+        log(f"{epic}: ADAPTIVE RISK | multiplier={risk_multiplier:.2f} | requested={requested_risk:.2f}")
         risk_amount = min(
             requested_risk,
             max(0.0, remaining_basket_risk),
