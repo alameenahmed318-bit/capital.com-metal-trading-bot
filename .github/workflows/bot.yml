@@ -72,6 +72,7 @@ jobs:
           trap 'rm -rf "$STATE_DIR"' EXIT
 
           STATE_FILES=(
+            v1_strategy_positions.json
             trades.db
             stats.json
             trades_state.json
