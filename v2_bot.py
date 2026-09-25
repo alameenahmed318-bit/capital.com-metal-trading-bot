@@ -135,8 +135,9 @@ def quant_signal_score_v2(df, htf_df, epic):
     # --- Quant state / regime ---
     ema_gap = abs(float(ema20.iloc[signal_idx] - ema50.iloc[signal_idx])) / a
     htf_gap = abs(h50 - h200) / a
-    atr_fast = float(atr.tail(20).mean()) if atr.tail(20).notna().any() else a
-    atr_slow = float(atr.tail(100).mean()) if atr.tail(100).notna().any() else a
+    completed_atr = atr.iloc[:signal_idx + 1]
+    atr_fast = float(completed_atr.tail(20).mean()) if completed_atr.tail(20).notna().any() else a
+    atr_slow = float(completed_atr.tail(100).mean()) if completed_atr.tail(100).notna().any() else a
     vol_ratio = atr_fast / max(atr_slow, 1e-9)
 
     if htf_gap >= 1.25 and abs(h50 - h200) / max(abs(h200), 1e-9) > 0.0005:
@@ -152,9 +153,9 @@ def quant_signal_score_v2(df, htf_df, epic):
     htf_down = h20 < h50 and h50 <= h100 and h50 <= h200
 
     # --- Time-series momentum ---
-    mom5 = (price / max(float(close.iloc[-6]), 1e-9) - 1.0)
-    mom10 = (price / max(float(close.iloc[-11]), 1e-9) - 1.0)
-    mom20 = (price / max(float(close.iloc[-21]), 1e-9) - 1.0)
+    mom5 = (price / max(float(close.iloc[signal_idx - 5]), 1e-9) - 1.0)
+    mom10 = (price / max(float(close.iloc[signal_idx - 10]), 1e-9) - 1.0)
+    mom20 = (price / max(float(close.iloc[signal_idx - 20]), 1e-9) - 1.0)
     mom_unit = max(a / max(price, 1e-9), 1e-6)
     momentum_buy = _clip(50 + 18 * (mom5 / mom_unit) + 14 * (mom10 / mom_unit) + 10 * (mom20 / mom_unit))
     momentum_sell = _clip(50 - 18 * (mom5 / mom_unit) - 14 * (mom10 / mom_unit) - 10 * (mom20 / mom_unit))
@@ -162,20 +163,20 @@ def quant_signal_score_v2(df, htf_df, epic):
     # --- Trend strength ---
     trend_buy = 0.0
     trend_sell = 0.0
-    if price > ema20.iloc[-1]:
+    if price > ema20.iloc[signal_idx]:
         trend_buy += 20
-    if ema9.iloc[-1] > ema20.iloc[-1]:
+    if ema9.iloc[signal_idx] > ema20.iloc[signal_idx]:
         trend_buy += 20
-    if ema20.iloc[-1] > ema50.iloc[-1]:
+    if ema20.iloc[signal_idx] > ema50.iloc[signal_idx]:
         trend_buy += 20
     if htf_up:
         trend_buy += 40
 
-    if price < ema20.iloc[-1]:
+    if price < ema20.iloc[signal_idx]:
         trend_sell += 20
-    if ema9.iloc[-1] < ema20.iloc[-1]:
+    if ema9.iloc[signal_idx] < ema20.iloc[signal_idx]:
         trend_sell += 20
-    if ema20.iloc[-1] < ema50.iloc[-1]:
+    if ema20.iloc[signal_idx] < ema50.iloc[signal_idx]:
         trend_sell += 20
     if htf_down:
         trend_sell += 40
@@ -203,11 +204,11 @@ def quant_signal_score_v2(df, htf_df, epic):
     slope20 = _slope(close, 20)
     pullback_buy = 0.0
     pullback_sell = 0.0
-    if htf_up and price <= float(ema20.iloc[-1]) + 0.40 * a:
+    if htf_up and price <= float(ema20.iloc[signal_idx]) + 0.40 * a:
         pullback_buy += 30
     if htf_up and prev < float(ema20.iloc[-2]) and price > prev:
         pullback_buy += 25
-    if htf_down and price >= float(ema20.iloc[-1]) - 0.40 * a:
+    if htf_down and price >= float(ema20.iloc[signal_idx]) - 0.40 * a:
         pullback_sell += 30
     if htf_down and prev > float(ema20.iloc[-2]) and price < prev:
         pullback_sell += 25
@@ -238,9 +239,9 @@ def quant_signal_score_v2(df, htf_df, epic):
         mr_sell += 14
 
     # --- Price-action confirmation ---
-    candle_range = max(float(high.iloc[-1] - low.iloc[-1]), 1e-9)
-    candle_body = abs(float(close.iloc[-1] - open_.iloc[-1]))
-    close_location = (price - float(low.iloc[-1])) / candle_range
+    candle_range = max(float(high.iloc[signal_idx] - low.iloc[signal_idx]), 1e-9)
+    candle_body = abs(float(close.iloc[signal_idx] - open_.iloc[signal_idx]))
+    close_location = (price - float(low.iloc[signal_idx])) / candle_range
     pa_buy = 10 if price > prev else 0
     pa_sell = 10 if price < prev else 0
     if candle_body / candle_range >= 0.55:
