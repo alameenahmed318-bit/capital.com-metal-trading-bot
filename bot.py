@@ -75,7 +75,7 @@ PROFIT_TRAIL_DISTANCE = 1.0
 
 # Hard per-position loss guard in account currency (AED for an AED account).
 # This is a secondary protection; the broker-side ATR stop remains the primary stop.
-MAX_LOSS_PER_POSITION = 3.0
+MAX_LOSS_PER_POSITION = 5.0
 
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
