@@ -1464,9 +1464,21 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         native_htf_count = len(htf_df)
         if STRATEGY_ID in {"CAPITAL_V2_QUANT_HYBRID", "CAPITAL_V3_RAPID_PROFIT"} and native_htf_count < 60:
             try:
-                tmp = df[["time", "open", "high", "low", "close"]].copy()
+                # Capital.com may return only a few native HOUR candles. Rebuild
+                # from a larger 15m window, but count only complete 4-candle hours.
+                fallback_raw = api.get_candles(
+                    epic=epic,
+                    resolution=RESOLUTION,
+                    max_candles=max(600, CANDLE_COUNT),
+                ) if len(df) < 600 else raw
+                fallback_df = candles_to_dataframe(fallback_raw)
+                tmp = fallback_df[["time", "open", "high", "low", "close"]].copy()
                 tmp["time"] = pd.to_datetime(tmp["time"], utc=True, errors="coerce")
                 tmp = tmp.dropna(subset=["time"]).set_index("time").sort_index()
+                tmp["hour_key"] = tmp.index.floor("1h")
+                complete_hours = tmp.groupby("hour_key").size()
+                complete_hours = complete_hours[complete_hours >= 4].index
+                tmp = tmp[tmp["hour_key"].isin(complete_hours)].drop(columns=["hour_key"])
                 rebuilt = tmp.resample("1h", label="right", closed="right").agg({
                     "open": "first",
                     "high": "max",
@@ -1478,12 +1490,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     htf_df = rebuilt
                     log(
                         f"{epic}: {STRATEGY_ID} HTF FALLBACK | native 1h={native_htf_count} | "
-                        f"rebuilt 1h={len(htf_df)} from 15m={len(df)}"
+                        f"rebuilt 1h={len(htf_df)} from 15m={len(fallback_df)} | complete_hours_only=True"
                     )
                 else:
                     log(
                         f"{epic}: {STRATEGY_ID} HTF FALLBACK insufficient | native 1h={native_htf_count} | "
-                        f"rebuilt 1h={len(rebuilt)} from 15m={len(df)}"
+                        f"rebuilt 1h={len(rebuilt)} from 15m={len(fallback_df)} | complete_hours_only=True"
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
