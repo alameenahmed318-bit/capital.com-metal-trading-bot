@@ -1005,6 +1005,13 @@ def run_cycle():
     balance = api.get_balance()
     account_currency = api.get_account_currency()
     log(f"Account balance: {balance} {account_currency}")
+
+    # A successful login/account read proves the API is healthy. Do not let
+    # stale errors from an earlier bot run permanently block this run.
+    if int(SAFETY.get("consecutive_errors", 0)) > 0:
+        SAFETY["consecutive_errors"] = 0
+        save_safety_state(SAFETY)
+
     reset_daily_safety(balance)
     update_loss_cooldowns_from_history(api)
     log_trade_report(api, account_currency)
