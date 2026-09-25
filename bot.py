@@ -289,6 +289,8 @@ def position_epic(position):
         nested.get("epic"),
         nested.get("instrumentName"),
         nested_instrument.get("epic"),
+        position.get("market", {}).get("epic") if isinstance(position.get("market"), dict) else None,
+        nested.get("market", {}).get("epic") if isinstance(nested.get("market"), dict) else None,
     )
 
 def position_deal_id(position):
@@ -340,6 +342,8 @@ def position_unrealized_pnl(position):
         nested.get("unrealizedProfitLoss"),
         nested.get("unrealizedPnl"),
         nested.get("profit"),
+        position.get("upl"),
+        nested.get("upl"),
     ), 0.0) or 0.0
 
 def position_summary(position):
@@ -942,30 +946,96 @@ def update_loss_cooldowns_from_history(api):
     except Exception as exc:
         log(f"Loss-history check unavailable; continuing safely: {exc}")
 
+def _nested_numeric_profit_loss(value):
+    """Find an API-provided realized P/L value in nested activity details."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_l = str(key).lower().replace("_", "")
+            if any(token in key_l for token in (
+                "profitandloss",
+                "profitloss",
+                "realizedpnl",
+                "realisedpnl",
+                "realizedprofitloss",
+                "realisedprofitloss",
+            )):
+                number = safe_float(item)
+                if number is not None:
+                    return number
+        for item in value.values():
+            found = _nested_numeric_profit_loss(item)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for item in value:
+            found = _nested_numeric_profit_loss(item)
+            if found is not None:
+                return found
+    return None
+
+
 def get_closed_trade_report(api, from_date, to_date):
-    """Return a simple win/loss report from Capital.com transaction history."""
+    """Build a truthful closed-trade report from Capital.com history."""
     transactions = api.get_transactions(from_date, to_date)
     wins = 0
     losses = 0
     flat = 0
+    unknown_pnl = 0
     total_pnl = 0.0
     closed = 0
+
+    activities = []
+    try:
+        activities = api.get_deal_activity_window(from_date, to_date)
+    except Exception as exc:
+        log(f"Detailed activity report unavailable; using transaction fields only: {exc}")
+
+    activity_by_deal = {}
+    for activity in activities:
+        if not isinstance(activity, dict):
+            continue
+        deal_id = (
+            activity.get("dealId")
+            or activity.get("dealReference")
+            or activity.get("reference")
+        )
+        if deal_id:
+            activity_by_deal.setdefault(str(deal_id), []).append(activity)
+
     for tx in transactions:
-        note = str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
-        pnl = _first_value(
+        note = str(
+            tx.get("note")
+            or tx.get("description")
+            or tx.get("transactionType")
+            or ""
+        ).lower()
+        if "close" not in note and "closed" not in note:
+            continue
+
+        closed += 1
+        pnl = safe_float(_first_value(
             tx.get("profitAndLoss"),
             tx.get("profitLoss"),
             tx.get("profit"),
             tx.get("pnl"),
-        )
-        pnl = safe_float(pnl)
-        # Capital.com may label the transaction differently, so a numeric P/L
-        # is the primary test for inclusion in the report.
+        ))
+
         if pnl is None:
+            deal_id = (
+                tx.get("dealId")
+                or tx.get("dealReference")
+                or tx.get("reference")
+            )
+            if deal_id:
+                for activity in activity_by_deal.get(str(deal_id), []):
+                    pnl = _nested_numeric_profit_loss(activity)
+                    if pnl is not None:
+                        break
+
+        if pnl is None:
+            unknown_pnl += 1
             continue
-        if "close" not in note and "closed" not in note and "profit" not in note and "loss" not in note:
-            continue
-        closed += 1
+
         total_pnl += pnl
         if pnl > 0:
             wins += 1
@@ -973,11 +1043,13 @@ def get_closed_trade_report(api, from_date, to_date):
             losses += 1
         else:
             flat += 1
+
     return {
         "closed": closed,
         "wins": wins,
         "losses": losses,
         "flat": flat,
+        "unknown_pnl": unknown_pnl,
         "total_pnl": round(total_pnl, 2),
     }
 
@@ -989,7 +1061,7 @@ def log_trade_report(api, account_currency):
         log(
             f"TRADE REPORT | today={today} | closed={report['closed']} | "
             f"wins={report['wins']} | losses={report['losses']} | flat={report['flat']} | "
-            f"net P/L={report['total_pnl']:.2f} {account_currency}"
+            f"unknown P/L={report['unknown_pnl']} | net P/L={report['total_pnl']:.2f} {account_currency}"
         )
     except Exception as exc:
         log(f"Trade report unavailable; continuing safely: {exc}")
