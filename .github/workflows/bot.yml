@@ -28,9 +28,6 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run Capital bot
         run: python bot.py
-      - name: Run Binance bot when explicitly enabled
-        if: env.BINANCE_ENABLED == 'true'
-        run: python binance_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -46,15 +43,9 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
-          BINANCE_ENABLED: ${{ vars.BINANCE_ENABLED }}
-          BINANCE_TRADING_ENABLED: ${{ vars.BINANCE_TRADING_ENABLED }}
-          BINANCE_TESTNET: ${{ vars.BINANCE_TESTNET }}
-          BINANCE_SYMBOLS: ${{ vars.BINANCE_SYMBOLS }}
-          BINANCE_RISK_PER_TRADE: ${{ vars.BINANCE_RISK_PER_TRADE }}
-          BINANCE_MAX_POSITION_RISK: ${{ vars.BINANCE_MAX_POSITION_RISK }}
-          BINANCE_LEVERAGE: ${{ vars.BINANCE_LEVERAGE }}
-          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }}
-          BINANCE_API_SECRET: ${{ secrets.BINANCE_API_SECRET }}
+      - name: Run Binance bot when explicitly enabled
+        if: env.BINANCE_ENABLED == 'true'
+        run: python binance_bot.py
       - name: Persist bot state
         run: |
           git config user.name "github-actions[bot]"
