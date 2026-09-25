@@ -91,6 +91,9 @@ PROFITABLE_ADD_RISK = 0.002
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
 MAX_SPREAD_PCT = 0.08
+EXECUTION_QUALITY_ENABLED = True
+EXECUTION_QUALITY_FILE = "execution_quality.json"
+MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 DAILY_LOSS_LIMIT_PCT = 0.03
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
 LOSS_COOLDOWN_MINUTES = 20
@@ -212,6 +215,68 @@ def spread_allows_entry(api, epic):
         log(f"{epic}: spread too wide ({spread:.4f}% > {MAX_SPREAD_PCT:.4f}%); entry blocked.")
         return False
     return True
+
+def _load_execution_quality():
+    if not os.path.exists(EXECUTION_QUALITY_FILE):
+        return {"updated_at": None, "orders": []}
+    try:
+        with open(EXECUTION_QUALITY_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        if not isinstance(data, dict):
+            return {"updated_at": None, "orders": []}
+        data.setdefault("orders", [])
+        return data
+    except Exception as exc:
+        log(f"Could not load execution-quality log: {exc}")
+        return {"updated_at": None, "orders": []}
+
+def _save_execution_quality(data):
+    temp_file = f"{EXECUTION_QUALITY_FILE}.tmp"
+    with open(temp_file, "w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2)
+    os.replace(temp_file, EXECUTION_QUALITY_FILE)
+
+def _confirmed_entry_level(confirmation):
+    if not isinstance(confirmation, dict):
+        return None
+    nested = confirmation.get("deal") if isinstance(confirmation.get("deal"), dict) else {}
+    for value in (confirmation.get("level"), confirmation.get("openLevel"), confirmation.get("executionPrice"), confirmation.get("executedPrice"), nested.get("level"), nested.get("openLevel"), nested.get("executionPrice"), nested.get("executedPrice")):
+        parsed = safe_float(value)
+        if parsed is not None and parsed > 0:
+            return parsed
+    return None
+
+def record_execution_quality(epic, direction, requested_price, actual_price, spread_pct, deal_reference=None, deal_id=None, deal_status="ACCEPTED", size=None):
+    if not EXECUTION_QUALITY_ENABLED:
+        return
+    requested_price = safe_float(requested_price)
+    actual_price = safe_float(actual_price)
+    spread_pct = safe_float(spread_pct)
+    slippage_price = None
+    slippage_pct = None
+    if requested_price is not None and actual_price is not None and requested_price > 0:
+        slippage_price = (actual_price - requested_price) if direction == "BUY" else (requested_price - actual_price)
+        slippage_pct = max(0.0, slippage_price / requested_price * 100.0)
+    if str(deal_status).upper() in {"REJECTED", "FAILED"}:
+        grade = "REJECTED"
+    elif slippage_pct is None:
+        grade = "UNMEASURED"
+    elif slippage_pct <= 0.005:
+        grade = "A"
+    elif slippage_pct <= 0.015:
+        grade = "B"
+    elif slippage_pct <= 0.03:
+        grade = "C"
+    elif slippage_pct <= 0.06:
+        grade = "D"
+    else:
+        grade = "E"
+    row = {"timestamp": datetime.now(timezone.utc).isoformat(), "epic": epic, "direction": direction, "requested_executable_price": requested_price, "actual_fill_price": actual_price, "spread_pct_at_order": spread_pct, "slippage_price": round(slippage_price, 8) if slippage_price is not None else None, "slippage_pct": round(slippage_pct, 6) if slippage_pct is not None else None, "deal_reference": deal_reference, "deal_id": deal_id, "deal_status": deal_status, "quality_grade": grade, "size": safe_float(size)}
+    data = _load_execution_quality()
+    data["orders"] = (data.get("orders") or [])[-499:] + [row]
+    data["updated_at"] = row["timestamp"]
+    _save_execution_quality(data)
+    log(f"{epic}: EXECUTION QUALITY | spread={spread_pct:.4f}% | requested={requested_price} | fill={actual_price} | adverse slippage={slippage_pct:.4f}% | grade={grade}" if spread_pct is not None and slippage_pct is not None else f"{epic}: EXECUTION QUALITY | spread={spread_pct} | requested={requested_price} | fill={actual_price} | slippage={slippage_pct} | grade={grade}")
 
 def breakeven_stops(api, positions, epic, current_price):
     if not BREAKEVEN_ENABLED:
@@ -982,6 +1047,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
+        order_spread_pct = market_spread_pct(api.get_market(epic))
+        log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         trade = calculate_trade(df, signal, entry_price=execution_price)
         if trade is None:
             return None
@@ -1060,14 +1127,31 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Capital.com documents that a successful POST /positions response is
         # not by itself proof that the position was opened. Confirm the deal.
         deal_reference = response.get("dealReference") if isinstance(response, dict) else None
+        actual_fill_price = None
+        deal_id = None
+        deal_status = "UNCONFIRMED"
         if deal_reference:
             confirmation = api.get_confirmation(deal_reference)
             log(f"{epic}: DEAL CONFIRMATION = {confirmation}")
             deal_status = str(confirmation.get("dealStatus") or confirmation.get("status") or "").upper()
             if deal_status in {"REJECTED", "FAILED"}:
+                record_execution_quality(epic, signal, execution_price, None, order_spread_pct, deal_reference=deal_reference, deal_status=deal_status, size=size)
                 raise RuntimeError(f"Capital.com rejected deal {deal_reference}: {confirmation}")
+            deal_id = confirmation.get("dealId") or confirmation.get("dealReference")
+            actual_fill_price = _confirmed_entry_level(confirmation)
+            if actual_fill_price is None and deal_id:
+                try:
+                    confirmed_positions = api.get_open_positions()
+                    for opened in confirmed_positions:
+                        if str(position_deal_id(opened)) == str(deal_id):
+                            actual_fill_price = position_open_level(opened)
+                            break
+                except Exception as fill_exc:
+                    log(f"{epic}: fill-price lookup failed: {fill_exc}")
+            record_execution_quality(epic, signal, execution_price, actual_fill_price, order_spread_pct, deal_reference=deal_reference, deal_id=deal_id, deal_status=deal_status or "ACCEPTED", size=size)
         else:
             log(f"{epic}: WARNING - no dealReference returned; order confirmation unavailable.")
+            record_execution_quality(epic, signal, execution_price, None, order_spread_pct, deal_status="UNCONFIRMED", size=size)
 
         SAFETY["consecutive_errors"] = 0
         LAST_ENTRY_AT[epic] = time.monotonic()
