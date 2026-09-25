@@ -885,6 +885,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
                         positions=positions,
                         balance=balance,
                         account_currency=account_currency,
+                        allow_entry_without_signal=False,
                     )
                 except Exception as exc:
                     log(f"{epic}: 10s entry scan error: {exc}")
@@ -904,7 +905,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
             time.sleep(sleep_for)
     log("ENTRY+POSITION MONITOR | 15-minute scan window completed.")
 
-def process_epic(api, epic, positions, balance, account_currency):
+def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True):
     log("")
     log("=" * 60)
     log(f"PROCESSING {epic}")
@@ -974,6 +975,11 @@ def process_epic(api, epic, positions, balance, account_currency):
             elif signal != basket_direction:
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
+            elif signal is None:
+                if not allow_entry_without_signal:
+                    log(f"{epic}: no fresh entry signal; managing existing position only.")
+                    return None
+                signal = basket_direction
         log(f"{epic}: SIGNAL = {signal}")
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
