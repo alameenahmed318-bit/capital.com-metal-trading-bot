@@ -814,7 +814,8 @@ def process_epic(api, epic, positions, balance, account_currency):
         if epic_positions:
             directions = {position_direction(p) for p in epic_positions if position_direction(p)}
             if len(directions) != 1:
-                log(f"{epic}: mixed-direction basket detected; no new leg.")                return None
+                log(f"{epic}: mixed-direction basket detected; no new leg.")
+                return None
             basket_direction = next(iter(directions))
             if signal is None:
                 signal = basket_direction
