@@ -23,6 +23,8 @@ MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
 WF_FOLDS = int(os.environ.get("AI_WF_FOLDS","3"))
 WF_MIN_TRAIN = int(os.environ.get("AI_WF_MIN_TRAIN","90"))
 WF_MIN_ACCURACY = float(os.environ.get("AI_WF_MIN_ACCURACY","0.40"))
+DECISION_CACHE = {}
+
 FEATURES = ["ret1","ret3","ret8","rsi","atr_pct","ema9_gap","ema21_gap","ema50_gap","ema200_gap","bb_z","range_pct","body_pct","close_pos","vol_ratio","htf20_gap","htf50_gap","htf200_gap"]
 
 def _features(df, htf):
@@ -89,10 +91,10 @@ def _make_model():
 
 
 def _walk_forward_validate(fx, y, train_end):
-    """Rolling out-of-sample validation using only candles available before each fold."""
+    """Purged rolling out-of-sample validation using only information available before each validation window."""
     clean = fx[FEATURES].notna().all(axis=1)
     eligible = [i for i in fx.index[:train_end] if bool(clean.loc[i]) and pd.notna(y.loc[i])]
-    if len(eligible) < max(WF_MIN_TRAIN + 20, MIN_TRAIN_SAMPLES):
+    if len(eligible) < max(WF_MIN_TRAIN + HORIZON + 20, MIN_TRAIN_SAMPLES):
         return {"ok": False, "accuracy": 0.0, "folds": 0, "samples": 0}
 
     n = len(eligible)
@@ -100,13 +102,21 @@ def _walk_forward_validate(fx, y, train_end):
     scores = []
     total = 0
     for fold in range(WF_FOLDS):
-        train_n = WF_MIN_TRAIN + fold * fold_size
-        val_start = train_n
-        val_end = min(n, val_start + fold_size)
-        if val_end <= val_start or train_n > n - 5:
+        val_start_pos = WF_MIN_TRAIN + fold * fold_size
+        val_end_pos = min(n, val_start_pos + fold_size)
+        if val_end_pos <= val_start_pos:
             continue
-        train_idx = eligible[:train_n]
-        val_idx = eligible[val_start:val_end]
+
+        # Purge the last HORIZON training labels so their future target window
+        # cannot overlap the validation period.
+        train_end_pos = val_start_pos - HORIZON
+        if train_end_pos < WF_MIN_TRAIN:
+            continue
+        train_idx = eligible[:train_end_pos]
+        val_idx = eligible[val_start_pos:val_end_pos]
+        if len(train_idx) < WF_MIN_TRAIN:
+            continue
+
         model = _make_model()
         model.fit(fx.loc[train_idx, FEATURES].astype(float), y.loc[train_idx].astype(int))
         pred = model.predict(fx.loc[val_idx, FEATURES].astype(float))
@@ -124,6 +134,24 @@ def decide(df, htf_df, epic, existing_signal=None) -> dict[str,Any]:
     result={"enabled":AI_ENABLED,"signal":None,"confidence":0.0,"buy_probability":0.0,"sell_probability":0.0,"wait_probability":1.0,"sl_atr":2.0,"tp_atr":3.0,"reason":"AI_UNAVAILABLE","walk_forward":{"ok":False,"accuracy":0.0,"folds":0,"samples":0}}
     if not AI_ENABLED or df is None or len(df)<260:
         result["reason"]="insufficient_ai_history"; return result
+
+    # V3/V4 scan every 2 seconds, while the signal data changes only when a
+    # completed candle changes. Cache the AI decision for the current candle
+    # to avoid retraining multiple ML models thousands of times per workflow.
+    def _last_time(frame):
+        if frame is None or frame.empty:
+            return None
+        for name in ("time", "snapshotTimeUTC", "snapshotTime", "timestamp", "datetime", "date"):
+            if name in frame.columns:
+                value = frame[name].iloc[-2 if len(frame) >= 2 else -1]
+                return str(value)
+        return str(len(frame))
+
+    cache_key=(epic, _last_time(df), _last_time(htf_df))
+    cached=DECISION_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached)
+
     fx=_features(df,htf_df); y=_label(df); valid=fx[FEATURES].notna().all(axis=1)
     train_end=max(0,len(df)-HORIZON-1); idx=[i for i in fx.index[:train_end] if bool(valid.loc[i])]
     if len(idx)<MIN_TRAIN_SAMPLES or y.loc[idx].nunique()<2:
@@ -145,6 +173,10 @@ def decide(df, htf_df, epic, existing_signal=None) -> dict[str,Any]:
     vol=float(fx.loc[latest_idx,"vol_ratio"]) if pd.notna(fx.loc[latest_idx,"vol_ratio"]) else 1.0
     sl_atr=float(np.clip(1.5+0.9*max(0.0,min(1.5,vol-0.7)),1.5,2.85)); rr=1.35+1.65*max(0.0,min(1.0,(best[0]-0.50)/0.50)); tp_atr=float(np.clip(sl_atr*rr,2.0,5.5))
     result.update({"signal":signal,"confidence":float(best[0]),"buy_probability":pb,"sell_probability":ps,"wait_probability":pw,"sl_atr":sl_atr,"tp_atr":tp_atr,"reason":f"AI_MODEL classes={classes} train={len(idx)} wf={wf['accuracy']:.3f}"})
+    DECISION_CACHE[cache_key]=dict(result)
+    # Keep memory bounded during long rapid-scan workflows.
+    if len(DECISION_CACHE) > 256:
+        DECISION_CACHE.pop(next(iter(DECISION_CACHE)))
     try:
         os.makedirs(MODEL_DIR,exist_ok=True)
         with open(os.path.join(MODEL_DIR,f"{epic}_latest.json"),"w",encoding="utf-8") as f: json.dump(result,f,indent=2)
