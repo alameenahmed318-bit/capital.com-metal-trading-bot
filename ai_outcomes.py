@@ -213,11 +213,31 @@ def realized_training_frame():
     return pd.DataFrame(records)
 
 def update_registry(model_version, metrics):
-    payload={"updated_at":_now(),"active_model":model_version,"models":{}}
+    """Persist a candidate without silently promoting it.
+    Promotion is governed by ai_model_selection and explicit validation fields.
+    """
+    payload={"updated_at":_now(),"active_model":None,"models":{}}
     if os.path.exists(REGISTRY_PATH):
         try:
             with open(REGISTRY_PATH,encoding="utf-8") as f: payload=json.load(f)
         except Exception: pass
-    payload.setdefault("models",{})[model_version]=metrics
+    payload.setdefault("models",{})
+    payload.setdefault("active_model",None)
+    payload.setdefault("promotion_history",[])
+    policy=payload.get("promotion_policy",{})
+    candidate=dict(metrics)
+    candidate["registry_role"]="challenger"
+    from ai_model_selection import promotion_decision
+    champion=payload["models"].get(payload.get("active_model")) if payload.get("active_model") else None
+    decision=promotion_decision(candidate, champion, policy)
+    candidate["promotion_decision"]=decision
+    payload["models"][model_version]=candidate
+    if decision.get("promote"):
+        previous=payload.get("active_model")
+        payload["active_model"]=model_version
+        payload["models"][model_version]["registry_role"]="champion"
+        payload["promotion_history"].append({
+            "timestamp":_now(),"from":previous,"to":model_version,"decision":"PROMOTE"
+        })
     with open(REGISTRY_PATH,"w",encoding="utf-8") as f: json.dump(payload,f,indent=2,default=str)
     return payload
