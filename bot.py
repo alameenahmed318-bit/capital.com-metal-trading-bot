@@ -1641,13 +1641,15 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # AI is the primary decision engine for every V1/V2/V3/V4 process.
         # Legacy strategy output is retained only as diagnostic context.
         legacy_signal = generate_signal(df, epic, htf_df)
-        ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal)
+        ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
         log(
             f"{epic}: AI DECISION | signal={ai_decision.get('signal')} | "
             f"confidence={float(ai_decision.get('confidence', 0.0)):.3f} | "
             f"BUY={float(ai_decision.get('buy_probability', 0.0)):.3f} | "
             f"SELL={float(ai_decision.get('sell_probability', 0.0)):.3f} | "
             f"WAIT={float(ai_decision.get('wait_probability', 0.0)):.3f} | "
+            f"RAW={ai_decision.get('raw_signal')} | STRATEGY={legacy_signal} | "
+            f"AGREE={ai_decision.get('strategy_agreement')} | "
             f"SL_ATR={ai_decision.get('sl_atr')} | TP_ATR={ai_decision.get('tp_atr')} | "
             f"{ai_decision.get('reason')}"
         )
