@@ -144,16 +144,19 @@ def run_cycle():
     window_seconds = 14 * 60
     deadline = time.monotonic() + window_seconds
 
+    # Fetch account state once per rapid scan pass, not once per epic.
+    # This keeps the 2-second opportunity loop fast without removing the
+    # safety refresh performed inside process_epic before a new entry.
     while time.monotonic() < deadline:
+        cycle_positions = api.get_open_positions()
+        cycle_balance = api.get_balance()
         for epic in base.EPICS:
             try:
-                positions = api.get_open_positions()
-                balance = api.get_balance()
                 base.process_epic(
                     api=api,
                     epic=epic,
-                    positions=positions,
-                    balance=balance,
+                    positions=cycle_positions,
+                    balance=cycle_balance,
                     account_currency=account_currency,
                 )
             except Exception as exc:
