@@ -71,13 +71,13 @@ def _features(df, htf):
         hv50 = aligned["_hv50"].to_numpy()
         hv200 = aligned["_hv200"].to_numpy()
     else:
-        # Compatibility fallback for legacy candle frames without timestamps.
-        # Legacy fallback: still lag the higher-timeframe series by one bar
-        # rather than allowing a same-period HTF value into a lower-timeframe row.
-        hi=np.linspace(0,max(0,len(hc)-2),len(x)).astype(int) if len(hc) else np.zeros(len(x),dtype=int)
-        hv20=np.asarray(he20)[hi] if len(hc) else np.zeros(len(x))
-        hv50=np.asarray(he50)[hi] if len(hc) else np.zeros(len(x))
-        hv200=np.asarray(he200)[hi] if len(hc) else np.zeros(len(x))
+        # Never guess HTF alignment from row position. A legacy frame without
+        # timestamps cannot prove which lower-timeframe sample belongs to which
+        # higher-timeframe candle, so fail closed by leaving HTF features NaN.
+        # This turns the decision into WAIT instead of risking hidden lookahead.
+        hv20=np.full(len(x), np.nan)
+        hv50=np.full(len(x), np.nan)
+        hv200=np.full(len(x), np.nan)
 
     out=pd.DataFrame(index=x.index)
     out["ret1"]=c.pct_change(1); out["ret3"]=c.pct_change(3); out["ret8"]=c.pct_change(8); out["rsi"]=rsi/100; out["atr_pct"]=atr/c.replace(0,np.nan)
@@ -135,10 +135,26 @@ def _walk_forward_validate(fx, y, train_end, profile):
         if len(train_idx) < profile["wf_min_train"]:
             continue
 
+        train_y = y.loc[train_idx].astype(int)
+        val_y = y.loc[val_idx].astype(int)
+        # A validation fold that has no BUY or SELL examples cannot establish
+        # directional generalization. Reject such a fold instead of allowing
+        # an apparently healthy aggregate score to hide missing class coverage.
+        if not {-1, 1}.issubset(set(train_y.unique())) or not {-1, 1}.issubset(set(val_y.unique())):
+            return {
+                "ok": False,
+                "accuracy": 0.0,
+                "balanced_accuracy": 0.0,
+                "directional_precision": 0.0,
+                "directional_rate": 0.0,
+                "folds": len(scores),
+                "samples": total,
+                "reason": "fold_missing_directional_class",
+            }
         model = _make_model(profile)
-        model.fit(fx.loc[train_idx, FEATURES].astype(float), y.loc[train_idx].astype(int))
+        model.fit(fx.loc[train_idx, FEATURES].astype(float), train_y)
         pred = model.predict(fx.loc[val_idx, FEATURES].astype(float))
-        actual = y.loc[val_idx].astype(int).to_numpy()
+        actual = val_y.to_numpy()
         scores.append(float((pred == actual).mean()))
         balanced_scores.append(float(balanced_accuracy_score(actual, pred)))
         directional_mask = np.isin(pred, [-1, 1])
