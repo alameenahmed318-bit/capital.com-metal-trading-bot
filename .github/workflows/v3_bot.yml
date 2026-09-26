@@ -43,7 +43,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: AI architecture self-check
-        run: python ai_self_check.py
+        run: python ai_self_check_v2.py
 
       - name: Run Capital V3 bot
         run: python v3_bot.py
