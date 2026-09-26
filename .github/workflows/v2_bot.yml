@@ -2,9 +2,6 @@ name: Capital V2 Trading Bot
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "8,23,38,53 * * * *"
-
 concurrency:
   # All strategies share one Capital.com account. Serialize the full
   # account-mutating run so V1/V2/V3/V4 cannot race on balance, positions,
