@@ -14,12 +14,17 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import balanced_accuracy_score, precision_score
+try:
+    import ai_outcomes
+except Exception:
+    ai_outcomes = None
 
 AI_ENABLED = os.environ.get("AI_TRADING_ENABLED", "true").lower() in {"1","true","yes"}
 AI_REQUIRE_STRATEGY_AGREEMENT = os.environ.get("AI_REQUIRE_STRATEGY_AGREEMENT", "true").lower() in {"1","true","yes"}
 BASE_MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
 DECISION_CACHE = {}
-WF_FOLDS = 3
+WF_FOLDS = 5
+REALIZED_MIN_SAMPLES = int(os.environ.get("AI_REALIZED_MIN_SAMPLES", "120"))
 
 PROFILES = {
     "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
@@ -217,6 +222,29 @@ def _label_profile(df, profile):
     y[future>threshold]=1; y[future<-threshold]=-1
     return y
 
+def _realized_walk_forward(frame, profile):
+    """Chronological purged validation over realized trade outcomes."""
+    if frame is None or len(frame) < max(REALIZED_MIN_SAMPLES, profile["wf_min_train"] + profile["horizon"] + 20):
+        return {"ok": False, "accuracy": 0.0, "balanced_accuracy": 0.0, "directional_precision": 0.0, "directional_rate": 0.0, "folds": 0, "samples": 0, "reason": "insufficient_realized_samples"}
+    frame=frame.copy()
+    if any(f not in frame.columns for f in FEATURES):
+        return {"ok": False, "accuracy": 0.0, "balanced_accuracy": 0.0, "directional_precision": 0.0, "directional_rate": 0.0, "folds": 0, "samples": 0, "reason": "missing_realized_features"}
+    frame=frame.dropna(subset=FEATURES+["outcome_label"]).reset_index(drop=True)
+    if len(frame) < REALIZED_MIN_SAMPLES:
+        return {"ok": False, "accuracy": 0.0, "balanced_accuracy": 0.0, "directional_precision": 0.0, "directional_rate": 0.0, "folds": 0, "samples": 0, "reason": "insufficient_realized_samples"}
+    n=len(frame); test=max(10,n//(WF_FOLDS+1)); scores=[]; bals=[]; prec=[]; dirs=[]; total=0
+    for fold in range(WF_FOLDS):
+        vs=profile["wf_min_train"]+fold*test; ve=min(n,vs+test); te=vs-profile["horizon"]
+        if te<profile["wf_min_train"] or ve<=vs: continue
+        tr=frame.iloc[:te]; va=frame.iloc[vs:ve]
+        if not {-1,1}.issubset(set(tr.outcome_label.astype(int))) or not {-1,1}.issubset(set(va.outcome_label.astype(int))): continue
+        m=_make_model(profile); m.fit(tr[FEATURES].astype(float),tr.outcome_label.astype(int)); pred=m.predict(va[FEATURES].astype(float)); actual=va.outcome_label.astype(int).to_numpy()
+        dm=np.isin(pred,[-1,1]); scores.append(float((pred==actual).mean())); bals.append(float(balanced_accuracy_score(actual,pred))); dirs.append(float(dm.mean()))
+        prec.append(float(precision_score(actual[dm],pred[dm],labels=[-1,1],average="macro",zero_division=0)) if dm.any() else 0.0); total+=len(actual)
+    if not scores: return {"ok":False,"accuracy":0.0,"balanced_accuracy":0.0,"directional_precision":0.0,"directional_rate":0.0,"folds":0,"samples":0,"reason":"no_valid_realized_folds","label_source":"realized_trade_outcomes"}
+    a=float(np.mean(scores)); b=float(np.mean(bals)); p=float(np.mean(prec)); d=float(np.mean(dirs))
+    return {"ok":a>=profile["wf_acc"] and b>=profile["wf_acc"] and p>=profile["wf_precision"] and d>=profile["wf_directional_rate"],"accuracy":a,"balanced_accuracy":b,"directional_precision":p,"directional_rate":d,"folds":len(scores),"samples":total,"label_source":"realized_trade_outcomes"}
+
 def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> dict[str,Any]:
     profile=_profile(strategy_id)
     result={"enabled":AI_ENABLED,"strategy_id":strategy_id,"signal":None,"raw_signal":None,
@@ -238,9 +266,19 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     valid=fx[FEATURES].notna().all(axis=1)
     train_end=max(0,len(df)-profile["horizon"]-1)
     idx=[i for i in fx.index[:train_end] if bool(valid.loc[i])]
-    if len(idx)<profile["min_train"] or y.loc[idx].nunique()<2:
-        result["reason"]=f"insufficient_training_data:{len(idx)}"; return result
-    wf=_walk_forward_validate(fx,y,train_end,profile)
+    realized=None
+    if ai_outcomes is not None:
+        try: realized=ai_outcomes.realized_training_frame()
+        except Exception: realized=None
+    use_realized=realized is not None and len(realized)>=REALIZED_MIN_SAMPLES and all(f in realized.columns for f in FEATURES)
+    if use_realized:
+        wf=_realized_walk_forward(realized,profile)
+        if not wf["ok"]:
+            result["walk_forward"]=wf; result["reason"]=f"realized_walk_forward_rejected:{wf.get('reason','metrics')}"; return result
+    else:
+        if len(idx)<profile["min_train"] or y.loc[idx].nunique()<2:
+            result["reason"]=f"insufficient_training_data:{len(idx)}"; return result
+        wf=_walk_forward_validate(fx,y,train_end,profile)
     result["walk_forward"]=wf
     if not wf["ok"]:
         result["reason"]=(
@@ -250,7 +288,12 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
             f",directional_rate={wf.get('directional_rate', 0.0):.3f}"
         ); return result
     model=_make_model(profile)
-    model.fit(fx.loc[idx,FEATURES].astype(float),y.loc[idx].astype(int))
+    if use_realized:
+        model.fit(realized[FEATURES].astype(float), realized["outcome_label"].astype(int))
+        train_size=len(realized)
+    else:
+        model.fit(fx.loc[idx,FEATURES].astype(float),y.loc[idx].astype(int))
+        train_size=len(idx)
     latest_idx=fx.index[-2]
     latest=fx.loc[[latest_idx],FEATURES].astype(float)
     if latest.isna().any(axis=None):
