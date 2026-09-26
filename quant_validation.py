@@ -3,6 +3,7 @@ import json
 from datetime import datetime,timezone
 import numpy as np
 import pandas as pd
+import requests
 import config
 from capital_api import CapitalAPI
 
@@ -60,16 +61,29 @@ def monte_carlo(rs):
     return {"runs":MC_RUNS,"median_end_R":round(float(np.median(ends)),3),"p05_end_R":round(float(np.percentile(ends,5)),3),"p95_max_drawdown_R":round(float(np.percentile(dds,95)),3)}
 
 def validate(api,epic):
-    df=candles(api,epic)
-    if len(df)<230:return {"epic":epic,"error":"insufficient candles","candles":len(df)}
+    try:
+        df=candles(api,epic)
+    except requests.exceptions.HTTPError as exc:
+        status=getattr(exc.response,"status_code",None)
+        if status==404:
+            return {"epic":epic,"status":"UNAVAILABLE","reason":"Capital.com returned HTTP 404 for candle endpoint","candles":0}
+        raise
+    if len(df)<230:return {"epic":epic,"status":"INSUFFICIENT_DATA","error":"insufficient candles","candles":len(df)}
     rs=backtest(df); split=max(1,len(rs)*2//3)
-    return {"epic":epic,"candles":len(df),"full":metrics(rs),"walk_forward_train":metrics(rs[:split]),"walk_forward_test":metrics(rs[split:]),"monte_carlo":monte_carlo(rs)}
+    return {"epic":epic,"status":"OK","candles":len(df),"full":metrics(rs),"walk_forward_train":metrics(rs[:split]),"walk_forward_test":metrics(rs[split:]),"monte_carlo":monte_carlo(rs)}
 
 def main():
     api=CapitalAPI(); api.login()
-    out={"generated_at":datetime.now(timezone.utc).isoformat(),"mode":"NON_TRADING_VALIDATION","markets":[validate(api,e) for e in EPICS]}
+    markets=[]
+    for epic in EPICS:
+        try:
+            result=validate(api,epic)
+        except Exception as exc:
+            result={"epic":epic,"status":"ERROR","error":f"{type(exc).__name__}: {exc}"}
+        markets.append(result)
+        print(result)
+    out={"generated_at":datetime.now(timezone.utc).isoformat(),"mode":"NON_TRADING_VALIDATION","markets":markets}
     with open("quant_validation.json","w",encoding="utf-8") as f: json.dump(out,f,indent=2)
     print("QUANT VALIDATION COMPLETE")
-    for x in out["markets"]: print(x)
 
 if __name__=="__main__": main()
