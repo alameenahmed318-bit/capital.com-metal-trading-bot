@@ -102,18 +102,29 @@ def portfolio_risk_overlay(api, candidate_epic, existing_positions, candidate_ri
             continue
 
     if len(returns) < 2:
-        return 1.0, {"reason": "insufficient_history", "assets": list(returns)}
+        return float(min_multiplier), {
+            "reason": "insufficient_history",
+            "assets": list(returns),
+            "multiplier": float(min_multiplier),
+        }
 
     frame = pd.concat(returns, axis=1, keys=list(returns)).dropna()
     if len(frame) < 40:
-        return 1.0, {"reason": "insufficient_overlap", "bars": len(frame)}
+        return float(min_multiplier), {
+            "reason": "insufficient_overlap",
+            "bars": len(frame),
+            "multiplier": float(min_multiplier),
+        }
 
     cov = frame.cov(ddof=1).to_numpy(dtype=float) * PERIODS_PER_YEAR
     cols = list(frame.columns)
 
     weights_raw = np.array([max(0.0, risk_by_epic.get(e, 0.0)) for e in cols], dtype=float)
     if weights_raw.sum() <= 0:
-        return 1.0, {"reason": "no_risk_weights"}
+        return float(min_multiplier), {
+            "reason": "no_risk_weights",
+            "multiplier": float(min_multiplier),
+        }
     weights = weights_raw / weights_raw.sum()
 
     cov = np.nan_to_num(cov, nan=0.0, posinf=0.0, neginf=0.0)
