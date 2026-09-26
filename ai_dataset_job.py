@@ -29,7 +29,13 @@ def main():
       "max_drawdown":round(float(abs(dd.min())),6) if len(dd) else 0.0,
       "last_training_at":datetime.now(timezone.utc).isoformat(),
       "label_source":"broker-reported-realized-pnl",
-      "dataset_path":report.get("path")
+      "dataset_path":report.get("path"),
+      "walk_forward_folds":0,
+      "calibration_ok":False,
+      "drift_ok":False,
+      "execution_cost_ok":False,
+      "realized_labels_ok":bool(len(df) >= 20),
+      "registry_role":"challenger"
     }
     ai_outcomes.update_registry("realized-outcome-v1",metrics)
     print(json.dumps({"dataset":report,"registry":metrics},indent=2,default=str))
