@@ -276,12 +276,18 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     if ai_outcomes is not None:
         try: realized=ai_outcomes.realized_training_frame()
         except Exception: realized=None
-    use_realized=realized is not None and len(realized)>=REALIZED_MIN_SAMPLES and all(f in realized.columns for f in REALIZED_FEATURES)
+    realized_samples = int(len(realized)) if realized is not None else 0
+    result["realized_samples"] = realized_samples
+    result["learning_ready"] = bool(realized_samples >= REALIZED_MIN_SAMPLES)
+    use_realized = realized is not None and realized_samples >= REALIZED_MIN_SAMPLES and all(f in realized.columns for f in REALIZED_FEATURES)
     if use_realized:
         wf=_realized_walk_forward(realized,profile)
+        # Realized validation is advisory only. If it is not validated yet,
+        # fall back to the candle model instead of suppressing the signal.
         if not wf["ok"]:
-            result["walk_forward"]=wf; result["reason"]=f"realized_walk_forward_rejected:{wf.get('reason','metrics')}"; return result
-    else:
+            result["realized_walk_forward"] = wf
+            use_realized = False
+    if not use_realized:
         if len(idx)<profile["min_train"] or y.loc[idx].nunique()<2:
             result["reason"]=f"insufficient_training_data:{len(idx)}"; return result
         wf=_walk_forward_validate(fx,y,train_end,profile)
@@ -330,6 +336,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     sl_atr=float(np.clip(1.5+0.9*max(0.0,min(1.5,vol-0.7)),1.5,2.85))
     rr=1.35+1.65*max(0.0,min(1.0,(best[0]-0.50)/0.50))
     tp_atr=float(np.clip(sl_atr*rr,2.0,5.5))
+    result["learning_source"] = "realized_outcomes" if use_realized else "candle_movement"
     result.update({"signal":signal,"raw_signal":raw_signal,"confidence":float(best[0]),
                    "required_confidence":float(profile["min_conf"]),"buy_probability":pb,"sell_probability":ps,"wait_probability":pw,
                    "sl_atr":sl_atr,"tp_atr":tp_atr,"strategy_agreement":agreement,
