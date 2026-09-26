@@ -147,9 +147,9 @@ def reconcile(api, lookback_days=7):
             pnl=_tx_pnl(match)
             if pnl is None: continue
             exit_price=_tx_exit_price(match)
-            entry=_num(entry_price); stop=_num(sl)
-            risk=abs(entry-stop) if entry is not None and stop is not None else None
-            pnl_r=(pnl / max(risk,1e-9)) if risk else None
+            # Broker P/L is monetary; entry-to-SL distance is price units.
+            # Without contract-value money-risk data, a numeric R would be invalid.
+            pnl_r=None
             exit_time=match.get("date") or match.get("timestamp") or match.get("time") or _now()
             try:
                 dur=(datetime.fromisoformat(str(exit_time).replace("Z","+00:00"))-
