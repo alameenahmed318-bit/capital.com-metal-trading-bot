@@ -72,6 +72,9 @@ jobs:
           RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
 
+      - name: Build realized AI dataset and registry
+        run: python ai_dataset_job.py
+
       - name: Persist bot state
         run: |
           set -e
@@ -95,6 +98,9 @@ jobs:
             execution_quality.json
             quant_validation.json
             entry_rejections.json
+            ai_outcomes.db
+            ai_training_dataset.parquet
+            ai_model_registry.json
 
           )
 
