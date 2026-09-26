@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-26T11:19:23.787087+00:00",
+  "generated_at": "2026-09-26T11:34:17.852415+00:00",
   "mode": "NON_TRADING_VALIDATION",
   "markets": [
     {
@@ -36,6 +36,18 @@
       "epic": "US500",
       "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "EURUSD_W",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "USDJPY_W",
+      "status": "UNAVAILABLE",
+      "reason": "Capital.com returned HTTP 404 for candle endpoint",
       "candles": 0
     }
   ]
