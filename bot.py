@@ -24,7 +24,7 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 10
+MAX_POSITIONS_PER_EPIC = 1
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
@@ -97,7 +97,7 @@ SR_BUFFER_ATR = 0.25
 BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
-ADD_TO_PROFITABLE_BASKET = True
+ADD_TO_PROFITABLE_BASKET = False
 # Smaller incremental risk for additional legs while the existing basket is profitable.
 PROFITABLE_ADD_RISK = 0.002
 
