@@ -39,7 +39,6 @@ EPICS = [
     "US500",
     "BTCUSD",
     "EURUSD_W",
-    "USDJPY_W",
 ]
 
 FORWARD_TEST_EPICS = EPICS
@@ -74,7 +73,6 @@ MARKET_RSI_SETTINGS = {
     "US500": (40, 70, 30, 60),
     "BTCUSD": (40, 70, 30, 60),
     "EURUSD_W": (40, 70, 30, 60),
-    "USDJPY_W": (40, 70, 30, 60),
 }
 
 RISK_PER_TRADE = _float_env("RISK_PER_TRADE", 0.03)
@@ -95,7 +93,6 @@ INSTRUMENT_PRECISION = {
     "US500": 2,
     "BTCUSD": 2,
     "EURUSD_W": 5,
-    "USDJPY_W": 3,
 }
 
 MIN_TRADE_SIZE = {
@@ -107,7 +104,6 @@ MIN_TRADE_SIZE = {
     "US500": 0.01,
     "BTCUSD": 0.01,
     "EURUSD_W": 100.0,
-    "USDJPY_W": 100.0,
 }
 
 BALANCE_CAP = _float_env("BALANCE_CAP", 1000)
