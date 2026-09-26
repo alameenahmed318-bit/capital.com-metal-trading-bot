@@ -109,7 +109,6 @@ def run_cycle():
         cycle_balance = api.get_balance()
         for epic in base.EPICS:
             try:
-                market = api.get_market(epic)
                 base.process_epic(
                     api=api,
                     epic=epic,
