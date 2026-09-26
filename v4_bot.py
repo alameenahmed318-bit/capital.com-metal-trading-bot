@@ -140,33 +140,26 @@ def run_cycle():
     base.update_loss_cooldowns_from_history(api)
     base.log_trade_report(api, account_currency)
 
-    scan_seconds = 4
-    window_seconds = 14 * 60
-    deadline = time.monotonic() + window_seconds
-
-    # Account state is refreshed per epic so a trade opened/closed on one
-    # market cannot leave the next market using a stale balance/position view.
-    while time.monotonic() < deadline:
-        for epic in base.EPICS:
-            try:
-                # Refresh account state per epic. A previous epic may have
-                # opened/closed a position, so a shared snapshot could make
-                # the next epic size risk against stale positions/balance.
-                epic_positions = api.get_open_positions()
-                epic_balance = api.get_balance()
-                base.process_epic(
-                    api=api,
-                    epic=epic,
-                    positions=epic_positions,
-                    balance=epic_balance,
-                    account_currency=account_currency,
-                )
-            except Exception as exc:
-                base.log(f"{epic}: V4 scan error: {exc}")
-        time.sleep(scan_seconds)
+    # One bounded scan per scheduled invocation. Do not keep the
+    # account-wide GitHub Actions concurrency lock for a 14-minute polling loop.
+    for epic in base.EPICS:
+        try:
+            # Refresh account state per epic so a trade opened/closed on one
+            # market cannot leave the next market using stale state.
+            epic_positions = api.get_open_positions()
+            epic_balance = api.get_balance()
+            base.process_epic(
+                api=api,
+                epic=epic,
+                positions=epic_positions,
+                balance=epic_balance,
+                account_currency=account_currency,
+            )
+        except Exception as exc:
+            base.log(f"{epic}: bounded V4 scan error: {exc}")
 
     base.save_live_stats(api, account_currency)
-    base.log("V4 smart-opportunity 4-second scan window completed.")
+    base.log("V4 bounded scan completed; releasing account concurrency lock.")
 
 
 if __name__ == "__main__":
