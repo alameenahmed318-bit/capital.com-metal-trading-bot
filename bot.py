@@ -1469,47 +1469,32 @@ PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
 LAST_ENTRY_AT = {}
 
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
-    """Check entry signals and manage open positions every 10 seconds until the next scheduled cycle."""
-    started = time.monotonic()
-    scan_number = 0
-    log(
-        f"ENTRY+POSITION MONITOR | interval={OPEN_POSITION_MONITOR_SECONDS}s | "
-        f"window={duration_seconds}s | markets={len(EPICS)}"
-    )
-    while time.monotonic() - started < duration_seconds:
-        scan_started = time.monotonic()
-        scan_number += 1
-        log(f"10s ENTRY SCAN #{scan_number} | checking {len(EPICS)} markets")
-        try:
-            for epic in EPICS:
-                try:
-                    positions = api.get_open_positions()
-                    balance = api.get_balance()
-                    process_epic(
-                        api=api,
-                        epic=epic,
-                        positions=positions,
-                        balance=balance,
-                        account_currency=account_currency,
-                        allow_entry_without_signal=False,
-                    )
-                except Exception as exc:
-                    log(f"{epic}: 10s entry scan error: {exc}")
-        except Exception as exc:
-            log(f"10s ENTRY SCAN ERROR: {exc}")
+    """Run one bounded position/entry-management pass.
 
-        elapsed = time.monotonic() - scan_started
-        remaining = duration_seconds - (time.monotonic() - started)
-        if remaining <= 0:
-            break
-        sleep_for = min(OPEN_POSITION_MONITOR_SECONDS, remaining)
-        # If API processing takes longer than 10 seconds, start the next scan
-        # immediately instead of overlapping workflow executions.
-        if elapsed >= OPEN_POSITION_MONITOR_SECONDS:
-            sleep_for = 0
-        if sleep_for > 0:
-            time.sleep(sleep_for)
-    log("ENTRY+POSITION MONITOR | 15-minute scan window completed.")
+    GitHub Actions uses an account-wide concurrency lock. A long 10-second
+    polling loop can hold that lock for 14 minutes and starve V2/V3/V4.
+    The scheduled workflow already runs every 15 minutes, so one bounded
+    pass per invocation is safer and prevents overlapping account mutations.
+    """
+    log(
+        f"ENTRY+POSITION MANAGEMENT | single pass | markets={len(EPICS)} | "
+        f"legacy_window={duration_seconds}s (not used)"
+    )
+    for epic in EPICS:
+        try:
+            positions = api.get_open_positions()
+            balance = api.get_balance()
+            process_epic(
+                api=api,
+                epic=epic,
+                positions=positions,
+                balance=balance,
+                account_currency=account_currency,
+                allow_entry_without_signal=False,
+            )
+        except Exception as exc:
+            log(f"{epic}: bounded entry/position management error: {exc}")
+    log("ENTRY+POSITION MANAGEMENT | bounded pass completed; releasing workflow lock.")
 
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
     log("")
@@ -2217,8 +2202,7 @@ def run_cycle():
         time.sleep(1)
     # Refresh the persisted report after all markets have been processed so
     # closures that happened during this cycle are included.
-    # Keep managing any open positions every 10 seconds until the next
-    # scheduled 15-minute entry scan. New entries are NOT rescanned here.
+    # One bounded management pass only; the next scheduled run handles the next scan.
     monitor_open_positions(api, account_currency)
     save_live_stats(api, account_currency)
     log("Trading cycle completed.")
