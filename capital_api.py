@@ -1,5 +1,7 @@
 import requests
 import config
+import time
+from collections import deque
 
 SESSION_URL = "/api/v1/session"
 
@@ -10,6 +12,23 @@ class CapitalAPI:
         self.cst = None
         self.security_token = None
         self.account_id = None
+        # Capital.com documents a 10 requests/second per-user REST limit.
+        # Keep each bot process below that ceiling to prevent bursty scans
+        # from turning into 429 errors.
+        self._request_times = deque()
+        self._max_requests_per_second = 8
+
+    def _throttle(self):
+        now = time.monotonic()
+        while self._request_times and now - self._request_times[0] >= 1.0:
+            self._request_times.popleft()
+        if len(self._request_times) >= self._max_requests_per_second:
+            wait = max(0.0, 1.0 - (now - self._request_times[0]) + 0.01)
+            time.sleep(wait)
+            now = time.monotonic()
+            while self._request_times and now - self._request_times[0] >= 1.0:
+                self._request_times.popleft()
+        self._request_times.append(time.monotonic())
 
     def _headers(self):
         return {
@@ -20,6 +39,7 @@ class CapitalAPI:
         }
 
     def login(self):
+        self._throttle()
         resp = requests.post(
             f"{self.base_url}{SESSION_URL}",
             headers={
@@ -63,6 +83,7 @@ class CapitalAPI:
         # Retry once after refreshing the 10-minute Capital.com session.
         # A bounded retry prevents recursive login loops on persistent 401s.
         for attempt in range(2):
+            self._throttle()
             resp = requests.request(
                 method,
                 f"{self.base_url}{path}",
@@ -84,6 +105,7 @@ class CapitalAPI:
         return resp.json()
 
     def get_accounts(self):
+        self._throttle()
         resp = requests.get(
             f"{self.base_url}/api/v1/accounts",
             headers=self._headers(),
