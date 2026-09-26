@@ -772,10 +772,13 @@ def add_indicators(df):
 def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
 
-def session_allows_entry():
+def session_allows_entry(epic=None):
+    # Crypto is a 24/7 market; still require broker OPEN status before entering.
+    if epic == "BTCUSD":
+        return True
     if not SESSION_FILTER_ENABLED:
         return True
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc
     if WEEKEND_FILTER_ENABLED and now.weekday() >= 5:
         return False
     hour = now.hour + now.minute / 60.0
@@ -1463,7 +1466,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
     log("")
     owned_positions = filter_owned_positions(positions)
-    if not session_allows_entry() and not get_positions_for_epic(owned_positions, epic):
+    if not session_allows_entry(epic) and not get_positions_for_epic(owned_positions, epic):
         log(f"{epic}: liquidity session filter active; no new entry now.")
         return None
     log("=" * 60)
@@ -1476,6 +1479,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if market is None:
             market = api.get_market(epic)
         snapshot = market.get("snapshot", {}) or {}
+        market_status = str(snapshot.get("marketStatus") or market.get("marketStatus") or "").upper()
+        if epic == "BTCUSD" and market_status != "TRADEABLE" and not get_positions_for_epic(owned_positions, epic):
+            log(f"{epic}: broker market status={market_status or 'UNKNOWN'}; fail closed, no new entry.")
+            return None
         live_bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
         live_offer = safe_float(
             snapshot.get("offer")
