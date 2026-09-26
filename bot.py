@@ -1615,17 +1615,30 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 ) if len(df) < 600 else df
                 tmp = fallback_df[["time", "open", "high", "low", "close"]].copy()
                 tmp["time"] = pd.to_datetime(tmp["time"], utc=True, errors="coerce")
-                tmp = tmp.dropna(subset=["time"]).set_index("time").sort_index()
-                tmp["hour_key"] = tmp.index.floor("1h")
-                complete_hours = tmp.groupby("hour_key").size()
-                complete_hours = complete_hours[complete_hours >= 4].index
-                tmp = tmp[tmp["hour_key"].isin(complete_hours)].drop(columns=["hour_key"])
-                rebuilt = tmp.resample("1h", label="right", closed="right").agg({
-                    "open": "first",
-                    "high": "max",
-                    "low": "min",
-                    "close": "last",
-                }).dropna(subset=["open", "high", "low", "close"]).reset_index()
+                tmp = tmp.dropna(subset=["time"]).sort_values("time").drop_duplicates("time")
+                # Build H1 from explicit consecutive 15m bars rather than
+                # resample/floor semantics. Capital candle timestamps can be
+                # interpreted differently by endpoint/resolution; four
+                # consecutive 15m observations are unambiguous and avoid
+                # silently dropping or mixing an hour.
+                rows = []
+                times = tmp["time"].tolist()
+                for start in range(0, max(0, len(tmp) - 3), 4):
+                    chunk = tmp.iloc[start:start + 4]
+                    if len(chunk) != 4:
+                        continue
+                    deltas = chunk["time"].diff().dropna().dt.total_seconds()
+                    if len(deltas) != 3 or not np.allclose(deltas.to_numpy(dtype=float), 900.0, atol=2.0):
+                        continue
+                    rows.append({
+                        "time": chunk["time"].iloc[-1],
+                        "open": float(chunk["open"].iloc[0]),
+                        "high": float(chunk["high"].max()),
+                        "low": float(chunk["low"].min()),
+                        "close": float(chunk["close"].iloc[-1]),
+                    })
+                rebuilt = pd.DataFrame(rows).dropna(subset=["time", "open", "high", "low", "close"])
+                rebuilt = rebuilt.drop_duplicates("time").sort_values("time").reset_index(drop=True)
                 rebuilt["time"] = rebuilt["time"].dt.strftime("%Y-%m-%dT%H:%M:%S")
                 if len(rebuilt) >= 205:
                     htf_df = rebuilt
