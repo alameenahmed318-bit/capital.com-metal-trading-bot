@@ -776,9 +776,12 @@ def session_allows_entry(epic=None):
     # Crypto is a 24/7 market; still require broker OPEN status before entering.
     if epic == "BTCUSD":
         return True
+    now = datetime.now(timezone.utc)
+    # Weekend-only FX instruments are never eligible Monday-Friday.
+    if epic in {"EURUSD_W", "USDJPY_W"}:
+        return now.weekday() >= 5
     if not SESSION_FILTER_ENABLED:
         return True
-    now = datetime.now(timezone.utc
     # On weekends, scan every configured market; broker marketStatus is the entry gate.
     if WEEKEND_FILTER_ENABLED and now.weekday() >= 5:
         return True
