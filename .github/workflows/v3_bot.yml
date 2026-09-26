@@ -23,6 +23,17 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Sync to latest main before running
+        run: |
+          set -euo pipefail
+          # Scheduled runs can wait in the account-wide concurrency queue.
+          # The event checkout may therefore point to an older commit by the
+          # time this job actually starts. Always execute the newest main code.
+          git fetch origin main
+          git reset --hard origin/main
+          echo "EXECUTION_SHA=$(git rev-parse HEAD)"
+          git log -1 --oneline
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
