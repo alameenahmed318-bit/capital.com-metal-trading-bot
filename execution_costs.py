@@ -19,11 +19,11 @@ def _load_slippage(file_path, epic):
         rows = [x for x in (data.get("orders") or [])
                 if x.get("epic") == epic and x.get("slippage_pct") is not None]
         if not rows:
-            return 0.0
+            return None
         values = [max(0.0, float(x["slippage_pct"])) for x in rows[-100:]]
         return float(statistics.median(values))
     except Exception:
-        return 0.0
+        return None
 
 
 def evaluate_pretrade_cost(epic, market, entry_price, risk_distance,
@@ -49,6 +49,14 @@ def evaluate_pretrade_cost(epic, market, entry_price, risk_distance,
 
     spread = ask - bid
     median_slippage_pct = _load_slippage(execution_quality_file, epic)
+    # Missing execution history must not silently become zero slippage.
+    # Use the configured buffer as the minimum observed adverse slippage
+    # estimate, keeping the filter conservative until enough real fills exist.
+    if median_slippage_pct is None:
+        median_slippage_pct = max(0.0, float(extra_slippage_buffer_pct))
+        slippage_source = "fallback_buffer"
+    else:
+        slippage_source = "observed_median"
     slippage_price = entry_price * ((2.0 * median_slippage_pct + extra_slippage_buffer_pct) / 100.0)
     round_trip_cost = spread + slippage_price
     ratio = round_trip_cost / risk_distance
@@ -57,6 +65,7 @@ def evaluate_pretrade_cost(epic, market, entry_price, risk_distance,
     return allowed, {
         "spread_price": round(spread, 8),
         "median_slippage_pct": round(median_slippage_pct, 6),
+        "slippage_source": slippage_source,
         "estimated_round_trip_cost": round(round_trip_cost, 8),
         "cost_to_stop_ratio": round(ratio, 4),
         "max_cost_to_risk": max_cost_to_risk,
