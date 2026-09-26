@@ -1,161 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T10:26:28.096275+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:28.377737+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:33.202661+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:33.490281+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:38.315086+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:38.603540+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:43.453542+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:43.734090+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:48.569864+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:48.849752+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:53.690828+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:53.977589+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:58.811068+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:26:59.091707+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:03.916147+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:04.203205+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:09.036106+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:09.318268+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:14.145961+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:14.430969+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:19.287864+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:19.570882+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:24.395956+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:24.684291+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:29.516526+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:27:29.797144+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T10:27:34.624734+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
@@ -5064,937 +4908,1093 @@
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:46:56.353822+00:00",
+    "timestamp": "2026-09-26T13:01:38.801282+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "404 Client Error:  for url: https://demo-api-capital.backend-capital.com/api/v1/markets/USDJPY_W"
   },
   {
-    "timestamp": "2026-09-26T12:47:02.320743+00:00",
+    "timestamp": "2026-09-26T13:01:46.651426+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:08.377881+00:00",
+    "timestamp": "2026-09-26T13:01:54.705941+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:02:01.067998+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:02:08.921155+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:02:15.194624+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:47:08.383282+00:00",
+    "timestamp": "2026-09-26T13:02:15.200199+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:14.393665+00:00",
+    "timestamp": "2026-09-26T13:02:21.498348+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:47:14.398997+00:00",
+    "timestamp": "2026-09-26T13:02:21.505142+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:21.794651+00:00",
+    "timestamp": "2026-09-26T13:02:29.320357+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:27.786413+00:00",
+    "timestamp": "2026-09-26T13:02:35.611844+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:35.203092+00:00",
+    "timestamp": "2026-09-26T13:02:43.399671+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:41.221501+00:00",
+    "timestamp": "2026-09-26T13:02:49.704152+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:47:48.604500+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:47:54.608518+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:01.993516+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:08.023055+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:15.472451+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:21.432174+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:28.841040+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:34.846330+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:42.251379+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:48.250534+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:48:55.710842+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:01.729489+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:09.173875+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:15.161791+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:22.543384+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:28.555604+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:35.948031+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:41.905276+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:49.292305+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:49:55.292372+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:02.652684+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:08.669640+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:16.113173+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:22.065260+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:29.444901+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:35.443268+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:42.862443+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:48.838347+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:50:56.249609+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:02.245789+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:09.603603+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:15.604282+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:23.003602+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:28.988965+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:36.355507+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:42.319177+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:49.760103+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:51:55.761769+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:03.152849+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:09.160723+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:16.568424+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:22.520123+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:29.872027+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:35.875293+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:43.218429+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:49.222190+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:52:56.804693+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:02.858439+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:10.301636+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:16.295449+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:23.681427+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:29.673678+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:37.058204+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:43.013118+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:50.386525+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:53:56.391790+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:54:03.791179+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:54:09.750386+00:00",
+    "timestamp": "2026-09-26T13:02:55.959845+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:09.755883+00:00",
+    "timestamp": "2026-09-26T13:02:55.965323+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:15.734547+00:00",
+    "timestamp": "2026-09-26T13:03:02.233460+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:15.740114+00:00",
+    "timestamp": "2026-09-26T13:03:02.238976+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:21.704982+00:00",
+    "timestamp": "2026-09-26T13:03:10.085570+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:03:16.359314+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:21.710500+00:00",
+    "timestamp": "2026-09-26T13:03:16.364745+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:27.688471+00:00",
+    "timestamp": "2026-09-26T13:03:22.660900+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:27.694030+00:00",
+    "timestamp": "2026-09-26T13:03:22.667843+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:33.633305+00:00",
+    "timestamp": "2026-09-26T13:03:28.933016+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:33.638776+00:00",
+    "timestamp": "2026-09-26T13:03:28.938494+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:39.603834+00:00",
+    "timestamp": "2026-09-26T13:03:35.218860+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:39.609480+00:00",
+    "timestamp": "2026-09-26T13:03:35.224303+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:45.596829+00:00",
+    "timestamp": "2026-09-26T13:03:41.476126+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:45.602649+00:00",
+    "timestamp": "2026-09-26T13:03:41.481722+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:51.586827+00:00",
+    "timestamp": "2026-09-26T13:03:47.745819+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:51.592394+00:00",
+    "timestamp": "2026-09-26T13:03:47.751268+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:54:57.562547+00:00",
+    "timestamp": "2026-09-26T13:03:55.577610+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:01.879956+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:09.690965+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:15.998867+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:23.773395+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:30.053809+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:37.843522+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:44.129654+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:51.885972+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:04:58.186705+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:06.019479+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:12.306939+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:20.104785+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:26.409069+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:34.198724+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:40.502132+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:48.345165+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:05:54.775631+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:06:02.652486+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:06:08.954711+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:54:57.568124+00:00",
+    "timestamp": "2026-09-26T13:06:08.962831+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:03.559098+00:00",
+    "timestamp": "2026-09-26T13:06:15.283411+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:03.564630+00:00",
+    "timestamp": "2026-09-26T13:06:15.288958+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:09.551129+00:00",
+    "timestamp": "2026-09-26T13:06:21.557578+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:09.556716+00:00",
+    "timestamp": "2026-09-26T13:06:21.563104+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:15.557132+00:00",
+    "timestamp": "2026-09-26T13:06:27.850959+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:15.562642+00:00",
+    "timestamp": "2026-09-26T13:06:27.856403+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:21.544500+00:00",
+    "timestamp": "2026-09-26T13:06:34.122307+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:21.549933+00:00",
+    "timestamp": "2026-09-26T13:06:34.127827+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:27.536118+00:00",
+    "timestamp": "2026-09-26T13:06:41.922448+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:06:48.223250+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:06:56.010769+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:07:02.281048+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:27.541659+00:00",
+    "timestamp": "2026-09-26T13:07:02.286500+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:33.484948+00:00",
+    "timestamp": "2026-09-26T13:07:08.589014+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:33.490498+00:00",
+    "timestamp": "2026-09-26T13:07:08.594560+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:39.492981+00:00",
+    "timestamp": "2026-09-26T13:07:14.902740+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:39.498480+00:00",
+    "timestamp": "2026-09-26T13:07:14.908180+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:45.456831+00:00",
+    "timestamp": "2026-09-26T13:07:21.206434+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:45.462498+00:00",
+    "timestamp": "2026-09-26T13:07:21.212103+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:51.463820+00:00",
+    "timestamp": "2026-09-26T13:07:27.468277+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:51.469339+00:00",
+    "timestamp": "2026-09-26T13:07:27.473807+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:55:57.409951+00:00",
+    "timestamp": "2026-09-26T13:07:33.748881+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:55:57.415407+00:00",
+    "timestamp": "2026-09-26T13:07:33.754330+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:03.440714+00:00",
+    "timestamp": "2026-09-26T13:07:40.017446+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:56:03.446237+00:00",
+    "timestamp": "2026-09-26T13:07:40.022929+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:09.450584+00:00",
+    "timestamp": "2026-09-26T13:07:46.323753+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:56:09.456119+00:00",
+    "timestamp": "2026-09-26T13:07:46.329171+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:15.447133+00:00",
+    "timestamp": "2026-09-26T13:07:52.596861+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:56:15.452699+00:00",
+    "timestamp": "2026-09-26T13:07:52.602304+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:21.431592+00:00",
+    "timestamp": "2026-09-26T13:07:58.882457+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:56:21.437294+00:00",
+    "timestamp": "2026-09-26T13:07:58.888023+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:27.391500+00:00",
+    "timestamp": "2026-09-26T13:08:05.174309+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:56:27.397048+00:00",
+    "timestamp": "2026-09-26T13:08:05.179789+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:33.392394+00:00",
+    "timestamp": "2026-09-26T13:08:11.399969+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T12:56:33.397974+00:00",
+    "timestamp": "2026-09-26T13:08:11.405361+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:40.790540+00:00",
+    "timestamp": "2026-09-26T13:08:17.688314+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:08:17.693752+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:46.807702+00:00",
+    "timestamp": "2026-09-26T13:08:23.974032+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:08:23.981655+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:56:54.255891+00:00",
+    "timestamp": "2026-09-26T13:08:30.282467+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:08:30.288002+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:00.339020+00:00",
+    "timestamp": "2026-09-26T13:08:36.543499+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:08:36.549113+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:07.791506+00:00",
+    "timestamp": "2026-09-26T13:08:42.836038+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:08:42.841909+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:13.775818+00:00",
+    "timestamp": "2026-09-26T13:08:49.094191+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:08:49.099707+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:21.242606+00:00",
+    "timestamp": "2026-09-26T13:08:56.899190+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:27.270210+00:00",
+    "timestamp": "2026-09-26T13:09:03.187952+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:34.613628+00:00",
+    "timestamp": "2026-09-26T13:09:10.977415+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:40.612356+00:00",
+    "timestamp": "2026-09-26T13:09:17.261320+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:48.025209+00:00",
+    "timestamp": "2026-09-26T13:09:25.061614+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:57:54.013550+00:00",
+    "timestamp": "2026-09-26T13:09:31.368159+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:01.379027+00:00",
+    "timestamp": "2026-09-26T13:09:39.173425+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:07.378452+00:00",
+    "timestamp": "2026-09-26T13:09:45.419558+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:14.742061+00:00",
+    "timestamp": "2026-09-26T13:09:51.797990+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:09:51.803548+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:20.730328+00:00",
+    "timestamp": "2026-09-26T13:09:59.689505+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:28.135773+00:00",
+    "timestamp": "2026-09-26T13:10:06.040033+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:34.091107+00:00",
+    "timestamp": "2026-09-26T13:10:13.822848+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:41.472913+00:00",
+    "timestamp": "2026-09-26T13:10:20.138568+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:10:20.144062+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:47.482893+00:00",
+    "timestamp": "2026-09-26T13:10:27.988263+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:58:54.841666+00:00",
+    "timestamp": "2026-09-26T13:10:34.284354+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:00.826787+00:00",
+    "timestamp": "2026-09-26T13:10:42.083825+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:08.194221+00:00",
+    "timestamp": "2026-09-26T13:10:48.369603+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:14.179980+00:00",
+    "timestamp": "2026-09-26T13:10:56.197091+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:21.531650+00:00",
+    "timestamp": "2026-09-26T13:11:02.493892+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:27.518219+00:00",
+    "timestamp": "2026-09-26T13:11:08.808765+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:08.814273+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:34.888659+00:00",
+    "timestamp": "2026-09-26T13:11:15.094281+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:15.099824+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:40.885509+00:00",
+    "timestamp": "2026-09-26T13:11:21.331852+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:21.338662+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:48.259902+00:00",
+    "timestamp": "2026-09-26T13:11:27.607699+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:27.613420+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T12:59:54.275816+00:00",
+    "timestamp": "2026-09-26T13:11:33.845604+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:33.851261+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:01.639610+00:00",
+    "timestamp": "2026-09-26T13:11:40.158331+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:40.163929+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:07.657838+00:00",
+    "timestamp": "2026-09-26T13:11:46.397005+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:11:46.402561+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:15.045484+00:00",
+    "timestamp": "2026-09-26T13:11:54.232780+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:21.014813+00:00",
+    "timestamp": "2026-09-26T13:12:00.481440+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:28.388764+00:00",
+    "timestamp": "2026-09-26T13:12:08.284722+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:34.365050+00:00",
+    "timestamp": "2026-09-26T13:12:14.591972+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:41.744159+00:00",
+    "timestamp": "2026-09-26T13:12:20.843798+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:12:20.849335+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:47.705218+00:00",
+    "timestamp": "2026-09-26T13:12:27.104929+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:12:27.110452+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
   },
   {
-    "timestamp": "2026-09-26T13:00:55.128109+00:00",
+    "timestamp": "2026-09-26T13:12:34.900919+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:12:41.174306+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:12:41.179972+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:12:47.439398+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:12:47.444942+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:12:55.257387+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:01.527066+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:09.269220+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:15.559255+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:21.818825+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:13:21.826775+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:29.626256+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:35.911395+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:42.170270+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:13:42.177798+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:48.469224+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:13:48.474724+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:13:54.952604+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:13:54.958108+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:01.344354+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:01.349992+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:07.617759+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:07.626742+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:13.898150+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:13.903731+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:20.199890+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:20.205446+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:26.477505+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:26.483208+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:32.778292+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:32.783955+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:39.065003+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T13:14:39.070702+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:46.925175+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:14:53.224995+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:15:00.979569+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:15:07.351517+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:15:15.161719+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:15:21.464378+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:15:29.257822+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T13:15:35.530948+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
