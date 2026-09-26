@@ -13,6 +13,7 @@ import config
 from capital_api import CapitalAPI
 from portfolio_risk import portfolio_risk_overlay
 from execution_costs import evaluate_pretrade_cost
+import ai_engine
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_V1"
@@ -1212,7 +1213,7 @@ def correlation_allows_entry(api, epic, df, positions, signal):
     return True
 
 
-def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None):
+def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None, ai_decision=None):
     # Use only the latest completed 15m candle for volatility.
     current = df.iloc[-2]
     atr = safe_float(current["atr"])
@@ -1248,10 +1249,16 @@ def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None):
 
     # Strong aligned signals receive more volatility room; position sizing
     # automatically shrinks as stop distance widens.
-    sl_mult = 1.5 + 0.5 * min(1.0, max(0.0, strength))
+    if ai_decision and ai_decision.get("signal") == direction:
+        sl_mult = float(ai_decision.get("sl_atr", 2.0))
+        tp_mult = float(ai_decision.get("tp_atr", 3.0))
+    else:
+        sl_mult = 1.5 + 0.5 * min(1.0, max(0.0, strength))
+        tp_mult = 0.0
     sl_distance = atr * sl_mult
-    # No fixed take-profit: existing live profit trail controls the exit.
     profit_level = None
+    if tp_mult > 0:
+        profit_level = price + atr * tp_mult if direction == "BUY" else price - atr * tp_mult
     if direction == "BUY":
         stop_level = price - sl_distance
     elif direction == "SELL":
@@ -1307,6 +1314,26 @@ def portfolio_reserved_risk(api, positions, account_currency, market_cache=None)
         estimated_position_risk_account(p, api, account_currency, market_cache=market_cache)
         for p in positions
     )
+
+def ai_manage_positions(api, positions, epic, ai_decision):
+    """Let the ML model manage direction changes on already-open positions."""
+    if not ai_decision or not ai_decision.get("enabled"):
+        return
+    signal = ai_decision.get("signal")
+    confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
+    exit_confidence = max(0.65, float(os.environ.get("AI_EXIT_CONFIDENCE", "0.65")))
+    if signal not in ("BUY", "SELL") or confidence < exit_confidence:
+        return
+    for position in get_positions_for_epic(positions, epic):
+        direction = position_direction(position)
+        deal_id = position_deal_id(position)
+        if not deal_id or direction == signal:
+            continue
+        try:
+            response = api.close_position(deal_id)
+            log(f"{epic}: AI EXIT | existing={direction} | AI={signal} | confidence={confidence:.3f} | deal={deal_id} | response={response}")
+        except Exception as exc:
+            log(f"{epic}: AI EXIT failed | deal={deal_id} | {exc}")
 
 def manage_profit_trailing(api, positions, epic, account_currency):
     """Lock profit after +20 account-currency units; allow an 8-unit pullback."""
@@ -1535,7 +1562,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             owned_positions = filter_owned_positions(positions)
             epic_positions = get_positions_for_epic(owned_positions, epic)
 
-        manage_profit_trailing(api, owned_positions, epic, account_currency)
+        if not ai_engine.AI_ENABLED:
+            manage_profit_trailing(api, owned_positions, epic, account_currency)
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
@@ -1609,8 +1637,21 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
-        # The selector chooses Trend/Breakout/Range from current market structure.
-        signal = generate_signal(df, epic, htf_df)
+        # AI is the primary decision engine for every V1/V2/V3/V4 process.
+        # Legacy strategy output is retained only as diagnostic context.
+        legacy_signal = generate_signal(df, epic, htf_df)
+        ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal)
+        log(
+            f"{epic}: AI DECISION | signal={ai_decision.get('signal')} | "
+            f"confidence={float(ai_decision.get('confidence', 0.0)):.3f} | "
+            f"BUY={float(ai_decision.get('buy_probability', 0.0)):.3f} | "
+            f"SELL={float(ai_decision.get('sell_probability', 0.0)):.3f} | "
+            f"WAIT={float(ai_decision.get('wait_probability', 0.0)):.3f} | "
+            f"SL_ATR={ai_decision.get('sl_atr')} | TP_ATR={ai_decision.get('tp_atr')} | "
+            f"{ai_decision.get('reason')}"
+        )
+        ai_manage_positions(api, owned_positions, epic, ai_decision)
+        signal = ai_decision.get('signal') if ai_engine.AI_ENABLED else legacy_signal
         epic_positions = get_positions_for_epic(owned_positions, epic)
         if signal is None and not epic_positions:
             log(f"No signal this cycle for {epic}.")
@@ -1623,7 +1664,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             basket_direction = next(iter(directions))
             if signal is None:
                 if not allow_entry_without_signal:
-                    log(f"{epic}: no fresh entry signal; managing existing position only.")
+                    log(f"{epic}: AI WAIT; managing existing position only.")
+                    return None
+                if ai_engine.AI_ENABLED:
+                    log(f"{epic}: AI WAIT; no new/add-on entry.")
                     return None
                 signal = basket_direction
             elif signal != basket_direction:
@@ -1637,11 +1681,15 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         execution_price = live_offer if signal == "BUY" else live_bid
         order_spread_pct = market_spread_pct(market)
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
-        strength = market_entry_strength(df, htf_df, signal)
-        if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
-            required_strength = float(getattr(globals(), "V3_MIN_ENTRY_STRENGTH", 0.55))
+        if ai_engine.AI_ENABLED:
+            strength = float(ai_decision.get("confidence", 0.0))
+            required_strength = float(os.environ.get("AI_MIN_CONFIDENCE", "0.58"))
         else:
-            required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.75))
+            strength = market_entry_strength(df, htf_df, signal)
+            if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
+                required_strength = float(getattr(globals(), "V3_MIN_ENTRY_STRENGTH", 0.55))
+            else:
+                required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.75))
         if strength < required_strength:
             record_entry_rejection(
                 epic,
@@ -1649,7 +1697,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 f"strength={strength:.2f}; required={required_strength:.2f}",
             )
             return None
-        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic)
+        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=ai_decision if ai_engine.AI_ENABLED else None)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
             return None
