@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.metrics import balanced_accuracy_score, precision_score
 
 AI_ENABLED = os.environ.get("AI_TRADING_ENABLED", "true").lower() in {"1","true","yes"}
 AI_REQUIRE_STRATEGY_AGREEMENT = os.environ.get("AI_REQUIRE_STRATEGY_AGREEMENT", "true").lower() in {"1","true","yes"}
@@ -21,10 +22,10 @@ DECISION_CACHE = {}
 WF_FOLDS = 3
 
 PROFILES = {
-    "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
-    "CAPITAL_V2_QUANT_HYBRID": {"min_train":130,"horizon":4,"label_atr":0.08,"min_conf":0.59,"wf_min_train":95,"wf_acc":0.41,"max_iter":200,"lr":0.055,"leaf":17,"seed":202},
-    "CAPITAL_V3_RAPID_PROFIT": {"min_train":120,"horizon":3,"label_atr":0.07,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"max_iter":170,"lr":0.065,"leaf":13,"seed":303},
-    "CAPITAL_V4_SMART_OPPORTUNITY": {"min_train":140,"horizon":5,"label_atr":0.10,"min_conf":0.62,"wf_min_train":100,"wf_acc":0.42,"max_iter":220,"lr":0.05,"leaf":19,"seed":404},
+    "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
+    "CAPITAL_V2_QUANT_HYBRID": {"min_train":130,"horizon":4,"label_atr":0.08,"min_conf":0.59,"wf_min_train":95,"wf_acc":0.41,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":200,"lr":0.055,"leaf":17,"seed":202},
+    "CAPITAL_V3_RAPID_PROFIT": {"min_train":120,"horizon":3,"label_atr":0.07,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":170,"lr":0.065,"leaf":13,"seed":303},
+    "CAPITAL_V4_SMART_OPPORTUNITY": {"min_train":140,"horizon":5,"label_atr":0.10,"min_conf":0.62,"wf_min_train":100,"wf_acc":0.42,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":220,"lr":0.05,"leaf":19,"seed":404},
 }
 def _profile(strategy_id):
     return PROFILES.get(strategy_id, PROFILES["CAPITAL_V1"])
@@ -55,6 +56,14 @@ def _features(df, htf):
             "_hv50": np.asarray(he50, dtype=float),
             "_hv200": np.asarray(he200, dtype=float),
         }).dropna(subset=["_t"]).sort_values("_t")
+        # HARD NO-LOOKAHEAD RULE:
+        # The higher-timeframe bar is never allowed to describe the same
+        # still-forming period as the lower-timeframe sample. Lag the HTF
+        # feature series by one complete HTF bar before alignment. This is
+        # deliberately conservative because Capital.com's candle timestamp
+        # semantics can vary by endpoint/resolution; sacrificing one HTF bar
+        # is preferable to training on future information.
+        higher[["_hv20", "_hv50", "_hv200"]] = higher[["_hv20", "_hv50", "_hv200"]].shift(1)
         base_sorted = base.sort_values("_t")
         aligned = pd.merge_asof(base_sorted, higher, on="_t", direction="backward")
         aligned = aligned.set_index(base_sorted.index).reindex(x.index)
@@ -90,6 +99,7 @@ def _make_model(profile):
         max_leaf_nodes=profile["leaf"],
         l2_regularization=1.0,
         random_state=profile["seed"],
+        class_weight="balanced",
     )
 
 
@@ -103,6 +113,9 @@ def _walk_forward_validate(fx, y, train_end, profile):
     n = len(eligible)
     fold_size = max(10, n // (WF_FOLDS + 1))
     scores = []
+    balanced_scores = []
+    precision_scores = []
+    directional_rates = []
     total = 0
     for fold in range(WF_FOLDS):
         val_start_pos = profile["wf_min_train"] + fold * fold_size
@@ -125,12 +138,54 @@ def _walk_forward_validate(fx, y, train_end, profile):
         pred = model.predict(fx.loc[val_idx, FEATURES].astype(float))
         actual = y.loc[val_idx].astype(int).to_numpy()
         scores.append(float((pred == actual).mean()))
+        balanced_scores.append(float(balanced_accuracy_score(actual, pred)))
+        directional_mask = np.isin(pred, [-1, 1])
+        directional_rates.append(float(directional_mask.mean()))
+        if directional_mask.any():
+            precision_scores.append(
+                float(
+                    precision_score(
+                        actual[directional_mask],
+                        pred[directional_mask],
+                        labels=[-1, 1],
+                        average="macro",
+                        zero_division=0,
+                    )
+                )
+            )
+        else:
+            precision_scores.append(0.0)
         total += len(actual)
 
     if not scores:
-        return {"ok": False, "accuracy": 0.0, "folds": 0, "samples": 0}
+        return {
+            "ok": False,
+            "accuracy": 0.0,
+            "balanced_accuracy": 0.0,
+            "directional_precision": 0.0,
+            "directional_rate": 0.0,
+            "folds": 0,
+            "samples": 0,
+        }
     accuracy = float(np.mean(scores))
-    return {"ok": accuracy >= profile["wf_acc"], "accuracy": accuracy, "folds": len(scores), "samples": total}
+    balanced_accuracy = float(np.mean(balanced_scores))
+    directional_precision = float(np.mean(precision_scores))
+    directional_rate = float(np.mean(directional_rates))
+    ok = (
+        accuracy >= profile["wf_acc"]
+        and balanced_accuracy >= profile["wf_acc"]
+        and directional_precision >= profile["wf_precision"]
+        and directional_rate >= profile["wf_directional_rate"]
+    )
+    return {
+        "ok": ok,
+        "accuracy": accuracy,
+        "balanced_accuracy": balanced_accuracy,
+        "directional_precision": directional_precision,
+        "directional_rate": directional_rate,
+        "folds": len(scores),
+        "samples": total,
+    }
 
 
 def _label_profile(df, profile):
@@ -149,7 +204,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     result={"enabled":AI_ENABLED,"strategy_id":strategy_id,"signal":None,"raw_signal":None,
             "confidence":0.0,"buy_probability":0.0,"sell_probability":0.0,"wait_probability":1.0,
             "sl_atr":2.0,"tp_atr":3.0,"reason":"AI_UNAVAILABLE","strategy_signal":existing_signal,
-            "strategy_agreement":None,"walk_forward":{"ok":False,"accuracy":0.0,"folds":0,"samples":0}}
+            "strategy_agreement":None,"walk_forward":{"ok":False,"accuracy":0.0,"balanced_accuracy":0.0,"directional_precision":0.0,"directional_rate":0.0,"folds":0,"samples":0}}
     if not AI_ENABLED or df is None or len(df)<260:
         result["reason"]="insufficient_ai_history"; return result
     def _last_time(frame):
@@ -170,7 +225,12 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     wf=_walk_forward_validate(fx,y,train_end,profile)
     result["walk_forward"]=wf
     if not wf["ok"]:
-        result["reason"]=f"walk_forward_rejected:accuracy={wf['accuracy']:.3f}"; return result
+        result["reason"]=(
+            f"walk_forward_rejected:acc={wf['accuracy']:.3f}"
+            f",bal={wf.get('balanced_accuracy', 0.0):.3f}"
+            f",precision={wf.get('directional_precision', 0.0):.3f}"
+            f",directional_rate={wf.get('directional_rate', 0.0):.3f}"
+        ); return result
     model=_make_model(profile)
     model.fit(fx.loc[idx,FEATURES].astype(float),y.loc[idx].astype(int))
     latest_idx=fx.index[-2]
