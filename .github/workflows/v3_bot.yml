@@ -3,7 +3,7 @@ name: Capital V3 Rapid Profit Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17,32,47,02 * * * *"
+    - cron: "12,27,42,57 * * * *"
 
 concurrency:
   # All strategies share one Capital.com account. Serialize the full
