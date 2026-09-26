@@ -1,29 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T09:48:41.490674+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T09:48:42.322862+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T09:48:58.878350+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T09:48:59.718932+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T09:49:16.306252+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
@@ -5995,6 +5971,30 @@
   },
   {
     "timestamp": "2026-09-26T19:36:06.936472+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T19:47:03.137496+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138770; completed_close=1.139230; distance=0.69 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-26T19:47:05.634610+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "404 Client Error:  for url: https://demo-api-capital.backend-capital.com/api/v1/markets/USDJPY_W"
+  },
+  {
+    "timestamp": "2026-09-26T19:47:18.727615+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138770; completed_close=1.139230; distance=0.69 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-26T19:47:19.682991+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
