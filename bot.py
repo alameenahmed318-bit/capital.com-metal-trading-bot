@@ -1708,7 +1708,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         if ai_engine.AI_ENABLED:
             strength = float(ai_decision.get("confidence", 0.0))
-            required_strength = float(os.environ.get("AI_MIN_CONFIDENCE", "0.58"))
+            # Use the strategy profile's own AI threshold. A global env
+            # fallback could silently weaken V4 (0.62) to 0.58.
+            required_strength = float(
+                ai_decision.get("required_confidence", 0.58)
+            )
         else:
             strength = market_entry_strength(df, htf_df, signal)
             if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
