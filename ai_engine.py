@@ -72,7 +72,9 @@ def _features(df, htf):
         hv200 = aligned["_hv200"].to_numpy()
     else:
         # Compatibility fallback for legacy candle frames without timestamps.
-        hi=np.linspace(0,len(hc)-1,len(x)).astype(int) if len(hc) else np.zeros(len(x),dtype=int)
+        # Legacy fallback: still lag the higher-timeframe series by one bar
+        # rather than allowing a same-period HTF value into a lower-timeframe row.
+        hi=np.linspace(0,max(0,len(hc)-2),len(x)).astype(int) if len(hc) else np.zeros(len(x),dtype=int)
         hv20=np.asarray(he20)[hi] if len(hc) else np.zeros(len(x))
         hv50=np.asarray(he50)[hi] if len(hc) else np.zeros(len(x))
         hv200=np.asarray(he200)[hi] if len(hc) else np.zeros(len(x))
