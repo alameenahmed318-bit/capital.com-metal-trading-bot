@@ -358,18 +358,67 @@ def market_spread_pct(market):
         return None
     return ((offer - bid) / ((offer + bid) / 2.0)) * 100.0
 
-def spread_allows_entry(api, epic, market=None):
+def spread_allows_entry(api, epic, market=None, ai_decision=None):
+    """AI-owned spread decision.
+    
+    The ML decision engine controls whether the current spread is acceptable.
+    Broker quote validity and broker TRADEABLE status remain mandatory fail-closed
+    conditions. The legacy fixed MAX_SPREAD_PCT is retained only as a diagnostic
+    reference, not as an independent entry veto.
+    """
     if not SPREAD_FILTER_ENABLED:
         return True
     market = market if market is not None else api.get_market(epic)
     spread = market_spread_pct(market)
     if spread is None:
-        log(f"{epic}: spread unavailable; entry blocked for safety.")
+        log(f"{epic}: spread unavailable; AI cannot evaluate execution cost; entry blocked.")
         return False
-    if spread > MAX_SPREAD_PCT:
-        log(f"{epic}: spread too wide ({spread:.4f}% > {MAX_SPREAD_PCT:.4f}%); entry blocked.")
+    if ai_decision is None or not ai_decision.get("enabled"):
+        log(f"{epic}: AI spread authority unavailable; entry blocked.")
         return False
-    return True
+
+    confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
+    signal = ai_decision.get("signal")
+    advanced = ai_decision.get("advanced_ai") if isinstance(ai_decision.get("advanced_ai"), dict) else {}
+    uncertainty = float(advanced.get("enhanced_uncertainty", 0.0) or 0.0)
+    regime = str((advanced.get("regime") or {}).get("regime") or "UNKNOWN").upper()
+    cost = advanced.get("execution_cost") if isinstance(advanced.get("execution_cost"), dict) else {}
+    total_price_cost = safe_float(cost.get("total_price_cost"))
+    
+    # AI dynamically sets the spread tolerance from its confidence, uncertainty,
+    # regime and estimated execution cost. It may accept a wider-than-normal
+    # spread when the model sees sufficient edge, or reject a normally-small
+    # spread when confidence/conditions are poor.
+    dynamic_cap = 0.08 + 0.42 * max(0.0, min(1.0, confidence))
+    dynamic_cap *= max(0.35, 1.0 - 0.60 * max(0.0, min(1.0, uncertainty)))
+    if regime in {"TREND", "BREAKOUT"}:
+        dynamic_cap *= 1.10
+    elif regime == "RANGE":
+        dynamic_cap *= 0.90
+    dynamic_cap = max(0.03, min(0.50, dynamic_cap))
+
+    # If the AI execution-cost model has a usable estimate, require the spread
+    # to remain below the AI-derived tolerance. Otherwise use the model's
+    # confidence/uncertainty decision alone.
+    cost_ratio = None
+    if total_price_cost is not None and spread > 0:
+        cost_ratio = total_price_cost / spread
+    accepted = (
+        signal in {"BUY", "SELL"}
+        and confidence >= float(ai_decision.get("required_confidence", 0.0) or 0.0)
+        and uncertainty <= 0.85
+        and spread <= dynamic_cap
+    )
+    if cost_ratio is not None and cost_ratio > 2.5:
+        accepted = False
+
+    log(
+        f"{epic}: AI SPREAD DECISION | signal={signal} | confidence={confidence:.3f} | "
+        f"uncertainty={uncertainty:.3f} | regime={regime} | spread={spread:.4f}% | "
+        f"AI_CAP={dynamic_cap:.4f}% | cost={total_price_cost} | cost/spread={cost_ratio} | "
+        f"legacy_cap={MAX_SPREAD_PCT:.4f}% | accepted={accepted}"
+    )
+    return accepted
 
 def _load_execution_quality():
     if not os.path.exists(EXECUTION_QUALITY_FILE):
@@ -1572,10 +1621,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if cooldown_active(epic):
             record_entry_rejection(epic, "LOSS_COOLDOWN")
             return None
-        if not spread_allows_entry(api, epic, market=market):
-            record_entry_rejection(epic, "SPREAD_FILTER")
-            return None
-
+        # AI must evaluate the live spread after seeing the market/candle context.
+        # The old fixed spread filter is no longer an independent veto.
+        
         # No existing position: only now spend the candle API/indicator work
         # needed to search for a fresh entry.
         if df is None:
@@ -1708,6 +1756,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             f"SL_ATR={ai_decision.get('sl_atr')} | TP_ATR={ai_decision.get('tp_atr')} | "
             f"{ai_decision.get('reason')}"
         )
+        if ai_engine.AI_ENABLED and not spread_allows_entry(api, epic, market=market, ai_decision=ai_decision):
+            record_entry_rejection(
+                epic,
+                "AI_SPREAD_DECISION",
+                f"AI rejected current spread; legacy_cap={MAX_SPREAD_PCT:.4f}%",
+            )
+            return None
         ai_manage_positions(api, owned_positions, epic, ai_decision)
         signal = ai_decision.get('signal') if ai_engine.AI_ENABLED else legacy_signal
         confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
