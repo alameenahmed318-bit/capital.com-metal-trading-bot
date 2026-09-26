@@ -36,6 +36,7 @@ def _profile(strategy_id):
     return PROFILES.get(strategy_id, PROFILES["CAPITAL_V1"])
 
 FEATURES = ["ret1","ret3","ret8","rsi","atr_pct","ema9_gap","ema21_gap","ema50_gap","ema200_gap","bb_z","range_pct","body_pct","close_pos","vol_ratio","htf20_gap","htf50_gap","htf200_gap"]
+REALIZED_FEATURES = FEATURES + ["trade_direction"]
 
 def _features(df, htf):
     x=df.copy(); c=pd.to_numeric(x["close"],errors="coerce"); h=pd.to_numeric(x["high"],errors="coerce"); l=pd.to_numeric(x["low"],errors="coerce"); o=pd.to_numeric(x["open"],errors="coerce")
@@ -227,9 +228,9 @@ def _realized_walk_forward(frame, profile):
     if frame is None or len(frame) < max(REALIZED_MIN_SAMPLES, profile["wf_min_train"] + profile["horizon"] + 20):
         return {"ok": False, "accuracy": 0.0, "balanced_accuracy": 0.0, "directional_precision": 0.0, "directional_rate": 0.0, "folds": 0, "samples": 0, "reason": "insufficient_realized_samples"}
     frame=frame.copy()
-    if any(f not in frame.columns for f in FEATURES):
+    if any(f not in frame.columns for f in REALIZED_FEATURES):
         return {"ok": False, "accuracy": 0.0, "balanced_accuracy": 0.0, "directional_precision": 0.0, "directional_rate": 0.0, "folds": 0, "samples": 0, "reason": "missing_realized_features"}
-    frame=frame.dropna(subset=FEATURES+["outcome_label"]).reset_index(drop=True)
+    frame=frame.dropna(subset=REALIZED_FEATURES+["outcome_label"]).reset_index(drop=True)
     if len(frame) < REALIZED_MIN_SAMPLES:
         return {"ok": False, "accuracy": 0.0, "balanced_accuracy": 0.0, "directional_precision": 0.0, "directional_rate": 0.0, "folds": 0, "samples": 0, "reason": "insufficient_realized_samples"}
     n=len(frame); test=max(10,n//(WF_FOLDS+1)); scores=[]; bals=[]; prec=[]; dirs=[]; total=0
@@ -237,10 +238,10 @@ def _realized_walk_forward(frame, profile):
         vs=profile["wf_min_train"]+fold*test; ve=min(n,vs+test); te=vs-profile["horizon"]
         if te<profile["wf_min_train"] or ve<=vs: continue
         tr=frame.iloc[:te]; va=frame.iloc[vs:ve]
-        if not {-1,1}.issubset(set(tr.outcome_label.astype(int))) or not {-1,1}.issubset(set(va.outcome_label.astype(int))): continue
-        m=_make_model(profile); m.fit(tr[FEATURES].astype(float),tr.outcome_label.astype(int)); pred=m.predict(va[FEATURES].astype(float)); actual=va.outcome_label.astype(int).to_numpy()
+        if not {0,1}.issubset(set((tr.outcome_label>0).astype(int))) or not {0,1}.issubset(set((va.outcome_label>0).astype(int))): continue
+        m=_make_model(profile); m.fit(tr[REALIZED_FEATURES].astype(float),(tr.outcome_label>0).astype(int)); pred=m.predict(va[REALIZED_FEATURES].astype(float)); actual=(va.outcome_label>0).astype(int).to_numpy()
         dm=np.isin(pred,[-1,1]); scores.append(float((pred==actual).mean())); bals.append(float(balanced_accuracy_score(actual,pred))); dirs.append(float(dm.mean()))
-        prec.append(float(precision_score(actual[dm],pred[dm],labels=[-1,1],average="macro",zero_division=0)) if dm.any() else 0.0); total+=len(actual)
+        prec.append(float(precision_score(actual[dm],pred[dm],labels=[0,1],average="macro",zero_division=0)) if dm.any() else 0.0); total+=len(actual)
     if not scores: return {"ok":False,"accuracy":0.0,"balanced_accuracy":0.0,"directional_precision":0.0,"directional_rate":0.0,"folds":0,"samples":0,"reason":"no_valid_realized_folds","label_source":"realized_trade_outcomes"}
     a=float(np.mean(scores)); b=float(np.mean(bals)); p=float(np.mean(prec)); d=float(np.mean(dirs))
     return {"ok":a>=profile["wf_acc"] and b>=profile["wf_acc"] and p>=profile["wf_precision"] and d>=profile["wf_directional_rate"],"accuracy":a,"balanced_accuracy":b,"directional_precision":p,"directional_rate":d,"folds":len(scores),"samples":total,"label_source":"realized_trade_outcomes"}
@@ -270,7 +271,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     if ai_outcomes is not None:
         try: realized=ai_outcomes.realized_training_frame()
         except Exception: realized=None
-    use_realized=realized is not None and len(realized)>=REALIZED_MIN_SAMPLES and all(f in realized.columns for f in FEATURES)
+    use_realized=realized is not None and len(realized)>=REALIZED_MIN_SAMPLES and all(f in realized.columns for f in REALIZED_FEATURES)
     if use_realized:
         wf=_realized_walk_forward(realized,profile)
         if not wf["ok"]:
@@ -289,7 +290,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
         ); return result
     model=_make_model(profile)
     if use_realized:
-        model.fit(realized[FEATURES].astype(float), realized["outcome_label"].astype(int))
+        model.fit(realized[REALIZED_FEATURES].astype(float), (realized["outcome_label"]>0).astype(int))
         train_size=len(realized)
     else:
         model.fit(fx.loc[idx,FEATURES].astype(float),y.loc[idx].astype(int))
@@ -298,11 +299,25 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     latest=fx.loc[[latest_idx],FEATURES].astype(float)
     if latest.isna().any(axis=None):
         result["reason"]="latest_features_invalid"; return result
-    probs=model.predict_proba(latest)[0]
-    classes=list(model.classes_)
-    p={int(k):float(v) for k,v in zip(classes,probs)}
-    pb,ps,pw=p.get(1,0.0),p.get(-1,0.0),p.get(0,0.0)
-    best=max(((pb,"BUY"),(ps,"SELL"),(pw,"WAIT")),key=lambda z:z[0])
+    if use_realized:
+        # Probability is conditional on the proposed trade direction.
+        candidates={}
+        for side,flag in (("BUY",1.0),("SELL",-1.0)):
+            row=latest.copy()
+            row["trade_direction"]=flag
+            probs=model.predict_proba(row[REALIZED_FEATURES].astype(float))[0]
+            classes=list(model.classes_)
+            p={int(k):float(v) for k,v in zip(classes,probs)}
+            candidates[side]=p.get(1,0.0)
+        pb,ps=candidates["BUY"],candidates["SELL"]
+        pw=max(0.0,1.0-max(pb,ps))
+        best=max(((pb,"BUY"),(ps,"SELL"),(pw,"WAIT")),key=lambda z:z[0])
+    else:
+        probs=model.predict_proba(latest)[0]
+        classes=list(model.classes_)
+        p={int(k):float(v) for k,v in zip(classes,probs)}
+        pb,ps,pw=p.get(1,0.0),p.get(-1,0.0),p.get(0,0.0)
+        best=max(((pb,"BUY"),(ps,"SELL"),(pw,"WAIT")),key=lambda z:z[0])
     raw_signal=best[1] if best[0]>=profile["min_conf"] and best[1]!="WAIT" else None
     agreement=(raw_signal is not None and existing_signal in ("BUY","SELL") and raw_signal==existing_signal)
     signal=raw_signal if (not AI_REQUIRE_STRATEGY_AGREEMENT or agreement) else None
