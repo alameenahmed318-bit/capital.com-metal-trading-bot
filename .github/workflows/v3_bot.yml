@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Capital V3 bot
+      - name: AI architecture self-check\n        run: python ai_self_check.py\n\n      - name: Run Capital V3 bot
         run: python v3_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
