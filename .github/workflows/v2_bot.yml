@@ -3,7 +3,7 @@ name: Capital V2 Trading Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "12,27,42,57 * * * *"
+    - cron: "8,23,38,53 * * * *"
 
 concurrency:
   # All strategies share one Capital.com account. Serialize the full
