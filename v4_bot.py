@@ -67,11 +67,12 @@ def v4_signal(df, htf_df, epic):
         return None
 
     ok, reason = _regime_ok(df, signal)
+    # Regime is advisory in flexible-AI mode. The AI confidence floor and
+    # shared hard execution/risk protections remain authoritative.
     if not ok:
-        base.log(f"{epic}: V4 OPPORTUNITY REJECTED | {reason}")
-        return None
-
-    base.log(f"{epic}: V4 OPPORTUNITY CONFIRMED | {signal} | score={score:.2f} | {reason}")
+        base.log(f"{epic}: V4 REGIME ADVISORY | {reason} | AI signal remains eligible")
+    else:
+        base.log(f"{epic}: V4 OPPORTUNITY CONFIRMED | {signal} | score={score:.2f} | {reason}")
     return signal
 
 
