@@ -4,7 +4,7 @@ V4 is fully isolated from V1/V2/V3:
 - Own strategy ID and state/ownership files.
 - Does not modify shared strategy files.
 - Adaptive market-regime entry filter on top of the V2 quantitative signal.
-- Fast 2-second scan, but stricter opportunity confirmation than V3.
+- Fast 4-second scan, but stricter opportunity confirmation than V3.
 - Grid, martingale and averaging disabled.
 """
 
@@ -144,9 +144,8 @@ def run_cycle():
     window_seconds = 14 * 60
     deadline = time.monotonic() + window_seconds
 
-    # Fetch account state once per rapid scan pass, not once per epic.
-    # This keeps the 2-second opportunity loop fast without removing the
-    # safety refresh performed inside process_epic before a new entry.
+    # Account state is refreshed per epic so a trade opened/closed on one
+    # market cannot leave the next market using a stale balance/position view.
     while time.monotonic() < deadline:
         for epic in base.EPICS:
             try:
@@ -167,7 +166,7 @@ def run_cycle():
         time.sleep(scan_seconds)
 
     base.save_live_stats(api, account_currency)
-    base.log("V4 smart-opportunity 2-second scan window completed.")
+    base.log("V4 smart-opportunity 4-second scan window completed.")
 
 
 if __name__ == "__main__":
