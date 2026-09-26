@@ -5,9 +5,8 @@ import json
 MODULES=[
  "ai_engine","ai_outcomes","ai_dataset_job","ai_regime","ai_calibration",
  "ai_uncertainty","ai_execution_cost","ai_drift_monitor","ai_risk_overlay",
- "ai_meta_label","ai_pipeline","risk","portfolio_risk","correlation_risk"
-]
-def main():
+ "ai_meta_label","ai_pipeline","ai_validation_suite"
+]def main():
     results={}
     for name in MODULES:
         try:
