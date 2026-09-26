@@ -1839,8 +1839,24 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             if deal_status in {"REJECTED", "FAILED"}:
                 record_execution_quality(epic, signal, execution_price, None, order_spread_pct, deal_reference=deal_reference, deal_status=deal_status, size=size)
                 raise RuntimeError(f"Capital.com rejected deal {deal_reference}: {confirmation}")
-            deal_id = confirmation.get("dealId") or confirmation.get("dealReference")
-            register_owned_position(deal_id)
+            # Capital.com may return the actual opened position IDs inside
+            # affectedDeals rather than as the top-level dealId. Those are the
+            # permanent IDs required by /positions/{dealId}.
+            affected_deals = confirmation.get("affectedDeals") if isinstance(confirmation.get("affectedDeals"), list) else []
+            opened_deal_ids = [
+                str(item.get("dealId"))
+                for item in affected_deals
+                if isinstance(item, dict)
+                and item.get("dealId")
+                and str(item.get("status", "")).upper() in {"OPENED", "OPEN"}
+            ]
+            top_level_deal_id = confirmation.get("dealId")
+            if top_level_deal_id:
+                opened_deal_ids.insert(0, str(top_level_deal_id))
+            opened_deal_ids = list(dict.fromkeys(opened_deal_ids))
+            deal_id = opened_deal_ids[0] if opened_deal_ids else confirmation.get("dealReference")
+            for opened_deal_id in opened_deal_ids:
+                register_owned_position(opened_deal_id)
             actual_fill_price = _confirmed_entry_level(confirmation)
             if actual_fill_price is None and deal_id:
                 try:
