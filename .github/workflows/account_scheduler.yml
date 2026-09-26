@@ -6,9 +6,12 @@ on:
     - cron: "*/5 * * * *"
 
 concurrency:
+  # Serialize account access without dropping pending runs.
+  # GitHub's default queue is single-slot and cancels older pending runs.
+  # queue:max keeps scheduled/manual V1-V4 runs in line.
   group: capital-account-state
   cancel-in-progress: false
-
+  queue: max
 permissions:
   contents: write
 
