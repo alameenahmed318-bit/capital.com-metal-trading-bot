@@ -1,29 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T11:19:40.524548+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T11:19:57.651226+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T11:20:14.773931+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T11:20:31.909605+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
     "timestamp": "2026-09-26T11:20:47.593101+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
@@ -5995,6 +5971,30 @@
   },
   {
     "timestamp": "2026-09-26T17:28:58.536314+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T17:44:33.145672+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139960; completed_close=1.139140; distance=1.19 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-26T17:44:35.425685+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "404 Client Error:  for url: https://demo-api-capital.backend-capital.com/api/v1/markets/USDJPY_W"
+  },
+  {
+    "timestamp": "2026-09-26T17:44:48.003088+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139690; completed_close=1.139140; distance=0.80 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-26T17:44:48.847053+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
