@@ -1,35 +1,59 @@
 {
-  "generated_at": "2026-09-26T08:19:12.195995+00:00",
+  "generated_at": "2026-09-26T09:16:36.079583+00:00",
   "mode": "NON_TRADING_VALIDATION",
   "markets": [
     {
       "epic": "GOLD",
+      "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
     },
     {
       "epic": "EURUSD",
+      "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
     },
     {
       "epic": "SILVER",
+      "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
     },
     {
       "epic": "OIL_CRUDE",
+      "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
     },
     {
       "epic": "US100",
+      "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
     },
     {
       "epic": "US500",
+      "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "BTCUSD",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "EURUSD_W",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "USDJPY_W",
+      "status": "UNAVAILABLE",
+      "reason": "Capital.com returned HTTP 404 for candle endpoint",
       "candles": 0
     }
   ]
