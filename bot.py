@@ -308,8 +308,15 @@ def safety_allows_new_entry(balance, positions, epic=None, account_currency=None
     # All Capital bots use one hard daily loss limit for new-entry safety.
     # For AED accounts this is a fixed 300 AED per UTC day. Do not trigger
     # SAFETY_STOP from the separate percentage peak-equity drawdown gate.
-    if balance <= daily_floor:
-        log(f"SAFETY STOP: new entries disabled | balance={balance:.2f} equity={equity:.2f} day_floor={daily_floor:.2f} daily_loss_limit={daily_loss_limit:.2f}")
+    # Use equity for the daily-loss stop so floating losses cannot bypass
+    # the entry kill-switch merely because the broker balance excludes
+    # unrealized P/L. Balance is still logged for audit/debugging.
+    if equity <= daily_floor:
+        log(
+            f"SAFETY STOP: new entries disabled | balance={balance:.2f} "
+            f"equity={equity:.2f} day_floor={daily_floor:.2f} "
+            f"daily_loss_limit={daily_loss_limit:.2f}"
+        )
         return False
     # Error isolation: the old global counter allowed one bad market/API
     # response to shut down every other market. Gate only the affected epic.
