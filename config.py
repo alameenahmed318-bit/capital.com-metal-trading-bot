@@ -7,9 +7,15 @@ CAPITAL_API_KEY = os.environ["CAPITAL_API_KEY"]
 CAPITAL_EMAIL = os.environ["CAPITAL_EMAIL"]
 CAPITAL_PASSWORD = os.environ["CAPITAL_PASSWORD"]
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
-IS_DEMO = os.environ["IS_DEMO"].lower() == "true"
+_IS_DEMO_RAW = os.environ.get("IS_DEMO", "").strip().lower()
+if _IS_DEMO_RAW not in {"true", "false"}:
+    raise RuntimeError("IS_DEMO must be explicitly set to 'true' or 'false'. Refusing to start with an ambiguous trading environment.")
+IS_DEMO = _IS_DEMO_RAW == "true"
 
-CAPITAL_BASE_URL = os.environ["CAPITAL_BASE_DEMO_URL"] if IS_DEMO else os.environ["CAPITAL_BASE_URL"]
+if IS_DEMO:
+    CAPITAL_BASE_URL = os.environ["CAPITAL_BASE_DEMO_URL"]
+else:
+    CAPITAL_BASE_URL = os.environ["CAPITAL_BASE_URL"]
 
 
 def _float_env(name, default):
