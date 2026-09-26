@@ -37,6 +37,7 @@ EPICS = [
     "OIL_CRUDE",
     "US100",
     "US500",
+    "BTCUSD",
 ]
 
 FORWARD_TEST_EPICS = EPICS
@@ -69,6 +70,7 @@ MARKET_RSI_SETTINGS = {
     "OIL_CRUDE": (40, 70, 30, 60),
     "US100": (40, 70, 30, 60),
     "US500": (40, 70, 30, 60),
+    "BTCUSD": (40, 70, 30, 60),
 }
 
 RISK_PER_TRADE = _float_env("RISK_PER_TRADE", 0.03)
@@ -87,6 +89,7 @@ INSTRUMENT_PRECISION = {
     "OIL_CRUDE": 2,
     "US100": 2,
     "US500": 2,
+    "BTCUSD": 2,
 }
 
 MIN_TRADE_SIZE = {
@@ -96,6 +99,7 @@ MIN_TRADE_SIZE = {
     "OIL_CRUDE": 0.01,
     "US100": 0.01,
     "US500": 0.01,
+    "BTCUSD": 0.01,
 }
 
 BALANCE_CAP = _float_env("BALANCE_CAP", 1000)
