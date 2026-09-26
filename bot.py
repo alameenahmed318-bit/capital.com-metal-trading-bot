@@ -14,6 +14,7 @@ from capital_api import CapitalAPI
 from portfolio_risk import portfolio_risk_overlay
 from execution_costs import evaluate_pretrade_cost
 import ai_engine
+import ai_outcomes
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_V1"
@@ -1664,6 +1665,19 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Legacy strategy output is retained only as diagnostic context.
         legacy_signal = generate_signal(df, epic, htf_df)
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
+        # Snapshot the exact features used by the AI at decision time.
+        # These values are stored with the eventual broker-reported outcome;
+        # they are never rebuilt from future candles.
+        ai_feature_snapshot = {}
+        try:
+            _ai_fx = ai_engine._features(df, htf_df)
+            _ai_idx = _ai_fx.index[-2]
+            ai_feature_snapshot = {
+                k: (float(_ai_fx.loc[_ai_idx, k]) if pd.notna(_ai_fx.loc[_ai_idx, k]) else None)
+                for k in ai_engine.FEATURES
+            }
+        except Exception as _ai_feature_exc:
+            log(f"{epic}: AI outcome feature snapshot unavailable: {_ai_feature_exc}")
         log(
             f"{epic}: AI DECISION | signal={ai_decision.get('signal')} | "
             f"confidence={float(ai_decision.get('confidence', 0.0)):.3f} | "
@@ -1894,6 +1908,35 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 except Exception as fill_exc:
                     log(f"{epic}: fill-price lookup failed: {fill_exc}")
             record_execution_quality(epic, signal, execution_price, actual_fill_price, order_spread_pct, deal_reference=deal_reference, deal_id=deal_id, deal_status=deal_status or "ACCEPTED", size=size)
+            # Persist an outcome-training row only after the broker confirms
+            # the position. P/L is filled later from broker transaction history.
+            try:
+                adverse_slip = None
+                if actual_fill_price is not None and execution_price:
+                    adverse = (actual_fill_price - execution_price) if signal == "BUY" else (execution_price - actual_fill_price)
+                    adverse_slip = max(0.0, adverse / execution_price * 100.0)
+                ai_outcomes.record_entry(
+                    deal_id=deal_id,
+                    deal_reference=deal_reference,
+                    entry_time=datetime.now(timezone.utc).isoformat(),
+                    epic=epic,
+                    direction=signal,
+                    entry_price=actual_fill_price if actual_fill_price is not None else execution_price,
+                    stop_loss=trade.get("stop_level"),
+                    take_profit=trade.get("profit_level"),
+                    size=size,
+                    spread_pct=order_spread_pct,
+                    slippage_pct=adverse_slip,
+                    ai=ai_decision,
+                    strategy_id=STRATEGY_ID,
+                    regime=ai_decision.get("regime"),
+                    volatility=ai_decision.get("volatility") or ai_decision.get("vol_ratio"),
+                    features=ai_feature_snapshot,
+                    reason=ai_decision.get("reason"),
+                )
+                log(f"{epic}: AI OUTCOME LEDGER | deal={deal_id} | pending broker P/L reconciliation")
+            except Exception as _outcome_exc:
+                log(f"{epic}: AI outcome ledger write failed: {_outcome_exc}")
         else:
             # Never treat an order as successfully managed without a broker
             # deal reference. The POST response is not sufficient proof of an
@@ -2122,6 +2165,12 @@ def run_cycle():
 
     reset_daily_safety(balance)
     update_loss_cooldowns_from_history(api)
+    try:
+        reconciliation = ai_outcomes.reconcile(api)
+        dataset_report = ai_outcomes.build_training_dataset()
+        log(f"AI OUTCOME RECONCILIATION | {reconciliation} | DATASET={dataset_report}")
+    except Exception as outcome_exc:
+        log(f"AI outcome reconciliation unavailable; trading continues safely: {outcome_exc}")
     log_trade_report(api, account_currency)
     for cycle_epic in EPICS:
         # Refresh account state before EVERY epic so newly opened/closed positions
