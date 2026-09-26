@@ -240,8 +240,13 @@ def _realized_walk_forward(frame, profile):
         tr=frame.iloc[:te]; va=frame.iloc[vs:ve]
         if not {0,1}.issubset(set((tr.outcome_label>0).astype(int))) or not {0,1}.issubset(set((va.outcome_label>0).astype(int))): continue
         m=_make_model(profile); m.fit(tr[REALIZED_FEATURES].astype(float),(tr.outcome_label>0).astype(int)); pred=m.predict(va[REALIZED_FEATURES].astype(float)); actual=(va.outcome_label>0).astype(int).to_numpy()
-        dm=np.isin(pred,[-1,1]); scores.append(float((pred==actual).mean())); bals.append(float(balanced_accuracy_score(actual,pred))); dirs.append(float(dm.mean()))
-        prec.append(float(precision_score(actual[dm],pred[dm],labels=[0,1],average="macro",zero_division=0)) if dm.any() else 0.0); total+=len(actual)
+        # All realized-model predictions are binary win/loss (0/1), so every
+        # validation prediction is a directional trade outcome rather than a
+        # ternary BUY/SELL/WAIT class. Directional rate therefore means valid
+        # realized predictions, and precision is evaluated on the full fold.
+        dm=np.ones(len(pred),dtype=bool)
+        scores.append(float((pred==actual).mean())); bals.append(float(balanced_accuracy_score(actual,pred))); dirs.append(float(dm.mean()))
+        prec.append(float(precision_score(actual,pred,labels=[0,1],average="macro",zero_division=0))); total+=len(actual)
     if not scores: return {"ok":False,"accuracy":0.0,"balanced_accuracy":0.0,"directional_precision":0.0,"directional_rate":0.0,"folds":0,"samples":0,"reason":"no_valid_realized_folds","label_source":"realized_trade_outcomes"}
     a=float(np.mean(scores)); b=float(np.mean(bals)); p=float(np.mean(prec)); d=float(np.mean(dirs))
     return {"ok":a>=profile["wf_acc"] and b>=profile["wf_acc"] and p>=profile["wf_precision"] and d>=profile["wf_directional_rate"],"accuracy":a,"balanced_accuracy":b,"directional_precision":p,"directional_rate":d,"folds":len(scores),"samples":total,"label_source":"realized_trade_outcomes"}
