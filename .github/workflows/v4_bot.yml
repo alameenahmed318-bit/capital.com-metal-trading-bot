@@ -8,7 +8,10 @@ on:
 # V4 owns separate state files, so it has its own concurrency lane.
 # It cannot block or cancel V1/V2/V3 runs.
 concurrency:
-  group: capital-v4-state
+  # All strategies share one Capital.com account. Serialize the full
+  # account-mutating run so V1/V2/V3/V4 cannot race on balance, positions,
+  # daily-loss limits, or portfolio risk.
+  group: capital-account-state
   cancel-in-progress: false
 
 permissions:
