@@ -268,7 +268,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     rr=1.35+1.65*max(0.0,min(1.0,(best[0]-0.50)/0.50))
     tp_atr=float(np.clip(sl_atr*rr,2.0,5.5))
     result.update({"signal":signal,"raw_signal":raw_signal,"confidence":float(best[0]),
-                   "buy_probability":pb,"sell_probability":ps,"wait_probability":pw,
+                   "required_confidence":float(profile["min_conf"]),"buy_probability":pb,"sell_probability":ps,"wait_probability":pw,
                    "sl_atr":sl_atr,"tp_atr":tp_atr,"strategy_agreement":agreement,
                    "reason":f"AI_{strategy_id} classes={classes} train={len(idx)} wf={wf['accuracy']:.3f}"})
     DECISION_CACHE[cache_key]=dict(result)
