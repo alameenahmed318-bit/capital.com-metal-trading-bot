@@ -3,7 +3,7 @@ name: Capital V4 Smart Opportunity Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "09,24,39,54 * * * *"
+    - cron: "0,15,30,45 * * * *"
 
 # V4 has separate state files, but all strategies share the account-wide
 # concurrency lane because they mutate the same Capital.com account.
