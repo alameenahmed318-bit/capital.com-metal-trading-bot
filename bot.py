@@ -1319,7 +1319,7 @@ def ai_manage_positions(api, positions, epic, ai_decision):
     """Let the ML model manage direction changes on already-open positions."""
     if not ai_decision or not ai_decision.get("enabled"):
         return
-    signal = ai_decision.get("signal")
+    signal = ai_decision.get("raw_signal") or ai_decision.get("signal")
     confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
     exit_confidence = max(0.65, float(os.environ.get("AI_EXIT_CONFIDENCE", "0.65")))
     if signal not in ("BUY", "SELL") or confidence < exit_confidence:
