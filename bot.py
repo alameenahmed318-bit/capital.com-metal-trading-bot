@@ -1675,6 +1675,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 f"conformal_q={float(adv.get('conformal',{}).get('quality',0.0)):.2f} "
                 f"conformal_wide={adv.get('conformal',{}).get('wide')} | "
                 f"enh_unc={float(adv.get('enhanced_uncertainty',1.0)):.3f} | "
+                f"edge={adv.get('expected_edge',{}).get('expected_gross_pnl')} "
+                f"edge_avail={adv.get('expected_edge',{}).get('available')} | "
                 f"cost={adv.get('execution_cost',{}).get('total_price_cost')} | "
                 f"meta={adv.get('meta_label',{}).get('accepted')} | "
                 f"risk_mult={float(adv.get('risk_multiplier',0.0)):.3f}"
