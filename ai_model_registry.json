@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "active_model": null,
+  "promotion_policy": {
+    "min_walk_forward_folds": 5,
+    "require_calibration": true,
+    "require_drift_check": true,
+    "require_execution_cost_check": true,
+    "require_realized_broker_labels": true,
+    "rollback_on_metric_degradation": true
+  },
+  "models": {}
+}
