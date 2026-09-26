@@ -1392,553 +1392,1117 @@
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:36:24.772844+00:00",
+    "timestamp": "2026-09-26T09:20:43.110193+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:20:54.956352+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:21:15.784125+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.0, 'estimated_round_trip_cost': 0.00101388, 'cost_to_stop_ratio': 0.5444, 'max_cost_to_risk': 0.25, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-26T09:21:23.638641+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:36:25.600358+00:00",
+    "timestamp": "2026-09-26T09:21:24.604463+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:36:42.219451+00:00",
+    "timestamp": "2026-09-26T09:21:42.460544+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:36:43.051843+00:00",
+    "timestamp": "2026-09-26T09:21:43.411460+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:36:59.667181+00:00",
+    "timestamp": "2026-09-26T09:22:01.269715+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:00.492041+00:00",
+    "timestamp": "2026-09-26T09:22:02.271008+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:17.101970+00:00",
+    "timestamp": "2026-09-26T09:22:20.152142+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:17.930239+00:00",
+    "timestamp": "2026-09-26T09:22:21.134826+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:34.578340+00:00",
+    "timestamp": "2026-09-26T09:22:38.969171+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:35.409519+00:00",
+    "timestamp": "2026-09-26T09:22:39.926873+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:52.037376+00:00",
+    "timestamp": "2026-09-26T09:22:58.423519+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:37:52.868377+00:00",
+    "timestamp": "2026-09-26T09:22:59.422615+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:38:09.443609+00:00",
+    "timestamp": "2026-09-26T09:23:17.319580+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:38:10.270529+00:00",
+    "timestamp": "2026-09-26T09:23:18.303651+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:38:26.835748+00:00",
+    "timestamp": "2026-09-26T09:23:36.228349+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:38:27.666179+00:00",
+    "timestamp": "2026-09-26T09:23:37.228846+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:38:44.293020+00:00",
+    "timestamp": "2026-09-26T09:23:55.102320+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:38:45.120228+00:00",
+    "timestamp": "2026-09-26T09:23:56.131034+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:01.698786+00:00",
+    "timestamp": "2026-09-26T09:24:14.010509+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:02.527804+00:00",
+    "timestamp": "2026-09-26T09:24:15.010864+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:19.860035+00:00",
+    "timestamp": "2026-09-26T09:24:32.913315+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:20.860949+00:00",
+    "timestamp": "2026-09-26T09:24:33.880697+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:37.638130+00:00",
+    "timestamp": "2026-09-26T09:24:51.784337+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:38.460856+00:00",
+    "timestamp": "2026-09-26T09:24:52.765445+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:55.216784+00:00",
+    "timestamp": "2026-09-26T09:25:10.704952+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:39:56.041781+00:00",
+    "timestamp": "2026-09-26T09:25:11.649838+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:40:12.882703+00:00",
+    "timestamp": "2026-09-26T09:25:29.520600+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:40:13.852913+00:00",
+    "timestamp": "2026-09-26T09:25:30.518378+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:40:30.430033+00:00",
+    "timestamp": "2026-09-26T09:25:48.415076+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:40:31.248210+00:00",
+    "timestamp": "2026-09-26T09:25:49.368781+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:40:47.825939+00:00",
+    "timestamp": "2026-09-26T09:26:07.299146+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:40:48.646437+00:00",
+    "timestamp": "2026-09-26T09:26:08.254131+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:05.278853+00:00",
+    "timestamp": "2026-09-26T09:26:26.107598+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:06.139412+00:00",
+    "timestamp": "2026-09-26T09:26:27.083338+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:22.768021+00:00",
+    "timestamp": "2026-09-26T09:26:44.926639+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:23.600387+00:00",
+    "timestamp": "2026-09-26T09:26:45.897241+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:40.209691+00:00",
+    "timestamp": "2026-09-26T09:27:04.546495+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:41.038429+00:00",
+    "timestamp": "2026-09-26T09:27:05.527614+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:57.622602+00:00",
+    "timestamp": "2026-09-26T09:27:23.627243+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:41:58.447277+00:00",
+    "timestamp": "2026-09-26T09:27:24.623582+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:42:15.034900+00:00",
+    "timestamp": "2026-09-26T09:27:42.570359+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:42:15.866731+00:00",
+    "timestamp": "2026-09-26T09:27:43.566192+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:42:32.436438+00:00",
+    "timestamp": "2026-09-26T09:28:01.478178+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:42:33.269271+00:00",
+    "timestamp": "2026-09-26T09:28:02.464389+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:42:49.840297+00:00",
+    "timestamp": "2026-09-26T09:28:20.425515+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:42:50.663587+00:00",
+    "timestamp": "2026-09-26T09:28:21.396480+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:43:07.886134+00:00",
+    "timestamp": "2026-09-26T09:28:39.277326+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:43:08.820578+00:00",
+    "timestamp": "2026-09-26T09:28:40.262073+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:43:26.031066+00:00",
+    "timestamp": "2026-09-26T09:28:58.237772+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:43:26.893896+00:00",
+    "timestamp": "2026-09-26T09:28:59.228094+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:43:43.593346+00:00",
+    "timestamp": "2026-09-26T09:29:17.151784+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:43:44.446163+00:00",
+    "timestamp": "2026-09-26T09:29:18.136760+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:01.033435+00:00",
+    "timestamp": "2026-09-26T09:29:36.076100+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:01.878566+00:00",
+    "timestamp": "2026-09-26T09:29:37.051874+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:18.470574+00:00",
+    "timestamp": "2026-09-26T09:29:55.018477+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:19.292889+00:00",
+    "timestamp": "2026-09-26T09:29:55.973909+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:35.956987+00:00",
+    "timestamp": "2026-09-26T09:30:13.916323+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:36.777565+00:00",
+    "timestamp": "2026-09-26T09:30:14.937338+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:53.338340+00:00",
+    "timestamp": "2026-09-26T09:30:32.891013+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:44:54.166071+00:00",
+    "timestamp": "2026-09-26T09:30:33.872852+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:45:10.741161+00:00",
+    "timestamp": "2026-09-26T09:30:51.809700+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:45:11.571893+00:00",
+    "timestamp": "2026-09-26T09:30:52.780189+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:45:28.166491+00:00",
+    "timestamp": "2026-09-26T09:31:11.420656+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:45:28.994331+00:00",
+    "timestamp": "2026-09-26T09:31:12.407555+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:45:45.574731+00:00",
+    "timestamp": "2026-09-26T09:31:30.396482+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:45:46.404432+00:00",
+    "timestamp": "2026-09-26T09:31:31.406337+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:02.982355+00:00",
+    "timestamp": "2026-09-26T09:31:49.309836+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:03.810706+00:00",
+    "timestamp": "2026-09-26T09:31:50.301091+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:20.414445+00:00",
+    "timestamp": "2026-09-26T09:32:08.300824+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:21.233007+00:00",
+    "timestamp": "2026-09-26T09:32:09.301689+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:37.820157+00:00",
+    "timestamp": "2026-09-26T09:32:27.237734+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:38.644077+00:00",
+    "timestamp": "2026-09-26T09:32:28.232352+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:55.254774+00:00",
+    "timestamp": "2026-09-26T09:32:46.100896+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:46:56.089256+00:00",
+    "timestamp": "2026-09-26T09:32:47.108924+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:47:13.563454+00:00",
+    "timestamp": "2026-09-26T09:33:05.012961+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:47:14.389274+00:00",
+    "timestamp": "2026-09-26T09:33:06.039269+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:47:31.370080+00:00",
+    "timestamp": "2026-09-26T09:33:23.942745+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:47:32.189192+00:00",
+    "timestamp": "2026-09-26T09:33:24.938488+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:47:49.114052+00:00",
+    "timestamp": "2026-09-26T09:33:42.841057+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:47:49.945845+00:00",
+    "timestamp": "2026-09-26T09:33:43.832433+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:06.693569+00:00",
+    "timestamp": "2026-09-26T09:34:01.735129+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:07.523255+00:00",
+    "timestamp": "2026-09-26T09:34:02.753635+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:24.102852+00:00",
+    "timestamp": "2026-09-26T09:34:20.656216+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:24.925169+00:00",
+    "timestamp": "2026-09-26T09:34:21.612936+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:41.490674+00:00",
+    "timestamp": "2026-09-26T09:34:39.510704+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:42.322862+00:00",
+    "timestamp": "2026-09-26T09:34:40.500289+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:58.878350+00:00",
+    "timestamp": "2026-09-26T09:50:31.445729+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138580; completed_close=1.139230; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-26T09:50:45.774355+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138740; completed_close=1.139230; distance=0.51 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-26T09:50:58.072739+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.0, 'estimated_round_trip_cost': 0.00101388, 'cost_to_stop_ratio': 0.5614, 'max_cost_to_risk': 0.25, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-26T09:51:06.953787+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:48:59.718932+00:00",
+    "timestamp": "2026-09-26T09:51:08.087521+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:49:16.306252+00:00",
+    "timestamp": "2026-09-26T09:51:16.944210+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:49:17.128016+00:00",
+    "timestamp": "2026-09-26T09:51:18.059343+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:49:33.751500+00:00",
+    "timestamp": "2026-09-26T09:51:37.792327+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
     "details": ""
   },
   {
-    "timestamp": "2026-09-26T09:49:34.569556+00:00",
+    "timestamp": "2026-09-26T09:51:39.006651+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:51:48.197327+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:51:49.369886+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:51:58.315369+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:51:59.432585+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:52:08.210312+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:52:09.318284+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:52:28.146623+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:52:29.246994+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:52:48.020301+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:52:49.116604+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:53:07.835925+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:53:08.913330+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:53:27.681766+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:53:28.761535+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:53:47.476193+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:53:48.547983+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:54:07.327283+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:54:08.416600+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:54:27.110397+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:54:28.195588+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:54:46.936444+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:54:48.003745+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:06.822340+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:07.894481+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:26.646667+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:27.745516+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:47.470783+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:48.636488+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:57.870942+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:55:59.022549+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:56:07.791277+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:56:08.861289+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:56:27.707973+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:56:28.789207+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:56:47.514605+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:56:48.590125+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:57:07.374591+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:57:08.453592+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:57:27.211865+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:57:28.306398+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:57:47.067401+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:57:48.151029+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:58:06.945009+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:58:08.012790+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:58:26.759269+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:58:27.862455+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:58:46.584522+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:58:47.657696+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:06.473608+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:07.566877+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:26.291748+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:27.389804+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:47.281043+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:48.388624+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:57.541502+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T09:59:58.618075+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:17.654525+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:18.739860+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:27.679329+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:28.799361+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:37.550693+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:38.619411+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:57.368697+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:00:58.465392+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:01:17.151761+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:01:18.266238+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:01:37.005316+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:01:38.094152+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:01:56.855304+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:01:57.926944+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:02:16.638883+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:02:17.706211+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:02:36.457523+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:02:37.568950+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:02:56.272724+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:02:57.355479+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:03:16.149804+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:03:17.241025+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:03:36.030248+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:03:37.115814+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:03:56.127297+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:03:57.267282+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:04:06.216279+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:04:07.290129+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:04:16.098945+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:04:17.199148+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:04:35.965590+00:00",
+    "epic": "BTCUSD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T10:04:37.052056+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
     "details": ""
