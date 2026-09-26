@@ -208,7 +208,7 @@ def realized_training_frame():
     for f,label,t,epic,direction in rows:
         try: x=json.loads(f or "{}")
         except Exception: continue
-        x["outcome_label"]=int(label); x["entry_time"]=t; x["epic"]=epic; x["direction"]=direction
+        x["outcome_label"]=int(label); x["entry_time"]=t; x["epic"]=epic; x["direction"]=direction; x["trade_direction"]=1.0 if str(direction).upper()=="BUY" else -1.0
         records.append(x)
     return pd.DataFrame(records)
 
