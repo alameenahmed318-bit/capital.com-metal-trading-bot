@@ -1562,8 +1562,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             owned_positions = filter_owned_positions(positions)
             epic_positions = get_positions_for_epic(owned_positions, epic)
 
-        if not ai_engine.AI_ENABLED:
-            manage_profit_trailing(api, owned_positions, epic, account_currency)
+        # Always run the strategy's profit manager. V3/V4 replace this hook
+        # with their own rapid profit-target manager; AI must not disable it.
+        manage_profit_trailing(api, owned_positions, epic, account_currency)
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
