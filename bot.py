@@ -130,6 +130,10 @@ BREAKEVEN_START_R = 1.25
 BREAKEVEN_OFFSET_R = 0.10
 KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
+# Error isolation: one broken/unavailable epic must never disable entries on
+# unrelated markets. Critical failures are tracked per epic for this run.
+UNAVAILABLE_EPICS = set()
+ERROR_STREAKS = {}
 SAFETY_STATE_FILE = "bot_safety_state.json"
 
 # Conservative strategy-quality upgrades.
@@ -284,7 +288,7 @@ def reset_daily_safety(balance):
 def account_equity(balance, positions):
     return float(balance) + sum(position_unrealized_pnl(p) for p in positions)
 
-def safety_allows_new_entry(balance, positions):
+def safety_allows_new_entry(balance, positions, epic=None):
     if not KILL_SWITCH_ENABLED:
         return True
     reset_daily_safety(balance)
@@ -304,8 +308,10 @@ def safety_allows_new_entry(balance, positions):
     if balance <= daily_floor:
         log(f"SAFETY STOP: new entries disabled | balance={balance:.2f} equity={equity:.2f} day_floor={daily_floor:.2f} daily_loss_limit={daily_loss_limit:.2f}")
         return False
-    if int(SAFETY.get("consecutive_errors", 0)) >= MAX_CONSECUTIVE_ERRORS:
-        log(f"KILL SWITCH: {SAFETY['consecutive_errors']} consecutive errors; new entries disabled.")
+    # Error isolation: the old global counter allowed one bad market/API
+    # response to shut down every other market. Gate only the affected epic.
+    if epic is not None and int(ERROR_STREAKS.get(epic, 0)) >= MAX_CONSECUTIVE_ERRORS:
+        log(f"KILL SWITCH: {epic} has {ERROR_STREAKS[epic]} consecutive critical errors; this epic is disabled for this run.")
         return False
     return True
 
@@ -1477,6 +1483,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
     log(f"PROCESSING {epic}")
     log("=" * 60)
     try:
+        if epic in UNAVAILABLE_EPICS:
+            record_entry_rejection(epic, "MARKET_UNAVAILABLE", "temporarily unavailable during this run")
+            return None
         # Keep a fresh executable quote and existing-position protection ahead of
         # entry gates. New-entry-only epics can skip expensive candle work when
         # safety/cooldown/spread blocks the entry.
@@ -1530,7 +1539,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
-        if not safety_allows_new_entry(balance, positions):
+        if not safety_allows_new_entry(balance, positions, epic=epic):
             record_entry_rejection(epic, "SAFETY_STOP")
             return None
         if cooldown_active(epic):
@@ -1796,14 +1805,26 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: WARNING - no dealReference returned; order confirmation unavailable.")
             record_execution_quality(epic, signal, execution_price, None, order_spread_pct, deal_status="UNCONFIRMED", size=size)
 
+        ERROR_STREAKS.pop(epic, None)
         SAFETY["consecutive_errors"] = 0
         LAST_ENTRY_AT[epic] = time.monotonic()
         save_safety_state(SAFETY)
         return response
     except Exception as exc:
-        SAFETY["consecutive_errors"] = int(SAFETY.get("consecutive_errors", 0)) + 1
+        error_text = str(exc)
+        # Capital.com returns 404 for an epic that is not available in the
+        # selected account/market universe. This is not a system failure and
+        # must never trip the global kill switch.
+        if "404" in error_text or "market not found" in error_text.lower() or "epic not found" in error_text.lower():
+            UNAVAILABLE_EPICS.add(epic)
+            record_entry_rejection(epic, "MARKET_UNAVAILABLE", error_text)
+            log(f"{epic}: market unavailable; isolated from safety error counter: {exc}")
+            return None
+        ERROR_STREAKS[epic] = int(ERROR_STREAKS.get(epic, 0)) + 1
+        # Keep legacy state for reporting, but it no longer controls all markets.
+        SAFETY["consecutive_errors"] = ERROR_STREAKS[epic]
         save_safety_state(SAFETY)
-        log(f"{epic}: ERROR ({SAFETY['consecutive_errors']}/{MAX_CONSECUTIVE_ERRORS}): {exc}")
+        log(f"{epic}: ERROR ({ERROR_STREAKS[epic]}/{MAX_CONSECUTIVE_ERRORS}): {exc}")
         traceback.print_exc()
         return None
 
