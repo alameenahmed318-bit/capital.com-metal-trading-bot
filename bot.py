@@ -25,7 +25,9 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 1
+MAX_POSITIONS_PER_EPIC = 5
+STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
+STRONG_SIGNAL_MAX_LEGS = 5
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
@@ -1706,7 +1708,15 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         )
         ai_manage_positions(api, owned_positions, epic, ai_decision)
         signal = ai_decision.get('signal') if ai_engine.AI_ENABLED else legacy_signal
+        confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
+        strong_signal = bool(signal in {"BUY", "SELL"} and confidence >= STRONG_SIGNAL_MIN_CONFIDENCE)
+        strong_target_legs = STRONG_SIGNAL_MAX_LEGS if strong_signal else 1
+        log(f"{epic}: ENTRY MODE | strong={strong_signal} | confidence={confidence:.3f} | target_legs={strong_target_legs}")
         epic_positions = get_positions_for_epic(owned_positions, epic)
+        account_epic_positions = get_positions_for_epic(positions, epic)
+        if not epic_positions and account_epic_positions:
+            record_entry_rejection(epic, "ACCOUNT_EPIC_ALREADY_OWNED", f"open_account_positions={len(account_epic_positions)}")
+            return None
         if signal is None and not epic_positions:
             log(f"No signal this cycle for {epic}.")
             return None
@@ -1780,12 +1790,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             last_entry = LAST_ENTRY_AT.get(epic)
             if (
                 last_entry is not None
+                and not strong_signal
                 and time.monotonic() - last_entry < PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS
             ):
                 remaining = PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS - (time.monotonic() - last_entry)
                 record_entry_rejection(epic, "PROFITABLE_ADD_COOLDOWN", f"remaining={remaining:.0f}s")
                 return None
-        if existing_count >= MAX_POSITIONS_PER_EPIC:
+        if existing_count >= min(MAX_POSITIONS_PER_EPIC, strong_target_legs):
             record_entry_rejection(epic, "MAX_POSITIONS_PER_EPIC", f"limit={MAX_POSITIONS_PER_EPIC}")
             return None
         # Reuse the current market snapshots already fetched for this scan.
@@ -1855,8 +1866,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     profitable_position = True
                     break
 
-            if ADD_TO_PROFITABLE_BASKET and profitable_position:
-                log(f"{epic}: profitable basket detected; adding next leg up to max {MAX_POSITIONS_PER_EPIC}.")
+            if strong_signal or (ADD_TO_PROFITABLE_BASKET and profitable_position):
+                mode = "strong AI signal" if strong_signal else "profitable basket"
+                log(f"{epic}: {mode}; adding next leg up to target {strong_target_legs} (hard cap {MAX_POSITIONS_PER_EPIC}).")
             else:
                 # Never add to a losing/flat basket. Grid, averaging, and
                 # martingale are disabled; extra legs are allowed only when
