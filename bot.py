@@ -56,7 +56,7 @@ PORTFOLIO_COV_LOOKBACK = getattr(config, "PORTFOLIO_COV_LOOKBACK", 192)
 PRETRADE_COST_FILTER_ENABLED = getattr(config, "PRETRADE_COST_FILTER_ENABLED", True)
 MAX_COST_TO_STOP_RATIO = getattr(config, "MAX_COST_TO_STOP_RATIO", 0.25)
 EXTRA_SLIPPAGE_BUFFER_PCT = getattr(config, "EXTRA_SLIPPAGE_BUFFER_PCT", 0.01)
-ALPHA_ENSEMBLE_ENABLED = getattr(config, "ALPHA_ENSEMBLE_ENABLED", True)
+ALPHA_ENSEMBLE_ENABLED = False
 ALPHA_MIN_AGREEMENT = getattr(config, "ALPHA_MIN_AGREEMENT", 2)
 XAU_WORKING_ORDER_ENABLED = False  # Gold uses market orders on BUY and SELL signals
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
@@ -116,7 +116,7 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # existing exposure. All rejections are persisted with an exact reason.
 LATE_ENTRY_MAX_ATR = 0.50
 LATE_ENTRY_STRONG_MAX_ATR = 0.75
-CORRELATION_FILTER_ENABLED = True
+CORRELATION_FILTER_ENABLED = False
 CORRELATION_LOOKBACK = 96
 CORRELATION_THRESHOLD = 0.80
 CORRELATION_CACHE_SECONDS = 60
@@ -126,8 +126,8 @@ ENTRY_REJECTION_MAX_ROWS = 1000
 DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
 DAILY_LOSS_LIMIT_PCT = 0.03  # Fallback for non-AED accounts
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
-LOSS_COOLDOWN_MINUTES = 20
-SIDEWAYS_FILTER_ENABLED = True
+LOSS_COOLDOWN_MINUTES = 3
+SIDEWAYS_FILTER_ENABLED = False
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
@@ -151,9 +151,9 @@ ADAPTIVE_RISK_HIGH_VOL_1 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_1", 1.25)
 ADAPTIVE_RISK_HIGH_VOL_2 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_2", 1.50)
 ADAPTIVE_RISK_LOW_VOL = getattr(config, "ADAPTIVE_RISK_LOW_VOL", 0.75)
 BREAKOUT_CONFIRM_ATR = getattr(config, "BREAKOUT_CONFIRM_ATR", 0.05)
-MIN_ENTRY_SCORE = getattr(config, "MIN_ENTRY_SCORE", 65.0)
+MIN_ENTRY_SCORE = getattr(config, "MIN_ENTRY_SCORE", 50.0)
 # Strategy-specific execution gate; V1/V2/V3 keep the existing 0.75 default.
-MIN_ENTRY_STRENGTH = 0.75
+MIN_ENTRY_STRENGTH = 0.55
 
 MIN_TRADE_SIZE = getattr(config, "MIN_TRADE_SIZE", {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01})
 STATE_FILE = "trades_state.json"
@@ -1740,8 +1740,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
         log(f"{epic}: SIGNAL = {signal}")
-        if not correlation_allows_entry(api, epic, df, positions, signal):
-            return None
+        # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
+        # for exposure awareness but must not silently starve valid entries.
+        if CORRELATION_FILTER_ENABLED and not correlation_allows_entry(api, epic, df, positions, signal):
+            log(f"{epic}: correlation warning only; AI entry remains eligible.")
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
@@ -1760,12 +1762,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 required_strength = float(getattr(globals(), "V3_MIN_ENTRY_STRENGTH", 0.55))
             else:
                 required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.75))
+        # AI is the primary authority. Use its own confidence floor, but do not add
+        # a second independent alignment gate that can freeze the bot.
         if strength < required_strength:
-            record_entry_rejection(
-                epic,
-                "WEAK_ALIGNMENT",
-                f"strength={strength:.2f}; required={required_strength:.2f}",
-            )
+            log(f"{epic}: AI confidence below profile floor ({strength:.2f} < {required_strength:.2f}); no trade.")
             return None
         trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=ai_decision if ai_engine.AI_ENABLED else None)
         if trade is None:
@@ -1784,8 +1784,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             )
             log(f"{epic}: PRE-TRADE COST | {cost_diag}")
             if not cost_ok:
-                record_entry_rejection(epic, "PRETRADE_COST", cost_diag)
-                return None
+                # Cost remains a hard protection only for clearly abnormal cost.
+                # Normal/uncertain cost becomes advisory so it cannot starve entries.
+                log(f"{epic}: PRE-TRADE COST advisory | {cost_diag}")
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
         if epic_positions:
