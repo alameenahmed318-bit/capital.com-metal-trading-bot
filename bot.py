@@ -1660,6 +1660,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 strategy_signal=legacy_signal,
                 bid=live_bid,
                 ask=live_offer,
+                htf_df=htf_df,
             )
             adv = ai_decision["advanced_ai"]
             log(
@@ -1667,6 +1668,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 f"regime={adv.get('regime',{}).get('regime')} | "
                 f"uncertainty={float(adv.get('uncertainty',{}).get('uncertainty',1.0)):.3f} | "
                 f"drift={float(adv.get('drift_score',0.0)):.3f} | "
+                f"mh={adv.get('multihorizon',{}).get('signal')} "
+                f"mh_agree={float(adv.get('multihorizon',{}).get('agreement',0.0)):.2f} | "
+                f"conformal_q={float(adv.get('conformal',{}).get('quality',0.0)):.2f} "
+                f"conformal_wide={adv.get('conformal',{}).get('wide')} | "
+                f"enh_unc={float(adv.get('enhanced_uncertainty',1.0)):.3f} | "
                 f"cost={adv.get('execution_cost',{}).get('total_price_cost')} | "
                 f"meta={adv.get('meta_label',{}).get('accepted')} | "
                 f"risk_mult={float(adv.get('risk_multiplier',0.0)):.3f}"
