@@ -115,7 +115,6 @@ def run_cycle():
                     positions=cycle_positions,
                     balance=cycle_balance,
                     account_currency=account_currency,
-                    market=market,
                     candle_cache=candle_cache,
                     candle_cache_ttl=candle_cache_ttl,
                 )
