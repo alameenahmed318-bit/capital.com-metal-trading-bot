@@ -1,9 +1,9 @@
 {
-  "last_updated": "2026-09-26T23:47:05.716847+00:00",
+  "last_updated": "2026-09-26T23:59:13.435870+00:00",
   "currency": "AED",
   "source": "Capital.com API /accounts + /history/transactions",
   "pnl_policy": "Broker-reported only; no inferred or reconstructed trade P/L",
-  "broker_account_profit_loss": -5.95,
+  "broker_account_profit_loss": -4.82,
   "overall": {
     "open_trades": 0,
     "closed_trades_seen": 0,
@@ -13,7 +13,7 @@
     "losers": 0,
     "win_rate": 0,
     "explicit_closed_trade_pnl": 0,
-    "broker_account_profit_loss": -5.95,
+    "broker_account_profit_loss": -4.82,
     "best_trade": null,
     "worst_trade": null,
     "average_win": null,
@@ -63,13 +63,6 @@
       "pnl": 0
     },
     "EURUSD_W": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "USDJPY_W": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
