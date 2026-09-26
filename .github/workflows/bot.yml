@@ -57,6 +57,17 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
+      - name: Run broker trade ledger
+        run: python trade_ledger.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          TRADE_LEDGER_LOOKBACK_DAYS: "30"
+
       - name: Run quant validation
         run: python quant_validation.py
         env:
@@ -101,6 +112,8 @@ jobs:
             ai_outcomes.db
             ai_training_dataset.parquet
             ai_model_registry.json
+            broker_trade_ledger.json
+            broker_trade_ledger.csv
 
           )
 
