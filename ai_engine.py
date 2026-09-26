@@ -15,15 +15,18 @@ import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
 
 AI_ENABLED = os.environ.get("AI_TRADING_ENABLED", "true").lower() in {"1","true","yes"}
-MIN_TRAIN_SAMPLES = int(os.environ.get("AI_MIN_TRAIN_SAMPLES","120"))
-HORIZON = int(os.environ.get("AI_HORIZON","4"))
-LABEL_ATR_MULT = float(os.environ.get("AI_LABEL_ATR_MULT","0.08"))
-MIN_CONFIDENCE = float(os.environ.get("AI_MIN_CONFIDENCE","0.58"))
-MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
-WF_FOLDS = int(os.environ.get("AI_WF_FOLDS","3"))
-WF_MIN_TRAIN = int(os.environ.get("AI_WF_MIN_TRAIN","90"))
-WF_MIN_ACCURACY = float(os.environ.get("AI_WF_MIN_ACCURACY","0.40"))
+AI_REQUIRE_STRATEGY_AGREEMENT = os.environ.get("AI_REQUIRE_STRATEGY_AGREEMENT", "true").lower() in {"1","true","yes"}
+BASE_MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
 DECISION_CACHE = {}
+
+PROFILES = {
+    "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
+    "CAPITAL_V2_QUANT_HYBRID": {"min_train":130,"horizon":4,"label_atr":0.08,"min_conf":0.59,"wf_min_train":95,"wf_acc":0.41,"max_iter":200,"lr":0.055,"leaf":17,"seed":202},
+    "CAPITAL_V3_RAPID_PROFIT": {"min_train":120,"horizon":3,"label_atr":0.07,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"max_iter":170,"lr":0.065,"leaf":13,"seed":303},
+    "CAPITAL_V4_SMART_OPPORTUNITY": {"min_train":140,"horizon":5,"label_atr":0.10,"min_conf":0.62,"wf_min_train":100,"wf_acc":0.42,"max_iter":220,"lr":0.05,"leaf":19,"seed":404},
+}
+def _profile(strategy_id):
+    return PROFILES.get(strategy_id, PROFILES["CAPITAL_V1"])
 
 FEATURES = ["ret1","ret3","ret8","rsi","atr_pct","ema9_gap","ema21_gap","ema50_gap","ema200_gap","bb_z","range_pct","body_pct","close_pos","vol_ratio","htf20_gap","htf50_gap","htf200_gap"]
 
@@ -80,21 +83,21 @@ def _label(df):
     tr=pd.concat([(h-l),(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1); atr=tr.rolling(14).mean(); future=c.shift(-HORIZON)-c; threshold=atr*LABEL_ATR_MULT
     y=pd.Series(0,index=df.index,dtype=int); y[future>threshold]=1; y[future<-threshold]=-1; return y
 
-def _make_model():
+def _make_model(profile):
     return HistGradientBoostingClassifier(
-        max_iter=180,
-        learning_rate=0.06,
-        max_leaf_nodes=15,
+        max_iter=profile["max_iter"],
+        learning_rate=profile["lr"],
+        max_leaf_nodes=profile["leaf"],
         l2_regularization=1.0,
-        random_state=42,
+        random_state=profile["seed"],
     )
 
 
-def _walk_forward_validate(fx, y, train_end):
+def _walk_forward_validate(fx, y, train_end, profile):
     """Purged rolling out-of-sample validation using only information available before each validation window."""
     clean = fx[FEATURES].notna().all(axis=1)
     eligible = [i for i in fx.index[:train_end] if bool(clean.loc[i]) and pd.notna(y.loc[i])]
-    if len(eligible) < max(WF_MIN_TRAIN + HORIZON + 20, MIN_TRAIN_SAMPLES):
+    if len(eligible) < max(profile["wf_min_train"] + profile["horizon"] + 20, profile["min_train"]):
         return {"ok": False, "accuracy": 0.0, "folds": 0, "samples": 0}
 
     n = len(eligible)
@@ -102,22 +105,22 @@ def _walk_forward_validate(fx, y, train_end):
     scores = []
     total = 0
     for fold in range(WF_FOLDS):
-        val_start_pos = WF_MIN_TRAIN + fold * fold_size
+        val_start_pos = profile["wf_min_train"] + fold * fold_size
         val_end_pos = min(n, val_start_pos + fold_size)
         if val_end_pos <= val_start_pos:
             continue
 
         # Purge the last HORIZON training labels so their future target window
         # cannot overlap the validation period.
-        train_end_pos = val_start_pos - HORIZON
-        if train_end_pos < WF_MIN_TRAIN:
+        train_end_pos = val_start_pos - profile["horizon"]
+        if train_end_pos < profile["wf_min_train"]:
             continue
         train_idx = eligible[:train_end_pos]
         val_idx = eligible[val_start_pos:val_end_pos]
-        if len(train_idx) < WF_MIN_TRAIN:
+        if len(train_idx) < profile["wf_min_train"]:
             continue
 
-        model = _make_model()
+        model = _make_model(profile)
         model.fit(fx.loc[train_idx, FEATURES].astype(float), y.loc[train_idx].astype(int))
         pred = model.predict(fx.loc[val_idx, FEATURES].astype(float))
         actual = y.loc[val_idx].astype(int).to_numpy()
@@ -127,58 +130,76 @@ def _walk_forward_validate(fx, y, train_end):
     if not scores:
         return {"ok": False, "accuracy": 0.0, "folds": 0, "samples": 0}
     accuracy = float(np.mean(scores))
-    return {"ok": accuracy >= WF_MIN_ACCURACY, "accuracy": accuracy, "folds": len(scores), "samples": total}
+    return {"ok": accuracy >= profile["wf_acc"], "accuracy": accuracy, "folds": len(scores), "samples": total}
 
 
-def decide(df, htf_df, epic, existing_signal=None) -> dict[str,Any]:
-    result={"enabled":AI_ENABLED,"signal":None,"confidence":0.0,"buy_probability":0.0,"sell_probability":0.0,"wait_probability":1.0,"sl_atr":2.0,"tp_atr":3.0,"reason":"AI_UNAVAILABLE","walk_forward":{"ok":False,"accuracy":0.0,"folds":0,"samples":0}}
+def _label_profile(df, profile):
+    c=pd.to_numeric(df["close"],errors="coerce")
+    h=pd.to_numeric(df["high"],errors="coerce"); l=pd.to_numeric(df["low"],errors="coerce")
+    tr=pd.concat([(h-l),(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1)
+    atr=tr.rolling(14).mean()
+    future=c.shift(-profile["horizon"])-c
+    threshold=atr*profile["label_atr"]
+    y=pd.Series(0,index=df.index,dtype=int)
+    y[future>threshold]=1; y[future<-threshold]=-1
+    return y
+
+def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> dict[str,Any]:
+    profile=_profile(strategy_id)
+    result={"enabled":AI_ENABLED,"strategy_id":strategy_id,"signal":None,"raw_signal":None,
+            "confidence":0.0,"buy_probability":0.0,"sell_probability":0.0,"wait_probability":1.0,
+            "sl_atr":2.0,"tp_atr":3.0,"reason":"AI_UNAVAILABLE","strategy_signal":existing_signal,
+            "strategy_agreement":None,"walk_forward":{"ok":False,"accuracy":0.0,"folds":0,"samples":0}}
     if not AI_ENABLED or df is None or len(df)<260:
         result["reason"]="insufficient_ai_history"; return result
-
-    # V3/V4 scan every 2 seconds, while the signal data changes only when a
-    # completed candle changes. Cache the AI decision for the current candle
-    # to avoid retraining multiple ML models thousands of times per workflow.
     def _last_time(frame):
-        if frame is None or frame.empty:
-            return None
-        for name in ("time", "snapshotTimeUTC", "snapshotTime", "timestamp", "datetime", "date"):
+        if frame is None or frame.empty: return None
+        for name in ("time","snapshotTimeUTC","snapshotTime","timestamp","datetime","date"):
             if name in frame.columns:
-                value = frame[name].iloc[-2 if len(frame) >= 2 else -1]
-                return str(value)
+                return str(frame[name].iloc[-2 if len(frame)>=2 else -1])
         return str(len(frame))
-
-    cache_key=(epic, _last_time(df), _last_time(htf_df))
+    cache_key=(strategy_id,epic,_last_time(df),_last_time(htf_df),existing_signal)
     cached=DECISION_CACHE.get(cache_key)
-    if cached is not None:
-        return dict(cached)
-
-    fx=_features(df,htf_df); y=_label(df); valid=fx[FEATURES].notna().all(axis=1)
-    train_end=max(0,len(df)-HORIZON-1); idx=[i for i in fx.index[:train_end] if bool(valid.loc[i])]
-    if len(idx)<MIN_TRAIN_SAMPLES or y.loc[idx].nunique()<2:
+    if cached is not None: return dict(cached)
+    fx=_features(df,htf_df); y=_label_profile(df,profile)
+    valid=fx[FEATURES].notna().all(axis=1)
+    train_end=max(0,len(df)-profile["horizon"]-1)
+    idx=[i for i in fx.index[:train_end] if bool(valid.loc[i])]
+    if len(idx)<profile["min_train"] or y.loc[idx].nunique()<2:
         result["reason"]=f"insufficient_training_data:{len(idx)}"; return result
-    wf = _walk_forward_validate(fx, y, train_end)
-    result["walk_forward"] = wf
+    wf=_walk_forward_validate(fx,y,train_end,profile)
+    result["walk_forward"]=wf
     if not wf["ok"]:
-        result["reason"] = f"walk_forward_rejected:accuracy={wf['accuracy']:.3f}"
-        return result
-
-    model=_make_model()
+        result["reason"]=f"walk_forward_rejected:accuracy={wf["accuracy"]:.3f}"; return result
+    model=_make_model(profile)
     model.fit(fx.loc[idx,FEATURES].astype(float),y.loc[idx].astype(int))
-    latest_idx=fx.index[-2]; latest=fx.loc[[latest_idx],FEATURES].astype(float)
+    latest_idx=fx.index[-2]
+    latest=fx.loc[[latest_idx],FEATURES].astype(float)
     if latest.isna().any(axis=None):
         result["reason"]="latest_features_invalid"; return result
-    probs=model.predict_proba(latest)[0]; classes=list(model.classes_); p={int(k):float(v) for k,v in zip(classes,probs)}
-    pb,ps,pw=p.get(1,0.0),p.get(-1,0.0),p.get(0,0.0); best=max(((pb,"BUY"),(ps,"SELL"),(pw,"WAIT")),key=lambda z:z[0])
-    signal=best[1] if best[0]>=MIN_CONFIDENCE and best[1]!="WAIT" else None
+    probs=model.predict_proba(latest)[0]
+    classes=list(model.classes_)
+    p={int(k):float(v) for k,v in zip(classes,probs)}
+    pb,ps,pw=p.get(1,0.0),p.get(-1,0.0),p.get(0,0.0)
+    best=max(((pb,"BUY"),(ps,"SELL"),(pw,"WAIT")),key=lambda z:z[0])
+    raw_signal=best[1] if best[0]>=profile["min_conf"] and best[1]!="WAIT" else None
+    agreement=(raw_signal is not None and existing_signal in ("BUY","SELL") and raw_signal==existing_signal)
+    signal=raw_signal if (not AI_REQUIRE_STRATEGY_AGREEMENT or agreement) else None
     vol=float(fx.loc[latest_idx,"vol_ratio"]) if pd.notna(fx.loc[latest_idx,"vol_ratio"]) else 1.0
-    sl_atr=float(np.clip(1.5+0.9*max(0.0,min(1.5,vol-0.7)),1.5,2.85)); rr=1.35+1.65*max(0.0,min(1.0,(best[0]-0.50)/0.50)); tp_atr=float(np.clip(sl_atr*rr,2.0,5.5))
-    result.update({"signal":signal,"confidence":float(best[0]),"buy_probability":pb,"sell_probability":ps,"wait_probability":pw,"sl_atr":sl_atr,"tp_atr":tp_atr,"reason":f"AI_MODEL classes={classes} train={len(idx)} wf={wf['accuracy']:.3f}"})
+    sl_atr=float(np.clip(1.5+0.9*max(0.0,min(1.5,vol-0.7)),1.5,2.85))
+    rr=1.35+1.65*max(0.0,min(1.0,(best[0]-0.50)/0.50))
+    tp_atr=float(np.clip(sl_atr*rr,2.0,5.5))
+    result.update({"signal":signal,"raw_signal":raw_signal,"confidence":float(best[0]),
+                   "buy_probability":pb,"sell_probability":ps,"wait_probability":pw,
+                   "sl_atr":sl_atr,"tp_atr":tp_atr,"strategy_agreement":agreement,
+                   "reason":f"AI_{strategy_id} classes={classes} train={len(idx)} wf={wf['accuracy']:.3f}"})
     DECISION_CACHE[cache_key]=dict(result)
-    # Keep memory bounded during long rapid-scan workflows.
-    if len(DECISION_CACHE) > 256:
-        DECISION_CACHE.pop(next(iter(DECISION_CACHE)))
+    if len(DECISION_CACHE)>512: DECISION_CACHE.pop(next(iter(DECISION_CACHE)))
     try:
-        os.makedirs(MODEL_DIR,exist_ok=True)
-        with open(os.path.join(MODEL_DIR,f"{epic}_latest.json"),"w",encoding="utf-8") as f: json.dump(result,f,indent=2)
-    except Exception: pass
+        model_dir=os.path.join(BASE_MODEL_DIR,strategy_id)
+        os.makedirs(model_dir,exist_ok=True)
+        with open(os.path.join(model_dir,f"{epic}_latest.json"),"w",encoding="utf-8") as f:
+            json.dump(result,f,indent=2)
+    except Exception:
+        pass
     return result
