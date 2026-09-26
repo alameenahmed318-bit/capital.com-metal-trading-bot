@@ -1,29 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T10:11:13.708300+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:11:14.536287+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:11:31.119051+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:11:31.948851+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T10:11:48.638033+00:00",
     "epic": "BTCUSD",
     "reason": "SAFETY_STOP",
@@ -5995,6 +5971,30 @@
   },
   {
     "timestamp": "2026-09-26T22:34:22.711286+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T22:48:14.916891+00:00",
+    "epic": "EURUSD_W",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-26T22:48:17.407109+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "404 Client Error:  for url: https://demo-api-capital.backend-capital.com/api/v1/markets/USDJPY_W"
+  },
+  {
+    "timestamp": "2026-09-26T22:48:30.513706+00:00",
+    "epic": "EURUSD_W",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-26T22:48:31.480812+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
