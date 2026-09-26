@@ -5,12 +5,12 @@ on:
 # V4 has separate state files, but all strategies share the account-wide
 # concurrency lane because they mutate the same Capital.com account.
 concurrency:
-  # All strategies share one Capital.com account. Serialize the full
-  # account-mutating run so V1/V2/V3/V4 cannot race on balance, positions,
-  # daily-loss limits, or portfolio risk.
+  # Serialize account access without dropping pending runs.
+  # GitHub's default queue is single-slot and cancels older pending runs.
+  # queue:max keeps scheduled/manual V1-V4 runs in line.
   group: capital-account-state
   cancel-in-progress: false
-
+  queue: max
 permissions:
   contents: write
 
