@@ -156,13 +156,13 @@ def reconcile(api, lookback_days=7):
                      datetime.fromisoformat(str(entry_time).replace("Z","+00:00"))).total_seconds()
             except Exception: dur=None
             label=1 if pnl>0 else (-1 if pnl<0 else 0)
-            con.execute("""UPDATE trade_outcomes SET exit_time=?,exit_price=?,pnl=?,pnl_r=?,
+            cursor=con.execute("""UPDATE trade_outcomes SET exit_time=?,exit_price=?,pnl=?,pnl_r=?,
               outcome_label=?,status='CLOSED',duration_seconds=?,reason=?,metadata_json=?
               WHERE deal_id=? AND status='OPEN'""",
               (str(exit_time),exit_price,pnl,pnl_r,label,dur,
                str(match.get("transactionType") or match.get("note") or "BROKER_CLOSE"),
                json.dumps(match,default=str,separators=(",",":")),str(deal_id)))
-            if con.total_changes: updated+=1
+            if cursor.rowcount == 1: updated+=1
     return {"updated":updated,"unknown":0}
 
 def build_training_dataset():
