@@ -5,8 +5,8 @@ on:
   schedule:
     - cron: "09,24,39,54 * * * *"
 
-# V4 owns separate state files, so it has its own concurrency lane.
-# It cannot block or cancel V1/V2/V3 runs.
+# V4 has separate state files, but all strategies share the account-wide
+# concurrency lane because they mutate the same Capital.com account.
 concurrency:
   # All strategies share one Capital.com account. Serialize the full
   # account-mutating run so V1/V2/V3/V4 cannot race on balance, positions,
