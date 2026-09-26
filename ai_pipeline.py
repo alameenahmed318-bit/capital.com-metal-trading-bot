@@ -15,6 +15,8 @@ from ai_meta_label import filter_signal
 from ai_risk_overlay import compute_multiplier
 from ai_conformal import evaluate as evaluate_conformal
 from ai_multihorizon import evaluate as evaluate_multihorizon
+from ai_expected_edge import estimate as estimate_expected_edge
+import ai_outcomes
 
 MODE=os.environ.get("AI_ADVANCED_GATES_MODE","shadow").strip().lower()
 if MODE not in {"shadow","enforce"}: MODE="shadow"
@@ -63,9 +65,15 @@ def evaluate(df, ai_decision, strategy_signal=None, bid=None, ask=None, referenc
             enhanced_uncertainty += 0.12
     enhanced_uncertainty = float(np.clip(enhanced_uncertainty, 0.0, 1.0))
 
+    realized_frame=None
+    try:
+        realized_frame=ai_outcomes.realized_training_frame()
+    except Exception:
+        realized_frame=None
+    expected_edge=estimate_expected_edge(ai_decision, realized_frame=realized_frame)
+    # Expected edge is deliberately diagnostic/shadow-only. It uses only
+    # broker-reported realized P/L and never invents a money value for spread.
     cost_pass=True
-    # No fabricated expected edge: cost is diagnostic unless an explicit
-    # expected move is supplied by a future validated model.
     meta=filter_signal(strategy_signal,ai_decision.get("signal"),ai_decision.get("confidence",0.0),enhanced_uncertainty,regime["regime"],cost_pass)
     mult=compute_multiplier(confidence=ai_decision.get("confidence",0.0),uncertainty=enhanced_uncertainty,regime=regime["regime"],regime_confidence=regime["confidence"],drift_score=ds,cost_pass=cost_pass,portfolio_multiplier=portfolio_multiplier)
     enforced_signal=ai_decision.get("signal")
@@ -81,6 +89,7 @@ def evaluate(df, ai_decision, strategy_signal=None, bid=None, ask=None, referenc
         "multihorizon":multihorizon,
         "conformal":conformal,
         "enhanced_uncertainty":enhanced_uncertainty,
+        "expected_edge":expected_edge,
         "meta_label":meta,
         "risk_multiplier":mult,
         "signal_before":ai_decision.get("signal"),
