@@ -3,7 +3,7 @@ name: Capital V4 Smart Opportunity Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "07,22,37,52 * * * *"
+    - cron: "09,24,39,54 * * * *"
 
 # V4 owns separate state files, so it has its own concurrency lane.
 # It cannot block or cancel V1/V2/V3 runs.
