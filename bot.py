@@ -14,6 +14,7 @@ from capital_api import CapitalAPI
 from portfolio_risk import portfolio_risk_overlay
 from execution_costs import evaluate_pretrade_cost
 import ai_engine
+import ai_pipeline
 import ai_outcomes
 
 DEMO_ONLY = True
@@ -1665,6 +1666,29 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Legacy strategy output is retained only as diagnostic context.
         legacy_signal = generate_signal(df, epic, htf_df)
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
+        # Advanced AI safety stack is shadow-only by default. It can add diagnostics
+        # without changing V1-V4 execution until explicitly switched to enforce mode.
+        try:
+            ai_decision["advanced_ai"] = ai_pipeline.evaluate(
+                df,
+                ai_decision,
+                strategy_signal=legacy_signal,
+                bid=live_bid,
+                ask=live_offer,
+            )
+            adv = ai_decision["advanced_ai"]
+            log(
+                f"{epic}: ADVANCED AI | mode={adv.get('mode')} | "
+                f"regime={adv.get('regime',{}).get('regime')} | "
+                f"uncertainty={float(adv.get('uncertainty',{}).get('uncertainty',1.0)):.3f} | "
+                f"drift={float(adv.get('drift_score',0.0)):.3f} | "
+                f"cost={adv.get('execution_cost',{}).get('total_price_cost')} | "
+                f"meta={adv.get('meta_label',{}).get('accepted')} | "
+                f"risk_mult={float(adv.get('risk_multiplier',0.0)):.3f}"
+            )
+        except Exception as _advanced_ai_exc:
+            # Advanced diagnostics must never break the proven V1-V4 decision path.
+            log(f"{epic}: ADVANCED AI diagnostics unavailable: {_advanced_ai_exc}")
         # Snapshot the exact features used by the AI at decision time.
         # These values are stored with the eventual broker-reported outcome;
         # they are never rebuilt from future candles.
