@@ -13,7 +13,7 @@ RULES:
 - Never allow a position to be sized at zero or negative. Raise ValueError if inputs produce this.
 - Never allow a stop loss on the wrong side of entry. Long SL must be below entry. Short SL must be above entry. Raise ValueError if this is violated.
 - All calculations must be deterministic and testable with sample inputs.
-- Round position size down to 2 decimal places. Never round up (overstating size increases risk).
+- Use the broker's instrument precision/minimum size when available; never round up. The runtime may apply a volatility scalar and a notional cap, both of which can only reduce size.
 - Return a dict with all calculated values so the caller can log them.
 
 RISK PARAMETERS (loaded from config.py):
@@ -37,8 +37,8 @@ Take profit price:
   SHORT: entry_price - (atr * TP_ATR_MULTIPLIER)
 
 FUNCTIONS TO IMPLEMENT:
-- calculate_position(account_balance, entry_price, atr, direction) -> dict:
-  {size: float, stop_loss: float, take_profit: float, risk_amount: float, sl_distance: float}
+- calculate_trade(account_balance, entry_price, atr, direction, epic=None, quote_to_account_rate=1.0, baseline_atr=None) -> dict:
+  {size: float, stop_loss: float, take_profit: float, risk_amount: float, sl_distance: float, risk_multiplier: float, notional_cap: float}
 - validate_order(size, stop_loss, take_profit, entry_price, direction) -> bool
 
 Include a __main__ block that runs sample calculations so the developer can verify math:
