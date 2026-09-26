@@ -38,8 +38,9 @@ def portfolio_risk_overlay(api, candidate_epic, existing_positions, candidate_ri
     Risk-budget weights are based on stop-defined account risk, then combined with
     the realized covariance of 15m returns. This is intentionally one-sided:
     the overlay can reduce a trade's risk but never lever it above the requested
-    budget. Missing/short histories fail open to 1.0 because the existing spread,
-    stop, basket and portfolio caps remain active.
+    budget. Missing/short histories fail safe to the configured minimum
+    multiplier because incomplete portfolio data should reduce, not increase,
+    candidate risk.
     """
     candidate_risk_amount = float(candidate_risk_amount or 0.0)
     if candidate_risk_amount <= 0:
