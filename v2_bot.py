@@ -387,9 +387,9 @@ base.POSITION_OWNERSHIP_FILE = "v2_strategy_positions.json"
 base.STATE_FILE = "v2_trades_state.json"
 base.OPEN_POSITIONS_FILE = "v2_open_positions.json"
 base.SAFETY_STATE_FILE = "v2_bot_safety_state.json"
-# V2: keep the AED 300 daily loss stop, but allow a 10% peak-equity drawdown
-# before disabling new entries. The previous 5% gate stopped this demo account
-# at 1314.57 AED against a 1411.57 AED peak (~6.9% drawdown), before V2 could
+# V2: keep the AED 300 daily loss stop and the 5% peak-equity drawdown
+# gate before disabling new entries. This keeps the current configured safety
+# limit explicit in the comment and avoids documenting a different threshold.
 # analyze fresh market data or test the 1H fallback.
 base.EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
 base.EXECUTION_QUALITY_FILE = "v2_execution_quality.json"
