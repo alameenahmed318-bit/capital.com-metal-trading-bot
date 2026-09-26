@@ -12,7 +12,9 @@ import statistics
 
 def _load_slippage(file_path, epic):
     if not file_path or not os.path.exists(file_path):
-        return 0.0
+        # Missing history must use the conservative fallback in the caller;
+        # zero would silently disable the slippage component of the filter.
+        return None
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
