@@ -6,8 +6,10 @@ on:
     - cron: "17,32,47,02 * * * *"
 
 concurrency:
-  # This bot runs independently from the other Capital strategies.
-  group: capital-v3-state
+  # All strategies share one Capital.com account. Serialize the full
+  # account-mutating run so V1/V2/V3/V4 cannot race on balance, positions,
+  # daily-loss limits, or portfolio risk.
+  group: capital-account-state
   cancel-in-progress: false
 
 permissions:
