@@ -79,9 +79,8 @@ def _features(df, htf):
     return out.replace([np.inf,-np.inf],np.nan)
 
 def _label(df):
-    c=pd.to_numeric(df["close"],errors="coerce"); h=pd.to_numeric(df["high"],errors="coerce"); l=pd.to_numeric(df["low"],errors="coerce")
-    tr=pd.concat([(h-l),(h-c.shift()).abs(),(l-c.shift()).abs()],axis=1).max(axis=1); atr=tr.rolling(14).mean(); future=c.shift(-HORIZON)-c; threshold=atr*LABEL_ATR_MULT
-    y=pd.Series(0,index=df.index,dtype=int); y[future>threshold]=1; y[future<-threshold]=-1; return y
+    # Backward-compatible helper; use the V1 profile explicitly.
+    return _label_profile(df, PROFILES["CAPITAL_V1"])
 
 def _make_model(profile):
     return HistGradientBoostingClassifier(
