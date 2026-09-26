@@ -148,15 +148,18 @@ def run_cycle():
     # This keeps the 2-second opportunity loop fast without removing the
     # safety refresh performed inside process_epic before a new entry.
     while time.monotonic() < deadline:
-        cycle_positions = api.get_open_positions()
-        cycle_balance = api.get_balance()
         for epic in base.EPICS:
             try:
+                # Refresh account state per epic. A previous epic may have
+                # opened/closed a position, so a shared snapshot could make
+                # the next epic size risk against stale positions/balance.
+                epic_positions = api.get_open_positions()
+                epic_balance = api.get_balance()
                 base.process_epic(
                     api=api,
                     epic=epic,
-                    positions=cycle_positions,
-                    balance=cycle_balance,
+                    positions=epic_positions,
+                    balance=epic_balance,
                     account_currency=account_currency,
                 )
             except Exception as exc:
