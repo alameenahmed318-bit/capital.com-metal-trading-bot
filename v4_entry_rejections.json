@@ -1,17 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T12:56:48.497473+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:56:53.738926+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
     "timestamp": "2026-09-26T12:56:59.008133+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
@@ -5998,5 +5986,17 @@
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
     "details": "temporarily unavailable during this run"
+  },
+  {
+    "timestamp": "2026-09-26T16:01:02.413741+00:00",
+    "epic": "EURUSD_W",
+    "reason": "SPREAD_FILTER",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-26T16:01:03.869127+00:00",
+    "epic": "USDJPY_W",
+    "reason": "MARKET_UNAVAILABLE",
+    "details": "404 Client Error:  for url: https://demo-api-capital.backend-capital.com/api/v1/markets/USDJPY_W"
   }
 ]
