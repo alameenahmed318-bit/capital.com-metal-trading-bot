@@ -10,7 +10,7 @@ REGIMES=("TREND_UP","TREND_DOWN","RANGE","HIGH_VOLATILITY","LOW_VOLATILITY","TRA
 
 def detect_regime(df, lookback=100):
     if df is None or len(df)<max(60,lookback):
-        return {"regime":"TRANSITION","confidence":0.0,"reason":"insufficient_history","atr_pct":None,"trend_strength":0.0}
+        return {"regime":"TRANSITION","confidence":0.0,"reason":"insufficient_history","atr_pct":None,"atr":None,"trend_strength":0.0}
     x=df.iloc[:-1].copy() if len(df)>1 else df.copy()
     c=pd.to_numeric(x["close"],errors="coerce")
     h=pd.to_numeric(x["high"],errors="coerce")
@@ -43,7 +43,7 @@ def detect_regime(df, lookback=100):
         regime="RANGE"; conf=min(1.0,0.55+0.35*(1.0-trend_strength/0.35))
     else:
         regime="TRANSITION"; conf=0.5
-    return {"regime":regime,"confidence":float(conf),"atr_pct":float(atr_pct.iloc[i]),"trend_strength":float(trend_strength),"vol_ratio":float(vol_ratio),"slope":float(slope)}
+    return {"regime":regime,"confidence":float(conf),"atr_pct":float(atr_pct.iloc[i]),"atr":float(atr.iloc[i]),"trend_strength":float(trend_strength),"vol_ratio":float(vol_ratio),"slope":float(slope)}
 
 def direction_allowed(regime, direction):
     if direction not in ("BUY","SELL"): return False
