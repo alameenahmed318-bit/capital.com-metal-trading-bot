@@ -8,7 +8,7 @@ MODULES = [
     "ai_engine", "ai_outcomes", "ai_dataset_job", "ai_regime",
     "ai_calibration", "ai_uncertainty", "ai_execution_cost",
     "ai_drift_monitor", "ai_risk_overlay", "ai_meta_label",
-    "ai_pipeline", "ai_expected_edge", "ai_validation_suite"
+    "ai_pipeline", "ai_expected_edge", "ai_model_selection", "ai_validation_suite"
 ]
 
 def main():
