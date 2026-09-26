@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: AI architecture self-check
-        run: python ai_self_check.py
+        run: python ai_self_check_v2.py
 
       - name: Run Capital V2 bot
         run: python v2_bot.py
