@@ -24,7 +24,7 @@ AI_REQUIRE_STRATEGY_AGREEMENT = os.environ.get("AI_REQUIRE_STRATEGY_AGREEMENT", 
 BASE_MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
 DECISION_CACHE = {}
 WF_FOLDS = 5
-REALIZED_MIN_SAMPLES = int(os.environ.get("AI_REALIZED_MIN_SAMPLES", "120"))
+REALIZED_MIN_SAMPLES = int(os.environ.get("AI_REALIZED_MIN_SAMPLES", "200"))
 
 PROFILES = {
     "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
@@ -313,7 +313,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     result.update({"signal":signal,"raw_signal":raw_signal,"confidence":float(best[0]),
                    "required_confidence":float(profile["min_conf"]),"buy_probability":pb,"sell_probability":ps,"wait_probability":pw,
                    "sl_atr":sl_atr,"tp_atr":tp_atr,"strategy_agreement":agreement,
-                   "reason":f"AI_{strategy_id} classes={classes} train={len(idx)} wf={wf['accuracy']:.3f}"})
+                   "reason":f"AI_{strategy_id} classes={classes} train={train_size} source={wf.get('label_source','candle_movement')} wf={wf['accuracy']:.3f}"})
     DECISION_CACHE[cache_key]=dict(result)
     if len(DECISION_CACHE)>512: DECISION_CACHE.pop(next(iter(DECISION_CACHE)))
     try:
