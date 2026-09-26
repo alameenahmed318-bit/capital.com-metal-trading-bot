@@ -40,7 +40,10 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: AI architecture self-check\n        run: python ai_self_check.py\n\n      - name: Run Capital bot
+      - name: AI architecture self-check
+        run: python ai_self_check.py
+
+      - name: Run Capital bot
         run: python bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
