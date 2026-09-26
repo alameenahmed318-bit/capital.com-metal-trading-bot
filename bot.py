@@ -289,7 +289,7 @@ def reset_daily_safety(balance):
 def account_equity(balance, positions):
     return float(balance) + sum(position_unrealized_pnl(p) for p in positions)
 
-def safety_allows_new_entry(balance, positions, epic=None):
+def safety_allows_new_entry(balance, positions, epic=None, account_currency=None):
     if not KILL_SWITCH_ENABLED:
         return True
     reset_daily_safety(balance)
@@ -300,7 +300,9 @@ def safety_allows_new_entry(balance, positions, epic=None):
         peak = equity
         save_safety_state(SAFETY)
     start_balance = safe_float(SAFETY.get("day_start_balance"), balance) or balance
-    daily_loss_limit = DAILY_LOSS_LIMIT_AED if str(getattr(config, "ACCOUNT_CURRENCY", "AED")).upper() == "AED" else start_balance * DAILY_LOSS_LIMIT_PCT
+    # Use the live broker account currency, not a static/missing config value.
+    currency = str(account_currency or getattr(config, "ACCOUNT_CURRENCY", "AED")).upper()
+    daily_loss_limit = DAILY_LOSS_LIMIT_AED if currency == "AED" else start_balance * DAILY_LOSS_LIMIT_PCT
     daily_floor = start_balance - daily_loss_limit
     drawdown_floor = peak * (1.0 - EQUITY_DRAWDOWN_LIMIT_PCT)
     # All Capital bots use one hard daily loss limit for new-entry safety.
@@ -1568,7 +1570,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
-        if not safety_allows_new_entry(balance, positions, epic=epic):
+        if not safety_allows_new_entry(balance, positions, epic=epic, account_currency=account_currency):
             record_entry_rejection(epic, "SAFETY_STOP")
             return None
         if cooldown_active(epic):
@@ -1869,8 +1871,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     log(f"{epic}: fill-price lookup failed: {fill_exc}")
             record_execution_quality(epic, signal, execution_price, actual_fill_price, order_spread_pct, deal_reference=deal_reference, deal_id=deal_id, deal_status=deal_status or "ACCEPTED", size=size)
         else:
-            log(f"{epic}: WARNING - no dealReference returned; order confirmation unavailable.")
+            # Never treat an order as successfully managed without a broker
+            # deal reference. The POST response is not sufficient proof of an
+            # opened/managed position, so fail closed instead of starting a
+            # cooldown on an unconfirmed trade.
+            log(f"{epic}: ERROR - no dealReference returned; order confirmation unavailable.")
             record_execution_quality(epic, signal, execution_price, None, order_spread_pct, deal_status="UNCONFIRMED", size=size)
+            raise RuntimeError("Capital.com order returned no dealReference; execution state is unconfirmed.")
 
         ERROR_STREAKS.pop(epic, None)
         SAFETY["consecutive_errors"] = 0
