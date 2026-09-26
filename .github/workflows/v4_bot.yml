@@ -62,6 +62,17 @@ jobs:
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
 
+      - name: Run broker trade ledger
+        run: python trade_ledger.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          TRADE_LEDGER_LOOKBACK_DAYS: "30"
+
       - name: Persist V4 state
         run: |
           set -euo pipefail
@@ -78,6 +89,8 @@ jobs:
             v4_open_positions.json
             v4_execution_quality.json
             v4_entry_rejections.json
+            broker_trade_ledger.json
+            broker_trade_ledger.csv
           )
 
           for f in "${STATE_FILES[@]}"; do
