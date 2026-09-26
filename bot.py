@@ -779,8 +779,9 @@ def session_allows_entry(epic=None):
     if not SESSION_FILTER_ENABLED:
         return True
     now = datetime.now(timezone.utc
+    # On weekends, scan every configured market; broker marketStatus is the entry gate.
     if WEEKEND_FILTER_ENABLED and now.weekday() >= 5:
-        return False
+        return True
     hour = now.hour + now.minute / 60.0
     return SESSION_START_UTC <= hour < SESSION_END_UTC
 
@@ -1480,7 +1481,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             market = api.get_market(epic)
         snapshot = market.get("snapshot", {}) or {}
         market_status = str(snapshot.get("marketStatus") or market.get("marketStatus") or "").upper()
-        if epic == "BTCUSD" and market_status != "TRADEABLE" and not get_positions_for_epic(owned_positions, epic):
+        if market_status != "TRADEABLE" and not get_positions_for_epic(owned_positions, epic):
             log(f"{epic}: broker market status={market_status or 'UNKNOWN'}; fail closed, no new entry.")
             return None
         live_bid = safe_float(snapshot.get("bid") if snapshot.get("bid") is not None else market.get("bid"))
@@ -1751,6 +1752,13 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: risk budget={risk_amount:.2f}; entry={trade['entry']}; SL={trade['stop_level']}; TP={trade['profit_level']}; size={size}")
         if DEMO_ONLY and str(getattr(config, "IS_DEMO", "true")).lower() not in ("true", "1", "yes"):
             raise RuntimeError("DEMO_ONLY=True but IS_DEMO is not enabled.")
+        # Recheck broker status immediately before submitting, including add-on legs.
+        fresh_market = api.get_market(epic)
+        fresh_snapshot = fresh_market.get("snapshot", {}) or {}
+        fresh_status = str(fresh_snapshot.get("marketStatus") or fresh_market.get("marketStatus") or "").upper()
+        if fresh_status != "TRADEABLE":
+            record_entry_rejection(epic, "MARKET_NOT_TRADEABLE", f"broker_status={fresh_status or 'UNKNOWN'}")
+            return None
         response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
