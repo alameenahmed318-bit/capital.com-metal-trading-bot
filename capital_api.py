@@ -12,11 +12,13 @@ class CapitalAPI:
         self.cst = None
         self.security_token = None
         self.account_id = None
-        # Capital.com documents a 10 requests/second per-user REST limit.
-        # Keep each bot process below that ceiling to prevent bursty scans
-        # from turning into 429 errors.
+        # Capital.com applies the REST limit per user/account, not per
+        # GitHub Actions process. Four Capital strategy workflows can run
+        # concurrently, so each process is capped at 2 req/s (8 req/s worst
+        # case across V1-V4), leaving headroom below the documented 10 req/s
+        # account-wide ceiling.
         self._request_times = deque()
-        self._max_requests_per_second = 8
+        self._max_requests_per_second = 2
 
     def _throttle(self):
         now = time.monotonic()
