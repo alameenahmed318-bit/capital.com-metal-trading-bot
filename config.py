@@ -30,6 +30,8 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # These are Capital.com epic identifiers:
 # GOLD, EURUSD, SILVER, OIL_CRUDE, US100 (Nasdaq-100 / US Tech 100),
 # and US500 (S&P 500 / US 500).
+# Weekend FX instruments listed by Capital.com UAE: EURUSD_W and USDJPY_W.
+# The execution layer still fail-closes if the account API does not expose either epic.
 EPICS = [
     "GOLD",
     "EURUSD",
@@ -37,6 +39,8 @@ EPICS = [
     "OIL_CRUDE",
     "US100",
     "US500",
+    "EURUSD_W",
+    "USDJPY_W",
 ]
 
 FORWARD_TEST_EPICS = EPICS
@@ -69,6 +73,8 @@ MARKET_RSI_SETTINGS = {
     "OIL_CRUDE": (40, 70, 30, 60),
     "US100": (40, 70, 30, 60),
     "US500": (40, 70, 30, 60),
+    "EURUSD_W": (40, 70, 30, 60),
+    "USDJPY_W": (40, 70, 30, 60),
 }
 
 RISK_PER_TRADE = _float_env("RISK_PER_TRADE", 0.03)
@@ -87,6 +93,8 @@ INSTRUMENT_PRECISION = {
     "OIL_CRUDE": 2,
     "US100": 2,
     "US500": 2,
+    "EURUSD_W": 2,
+    "USDJPY_W": 2,
 }
 
 MIN_TRADE_SIZE = {
@@ -96,6 +104,8 @@ MIN_TRADE_SIZE = {
     "OIL_CRUDE": 0.01,
     "US100": 0.01,
     "US500": 0.01,
+    "EURUSD_W": 0.01,
+    "USDJPY_W": 0.01,
 }
 
 BALANCE_CAP = _float_env("BALANCE_CAP", 1000)
