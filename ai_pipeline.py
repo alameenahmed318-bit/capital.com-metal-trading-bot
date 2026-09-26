@@ -27,7 +27,7 @@ def evaluate(df, ai_decision, strategy_signal=None, bid=None, ask=None, referenc
         regime.get("confidence",0.0),
         0.0
     )
-    cost=estimate_cost(ask if ai_decision.get("signal")=="BUY" else bid,bid,ask,regime.get("atr_pct"))
+    cost=estimate_cost(ask if ai_decision.get("signal")=="BUY" else bid,bid,ask,regime.get("atr"))
     drift={"max_feature_psi":0.0,"prediction_shift":0.0,"drift":False}
     if reference_features and current_features:
         from ai_drift_monitor import assess
