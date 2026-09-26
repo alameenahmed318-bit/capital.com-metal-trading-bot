@@ -2,9 +2,6 @@ name: Capital V1 Trading Bot
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "4,19,34,49 * * * *"
-
 # Prevent overlapping runs so two bot instances cannot trade at the same time.
 concurrency:
   # All strategies share one Capital.com account. Serialize the full
