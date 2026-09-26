@@ -200,15 +200,15 @@ def build_training_dataset():
 def realized_training_frame():
     import pandas as pd
     with _connect() as con:
-        rows=con.execute("""SELECT features_json,outcome_label,entry_time,epic,direction
+        rows=con.execute("""SELECT features_json,outcome_label,pnl,entry_time,epic,direction
           FROM trade_outcomes WHERE status='CLOSED' AND outcome_label IN (-1,1)
           ORDER BY entry_time ASC""").fetchall()
     if not rows: return pd.DataFrame()
     records=[]
-    for f,label,t,epic,direction in rows:
+    for f,label,pnl,t,epic,direction in rows:
         try: x=json.loads(f or "{}")
         except Exception: continue
-        x["outcome_label"]=int(label); x["entry_time"]=t; x["epic"]=epic; x["direction"]=direction; x["trade_direction"]=1.0 if str(direction).upper()=="BUY" else -1.0
+        x["outcome_label"]=int(label); x["pnl"]=float(pnl) if pnl is not None else None; x["entry_time"]=t; x["epic"]=epic; x["direction"]=direction; x["trade_direction"]=1.0 if str(direction).upper()=="BUY" else -1.0
         records.append(x)
     return pd.DataFrame(records)
 
