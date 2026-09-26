@@ -17,7 +17,8 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 AI_ENABLED = os.environ.get("AI_TRADING_ENABLED", "true").lower() in {"1","true","yes"}
 AI_REQUIRE_STRATEGY_AGREEMENT = os.environ.get("AI_REQUIRE_STRATEGY_AGREEMENT", "true").lower() in {"1","true","yes"}
 BASE_MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
-DECISION_CACHE = {}\nWF_FOLDS = 3
+DECISION_CACHE = {}
+WF_FOLDS = 3
 
 PROFILES = {
     "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.58,"wf_min_train":90,"wf_acc":0.40,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
