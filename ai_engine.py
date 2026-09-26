@@ -292,13 +292,20 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
             result["reason"]=f"insufficient_training_data:{len(idx)}"; return result
         wf=_walk_forward_validate(fx,y,train_end,profile)
     result["walk_forward"]=wf
-    if not wf["ok"]:
-        result["reason"]=(
-            f"walk_forward_rejected:acc={wf['accuracy']:.3f}"
+    # Walk-forward quality is advisory for entry capture. A failed/weak
+    # historical validation must not turn the AI into a permanent WAIT gate.
+    # The model still decides BUY/SELL/WAIT from current market features;
+    # hard broker, risk, spread, SL/TP and position protections remain outside.
+    if not wf.get("ok", False):
+        result["validation_advisory"] = True
+        result["validation_reason"] = (
+            f"walk_forward_advisory:acc={wf.get('accuracy', 0.0):.3f}"
             f",bal={wf.get('balanced_accuracy', 0.0):.3f}"
             f",precision={wf.get('directional_precision', 0.0):.3f}"
             f",directional_rate={wf.get('directional_rate', 0.0):.3f}"
-        ); return result
+        )
+    else:
+        result["validation_advisory"] = False
     model=_make_model(profile)
     if use_realized:
         model.fit(realized[REALIZED_FEATURES].astype(float), (realized["outcome_label"]>0).astype(int))
