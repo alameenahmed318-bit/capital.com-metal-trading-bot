@@ -170,7 +170,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> 
     wf=_walk_forward_validate(fx,y,train_end,profile)
     result["walk_forward"]=wf
     if not wf["ok"]:
-        result["reason"]=f"walk_forward_rejected:accuracy={wf["accuracy"]:.3f}"; return result
+        result["reason"]=f"walk_forward_rejected:accuracy={wf['accuracy']:.3f}"; return result
     model=_make_model(profile)
     model.fit(fx.loc[idx,FEATURES].astype(float),y.loc[idx].astype(int))
     latest_idx=fx.index[-2]
