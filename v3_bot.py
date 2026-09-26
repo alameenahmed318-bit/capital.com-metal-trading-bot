@@ -94,7 +94,7 @@ def run_cycle():
     base.update_loss_cooldowns_from_history(api)
     base.log_trade_report(api, account_currency)
 
-    scan_seconds = 2
+    scan_seconds = 4
     window_seconds = 14 * 60
     candle_cache = {}
     candle_cache_ttl = 8.0
