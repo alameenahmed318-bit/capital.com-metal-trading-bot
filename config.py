@@ -36,8 +36,9 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # These are Capital.com epic identifiers:
 # GOLD, EURUSD, SILVER, OIL_CRUDE, US100 (Nasdaq-100 / US Tech 100),
 # and US500 (S&P 500 / US 500).
-# Weekend FX instruments listed by Capital.com UAE: EURUSD_W and USDJPY_W.
-# The execution layer still fail-closes if the account API does not expose either epic.
+# EURUSD_W is enabled for weekend FX where the connected account exposes it.
+# USDJPY_W returned broker 404 in repeated runs; leave it disabled until
+# the exact epic is verified for this account. Never guess broker identifiers.
 EPICS = [
     "GOLD",
     "EURUSD",
@@ -46,7 +47,6 @@ EPICS = [
     "US100",
     "US500",
     "EURUSD_W",
-    "USDJPY_W",
 ]
 
 FORWARD_TEST_EPICS = EPICS
