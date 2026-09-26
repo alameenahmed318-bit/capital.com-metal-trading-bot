@@ -10,9 +10,9 @@ import bot as base
 import v2_bot as v2
 
 V3_STRATEGY_ID = "CAPITAL_V3_RAPID_PROFIT"
-V3_PROFIT_TARGET_AED = 0.20
-V3_MIN_SCORE = 42.0
-V3_MIN_ENTRY_STRENGTH = 0.55
+V3_PROFIT_TARGET_AED = 0.50
+V3_MIN_SCORE = 50.0
+V3_MIN_ENTRY_STRENGTH = 0.75
 V3_LATE_ENTRY_MAX_ATR = 0.75
 
 v2.V2_MIN_SCORE = V3_MIN_SCORE
@@ -36,7 +36,7 @@ def v3_signal(df, htf_df, epic):
 
 def v3_entry_strength(df, htf_df, direction):
     raw = market_entry_strength_v2(df, htf_df, direction)
-    return min(1.0, raw + 0.35)
+    return raw
 
 def v3_profit_manager(api, positions, epic, account_currency):
     """Close V3 positions as soon as broker-reported P/L reaches +0.20."""
@@ -69,10 +69,10 @@ base.SAFETY_STATE_FILE = "v3_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "v3_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "v3_entry_rejections.json"
 
-base.SESSION_FILTER_ENABLED = False
-base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 2
-base.MAX_POSITIONS_PER_EPIC = 10
-base.CORRELATION_FILTER_ENABLED = False
+base.SESSION_FILTER_ENABLED = True
+base.PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
+base.MAX_POSITIONS_PER_EPIC = 1
+base.CORRELATION_FILTER_ENABLED = True
 base.PROFIT_TRAIL_ENABLED = False
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
