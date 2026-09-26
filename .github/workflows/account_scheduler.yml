@@ -1,0 +1,182 @@
+name: Capital Unified Account Scheduler
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: capital-account-state
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  account-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Sync to latest main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+          echo "EXECUTION_SHA=$(git rev-parse HEAD)"
+          git log -1 --oneline
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: AI architecture self-check
+        run: python ai_self_check_v2.py
+
+      - name: Run V4
+        run: python v4_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: ${{ vars.STRATEGY }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Run V1
+        run: python bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: ${{ vars.STRATEGY }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Run V2
+        run: python v2_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: ${{ vars.STRATEGY }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Run V3
+        run: python v3_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: ${{ vars.STRATEGY }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Run broker trade ledger
+        run: python trade_ledger.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          TRADE_LEDGER_LOOKBACK_DAYS: "30"
+
+      - name: Quant validation
+        run: python quant_validation.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: ${{ vars.STRATEGY }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+
+      - name: Build realized AI dataset and registry
+        run: python ai_dataset_job.py
+
+      - name: Persist all bot state
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          STATE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STATE_DIR"' EXIT
+          STATE_FILES=(
+            v1_strategy_positions.json trades.db stats.json trades_state.json
+            bot_safety_state.json open_positions.json execution_quality.json
+            quant_validation.json entry_rejections.json ai_outcomes.db
+            ai_training_dataset.parquet ai_model_registry.json
+            v2_strategy_positions.json v2_trades_state.json v2_bot_safety_state.json
+            v2_open_positions.json v2_execution_quality.json v2_entry_rejections.json
+            v3_strategy_positions.json v3_trades_state.json v3_bot_safety_state.json
+            v3_open_positions.json v3_execution_quality.json v3_entry_rejections.json
+            v4_strategy_positions.json v4_trades_state.json v4_bot_safety_state.json
+            v4_open_positions.json v4_execution_quality.json v4_entry_rejections.json
+            broker_trade_ledger.json broker_trade_ledger.csv
+          )
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
+          done
+          git reset --hard HEAD
+          git pull --rebase -X theirs origin main
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$STATE_DIR/$f" ]; then cp -a "$STATE_DIR/$f" "$f"; fi
+          done
+          EXISTING_STATE_FILES=()
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then EXISTING_STATE_FILES+=( "$f" ); fi
+          done
+          if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then exit 0; fi
+          git add -f "${EXISTING_STATE_FILES[@]}"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Update unified bot state [skip ci]"
+          git push origin main || {
+            git pull --rebase -X theirs origin main
+            git push origin main
+          }
