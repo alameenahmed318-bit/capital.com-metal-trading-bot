@@ -78,7 +78,7 @@ def evaluate(
     df, ai_decision, strategy_signal=None, bid=None, ask=None,
     reference_features=None, current_features=None,
     reference_predictions=None, current_predictions=None,
-    portfolio_multiplier=1.0, htf_df=None
+    portfolio_multiplier=1.0, htf_df=None, position_context=None
 ):
     regime = detect_regime(df)
     unc = assess_uncertainty(
@@ -170,6 +170,34 @@ def evaluate(
 
     # Position-management guidance is advisory here; bot.py combines it with
     # the actual open position and broker-reported P/L before closing anything.
+    profit_actions = []
+    for ctx in (position_context or []):
+        current = float(ctx.get("current_profit", 0.0) or 0.0)
+        peak = float(ctx.get("peak_profit", current) or current)
+        giveback_ratio = float(ctx.get("giveback_ratio", 0.0) or 0.0)
+        velocity = float(ctx.get("profit_velocity", 0.0) or 0.0)
+        action = "WAIT"
+        if current > 0:
+            reversal_now = bool(
+                enforced_signal in {"BUY", "SELL"}
+                and ai_decision.get("signal") in {"BUY", "SELL"}
+                and enforced_signal != ai_decision.get("signal")
+            )
+            if reversal_now:
+                action = "EXIT"
+            elif enhanced_uncertainty >= 0.85 or (velocity < 0 and giveback_ratio >= 0.35):
+                action = "PROTECT"
+            elif velocity < 0 or giveback_ratio >= 0.20:
+                action = "HARVEST"
+            elif enforced_signal in {"BUY", "SELL"} and float(ai_decision.get("confidence", 0.0) or 0.0) >= 0.55:
+                action = "RUNNER"
+            else:
+                action = "PROTECT"
+        profit_actions.append({
+            "deal_id": ctx.get("deal_id"), "current_profit": current, "peak_profit": peak,
+            "giveback_ratio": giveback_ratio, "profit_velocity": velocity, "action": action,
+        })
+
     edge_negative = bool(
         expected_edge.get("available")
         and expected_edge.get("expected_gross_pnl") is not None
@@ -214,5 +242,9 @@ def evaluate(
         "signal_before": ai_decision.get("signal"),
         "signal_after": enforced_signal,
         "position_management": position_management,
+        "profit_management": {
+            "actions": profit_actions,
+            "summary": "AI_PROFIT_STATE" if profit_actions else "NO_OPEN_POSITION_CONTEXT",
+        },
         "entry_filter_policy": "AI_PRIMARY_DIRECTION_ENFORCED",
     }
