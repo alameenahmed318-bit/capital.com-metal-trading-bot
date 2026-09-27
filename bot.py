@@ -1045,6 +1045,49 @@ def market_regime(df, htf_df):
     return "RANGE"
 
 
+
+def dynamic_entry_score_floor(regime, vol_ratio, news_buy=0.0, news_sell=0.0):
+    """Adaptive score floor from market regime, volatility and cached news stress."""
+    regime = str(regime or "RANGE").upper()
+    floor = {"TREND": 45.0, "BREAKOUT": 52.0, "RANGE": 62.0}.get(regime, 58.0)
+    vol = safe_float(vol_ratio)
+    if vol is not None:
+        if vol < 0.85:
+            floor += 5.0
+        elif vol > 1.50:
+            floor += 8.0
+        elif vol > 1.25:
+            floor += 3.0
+    if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
+        floor += 8.0
+    return float(np.clip(floor, 45.0, 80.0))
+
+
+def dynamic_entry_policy(df, htf_df, epic, direction, strength):
+    """Return adaptive strength floor and position capacity for this market state."""
+    regime = market_regime(df, htf_df)
+    atr20 = float(df["atr"].rolling(20).mean().iloc[-2]) if "atr" in df else 0.0
+    atr100 = float(df["atr"].rolling(100).mean().iloc[-2]) if "atr" in df else 0.0
+    vol_ratio = atr20 / atr100 if atr100 > 0 else 1.0
+    news_buy, _ = capital_news.score(epic, "BUY")
+    news_sell, _ = capital_news.score(epic, "SELL")
+    score_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
+    strength_floor = {"TREND": 0.50, "BREAKOUT": 0.55, "RANGE": 0.65}.get(regime, 0.60)
+    if vol_ratio < 0.85:
+        strength_floor += 0.05
+    elif vol_ratio > 1.50:
+        strength_floor += 0.08
+    if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
+        strength_floor += 0.05
+    strength_floor = float(np.clip(strength_floor, 0.50, 0.90))
+    strong = float(strength) >= 0.75
+    max_positions = 1
+    if strong:
+        max_positions = 2
+    if strong and regime in {"TREND", "BREAKOUT"} and vol_ratio <= 1.50 and float(strength) >= 1.0:
+        max_positions = 3
+    return regime, vol_ratio, score_floor, strength_floor, max_positions, strong
+
 def alpha_ensemble_confirmation(df, direction):
     """Independent confirmation from trend, momentum, slope and structure."""
     if len(df) < 80:
@@ -1291,14 +1334,14 @@ def quant_signal_score(df, epic, htf_df):
     adaptive_mult = adaptive_risk_multiplier(df)
     log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
 
-    if buy_score >= MIN_ENTRY_SCORE and buy_score > sell_score + 8:
+    dynamic_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)\n    log(f"{epic}: ADAPTIVE ENTRY FLOOR | regime={regime} | floor={dynamic_floor:.1f} | vol_ratio={vol_ratio:.2f} | news_stress={max(abs(news_buy), abs(news_sell)):.2f}")\n    if buy_score >= dynamic_floor and buy_score > sell_score + 8:
         if ALPHA_ENSEMBLE_ENABLED:
             ok, details = alpha_ensemble_confirmation(df, "BUY")
             log(f"{epic}: ALPHA ENSEMBLE BUY | {details}")
             if not ok:
                 return None
         return "BUY"
-    if sell_score >= MIN_ENTRY_SCORE and sell_score > buy_score + 8:
+    if sell_score >= dynamic_floor and sell_score > buy_score + 8:
         if ALPHA_ENSEMBLE_ENABLED:
             ok, details = alpha_ensemble_confirmation(df, "SELL")
             log(f"{epic}: ALPHA ENSEMBLE SELL | {details}")
@@ -2340,10 +2383,20 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Strategy-only entry gate. AI confidence is informational and cannot delay,
         # block, reverse or modify the strategy entry.
         strength = strategy_strength
-        required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.55))
+        regime_now, vol_ratio_now, adaptive_score_floor, required_strength, dynamic_max_positions, strong_signal = dynamic_entry_policy(
+            df, htf_df, epic, signal, strength
+        )
         if strength < required_strength:
-            log(f"{epic}: strategy strength below entry floor ({strength:.2f} < {required_strength:.2f}); no trade.")
+            record_entry_rejection(
+                epic, "ADAPTIVE_STRENGTH_FLOOR",
+                f"regime={regime_now}; strength={strength:.2f}; required={required_strength:.2f}; vol_ratio={vol_ratio_now:.2f}"
+            )
+            log(f"{epic}: adaptive strength below floor ({strength:.2f} < {required_strength:.2f}); no trade.")
             return None
+        log(
+            f"{epic}: ADAPTIVE ENTRY | regime={regime_now} | strength={strength:.2f} | "
+            f"required={required_strength:.2f} | dynamic_max_positions={dynamic_max_positions} | strong={strong_signal}"
+        )
         trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
@@ -2372,6 +2425,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
+        if existing_count >= dynamic_max_positions:
+            record_entry_rejection(
+                epic, "ADAPTIVE_POSITION_CAP",
+                f"existing={existing_count}; dynamic_max={dynamic_max_positions}; regime={regime_now}; strength={strength:.2f}"
+            )
+            return None
         if epic_positions:
             last_entry = LAST_ENTRY_AT.get(epic)
             if (
