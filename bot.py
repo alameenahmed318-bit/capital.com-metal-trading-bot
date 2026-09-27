@@ -16,6 +16,7 @@ from execution_costs import evaluate_pretrade_cost
 import ai_engine
 import ai_pipeline
 import ai_outcomes
+from capital_websocket import CapitalLivePriceStream
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_FX_AI"
@@ -1514,6 +1515,8 @@ def cleanup_state(positions):
     if changed:
         save_state(STATE)
 
+LIVE_PRICE_MAX_AGE_SECONDS = 10.0
+LIVE_PRICE_STREAM = None
 OPEN_POSITION_MONITOR_SECONDS = 10
 OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
 # Prevent the 10-second signal loop from stacking the same profitable-basket
@@ -1567,7 +1570,35 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # safety/cooldown/spread blocks the entry.
         if market is None:
             market = api.get_market(epic)
-        snapshot = market.get("snapshot", {}) or {}
+
+        # Prefer the freshest Capital.com WebSocket quote for executable pricing.
+        # REST remains the source of market status/instrument metadata.
+        live_quote = None
+        if LIVE_PRICE_STREAM is not None:
+            try:
+                live_quote = LIVE_PRICE_STREAM.get_quote(epic)
+                live_age = LIVE_PRICE_STREAM.age_seconds(epic)
+                if live_quote and live_age is not None and live_age <= LIVE_PRICE_MAX_AGE_SECONDS:
+                    snapshot = dict(market.get("snapshot", {}) or {})
+                    snapshot["bid"] = live_quote["bid"]
+                    snapshot["offer"] = live_quote["offer"]
+                    snapshot["livePriceTimestamp"] = live_quote.get("timestamp")
+                    snapshot["livePriceReceivedAt"] = live_quote.get("received_at_iso")
+                    market = dict(market)
+                    market["snapshot"] = snapshot
+                    log(
+                        f"{epic}: LIVE WS QUOTE | bid={live_quote['bid']} | "
+                        f"offer={live_quote['offer']} | age={live_age:.2f}s"
+                    )
+                else:
+                    snapshot = market.get("snapshot", {}) or {}
+                    if LIVE_PRICE_STREAM is not None and live_age is not None:
+                        log(f"{epic}: LIVE WS quote stale ({live_age:.2f}s); using REST snapshot.")
+            except Exception as live_exc:
+                snapshot = market.get("snapshot", {}) or {}
+                log(f"{epic}: LIVE WS quote unavailable; using REST snapshot: {live_exc}")
+        else:
+            snapshot = market.get("snapshot", {}) or {}
         market_status = str(snapshot.get("marketStatus") or market.get("marketStatus") or "").upper()
         if market_status != "TRADEABLE" and not get_positions_for_epic(owned_positions, epic):
             log(f"{epic}: broker market status={market_status or 'UNKNOWN'}; fail closed, no new entry.")
@@ -2243,6 +2274,26 @@ def run_cycle():
     api = CapitalAPI()
     log("Logging in to Capital.com...")
     api.login()
+
+    # Start the authenticated Capital.com WebSocket once per bot run.
+    # It streams live bid/offer prices while the normal AI/candle engine runs.
+    global LIVE_PRICE_STREAM
+    try:
+        LIVE_PRICE_STREAM = CapitalLivePriceStream(
+            cst=api.cst,
+            security_token=api.security_token,
+            epics=EPICS,
+            log_fn=log,
+        )
+        LIVE_PRICE_STREAM.start()
+        log(
+            f"LIVE PRICE FEED | WebSocket active | markets={len(EPICS)} | "
+            f"max_quote_age={LIVE_PRICE_MAX_AGE_SECONDS:.1f}s"
+        )
+    except Exception as live_start_exc:
+        LIVE_PRICE_STREAM = None
+        log(f"LIVE PRICE FEED | unavailable; REST fallback active: {live_start_exc}")
+
     balance = api.get_balance()
     account_currency = api.get_account_currency()
     log(f"Account balance: {balance} {account_currency}")
@@ -2286,6 +2337,12 @@ def run_cycle():
     # One bounded management pass only; the next scheduled run handles the next scan.
     monitor_open_positions(api, account_currency)
     save_live_stats(api, account_currency)
+    if LIVE_PRICE_STREAM is not None:
+        try:
+            LIVE_PRICE_STREAM.stop()
+        except Exception as live_stop_exc:
+            log(f"LIVE PRICE FEED | shutdown warning: {live_stop_exc}")
+        LIVE_PRICE_STREAM = None
     log("Trading cycle completed.")
 
 if __name__ == "__main__":
