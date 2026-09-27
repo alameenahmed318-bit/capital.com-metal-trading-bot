@@ -1855,10 +1855,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
-        if not safety_allows_new_entry(balance, positions, epic=epic, account_currency=account_currency):
+        # Entry safety gates must not stop management of an already-open trade.
+        # They only suppress NEW entries.
+        if not epic_positions and not safety_allows_new_entry(balance, positions, epic=epic, account_currency=account_currency):
             record_entry_rejection(epic, "SAFETY_STOP")
             return None
-        if cooldown_active(epic):
+        if not epic_positions and cooldown_active(epic):
             record_entry_rejection(epic, "LOSS_COOLDOWN")
             return None
         # AI must evaluate the live spread after seeing the market/candle context.
