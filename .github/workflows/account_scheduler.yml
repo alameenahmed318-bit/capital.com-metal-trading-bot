@@ -1,24 +1,23 @@
-name: Capital Unified Account Scheduler
+name: Capital Account Analytics Scheduler
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
 
+# Analytics/reporting must never queue behind or block a trading workflow.
 concurrency:
-  # Serialize account access without dropping pending runs.
-  # GitHub's default queue is single-slot and cancels older pending runs.
-  # queue:max keeps scheduled/manual AI bot runs in line.
-  group: capital-account-state
+  group: capital-account-analytics
   cancel-in-progress: false
   queue: max
+
 permissions:
   contents: write
 
 jobs:
-  account-cycle:
+  analytics:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -39,27 +38,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: AI architecture self-check
+      - name: Architecture self-check
         run: python ai_self_check_v2.py
 
-      - name: Run Metals + Energy AI
-        run: python metals_energy_ai_bot.py
-        env:
-          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
-          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
-          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
-          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
-          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          IS_DEMO: ${{ secrets.IS_DEMO }}
-          BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
-          STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
-          VOL_MANAGED_SIZING: "true"
-          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
-          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
-          GITHUB_USERNAME: alameenahmed318-bit
-          GITHUB_REPO: capital.com-metal-trading-bot
-
+      # Read/report only. This workflow never launches a trading bot.
       - name: Run broker trade ledger
         run: python trade_ledger.py
         env:
@@ -89,7 +71,7 @@ jobs:
       - name: Build realized AI dataset and registry
         run: python ai_dataset_job.py
 
-      - name: Persist all bot state
+      - name: Persist analytics state
         if: ${{ always() }}
         run: |
           set -euo pipefail
@@ -98,15 +80,12 @@ jobs:
           STATE_DIR="$(mktemp -d)"
           trap 'rm -rf "$STATE_DIR"' EXIT
           STATE_FILES=(
-            fx_ai_strategy_positions.json fx_ai_trades_state.json
-            fx_ai_bot_safety_state.json fx_ai_open_positions.json
-            fx_ai_execution_quality.json fx_ai_entry_rejections.json
-            metals_energy_ai_strategy_positions.json metals_energy_ai_trades_state.json
-            metals_energy_ai_bot_safety_state.json metals_energy_ai_open_positions.json
-            metals_energy_ai_execution_quality.json metals_energy_ai_entry_rejections.json
-            trades.db stats.json quant_validation.json ai_outcomes.db
-            ai_training_dataset.parquet ai_model_registry.json
-            broker_trade_ledger.json broker_trade_ledger.csv
+            quant_validation.json
+            ai_outcomes.db
+            ai_training_dataset.parquet
+            ai_model_registry.json
+            broker_trade_ledger.json
+            broker_trade_ledger.csv
           )
           for f in "${STATE_FILES[@]}"; do
             if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
@@ -123,7 +102,7 @@ jobs:
           if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then exit 0; fi
           git add -f "${EXISTING_STATE_FILES[@]}"
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Update unified bot state [skip ci]"
+          git commit -m "Update account analytics state [skip ci]"
           git push origin main || {
             git pull --rebase -X theirs origin main
             git push origin main
