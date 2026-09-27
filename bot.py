@@ -119,7 +119,6 @@ DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
 DAILY_LOSS_LIMIT_PCT = 0.03  # Fallback for non-AED accounts
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
 LOSS_COOLDOWN_MINUTES = 3
-SIDEWAYS_FILTER_ENABLED = False
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
