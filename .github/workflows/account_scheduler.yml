@@ -60,24 +60,6 @@ jobs:
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
 
-      - name: Run FX AI
-        run: python fx_ai_bot.py
-        env:
-          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
-          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
-          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
-          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
-          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          IS_DEMO: ${{ secrets.IS_DEMO }}
-          BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
-          STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
-          VOL_MANAGED_SIZING: "true"
-          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
-          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
-          GITHUB_USERNAME: alameenahmed318-bit
-          GITHUB_REPO: capital.com-metal-trading-bot
-
       - name: Run broker trade ledger
         run: python trade_ledger.py
         env:
@@ -108,6 +90,7 @@ jobs:
         run: python ai_dataset_job.py
 
       - name: Persist all bot state
+        if: ${{ always() }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
