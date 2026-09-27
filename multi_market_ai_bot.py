@@ -16,10 +16,12 @@ base.SAFETY_STATE_FILE = "multi_market_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "multi_market_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "multi_market_entry_rejections.json"
 
-# All configured markets. No V2/V3 consensus layer and no cross-bot approval.
-base.EPICS = list(dict.fromkeys(getattr(base.config, "EPICS", [
-    "GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500", "EURUSD_W"
-])))
+# All configured non-GOLD markets; GOLD is reserved for the dedicated Gold AI bot. No V2/V3 consensus layer and no cross-bot approval.
+base.EPICS = [
+    epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [
+        "GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500", "EURUSD_W"
+    ]))) if epic != "GOLD"
+]
 
 # One integrated AI decision per market. Hard broker/risk/execution controls
 # in bot.py remain mandatory; strategy votes are not chained together.
