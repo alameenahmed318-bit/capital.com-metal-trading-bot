@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-27T09:03:35.891000+00:00",
+  "last_updated": "2026-09-27T09:21:46.330317+00:00",
   "currency": "AED",
   "source": "Capital.com API /accounts + /history/transactions",
   "pnl_policy": "Broker-reported only; no inferred or reconstructed trade P/L",
@@ -20,13 +20,6 @@
     "average_loss": null
   },
   "by_epic": {
-    "GOLD": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
     "EURUSD": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
