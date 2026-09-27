@@ -1,0 +1,57 @@
+name: Capital Metals & Energy AI Bot
+
+on:
+  workflow_dispatch:
+
+# Share the account lock with the FX bot and unified scheduler.
+concurrency:
+  group: capital-account-state
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: read
+
+jobs:
+  trade-metals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync to latest main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+          echo "EXECUTION_SHA=$(git rev-parse HEAD)"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Offline architecture self-check
+        run: python ai_self_check_v2.py
+
+      - name: Run Metals and Energy AI bot
+        run: python metals_energy_ai_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
+          STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
