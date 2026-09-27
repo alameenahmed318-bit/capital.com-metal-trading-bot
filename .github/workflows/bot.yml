@@ -113,7 +113,30 @@ jobs:
             ai_outcomes.db
             ai_training_dataset.parquet
             ai_model_registry.json
-            ai_model_registry_*.json
+            ai_model_registry_EURUSD.json
+            ai_model_registry_GBPUSD.json
+            ai_model_registry_USDJPY.json
+            ai_model_registry_USDCHF.json
+            ai_model_registry_USDCAD.json
+            ai_model_registry_AUDUSD.json
+            ai_model_registry_NZDUSD.json
+            ai_model_registry_EURGBP.json
+            ai_model_registry_EURJPY.json
+            ai_model_registry_GBPJPY.json
+            ai_model_registry_AUDJPY.json
+            ai_model_registry_EURCHF.json
+            ai_model_registry_GBPCHF.json
+            ai_model_registry_AUDCAD.json
+            ai_model_registry_AUDCHF.json
+            ai_model_registry_NZDJPY.json
+            ai_model_registry_CADJPY.json
+            ai_model_registry_EURUSD_W.json
+            ai_model_registry_BTCUSD.json
+            ai_model_registry_GOLD.json
+            ai_model_registry_SILVER.json
+            ai_model_registry_OIL_CRUDE.json
+            ai_model_registry_US100.json
+            ai_model_registry_US500.json
             ai_learning_report.json
             broker_trade_ledger.json
             broker_trade_ledger.csv
