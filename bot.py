@@ -2157,10 +2157,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         strong_signal = bool(signal in {"BUY", "SELL"} and confidence >= STRONG_SIGNAL_MIN_CONFIDENCE)
         log(f"{epic}: ENTRY MODE | strong={strong_signal} | confidence={confidence:.3f} | risk-budgeted entries")
         epic_positions = get_positions_for_epic(owned_positions, epic)
-        account_epic_positions = get_positions_for_epic(positions, epic)
-        if not epic_positions and account_epic_positions:
-            record_entry_rejection(epic, "ACCOUNT_EPIC_ALREADY_OWNED", f"open_account_positions={len(account_epic_positions)}")
-            return None
+        # Manual broker positions do not belong to this bot and must never
+        # block a new bot entry or consume the bot's per-epic capacity.
+        # Only positions registered in POSITION_OWNERSHIP_FILE are managed
+        # and counted by this strategy.
         if signal is None and not epic_positions:
             log(f"No signal this cycle for {epic}.")
             return None
@@ -2246,8 +2246,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Reuse the current market snapshots already fetched for this scan.
         # Risk calculations used to request the same market repeatedly.
         risk_market_cache = {epic: market}
-        reserved_risk = basket_reserved_risk(api, positions, epic, account_currency, market_cache=risk_market_cache)
-        portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency, market_cache=risk_market_cache)
+        # Risk budgets are strategy-owned: manual positions are not counted
+        # against this bot's basket/portfolio allocation. Account-level safety
+        # (daily loss/equity protection) still sees the full broker account.
+        reserved_risk = basket_reserved_risk(api, owned_positions, epic, account_currency, market_cache=risk_market_cache)
+        portfolio_reserved = portfolio_reserved_risk(api, owned_positions, account_currency, market_cache=risk_market_cache)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
         # Unknown reserved risk is fail-closed for NEW entries only. Existing
@@ -2284,7 +2287,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             risk_amount = 0.0
         else:
             risk_positions = []
-            for p in positions:
+            for p in owned_positions:
                 rp = dict(p)
                 rp["risk_amount_account"] = estimated_position_risk_account(
                     p, api, account_currency, market_cache=risk_market_cache
