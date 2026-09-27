@@ -212,18 +212,27 @@ def realized_training_frame():
         records.append(x)
     return pd.DataFrame(records)
 
-def update_registry(model_version, metrics):
+def update_registry(model_version, metrics, registry_path=None):
     """Persist a candidate without silently promoting it.
-    Promotion is governed by ai_model_selection and explicit validation fields.
+    Registry can be isolated per epic/strategy so one market never promotes
+    a model using another market's outcomes.
     """
+    path = registry_path or REGISTRY_PATH
     payload={"updated_at":_now(),"active_model":None,"models":{}}
-    if os.path.exists(REGISTRY_PATH):
+    if os.path.exists(path):
         try:
-            with open(REGISTRY_PATH,encoding="utf-8") as f: payload=json.load(f)
+            with open(path,encoding="utf-8") as f: payload=json.load(f)
         except Exception: pass
     payload.setdefault("models",{})
     payload.setdefault("active_model",None)
     payload.setdefault("promotion_history",[])
+    payload.setdefault("promotion_policy",{
+        "min_walk_forward_folds":5,
+        "require_calibration":True,
+        "require_drift_check":True,
+        "require_execution_cost_check":True,
+        "require_realized_broker_labels":True,
+    })
     policy=payload.get("promotion_policy",{})
     candidate=dict(metrics)
     candidate["registry_role"]="challenger"
@@ -239,5 +248,5 @@ def update_registry(model_version, metrics):
         payload["promotion_history"].append({
             "timestamp":_now(),"from":previous,"to":model_version,"decision":"PROMOTE"
         })
-    with open(REGISTRY_PATH,"w",encoding="utf-8") as f: json.dump(payload,f,indent=2,default=str)
+    with open(path,"w",encoding="utf-8") as f: json.dump(payload,f,indent=2,default=str)
     return payload
