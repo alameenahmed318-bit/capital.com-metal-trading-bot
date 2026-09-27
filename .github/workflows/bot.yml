@@ -89,6 +89,7 @@ jobs:
         run: python ai_dataset_job.py
 
       - name: Persist bot state
+        if: ${{ always() }}
         run: |
           set -e
           git config user.name "github-actions[bot]"
