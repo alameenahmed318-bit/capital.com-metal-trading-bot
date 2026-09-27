@@ -1334,7 +1334,9 @@ def quant_signal_score(df, epic, htf_df):
     adaptive_mult = adaptive_risk_multiplier(df)
     log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
 
-    dynamic_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)\n    log(f"{epic}: ADAPTIVE ENTRY FLOOR | regime={regime} | floor={dynamic_floor:.1f} | vol_ratio={vol_ratio:.2f} | news_stress={max(abs(news_buy), abs(news_sell)):.2f}")\n    if buy_score >= dynamic_floor and buy_score > sell_score + 8:
+    dynamic_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
+    log(f"{epic}: ADAPTIVE ENTRY FLOOR | regime={regime} | floor={dynamic_floor:.1f} | vol_ratio={vol_ratio:.2f} | news_stress={max(abs(news_buy), abs(news_sell)):.2f}")
+    if buy_score >= dynamic_floor and buy_score > sell_score + 8:
         if ALPHA_ENSEMBLE_ENABLED:
             ok, details = alpha_ensemble_confirmation(df, "BUY")
             log(f"{epic}: ALPHA ENSEMBLE BUY | {details}")
