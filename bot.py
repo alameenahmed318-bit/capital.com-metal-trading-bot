@@ -19,7 +19,7 @@ import ai_outcomes
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_FX_AI"
-POSITION_OWNERSHIP_FILE = "v1_strategy_positions.json"
+POSITION_OWNERSHIP_FILE = "fx_ai_strategy_positions.json"
 LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 ALLOW_GRID = False
 ALLOW_MARTINGALE = False
@@ -108,7 +108,7 @@ PROFITABLE_ADD_RISK = 0.002
 SPREAD_FILTER_ENABLED = True
 MAX_SPREAD_PCT = 0.15
 EXECUTION_QUALITY_ENABLED = True
-EXECUTION_QUALITY_FILE = "execution_quality.json"
+EXECUTION_QUALITY_FILE = "fx_ai_execution_quality.json"
 MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 
 # Entry-quality upgrades: allow a little more room for normal execution lag,
@@ -120,7 +120,7 @@ CORRELATION_FILTER_ENABLED = False
 CORRELATION_LOOKBACK = 96
 CORRELATION_THRESHOLD = 0.80
 CORRELATION_CACHE_SECONDS = 60
-ENTRY_REJECTION_FILE = "entry_rejections.json"
+ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
 
 DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
@@ -139,7 +139,7 @@ MAX_CONSECUTIVE_ERRORS = 3
 # unrelated markets. Critical failures are tracked per epic for this run.
 UNAVAILABLE_EPICS = set()
 ERROR_STREAKS = {}
-SAFETY_STATE_FILE = "bot_safety_state.json"
+SAFETY_STATE_FILE = "fx_ai_bot_safety_state.json"
 
 # Conservative strategy-quality upgrades.
 SESSION_FILTER_ENABLED = False
@@ -152,12 +152,12 @@ ADAPTIVE_RISK_HIGH_VOL_2 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_2", 1.50)
 ADAPTIVE_RISK_LOW_VOL = getattr(config, "ADAPTIVE_RISK_LOW_VOL", 0.75)
 BREAKOUT_CONFIRM_ATR = getattr(config, "BREAKOUT_CONFIRM_ATR", 0.05)
 MIN_ENTRY_SCORE = getattr(config, "MIN_ENTRY_SCORE", 50.0)
-# Strategy-specific execution gate; V1/V2/V3 keep the existing 0.75 default.
+# Active AI bots use their profile-specific confidence floor.
 MIN_ENTRY_STRENGTH = 0.55
 
 MIN_TRADE_SIZE = getattr(config, "MIN_TRADE_SIZE", {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01})
-STATE_FILE = "trades_state.json"
-OPEN_POSITIONS_FILE = "open_positions.json"
+STATE_FILE = "fx_ai_trades_state.json"
+OPEN_POSITIONS_FILE = "fx_ai_open_positions.json"
 
 def log(message):
     print(f"[BOT] {message}")
@@ -532,6 +532,13 @@ def save_state(state):
 
 STATE = load_state()
 
+
+def reload_runtime_state():
+    """Reload strategy-specific state after a wrapper selects its state files."""
+    global STATE, SAFETY
+    STATE = load_state()
+    SAFETY = load_safety_state()
+
 def safe_float(value, default=None):
     """Safely parse numeric values, including Capital.com strings with currency text."""
     try:
@@ -786,7 +793,7 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
 CANDLE_CACHE_DEFAULT_TTL_SECONDS = 8.0
 
 def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
-    """Short-lived historical-candle cache for rapid V3 scans. Live quotes remain uncached."""
+    """Short-lived historical-candle cache. Live quotes remain uncached."""
     if cache is None:
         return candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
     now = time.monotonic()
@@ -1517,8 +1524,8 @@ LAST_ENTRY_AT = {}
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
     """Run one bounded position/entry-management pass.
 
-    GitHub Actions uses an account-wide concurrency lock. A long 10-second
-    polling loop can hold that lock for 14 minutes and starve V2/V3/V4.
+    GitHub Actions uses an account-wide concurrency lock. Each invocation performs
+    one bounded pass so account mutations remain serialized.
     The scheduled workflow already runs every 15 minutes, so one bounded
     pass per invocation is safer and prevents overlapping account mutations.
     """
@@ -1604,8 +1611,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             owned_positions = filter_owned_positions(positions)
             epic_positions = get_positions_for_epic(owned_positions, epic)
 
-        # Always run the strategy's profit manager. V3/V4 replace this hook
-        # with their own rapid profit-target manager; AI must not disable it.
+        # Always run the strategy's profit manager for existing positions; AI must not disable it.
         manage_profit_trailing(api, owned_positions, epic, account_currency)
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
@@ -1697,7 +1703,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         legacy_signal = generate_signal(df, epic, htf_df)
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
         # Advanced AI safety stack is shadow-only by default. It can add diagnostics
-        # without changing V1-V4 execution until explicitly switched to enforce mode.
+        # without changing the active AI execution path unless explicitly switched to enforce mode.
         try:
             ai_decision["advanced_ai"] = ai_pipeline.evaluate(
                 df,
@@ -1725,7 +1731,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 f"risk_mult={float(adv.get('risk_multiplier',0.0)):.3f}"
             )
         except Exception as _advanced_ai_exc:
-            # Advanced diagnostics must never break the proven V1-V4 decision path.
+            # Advanced diagnostics must never break the active AI decision path.
             log(f"{epic}: ADVANCED AI diagnostics unavailable: {_advanced_ai_exc}")
         # Snapshot the exact features used by the AI at decision time.
         # These values are stored with the eventual broker-reported outcome;
@@ -1831,7 +1837,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: PRE-TRADE COST | {cost_diag}")
             if not cost_ok:
                 # Never override the configured cost-to-stop limit. This applies
-                # to V1-V4, including strong AI signals and rapid-profit entries.
+                # to both active AI bots, including strong signals.
                 record_entry_rejection(
                     epic,
                     "PRETRADE_COST",
