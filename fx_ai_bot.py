@@ -20,7 +20,6 @@ base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", 
 
 base.MIN_ENTRY_SCORE = 50.0
 base.MIN_ENTRY_STRENGTH = 0.55
-base.MAX_POSITIONS_PER_EPIC = 3
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
