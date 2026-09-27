@@ -1751,25 +1751,46 @@ def cleanup_state(positions):
     if changed:
         save_state(STATE)
 
-# Open positions use the live WebSocket as the primary price source.
-# Keep the management loop fast without turning it into a 1-second REST/API storm.
+# Live quotes are the primary executable-price source. Historical candles
+# remain cached so fast scans do not create a REST/API storm.
 LIVE_PRICE_MAX_AGE_SECONDS = 3.0
 LIVE_PRICE_STREAM = None
 OPEN_POSITION_MONITOR_SECONDS = 2
 OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
+# Fast entry scanner: rotate a small number of markets every few seconds.
+# This reduces worst-case entry wait without hammering the broker API.
+FAST_ENTRY_SCAN_SECONDS = 5
+FAST_ENTRY_MARKETS_PER_SCAN = 4
+FAST_ENTRY_CANDLE_CACHE_TTL_SECONDS = 30.0
+FAST_ENTRY_MARKET_CACHE_TTL_SECONDS = 20.0
 # Prevent the fast management loop from stacking the same profitable-basket
 # leg repeatedly; signals are still evaluated through the normal entry path.
 PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
 LAST_ENTRY_AT = {}
 
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
-    """Continuously manage open positions with live quotes; no new entries."""
-    interval = max(1.0, float(OPEN_POSITION_MONITOR_SECONDS))
-    window = max(interval, float(duration_seconds))
+    """Continuously protect positions and scan for new entries from live quotes.
+
+    Open positions are checked every ~2s. New-entry candidates are rotated in
+    small batches every ~5s, using cached candles/market metadata and the live
+    WebSocket quote. The final order path still performs a fresh broker
+    TRADEABLE check before submitting, so speed does not weaken the safety gate.
+    """
+    management_interval = max(1.0, float(OPEN_POSITION_MONITOR_SECONDS))
+    entry_interval = max(2.0, float(FAST_ENTRY_SCAN_SECONDS))
+    window = max(management_interval, float(duration_seconds))
     deadline = time.monotonic() + window
     candle_cache = {}
+    market_cache = {}
+    market_cache_ts = {}
     iteration = 0
-    log(f"OPEN POSITION MONITOR | interval={interval:.1f}s | window={window:.0f}s | WS={'ON' if LIVE_PRICE_STREAM is not None else 'OFF'}")
+    entry_cursor = 0
+    next_entry_scan = time.monotonic()
+    log(
+        f"FAST MONITOR | manage={management_interval:.1f}s | "
+        f"entry_scan={entry_interval:.1f}s/{FAST_ENTRY_MARKETS_PER_SCAN} markets | "
+        f"window={window:.0f}s | WS={'ON' if LIVE_PRICE_STREAM is not None else 'OFF'}"
+    )
 
     while time.monotonic() < deadline:
         iteration += 1
@@ -1778,30 +1799,88 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
             positions = api.get_open_positions()
             owned = filter_owned_positions(positions)
             open_epics = [epic for epic in EPICS if get_positions_for_epic(owned, epic)]
-            if open_epics:
-                balance = api.get_balance()
-                for epic in open_epics:
+
+            balance = api.get_balance() if open_epics else None
+
+            # Priority 1: protect every open position on the fast 2-second loop.
+            for epic in open_epics:
+                if time.monotonic() >= deadline:
+                    break
+                now = time.monotonic()
+                cached_market = market_cache.get(epic)
+                if cached_market is None or now - market_cache_ts.get(epic, 0.0) >= FAST_ENTRY_MARKET_CACHE_TTL_SECONDS:
+                    try:
+                        cached_market = api.get_market(epic)
+                        market_cache[epic] = cached_market
+                        market_cache_ts[epic] = now
+                    except Exception as market_exc:
+                        log(f"{epic}: fast monitor market refresh failed: {market_exc}")
+                        cached_market = None
+                process_epic(
+                    api=api, epic=epic, positions=positions, balance=balance,
+                    account_currency=account_currency, allow_entry_without_signal=False,
+                    market=cached_market, candle_cache=candle_cache,
+                    candle_cache_ttl=max(FAST_ENTRY_CANDLE_CACHE_TTL_SECONDS, management_interval + 2.0),
+                    position_management_only=True,
+                )
+
+            # Priority 2: continuously look for fresh entries. Rotate only a few
+            # markets per pass so every market is revisited quickly while staying
+            # comfortably below the broker's account-wide request ceiling.
+            now = time.monotonic()
+            if now >= next_entry_scan and EPICS:
+                batch_size = min(int(FAST_ENTRY_MARKETS_PER_SCAN), len(EPICS))
+                candidates = [
+                    EPICS[(entry_cursor + offset) % len(EPICS)]
+                    for offset in range(batch_size)
+                ]
+                entry_cursor = (entry_cursor + batch_size) % len(EPICS)
+                for epic in candidates:
                     if time.monotonic() >= deadline:
                         break
-                    process_epic(
-                        api=api, epic=epic, positions=positions, balance=balance,
-                        account_currency=account_currency, allow_entry_without_signal=False,
-                        market=None, candle_cache=candle_cache,
-                        candle_cache_ttl=max(CANDLE_CACHE_DEFAULT_TTL_SECONDS, interval + 2.0),
-                        position_management_only=True,
-                    )
-            else:
-                log(f"OPEN POSITION MONITOR | pass={iteration} | no open positions")
+                    refresh_now = time.monotonic()
+                    cached_market = market_cache.get(epic)
+                    if cached_market is None or refresh_now - market_cache_ts.get(epic, 0.0) >= FAST_ENTRY_MARKET_CACHE_TTL_SECONDS:
+                        try:
+                            cached_market = api.get_market(epic)
+                            market_cache[epic] = cached_market
+                            market_cache_ts[epic] = refresh_now
+                        except Exception as market_exc:
+                            log(f"{epic}: fast entry market refresh failed: {market_exc}")
+                            continue
+                    try:
+                        process_epic(
+                            api=api, epic=epic, positions=positions,
+                            balance=balance if balance is not None else api.get_balance(),
+                            account_currency=account_currency,
+                            allow_entry_without_signal=True,
+                            market=cached_market,
+                            candle_cache=candle_cache,
+                            candle_cache_ttl=FAST_ENTRY_CANDLE_CACHE_TTL_SECONDS,
+                            position_management_only=False,
+                        )
+                    except Exception as entry_exc:
+                        log(f"{epic}: FAST ENTRY SCAN error: {entry_exc}")
+                next_entry_scan = now + entry_interval
+
+            elapsed = time.monotonic() - started
+            remaining = deadline - time.monotonic()
+            # Management cadence is the hard protection cadence; entry scans
+            # happen when their own 5-second timer is due.
+            sleep_for = max(0.0, min(management_interval, remaining))
+            log(
+                f"FAST MONITOR | pass={iteration} | elapsed={elapsed:.2f}s | "
+                f"open={len(open_epics)} | next_in={sleep_for:.2f}s"
+            )
+            if sleep_for > 0:
+                time.sleep(sleep_for)
         except Exception as exc:
-            log(f"OPEN POSITION MONITOR | pass={iteration} error: {exc}")
+            log(f"FAST MONITOR | pass={iteration} error: {exc}")
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                time.sleep(min(management_interval, remaining))
 
-        remaining = deadline - time.monotonic()
-        sleep_for = max(0.0, min(interval, remaining))
-        log(f"OPEN POSITION MONITOR | pass={iteration} | elapsed={time.monotonic()-started:.2f}s | next_in={sleep_for:.2f}s")
-        if sleep_for > 0:
-            time.sleep(sleep_for)
-
-    log(f"OPEN POSITION MONITOR | completed | passes={iteration}")
+    log(f"FAST MONITOR | completed | passes={iteration}")
 
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS, position_management_only=False):
     log("")
@@ -2615,7 +2694,9 @@ def run_cycle():
         time.sleep(1)
     # Refresh the persisted report after all markets have been processed so
     # closures that happened during this cycle are included.
-    # One bounded management pass only; the next scheduled run handles the next scan.
+    # Keep the live WebSocket/fast scanner active for the remainder of the cycle.
+    # This allows new entries during the cycle instead of waiting for the next
+    # 15-minute GitHub Actions invocation.
     monitor_open_positions(api, account_currency)
     save_live_stats(api, account_currency)
     try:
