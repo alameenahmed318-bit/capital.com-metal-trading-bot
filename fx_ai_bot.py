@@ -18,8 +18,6 @@ base.ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
               if epic not in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}]
 
-base.MIN_ENTRY_SCORE = 50.0
-base.MIN_ENTRY_STRENGTH = 0.55
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
