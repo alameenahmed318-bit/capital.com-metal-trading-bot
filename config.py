@@ -36,17 +36,18 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # These are Capital.com epic identifiers:
 # GOLD, EURUSD, SILVER, OIL_CRUDE, US100 (Nasdaq-100 / US Tech 100),
 # and US500 (S&P 500 / US 500).
-# EURUSD_W is enabled for weekend FX where the connected account exposes it.
+# EURUSD_W is enabled as a permanent FX instrument where the connected
+# account exposes the market.
+# BTCUSD is included in the FX/other liquid-markets scan; broker availability
+# is checked at runtime and the bot will not guess or force an unavailable epic.
 # USDJPY_W returned broker 404 in repeated runs; leave it disabled until
-# the exact epic is verified for this account. Never guess broker identifiers.
-# Asset universe is deliberately split between the two active bots.
-# FX bot: currency pairs only. Broker availability is checked at runtime.
+# the exact epic is verified for this account.
 FX_EPICS = [
     "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
     "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
-    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
+    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W", "BTCUSD",
 ]
-# Metals + energy bot: metals and crude oil only.
+# Metals + energy bot: metals, crude oil, and major indices.
 METALS_ENERGY_EPICS = ["GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"]
 # Compatibility universe used by shared validation/market configuration.
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
@@ -82,6 +83,7 @@ MARKET_RSI_SETTINGS = {
     "US100": (40, 70, 30, 60),
     "US500": (40, 70, 30, 60),
     "EURUSD_W": (40, 70, 30, 60),
+    "BTCUSD": (40, 70, 30, 60),
     "USDJPY_W": (40, 70, 30, 60),
 }
 
@@ -102,6 +104,7 @@ INSTRUMENT_PRECISION = {
     "US100": 2,
     "US500": 2,
     "EURUSD_W": 2,
+    "BTCUSD": 2,
     "USDJPY_W": 2,
 }
 
@@ -113,6 +116,7 @@ MIN_TRADE_SIZE = {
     "US100": 0.01,
     "US500": 0.01,
     "EURUSD_W": 0.01,
+    "BTCUSD": 0.01,
     "USDJPY_W": 0.01,
 }
 
