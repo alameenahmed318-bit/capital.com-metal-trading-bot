@@ -1,0 +1,20 @@
+{
+  "updated_at": "2026-09-27T11:27:29.570350+00:00",
+  "orders": [
+    {
+      "timestamp": "2026-09-27T11:27:29.570350+00:00",
+      "epic": "BTCUSD",
+      "direction": "SELL",
+      "requested_executable_price": 84896.15,
+      "actual_fill_price": 84896.15,
+      "spread_pct_at_order": 0.05887814755217046,
+      "slippage_price": 0.0,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_6c53c030-2fcb-4993-a61c-acab00837e94",
+      "deal_id": "00000000-6606-545f-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.0113
+    }
+  ]
+}
