@@ -1839,9 +1839,15 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             )
             log(f"{epic}: PRE-TRADE COST | {cost_diag}")
             if not cost_ok:
-                # Cost remains a hard protection only for clearly abnormal cost.
-                # Normal/uncertain cost becomes advisory so it cannot starve entries.
-                log(f"{epic}: PRE-TRADE COST advisory | {cost_diag}")
+                # Never override the configured cost-to-stop limit. This applies
+                # to V1-V4, including strong AI signals and rapid-profit entries.
+                record_entry_rejection(
+                    epic,
+                    "PRETRADE_COST",
+                    str(cost_diag),
+                )
+                log(f"{epic}: PRE-TRADE COST BLOCKED | {cost_diag}")
+                return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
         if epic_positions:
