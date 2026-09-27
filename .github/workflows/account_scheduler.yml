@@ -42,8 +42,8 @@ jobs:
       - name: AI architecture self-check
         run: python ai_self_check_v2.py
 
-      - name: Run Gold AI
-        run: python gold_ai_bot.py
+      - name: Run Metals + Energy AI
+        run: python metals_energy_ai_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -60,8 +60,8 @@ jobs:
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
 
-      - name: Run Multi-Market AI
-        run: python multi_market_ai_bot.py
+      - name: Run FX AI
+        run: python fx_ai_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -115,12 +115,12 @@ jobs:
           STATE_DIR="$(mktemp -d)"
           trap 'rm -rf "$STATE_DIR"' EXIT
           STATE_FILES=(
-            multi_market_strategy_positions.json multi_market_trades_state.json
-            multi_market_bot_safety_state.json multi_market_open_positions.json
-            multi_market_execution_quality.json multi_market_entry_rejections.json
-            gold_ai_strategy_positions.json gold_ai_trades_state.json
-            gold_ai_bot_safety_state.json gold_ai_open_positions.json
-            gold_ai_execution_quality.json gold_ai_entry_rejections.json
+            fx_ai_strategy_positions.json fx_ai_trades_state.json
+            fx_ai_bot_safety_state.json fx_ai_open_positions.json
+            fx_ai_execution_quality.json fx_ai_entry_rejections.json
+            metals_energy_ai_strategy_positions.json metals_energy_ai_trades_state.json
+            metals_energy_ai_bot_safety_state.json metals_energy_ai_open_positions.json
+            metals_energy_ai_execution_quality.json metals_energy_ai_entry_rejections.json
             trades.db stats.json quant_validation.json ai_outcomes.db
             ai_training_dataset.parquet ai_model_registry.json
             broker_trade_ledger.json broker_trade_ledger.csv
