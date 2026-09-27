@@ -850,7 +850,10 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
         size = round(max(0, size - step), decimals)
     return size if size >= min_size else None
 
-CANDLE_CACHE_DEFAULT_TTL_SECONDS = 8.0
+CANDLE_CACHE_DEFAULT_TTL_SECONDS = 2.0
+# Entry decisions must always use a fresh broker candle response.
+ENTRY_CANDLE_CACHE_TTL_SECONDS = 0.0
+STRATEGY_CANDLE_RESOLUTION_SECONDS = 900
 
 def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
     """Short-lived historical-candle cache. Live quotes remain uncached."""
@@ -887,7 +890,15 @@ def candles_to_dataframe(raw):
         return df
     for column in ["open", "high", "low", "close"]:
         df[column] = pd.to_numeric(df[column], errors="coerce")
-    return df.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
+    # Never trust API response order for candle recency.
+    df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
+    df = (
+        df.dropna(subset=["time", "open", "high", "low", "close"])
+          .drop_duplicates(subset=["time"], keep="last")
+          .sort_values("time")
+          .reset_index(drop=True)
+    )
+    return df
 
 def add_indicators(df):
     df = df.copy()
@@ -2032,6 +2043,28 @@ def _save_entry_candle_state(state):
         log(f"Entry candle state save failed: {exc}")
 
 
+def strategy_candles_are_fresh(df, now=None):
+    """Fail closed when the latest completed 15m candle is missing/stale."""
+    if df is None or len(df) < 3:
+        return False, "INSUFFICIENT_CANDLES"
+    times = pd.to_datetime(df["time"], utc=True, errors="coerce")
+    if times.isna().any():
+        return False, "INVALID_CANDLE_TIME"
+    completed = times.iloc[-2]
+    previous = times.iloc[-3]
+    spacing = (completed - previous).total_seconds()
+    if spacing <= 0 or abs(spacing - STRATEGY_CANDLE_RESOLUTION_SECONDS) > 2:
+        return False, f"CANDLE_SPACING_INVALID:{spacing:.0f}s"
+    current_time = pd.Timestamp.now(tz="UTC") if now is None else pd.Timestamp(now, tz="UTC")
+    age = (current_time - completed).total_seconds()
+    # Allows normal start-time timestamping of a completed 15m bar,
+    # but rejects genuinely stale broker data.
+    if age < -120:
+        return False, f"CANDLE_TIME_IN_FUTURE:{age:.0f}s"
+    if age > 2400:
+        return False, f"STALE_COMPLETED_CANDLE:{age:.0f}s"
+    return True, None
+
 def completed_candle_key(df):
     """Return the timestamp of the last fully completed strategy candle."""
     if df is None or len(df) < 3:
@@ -2301,9 +2334,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # No existing position: only now spend the candle API/indicator work
         # needed to search for a fresh entry.
         if df is None:
+            # ENTRY CANDLES: bypass cache; read the broker's newest candle set now.
             df = get_cached_candles(
                 api, epic, RESOLUTION, CANDLE_COUNT,
-                cache=candle_cache, ttl_seconds=candle_cache_ttl
+                cache=candle_cache, ttl_seconds=ENTRY_CANDLE_CACHE_TTL_SECONDS
             )
             if df.empty:
                 log(f"{epic}: no candle data.")
@@ -2313,7 +2347,16 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 log(f"{epic}: insufficient candles.")
                 return None
 
-        htf_df = get_cached_candles(api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
+        fresh_ok, fresh_reason = strategy_candles_are_fresh(df)
+        if not fresh_ok:
+            record_entry_rejection(epic, "STALE_OR_INVALID_STRATEGY_CANDLE", fresh_reason)
+            log(f"{epic}: ENTRY BLOCKED | candle data not fresh: {fresh_reason}")
+            return None
+
+        htf_df = get_cached_candles(
+            api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT,
+            cache=candle_cache, ttl_seconds=ENTRY_CANDLE_CACHE_TTL_SECONDS
+        )
         # Capital.com can return only a handful of HOUR candles for some
         # instruments/session windows. The integrated AI bots need a usable HTF history.
         # If the native HOUR response is short, rebuild 1H candles from the
