@@ -2134,8 +2134,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
-        # AI is the primary decision engine for both active bot processes.
-        # Legacy strategy output is retained only as diagnostic context.
+        # AI is SUPPORT-ONLY. The legacy strategy remains the sole entry authority.
+        # AI output is retained for advisory analysis, logging and learning only.
         legacy_signal = generate_signal(df, epic, htf_df)
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
         # Advanced AI safety stack is shadow-only by default. It can add diagnostics
@@ -2197,8 +2197,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         )
         # Spread is an ENTRY-quality decision only. It must never prevent
         # management/protection/exit of an already-open position.
-        if not epic_positions and ai_engine.AI_ENABLED and not spread_allows_entry(
-            api, epic, market=market, ai_decision=ai_decision
+        if not epic_positions and not spread_allows_entry(
+            api, epic, market=market, ai_decision=None
         ):
             record_entry_rejection(
                 epic,
@@ -2206,8 +2206,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 f"AI rejected current spread; legacy_cap={MAX_SPREAD_PCT:.4f}%",
             )
             return None
-        ai_manage_positions(api, owned_positions, epic, ai_decision)
-        # AI decides first; broker-side profit protection is the final safety layer.
+        # AI SUPPORT-ONLY: advisory analysis never manages or closes positions.
+        # Broker-side SL/TP, trailing and profit protection remain authoritative.
+        # Do not call AI position-management actions on the entry path.
         refreshed_positions = api.get_open_positions()
         refreshed_owned = filter_owned_positions(refreshed_positions)
         manage_profit_trailing(api, refreshed_owned, epic, account_currency)
@@ -2216,10 +2217,17 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if position_management_only:
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
-        signal = (ai_decision.get('advanced_ai', {}).get('signal_after') if ai_engine.AI_ENABLED else legacy_signal)
-        confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
-        strong_signal = bool(signal in {"BUY", "SELL"} and confidence >= STRONG_SIGNAL_MIN_CONFIDENCE)
-        log(f"{epic}: ENTRY MODE | strong={strong_signal} | confidence={confidence:.3f} | risk-budgeted entries")
+        # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
+        signal = legacy_signal
+        strategy_strength = market_entry_strength(df, htf_df, signal) if signal in {"BUY", "SELL"} else 0.0
+        ai_support_signal = ai_decision.get("signal") or ai_decision.get("raw_signal")
+        ai_support_confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
+        log(
+            f"{epic}: ENTRY MODE | authority=STRATEGY | strategy={signal} | "
+            f"AI_SUPPORT={ai_support_signal or 'NONE'} | AI_confidence={ai_support_confidence:.3f} | "
+            f"AI_agrees={ai_support_signal == signal if signal in {'BUY','SELL'} else False} | "
+            f"no_ai_entry_gate=True"
+        )
         epic_positions = get_positions_for_epic(owned_positions, epic)
         # Manual broker positions do not belong to this bot and must never
         # block a new bot entry or consume the bot's per-epic capacity.
@@ -2236,10 +2244,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             basket_direction = next(iter(directions))
             if signal is None:
                 if not allow_entry_without_signal:
-                    log(f"{epic}: AI WAIT; managing existing position only.")
-                    return None
-                if ai_engine.AI_ENABLED:
-                    log(f"{epic}: AI WAIT; no new/add-on entry.")
+                    log(f"{epic}: STRATEGY WAIT; managing existing position only.")
                     return None
                 signal = basket_direction
             elif signal != basket_direction:
@@ -2255,21 +2260,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         execution_price = live_offer if signal == "BUY" else live_bid
         order_spread_pct = market_spread_pct(market)
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
-        if ai_engine.AI_ENABLED:
-            strength = float(ai_decision.get("confidence", 0.0))
-            # Use the active strategy profile's own AI threshold.
-            required_strength = float(
-                ai_decision.get("required_confidence", 0.58)
-            )
-        else:
-            strength = market_entry_strength(df, htf_df, signal)
-            required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.55))
-        # AI is the primary authority. Use its own confidence floor, but do not add
-        # a second independent alignment gate that can freeze the bot.
+        # Strategy-only entry gate. AI confidence is informational and cannot delay,
+        # block, reverse or modify the strategy entry.
+        strength = strategy_strength
+        required_strength = float(getattr(globals(), "MIN_ENTRY_STRENGTH", 0.55))
         if strength < required_strength:
-            log(f"{epic}: AI confidence below profile floor ({strength:.2f} < {required_strength:.2f}); no trade.")
+            log(f"{epic}: strategy strength below entry floor ({strength:.2f} < {required_strength:.2f}); no trade.")
             return None
-        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=ai_decision if ai_engine.AI_ENABLED else None)
+        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
             return None
