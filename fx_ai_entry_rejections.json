@@ -250,5 +250,17 @@
     "epic": "BTCUSD",
     "reason": "AI_SPREAD_DECISION",
     "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T13:35:39.523540+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139370; completed_close=1.138840; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T13:35:44.370062+00:00",
+    "epic": "BTCUSD",
+    "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
+    "details": "open_account_positions=1"
   }
 ]
