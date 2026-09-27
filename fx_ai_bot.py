@@ -22,8 +22,6 @@ base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", 
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
-base.SESSION_FILTER_ENABLED = False
-base.CORRELATION_FILTER_ENABLED = False
 base.reload_runtime_state()
 
 def run_cycle():
