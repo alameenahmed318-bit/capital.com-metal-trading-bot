@@ -30,6 +30,10 @@ REALIZED_MIN_SAMPLES = int(os.environ.get("AI_REALIZED_MIN_SAMPLES", "200"))
 # These floors only affect AI signal admission; risk, broker status, spread, sizing, SL/TP remain enforced outside this module.
 PROFILES = {
     "CAPITAL_V1": {"min_train":120,"horizon":4,"label_atr":0.08,"min_conf":0.54,"wf_min_train":90,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":180,"lr":0.06,"leaf":15,"seed":101},
+    "CAPITAL_MULTI_MARKET_AI": {"min_train":140,"horizon":4,"label_atr":0.08,"min_conf":0.54,"wf_min_train":100,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":220,"lr":0.055,"leaf":17,"seed":505},
+    "CAPITAL_GOLD_AI": {"min_train":140,"horizon":4,"label_atr":0.09,"min_conf":0.54,"wf_min_train":100,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":220,"lr":0.05,"leaf":19,"seed":606},
+    # Legacy profiles are retained only for historical outcome reconciliation;
+    # no V2/V3 bot imports or workflows use them anymore.
     "CAPITAL_V2_QUANT_HYBRID": {"min_train":130,"horizon":4,"label_atr":0.08,"min_conf":0.54,"wf_min_train":95,"wf_acc":0.41,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":200,"lr":0.055,"leaf":17,"seed":202},
     "CAPITAL_V3_RAPID_PROFIT": {"min_train":120,"horizon":3,"label_atr":0.07,"min_conf":0.53,"wf_min_train":90,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":170,"lr":0.065,"leaf":13,"seed":303},
     "CAPITAL_V4_SMART_OPPORTUNITY": {"min_train":140,"horizon":5,"label_atr":0.10,"min_conf":0.55,"wf_min_train":100,"wf_acc":0.42,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":220,"lr":0.05,"leaf":19,"seed":404},
