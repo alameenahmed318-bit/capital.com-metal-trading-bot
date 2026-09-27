@@ -1080,28 +1080,11 @@ def dynamic_entry_policy(df, htf_df, epic, direction, strength):
     if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
         strength_floor += 0.05
     strength_floor = float(np.clip(strength_floor, 0.50, 0.90))
-    # The strategy owns the position count. Capacity expands only when the
-    # completed-candle signal is materially stronger and the market regime is
-    # supportive. Risk budgets below remain the final hard cap, so this is
-    # opportunity-driven sizing, not unlimited stacking.
-    strength_value = float(strength)
-    strong = strength_value >= 0.75
-    max_positions = 1
-
-    if strength_value >= 0.75:
-        max_positions = 2
-    if strength_value >= 1.00 and regime in {"TREND", "BREAKOUT"} and vol_ratio <= 1.50:
-        max_positions = 3
-    if strength_value >= 1.25 and regime == "BREAKOUT" and 0.90 <= vol_ratio <= 1.40:
-        max_positions = 4
-    if strength_value >= 1.50 and regime in {"TREND", "BREAKOUT"} and 0.95 <= vol_ratio <= 1.35:
-        max_positions = 5
-
-    # Strong news stress or abnormal volatility reduces stacking capacity.
-    news_stress = max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0)))
-    if news_stress >= 1.0 or vol_ratio > 1.50 or vol_ratio < 0.85:
-        max_positions = max(1, max_positions - 1)
-
+    # Position count is NOT fixed here. The strategy decides whether another
+    # leg is justified from the live basket state and its risk budget.
+    # No arbitrary numeric trade-count ladder is imposed by this policy.
+    strong = float(strength) >= strength_floor
+    max_positions = None
     return regime, vol_ratio, score_floor, strength_floor, max_positions, strong
 
 def alpha_ensemble_confirmation(df, direction):
