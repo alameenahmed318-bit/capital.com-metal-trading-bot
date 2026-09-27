@@ -16,6 +16,7 @@ from execution_costs import evaluate_pretrade_cost
 import ai_engine
 import ai_pipeline
 import ai_outcomes
+import capital_news
 import professional_ai_monitor
 from capital_websocket import CapitalLivePriceStream
 
@@ -1258,6 +1259,18 @@ def quant_signal_score(df, epic, htf_df):
             buy_score = max(buy_score, 72.0)
         if close >= resistance - SR_BUFFER_ATR * atr and rsi >= RANGE_RSI_SELL_MIN:
             sell_score = max(sell_score, 72.0)
+
+    # Cached Capital.com news support. Reads local cache only: no network I/O
+    # occurs in the order-decision path, so news cannot delay order submission.
+    news_buy, news_buy_reasons = capital_news.score(epic, "BUY")
+    news_sell, news_sell_reasons = capital_news.score(epic, "SELL")
+    buy_score = max(0.0, min(100.0, buy_score + news_buy))
+    sell_score = max(0.0, min(100.0, sell_score + news_sell))
+    if news_buy_reasons or news_sell_reasons:
+        log(
+            f"{epic}: CAPITAL NEWS | BUY{news_buy:+.1f} {news_buy_reasons} | "
+            f"SELL{news_sell:+.1f} {news_sell_reasons}"
+        )
 
     # Entry-quality bonuses are non-blocking: they only improve the score.
     # Entry-quality bonuses. These are deliberately non-blocking: they improve
