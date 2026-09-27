@@ -2171,6 +2171,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency, market_cache=risk_market_cache)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
+        # Unknown reserved risk is fail-closed for NEW entries only. Existing
+        # positions continue to receive profit/loss protection.
+        if reserved_risk is None or portfolio_reserved is None:
+            record_entry_rejection(epic, "RISK_DATA_UNAVAILABLE", "reserved risk could not be verified")
+            log(f"{epic}: risk data unavailable; new entry skipped, existing positions remain managed.")
+            return None
         remaining_basket_risk = max_basket_amount - reserved_risk
         remaining_portfolio_risk = max_portfolio_amount - portfolio_reserved
         if remaining_portfolio_risk <= 0:
