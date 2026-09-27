@@ -1427,6 +1427,17 @@ def ai_manage_positions(api, positions, epic, ai_decision):
         if not deal_id:
             continue
 
+        protection = STATE.setdefault("position_telemetry", {}).get(str(deal_id), {})
+        peak_profit = safe_float(protection.get("peak_profit"), pnl)
+        giveback = safe_float(protection.get("giveback"), 0.0) or 0.0
+        protected_floor = safe_float(protection.get("protected_floor"))
+        log(
+            f"{epic}: POSITION STATE | deal={deal_id} | pnl={pnl:.2f} | "
+            f"peak={peak_profit:.2f} | giveback={giveback:.2f} | "
+            f"floor={protected_floor if protected_floor is not None else 'n/a'} | "
+            f"AI={signal} | confidence={confidence:.3f} | action={action_bias}"
+        )
+
         opposite_signal = (
             signal in ("BUY", "SELL")
             and direction in ("BUY", "SELL")
@@ -1472,11 +1483,20 @@ def ai_manage_positions(api, positions, epic, ai_decision):
             )
 
 def manage_profit_trailing(api, positions, epic, account_currency):
-    """Lock profit after +20 account-currency units; allow an 8-unit pullback."""
+    """Dynamic profit protection driven by the live peak, not a fixed profit target.
+
+    The manager starts tracking as soon as a position becomes profitable. The
+    protected floor rises smoothly with the peak profit, so even a small gain
+    can be protected without forcing an immediate close. AI remains responsible
+    for HOLD/PROTECT/EXIT decisions; this is the broker-side safety net.
+    """
     if not PROFIT_TRAIL_ENABLED:
         return
 
     active_deals = set()
+    telemetry = STATE.setdefault("position_telemetry", {})
+    trails = STATE.setdefault("profit_trail", {})
+
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
         pnl = position_unrealized_pnl(position)
@@ -1485,46 +1505,81 @@ def manage_profit_trailing(api, positions, epic, account_currency):
 
         deal_key = str(deal_id)
         active_deals.add(deal_key)
-        state = STATE.setdefault("profit_trail", {}).get(deal_key)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        trail = trails.get(deal_key) or {
+            "peak_profit": float(pnl),
+            "peak_time": now_iso,
+            "activated": False,
+        }
+        peak = safe_float(trail.get("peak_profit"), pnl)
+        if peak is None:
+            peak = float(pnl)
 
-        if state is None:
-            if pnl >= PROFIT_TRAIL_START:
-                STATE["profit_trail"][deal_key] = {
-                    "peak_profit": round(float(pnl), 2),
-                    "activated": True,
-                }
-                log(
-                    f"{epic}: PROFIT TRAIL ACTIVATED | deal={deal_id} | "
-                    f"profit={pnl:.2f} account-currency | floor={pnl - PROFIT_TRAIL_DISTANCE:.2f} account-currency"
-                )
-            continue
-
-        peak = safe_float(state.get("peak_profit"), pnl) or pnl
         if pnl > peak:
             peak = float(pnl)
-            state["peak_profit"] = round(peak, 2)
-            log(
-                f"{epic}: PROFIT TRAIL MOVED | deal={deal_id} | "
-                f"peak={peak:.2f} account-currency | floor={peak - PROFIT_TRAIL_DISTANCE:.2f} account-currency"
-            )
+            trail["peak_profit"] = round(peak, 2)
+            trail["peak_time"] = now_iso
 
-        floor = peak - PROFIT_TRAIL_DISTANCE
-        if pnl <= floor:
+        # Smoothly increase the percentage of profit protected as the trade
+        # develops. There is no fixed +1.20/+2.00 activation threshold.
+        # At small profits the lock is intentionally loose; as the peak grows,
+        # more of it is retained.
+        protected_fraction = 0.30 + 0.50 * (1.0 - math.exp(-max(0.0, peak) / 5.0))
+        protected_fraction = max(0.30, min(0.80, protected_fraction))
+        floor = peak * protected_fraction if peak > 0 else None
+        giveback = max(0.0, peak - pnl)
+
+        trail["peak_profit"] = round(peak, 2)
+        trail["protected_fraction"] = round(protected_fraction, 4)
+        trail["protected_floor"] = round(floor, 2) if floor is not None else None
+        trail["giveback"] = round(giveback, 2)
+        trail["last_update"] = now_iso
+
+        # Activate as soon as the position has any positive broker-reported P/L.
+        # A tiny positive peak is tracked, but a close is only possible after a
+        # real giveback to the dynamic floor.
+        if pnl > 0:
+            if not trail.get("activated"):
+                trail["activated"] = True
+                log(
+                    f"{epic}: PROFIT PROTECTION ACTIVATED | deal={deal_id} | "
+                    f"peak={peak:.2f} {account_currency} | "
+                    f"protected={protected_fraction:.0%} | floor={floor:.2f} {account_currency}"
+                )
+            elif pnl > safe_float(trails.get(deal_key, {}).get("peak_profit"), -float("inf")):
+                log(f"{epic}: PROFIT PEAK UPDATED | deal={deal_id} | peak={peak:.2f} {account_currency}")
+
+        trails[deal_key] = trail
+        telemetry[deal_key] = {
+            "epic": epic,
+            "direction": position_direction(position),
+            "current_profit": round(float(pnl), 2),
+            "peak_profit": round(float(peak), 2),
+            "giveback": round(float(giveback), 2),
+            "protected_fraction": round(float(protected_fraction), 4),
+            "protected_floor": round(float(floor), 2) if floor is not None else None,
+            "peak_time": trail.get("peak_time"),
+            "last_update": now_iso,
+        }
+
+        if trail.get("activated") and floor is not None and pnl <= floor:
             try:
                 response = api.close_position(deal_id)
                 log(
-                    f"{epic}: PROFIT TRAIL CLOSE | deal={deal_id} | "
+                    f"{epic}: DYNAMIC PROFIT PROTECTION CLOSE | deal={deal_id} | "
                     f"peak={peak:.2f} {account_currency} | current={pnl:.2f} {account_currency} | "
-                    f"drop={peak - pnl:.2f} {account_currency} | close_floor={floor:.2f} {account_currency}"
+                    f"giveback={giveback:.2f} | protected={protected_fraction:.0%} | "
+                    f"floor={floor:.2f} {account_currency} | response={response}"
                 )
-                log(f"{epic}: CLOSE RESPONSE = {response}")
-                del STATE["profit_trail"][deal_key]
+                trails.pop(deal_key, None)
+                telemetry.pop(deal_key, None)
             except Exception as exc:
-                log(f"{epic}: profit-trail close failed | deal={deal_id} | {exc}")
+                log(f"{epic}: dynamic profit-protection close failed | deal={deal_id} | {exc}")
 
-    for deal_key in list(STATE.setdefault("profit_trail", {}).keys()):
+    for deal_key in list(trails.keys()):
         if deal_key not in active_deals:
-            del STATE["profit_trail"][deal_key]
+            trails.pop(deal_key, None)
+            telemetry.pop(deal_key, None)
 
     save_state(STATE)
 
