@@ -1,17 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T10:19:25.816872+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T11:35:05.407542+00:00",
-    "epic": "EURUSD_W",
-    "reason": "PRETRADE_COST",
-    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.0, 'estimated_round_trip_cost': 0.00101388, 'cost_to_stop_ratio': 0.6183, 'max_cost_to_risk': 0.25, 'allowed': False}"
-  },
-  {
     "timestamp": "2026-09-26T11:35:07.651203+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
@@ -5998,5 +5986,17 @@
     "epic": "EURUSD_W",
     "reason": "AI_SPREAD_DECISION",
     "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T05:40:52.726071+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139790; completed_close=1.138880; distance=1.22 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T05:41:05.465023+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139790; completed_close=1.138880; distance=1.22 ATR; limit=0.50 ATR"
   }
 ]
