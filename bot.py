@@ -1588,7 +1588,12 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         # At small profits the lock is intentionally loose; as the peak grows,
         # more of it is retained.
         protected_fraction = 0.30 + 0.50 * (1.0 - math.exp(-max(0.0, peak) / 5.0))
-        protected_fraction = max(0.30, min(0.80, protected_fraction))
+        ai_profit_action = str(trail.get("ai_profit_action") or "RUNNER").upper()
+        if ai_profit_action == "PROTECT":
+            protected_fraction += 0.08
+        elif ai_profit_action == "HARVEST":
+            protected_fraction += 0.16
+        protected_fraction = max(0.30, min(0.88, protected_fraction))
         floor = peak * protected_fraction if peak > 0 else None
         giveback = max(0.0, peak - pnl)
 
