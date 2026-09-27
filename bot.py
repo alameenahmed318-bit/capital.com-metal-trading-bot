@@ -18,7 +18,7 @@ import ai_pipeline
 import ai_outcomes
 
 DEMO_ONLY = True
-STRATEGY_ID = "CAPITAL_V1"
+STRATEGY_ID = "CAPITAL_FX_AI"
 POSITION_OWNERSHIP_FILE = "v1_strategy_positions.json"
 LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 ALLOW_GRID = False
@@ -1285,13 +1285,8 @@ def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None, a
         return None
 
     # Avoid chasing a stretched live quote. Recheck on the next scan.
-    # V3 rapid-entry mode allows a wider executable-price move after a completed-candle signal.
-    # Hard safety, spread, cost and risk controls remain unchanged.
-    if STRATEGY_ID == "CAPITAL_V3_RAPID_PROFIT":
-        v3_late_entry_atr = float(getattr(globals(), "V3_LATE_ENTRY_MAX_ATR", 0.75))
-        max_chase_atr = max(v3_late_entry_atr, LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR)
-    else:
-        max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
+    # Both active bots use the same hard late-entry protection.
+    max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
     if direction == "BUY" and price > reference + max_chase_atr * atr:
         if epic:
             record_entry_rejection(
