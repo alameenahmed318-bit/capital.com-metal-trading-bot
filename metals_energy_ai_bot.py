@@ -18,8 +18,6 @@ base.ENTRY_REJECTION_FILE = "metals_energy_ai_entry_rejections.json"
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
               if epic in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}]
 
-base.MIN_ENTRY_SCORE = 50.0
-base.MIN_ENTRY_STRENGTH = 0.55
 base.MAX_POSITIONS_PER_EPIC = 3
 base.MAX_BASKET_RISK = min(float(getattr(base, "MAX_BASKET_RISK", 0.04)), 0.04)
 base.ALLOW_GRID = False
