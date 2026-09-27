@@ -3,9 +3,9 @@ name: Capital Metals & Energy AI Bot
 on:
   workflow_dispatch:
 
-# Share the account lock with the FX bot and unified scheduler.
+# Keep Metals runs serialized with each other, but do not block the FX bot.
 concurrency:
-  group: capital-account-state
+  group: capital-metals-ai
   cancel-in-progress: false
   queue: max
 
