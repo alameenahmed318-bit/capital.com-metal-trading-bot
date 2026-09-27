@@ -1,4 +1,4 @@
-name: Capital V1 Trading Bot
+name: Capital Multi-Market AI Bot
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
 concurrency:
   # Serialize account access without dropping pending runs.
   # GitHub's default queue is single-slot and cancels older pending runs.
-  # queue:max keeps scheduled/manual V1-V4 runs in line.
+  # queue:max keeps scheduled/manual AI bot runs in line.
   group: capital-account-state
   cancel-in-progress: false
   queue: max
@@ -41,7 +41,7 @@ jobs:
         run: python ai_self_check_v2.py
 
       - name: Run Capital bot
-        run: python bot.py
+        run: python multi_market_ai_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -100,15 +100,13 @@ jobs:
           trap 'rm -rf "$STATE_DIR"' EXIT
 
           STATE_FILES=(
-            v1_strategy_positions.json
-            trades.db
-            stats.json
-            trades_state.json
-            bot_safety_state.json
-            open_positions.json
-            execution_quality.json
+            multi_market_strategy_positions.json
+            multi_market_trades_state.json
+            multi_market_bot_safety_state.json
+            multi_market_open_positions.json
+            multi_market_execution_quality.json
+            multi_market_entry_rejections.json
             quant_validation.json
-            entry_rejections.json
             ai_outcomes.db
             ai_training_dataset.parquet
             ai_model_registry.json
@@ -150,7 +148,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Update bot state [skip ci]"
+          git commit -m "Update multi-market AI state [skip ci]"
 
           # Retry once if another repository update lands between pull and push.
           git push origin main || {
