@@ -220,6 +220,38 @@ def filter_owned_positions(positions):
     owned = _load_owned_deals()
     return [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
 
+def _confirmed_position_direction(confirmation, confirmed_positions=None, deal_id=None):
+    """Return the broker-confirmed direction for an opened deal."""
+    if isinstance(confirmation, dict):
+        direct = normalize_direction(_first_value(
+            confirmation.get("direction"),
+            confirmation.get("dealDirection"),
+            confirmation.get("positionDirection"),
+        ))
+        if direct in {"BUY", "SELL"}:
+            return direct
+        affected = confirmation.get("affectedDeals")
+        if isinstance(affected, list):
+            for item in affected:
+                if not isinstance(item, dict):
+                    continue
+                item_id = item.get("dealId")
+                if deal_id is not None and item_id is not None and str(item_id) != str(deal_id):
+                    continue
+                direct = normalize_direction(_first_value(
+                    item.get("direction"), item.get("dealDirection"), item.get("positionDirection")
+                ))
+                if direct in {"BUY", "SELL"}:
+                    return direct
+    for position in confirmed_positions or []:
+        if deal_id is not None and str(position_deal_id(position)) != str(deal_id):
+            continue
+        direct = position_direction(position)
+        if direct in {"BUY", "SELL"}:
+            return direct
+    return None
+
+
 def register_owned_position(deal_id):
     if deal_id:
         owned = _load_owned_deals()
@@ -2404,16 +2436,54 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             deal_id = opened_deal_ids[0] if opened_deal_ids else confirmation.get("dealReference")
             for opened_deal_id in opened_deal_ids:
                 register_owned_position(opened_deal_id)
-            actual_fill_price = _confirmed_entry_level(confirmation)
-            if actual_fill_price is None and deal_id:
+            # HARD POST-FILL DIRECTION CHECK: the requested direction is not
+            # trusted until the broker confirms the opened position itself.
+            confirmed_positions = []
+            if deal_id:
                 try:
                     confirmed_positions = api.get_open_positions()
-                    for opened in confirmed_positions:
-                        if str(position_deal_id(opened)) == str(deal_id):
-                            actual_fill_price = position_open_level(opened)
-                            break
-                except Exception as fill_exc:
-                    log(f"{epic}: fill-price lookup failed: {fill_exc}")
+                except Exception as position_exc:
+                    raise RuntimeError(f"Post-fill position verification failed: {position_exc}")
+            confirmed_direction = _confirmed_position_direction(
+                confirmation, confirmed_positions=confirmed_positions, deal_id=deal_id
+            )
+            log(
+                f"{epic}: POST-FILL DIRECTION CHECK | requested={signal} | "
+                f"confirmed={confirmed_direction or 'UNKNOWN'} | deal={deal_id}"
+            )
+            if confirmed_direction not in {"BUY", "SELL"}:
+                if deal_id:
+                    try:
+                        close_response = api.close_position(deal_id)
+                        close_confirmed = confirm_position_closed(api, deal_id)
+                        log(
+                            f"{epic}: POST-FILL DIRECTION UNKNOWN | emergency_close={close_response} | "
+                            f"confirmed_closed={close_confirmed}"
+                        )
+                    except Exception as close_exc:
+                        log(f"{epic}: POST-FILL DIRECTION UNKNOWN | emergency close failed: {close_exc}")
+                raise RuntimeError("Broker opened deal but its direction could not be verified; trade rejected fail-closed.")
+            if confirmed_direction != signal:
+                try:
+                    close_response = api.close_position(deal_id)
+                    close_confirmed = confirm_position_closed(api, deal_id)
+                    log(
+                        f"{epic}: POST-FILL DIRECTION MISMATCH | requested={signal} | "
+                        f"confirmed={confirmed_direction} | deal={deal_id} | "
+                        f"emergency_close={close_response} | confirmed_closed={close_confirmed}"
+                    )
+                except Exception as close_exc:
+                    log(f"{epic}: POST-FILL DIRECTION MISMATCH | emergency close failed: {close_exc}")
+                raise RuntimeError(
+                    f"Broker direction mismatch: requested={signal}, confirmed={confirmed_direction}"
+                )
+
+            actual_fill_price = _confirmed_entry_level(confirmation)
+            if actual_fill_price is None and deal_id:
+                for opened in confirmed_positions:
+                    if str(position_deal_id(opened)) == str(deal_id):
+                        actual_fill_price = position_open_level(opened)
+                        break
             record_execution_quality(epic, signal, execution_price, actual_fill_price, order_spread_pct, deal_reference=deal_reference, deal_id=deal_id, deal_status=deal_status or "ACCEPTED", size=size)
             # Persist an outcome-training row only after the broker confirms
             # the position. P/L is filled later from broker transaction history.
