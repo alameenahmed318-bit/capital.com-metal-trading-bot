@@ -1,17 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T12:03:31.892703+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SPREAD_FILTER",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T12:03:32.829867+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
     "timestamp": "2026-09-26T12:03:42.502844+00:00",
     "epic": "EURUSD_W",
     "reason": "SPREAD_FILTER",
@@ -5995,6 +5983,18 @@
   },
   {
     "timestamp": "2026-09-27T02:41:33.120676+00:00",
+    "epic": "EURUSD_W",
+    "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
+    "details": "open_account_positions=3"
+  },
+  {
+    "timestamp": "2026-09-27T02:55:26.346742+00:00",
+    "epic": "EURUSD_W",
+    "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
+    "details": "open_account_positions=3"
+  },
+  {
+    "timestamp": "2026-09-27T02:55:39.257235+00:00",
     "epic": "EURUSD_W",
     "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
     "details": "open_account_positions=3"
