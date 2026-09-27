@@ -404,9 +404,15 @@ def spread_allows_entry(api, epic, market=None, ai_decision=None):
     if spread is None:
         log(f"{epic}: spread unavailable; AI cannot evaluate execution cost; entry blocked.")
         return False
+    # AI is optional. When AI trading is disabled, use the broker-safe
+    # legacy spread cap so the base strategy can continue to evaluate entries.
     if ai_decision is None or not ai_decision.get("enabled"):
-        log(f"{epic}: AI spread authority unavailable; entry blocked.")
-        return False
+        accepted = spread <= MAX_SPREAD_PCT
+        log(
+            f"{epic}: STRATEGY SPREAD DECISION | spread={spread:.4f}% | "
+            f"cap={MAX_SPREAD_PCT:.4f}% | accepted={accepted}"
+        )
+        return accepted
 
     confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
     signal = ai_decision.get("signal")
