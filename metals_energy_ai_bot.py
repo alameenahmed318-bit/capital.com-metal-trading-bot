@@ -27,6 +27,7 @@ base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
 base.SESSION_FILTER_ENABLED = False
 base.CORRELATION_FILTER_ENABLED = False
+base.reload_runtime_state()
 
 def run_cycle():
     base.log(f"STARTING {STRATEGY_ID} | METALS+OIL+INDICES | markets={base.EPICS}")
