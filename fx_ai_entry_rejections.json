@@ -184,5 +184,17 @@
     "epic": "BTCUSD",
     "reason": "MAX_POSITIONS_PER_EPIC",
     "details": "limit=5"
+  },
+  {
+    "timestamp": "2026-09-27T11:56:40.249946+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138410; completed_close=1.139130; distance=0.91 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T11:57:14.217870+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138410; completed_close=1.139130; distance=0.91 ATR; limit=0.50 ATR"
   }
 ]
