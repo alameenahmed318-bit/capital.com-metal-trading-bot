@@ -853,9 +853,9 @@ def session_allows_entry(epic=None):
     if epic == "BTCUSD":
         return True
     now = datetime.now(timezone.utc)
-    # Weekend-only FX instruments are never eligible Monday-Friday.
-    if epic in {"EURUSD_W", "USDJPY_W"}:
-        return now.weekday() >= 5
+    # EURUSD_W is treated as a permanent FX instrument.
+    # Broker marketStatus remains the final entry gate, so the bot will
+    # trade it whenever the broker exposes the market as OPEN.
     if not SESSION_FILTER_ENABLED:
         return True
     # On weekends, scan every configured market; broker marketStatus is the entry gate.
