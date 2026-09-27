@@ -1,4 +1,4 @@
-name: Capital Gold AI Bot
+name: Capital Metals + Energy AI Bot
 
 on:
   workflow_dispatch:
@@ -44,8 +44,8 @@ jobs:
       - name: AI architecture self-check
         run: python ai_self_check_v2.py
 
-      - name: Run Capital V4 bot
-        run: python gold_ai_bot.py
+      - name: Run Capital Metals + Energy AI bot
+        run: python metals_energy_ai_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -83,12 +83,12 @@ jobs:
           trap 'rm -rf "$STATE_DIR"' EXIT
 
           STATE_FILES=(
-            gold_ai_strategy_positions.json
-            gold_ai_trades_state.json
-            gold_ai_bot_safety_state.json
-            gold_ai_open_positions.json
-            gold_ai_execution_quality.json
-            gold_ai_entry_rejections.json
+            metals_energy_ai_strategy_positions.json
+            metals_energy_ai_trades_state.json
+            metals_energy_ai_bot_safety_state.json
+            metals_energy_ai_open_positions.json
+            metals_energy_ai_execution_quality.json
+            metals_energy_ai_entry_rejections.json
             broker_trade_ledger.json
             broker_trade_ledger.csv
           )
@@ -103,9 +103,9 @@ jobs:
           # Remove only the conflicting untracked Gold AI state files before syncing.
           # They are already backed up in STATE_DIR and will be restored below.
           for f in \
-            gold_ai_entry_rejections.json \
-            gold_ai_strategy_positions.json \
-            gold_ai_trades_state.json
+            metals_energy_ai_entry_rejections.json \
+            metals_energy_ai_strategy_positions.json \
+            metals_energy_ai_trades_state.json
           do
             if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
               rm -f "$f"
@@ -126,17 +126,17 @@ jobs:
           done
 
           if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
-            echo "No Gold AI state files exist to persist."
+            echo "No Metals + Energy AI state files exist to persist."
             exit 0
           fi
 
           git add -f "${EXISTING_STATE_FILES[@]}"
           if git diff --cached --quiet; then
-            echo "No Gold AI state changes to persist."
+            echo "No Metals + Energy AI state changes to persist."
             exit 0
           fi
 
-          git commit -m "Update Gold AI bot state [skip ci]"
+          git commit -m "Update Metals + Energy AI bot state [skip ci]"
           git push origin main || {
             git pull --rebase -X theirs origin main
             git push origin main
