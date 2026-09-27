@@ -1596,32 +1596,44 @@ PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
 LAST_ENTRY_AT = {}
 
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
-    """Run one bounded position/entry-management pass.
+    """Continuously manage open positions with live quotes; no new entries."""
+    interval = max(1.0, float(OPEN_POSITION_MONITOR_SECONDS))
+    window = max(interval, float(duration_seconds))
+    deadline = time.monotonic() + window
+    candle_cache = {}
+    iteration = 0
+    log(f"OPEN POSITION MONITOR | interval={interval:.1f}s | window={window:.0f}s | WS={'ON' if LIVE_PRICE_STREAM is not None else 'OFF'}")
 
-    GitHub Actions uses an account-wide concurrency lock. Each invocation performs
-    one bounded pass so account mutations remain serialized.
-    The scheduled workflow already runs every 15 minutes, so one bounded
-    pass per invocation is safer and prevents overlapping account mutations.
-    """
-    log(
-        f"ENTRY+POSITION MANAGEMENT | single pass | markets={len(EPICS)} | "
-        f"legacy_window={duration_seconds}s (not used)"
-    )
-    for epic in EPICS:
+    while time.monotonic() < deadline:
+        iteration += 1
+        started = time.monotonic()
         try:
             positions = api.get_open_positions()
-            balance = api.get_balance()
-            process_epic(
-                api=api,
-                epic=epic,
-                positions=positions,
-                balance=balance,
-                account_currency=account_currency,
-                allow_entry_without_signal=False,
-            )
+            owned = filter_owned_positions(positions)
+            open_epics = [epic for epic in EPICS if get_positions_for_epic(owned, epic)]
+            if open_epics:
+                balance = api.get_balance()
+                for epic in open_epics:
+                    if time.monotonic() >= deadline:
+                        break
+                    process_epic(
+                        api=api, epic=epic, positions=positions, balance=balance,
+                        account_currency=account_currency, allow_entry_without_signal=False,
+                        market=None, candle_cache=candle_cache,
+                        candle_cache_ttl=max(CANDLE_CACHE_DEFAULT_TTL_SECONDS, interval + 2.0),
+                    )
+            else:
+                log(f"OPEN POSITION MONITOR | pass={iteration} | no open positions")
         except Exception as exc:
-            log(f"{epic}: bounded entry/position management error: {exc}")
-    log("ENTRY+POSITION MANAGEMENT | bounded pass completed; releasing workflow lock.")
+            log(f"OPEN POSITION MONITOR | pass={iteration} error: {exc}")
+
+        remaining = deadline - time.monotonic()
+        sleep_for = max(0.0, min(interval, remaining))
+        log(f"OPEN POSITION MONITOR | pass={iteration} | elapsed={time.monotonic()-started:.2f}s | next_in={sleep_for:.2f}s")
+        if sleep_for > 0:
+            time.sleep(sleep_for)
+
+    log(f"OPEN POSITION MONITOR | completed | passes={iteration}")
 
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
     log("")
