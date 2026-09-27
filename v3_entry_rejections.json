@@ -1,11 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T12:33:17.054796+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SPREAD_FILTER",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T12:33:17.060266+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
@@ -5998,5 +5992,11 @@
     "epic": "EURUSD_W",
     "reason": "LATE_ENTRY",
     "details": "SELL quote=1.138410; completed_close=1.139060; distance=0.86 ATR; limit=0.75 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T08:36:33.371939+00:00",
+    "epic": "EURUSD_W",
+    "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
+    "details": "open_account_positions=1"
   }
 ]
