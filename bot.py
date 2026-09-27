@@ -1481,6 +1481,60 @@ def ai_manage_positions(api, positions, epic, ai_decision):
                 f"pnl={pnl:.2f} | regime={(advanced.get('regime') or {}).get('regime', 'UNKNOWN')}"
             )
 
+def update_profit_telemetry(positions, epic):
+    """Refresh live profit telemetry before AI decides how to manage the trade."""
+    telemetry = STATE.setdefault("position_telemetry", {})
+    trails = STATE.setdefault("profit_trail", {})
+    now = time.time()
+    result = []
+    for position in get_positions_for_epic(positions, epic):
+        deal_id = position_deal_id(position)
+        if not deal_id:
+            continue
+        pnl = float(position_unrealized_pnl(position))
+        key = str(deal_id)
+        trail = trails.get(key) or {
+            "peak_profit": pnl,
+            "peak_time": datetime.now(timezone.utc).isoformat(),
+            "activated": False,
+            "last_pnl": pnl,
+            "last_update_ts": now,
+        }
+        old_peak = float(safe_float(trail.get("peak_profit"), pnl) or pnl)
+        peak = max(old_peak, pnl)
+        last_pnl = float(safe_float(trail.get("last_pnl"), pnl) or pnl)
+        last_ts = float(safe_float(trail.get("last_update_ts"), now) or now)
+        dt = max(0.5, now - last_ts)
+        velocity = (pnl - last_pnl) / dt
+        previous_velocity = float(safe_float(trail.get("profit_velocity"), 0.0) or 0.0)
+        acceleration = (velocity - previous_velocity) / dt
+        if peak > old_peak:
+            trail["peak_time"] = datetime.now(timezone.utc).isoformat()
+        giveback = max(0.0, peak - pnl)
+        giveback_ratio = giveback / peak if peak > 0 else 0.0
+        trail.update({
+            "peak_profit": round(peak, 2),
+            "giveback": round(giveback, 2),
+            "giveback_ratio": round(giveback_ratio, 4),
+            "profit_velocity": round(velocity, 6),
+            "profit_acceleration": round(acceleration, 6),
+            "current_profit": round(pnl, 2),
+            "last_pnl": round(pnl, 2),
+            "last_update_ts": now,
+            "last_update": datetime.now(timezone.utc).isoformat(),
+            "activated": bool(trail.get("activated") or pnl > 0),
+        })
+        trails[key] = trail
+        telemetry[key] = {
+            "epic": epic, "deal_id": deal_id, "direction": position_direction(position),
+            "current_profit": round(pnl, 2), "peak_profit": round(peak, 2),
+            "giveback": round(giveback, 2), "giveback_ratio": round(giveback_ratio, 4),
+            "profit_velocity": round(velocity, 6), "profit_acceleration": round(acceleration, 6),
+            "peak_time": trail.get("peak_time"), "last_update": trail.get("last_update"),
+        }
+        result.append(dict(telemetry[key]))
+    return result
+
 def manage_profit_trailing(api, positions, epic, account_currency):
     """Dynamic profit protection driven by the live peak, not a fixed profit target.
 
@@ -1780,8 +1834,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             owned_positions = filter_owned_positions(positions)
             epic_positions = get_positions_for_epic(owned_positions, epic)
 
-        # Always run the strategy's profit manager for existing positions; AI must not disable it.
-        manage_profit_trailing(api, owned_positions, epic, account_currency)
+        # Refresh profit telemetry before AI; actual protection runs after AI.
+        if epic_positions:
+            update_profit_telemetry(owned_positions, epic)
         breakeven_stops(api, owned_positions, epic, current_price)
         manage_trailing_stops(api, owned_positions, epic, current_price, df=df)
 
@@ -1874,6 +1929,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Advanced AI safety stack is shadow-only by default. It can add diagnostics
         # without changing the active AI execution path unless explicitly switched to enforce mode.
         try:
+            position_context = update_profit_telemetry(owned_positions, epic) if epic_positions else []
             ai_decision["advanced_ai"] = ai_pipeline.evaluate(
                 df,
                 ai_decision,
@@ -1881,6 +1937,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 bid=live_bid,
                 ask=live_offer,
                 htf_df=htf_df,
+                position_context=position_context,
             )
             adv = ai_decision["advanced_ai"]
             log(
@@ -1934,6 +1991,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             )
             return None
         ai_manage_positions(api, owned_positions, epic, ai_decision)
+        # AI decides first; broker-side profit protection is the final safety layer.
+        refreshed_positions = api.get_open_positions()
+        refreshed_owned = filter_owned_positions(refreshed_positions)
+        manage_profit_trailing(api, refreshed_owned, epic, account_currency)
+        breakeven_stops(api, refreshed_owned, epic, current_price)
+        manage_trailing_stops(api, refreshed_owned, epic, current_price, df=df)
         if position_management_only:
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
