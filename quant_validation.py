@@ -1,5 +1,6 @@
 """Non-trading backtest, walk-forward and Monte Carlo validation."""
 import json
+import os
 from datetime import datetime,timezone
 import numpy as np
 import pandas as pd
@@ -83,7 +84,8 @@ def main():
         markets.append(result)
         print(result)
     out={"generated_at":datetime.now(timezone.utc).isoformat(),"mode":"NON_TRADING_VALIDATION","markets":markets}
-    with open("quant_validation.json","w",encoding="utf-8") as f: json.dump(out,f,indent=2)
+    output_path = os.environ.get("QUANT_VALIDATION_PATH", "quant_validation.json")
+    with open(output_path,"w",encoding="utf-8") as f: json.dump(out,f,indent=2)
     print("QUANT VALIDATION COMPLETE")
 
 if __name__=="__main__": main()
