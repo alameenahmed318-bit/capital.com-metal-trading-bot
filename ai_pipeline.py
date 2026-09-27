@@ -213,5 +213,6 @@ def evaluate(
         "risk_multiplier": mult,
         "signal_before": ai_decision.get("signal"),
         "signal_after": enforced_signal,
+        "position_management": position_management,
         "entry_filter_policy": "AI_PRIMARY_DIRECTION_ENFORCED",
     }
