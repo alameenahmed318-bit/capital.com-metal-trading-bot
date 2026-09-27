@@ -200,15 +200,27 @@ def build_training_dataset():
 def realized_training_frame():
     import pandas as pd
     with _connect() as con:
-        rows=con.execute("""SELECT features_json,outcome_label,pnl,entry_time,epic,direction
+        rows=con.execute("""SELECT features_json,outcome_label,pnl,entry_time,epic,direction,
+          ai_confidence,ai_buy_probability,ai_sell_probability,ai_wait_probability,regime,volatility
           FROM trade_outcomes WHERE status='CLOSED' AND outcome_label IN (-1,1)
           ORDER BY entry_time ASC""").fetchall()
     if not rows: return pd.DataFrame()
     records=[]
-    for f,label,pnl,t,epic,direction in rows:
+    for f,label,pnl,t,epic,direction,confidence,buy_prob,sell_prob,wait_prob,regime,volatility in rows:
         try: x=json.loads(f or "{}")
-        except Exception: continue
-        x["outcome_label"]=int(label); x["pnl"]=float(pnl) if pnl is not None else None; x["entry_time"]=t; x["epic"]=epic; x["direction"]=direction; x["trade_direction"]=1.0 if str(direction).upper()=="BUY" else -1.0
+        except Exception: x={}
+        x["outcome_label"]=int(label)
+        x["pnl"]=float(pnl) if pnl is not None else None
+        x["entry_time"]=t
+        x["epic"]=epic
+        x["direction"]=direction
+        x["trade_direction"]=1.0 if str(direction).upper()=="BUY" else -1.0
+        x["ai_confidence"]=float(confidence) if confidence is not None else None
+        x["ai_buy_probability"]=float(buy_prob) if buy_prob is not None else None
+        x["ai_sell_probability"]=float(sell_prob) if sell_prob is not None else None
+        x["ai_wait_probability"]=float(wait_prob) if wait_prob is not None else None
+        x["regime"]=regime
+        x["volatility"]=float(volatility) if volatility is not None else None
         records.append(x)
     return pd.DataFrame(records)
 
