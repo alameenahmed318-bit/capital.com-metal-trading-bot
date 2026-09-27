@@ -27,9 +27,9 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 5
+MAX_POSITIONS_PER_EPIC = 3
 STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
-STRONG_SIGNAL_MAX_LEGS = 5
+STRONG_SIGNAL_MAX_LEGS = 3
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
@@ -2142,6 +2142,38 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         SAFETY["consecutive_errors"] = 0
         LAST_ENTRY_AT[epic] = time.monotonic()
         save_safety_state(SAFETY)
+
+        # Strong AI opportunities may build a small 3-leg basket in the same
+        # scan. This is not Grid/Martingale/Averaging: every additional leg
+        # must pass the full AI decision, execution-cost, portfolio-risk and
+        # broker confirmation path again. If the AI weakens or reverses, the
+        # chain stops immediately.
+        if strong_signal:
+            try:
+                refreshed_positions = api.get_open_positions()
+                refreshed_epic_positions = get_positions_for_epic(
+                    filter_owned_positions(refreshed_positions), epic
+                )
+                if len(refreshed_epic_positions) < STRONG_SIGNAL_MAX_LEGS:
+                    log(
+                        f"{epic}: STRONG AI CONTINUATION | "
+                        f"confirmed_legs={len(refreshed_epic_positions)} | "
+                        f"target={STRONG_SIGNAL_MAX_LEGS}"
+                    )
+                    process_epic(
+                        api=api,
+                        epic=epic,
+                        positions=refreshed_positions,
+                        balance=balance,
+                        account_currency=account_currency,
+                        allow_entry_without_signal=False,
+                        market=None,
+                        candle_cache=candle_cache,
+                        candle_cache_ttl=candle_cache_ttl,
+                    )
+            except Exception as continuation_exc:
+                log(f"{epic}: STRONG AI continuation stopped safely: {continuation_exc}")
+
         return response
     except Exception as exc:
         error_text = str(exc)
