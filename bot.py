@@ -401,22 +401,38 @@ def spread_allows_entry(api, epic, market=None, ai_decision=None):
     # If the AI execution-cost model has a usable estimate, require the spread
     # to remain below the AI-derived tolerance. Otherwise use the model's
     # confidence/uncertainty decision alone.
+    # Normalize AI cost from price units into percentage units before comparing
+    # it with spread, which is already a percentage. The old comparison could
+    # reject valid BTC/FX entries by dividing price units by percentage points.
     cost_ratio = None
-    if total_price_cost is not None and spread > 0:
-        cost_ratio = total_price_cost / spread
+    cost_pct = None
+    if total_price_cost is not None and total_price_cost >= 0:
+        snapshot = market.get("snapshot", {}) or {}
+        reference_price = safe_float(
+            snapshot.get("offer")
+            or snapshot.get("ask")
+            or market.get("offer")
+            or market.get("ask")
+        )
+        if reference_price is not None and reference_price > 0:
+            cost_pct = (total_price_cost / reference_price) * 100.0
+            if spread > 0:
+                cost_ratio = cost_pct / spread
+
     accepted = (
         signal in {"BUY", "SELL"}
         and confidence >= float(ai_decision.get("required_confidence", 0.0) or 0.0)
         and uncertainty <= 0.85
         and spread <= dynamic_cap
     )
+    # Preserve the 2.5x sanity check, but now both values use percentage units.
     if cost_ratio is not None and cost_ratio > 2.5:
         accepted = False
 
     log(
         f"{epic}: AI SPREAD DECISION | signal={signal} | confidence={confidence:.3f} | "
         f"uncertainty={uncertainty:.3f} | regime={regime} | spread={spread:.4f}% | "
-        f"AI_CAP={dynamic_cap:.4f}% | cost={total_price_cost} | cost/spread={cost_ratio} | "
+        f"AI_CAP={dynamic_cap:.4f}% | cost={total_price_cost} | cost_pct={cost_pct} | cost/spread={cost_ratio} | "
         f"legacy_cap={MAX_SPREAD_PCT:.4f}% | accepted={accepted}"
     )
     return accepted
