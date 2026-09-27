@@ -1946,12 +1946,80 @@ OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
 # This reduces worst-case entry wait without hammering the broker API.
 FAST_ENTRY_SCAN_SECONDS = 5
 FAST_ENTRY_MARKETS_PER_SCAN = 4
-FAST_ENTRY_CANDLE_CACHE_TTL_SECONDS = 30.0
+# Keep candle data close to the scanner cadence so a new completed
+# candle is recognized quickly; live executable quotes remain uncached.
+FAST_ENTRY_CANDLE_CACHE_TTL_SECONDS = 5.0
 FAST_ENTRY_MARKET_CACHE_TTL_SECONDS = 20.0
 # Prevent the fast management loop from stacking the same profitable-basket
 # leg repeatedly; signals are still evaluated through the normal entry path.
 PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
 LAST_ENTRY_AT = {}
+
+# Entry freshness: the strategy is candle-driven. A completed 15m candle may
+# authorize an entry only once per epic/direction. This is NOT a trade-count
+# cap; it prevents repeated orders from reusing the same unchanged candle signal
+# during the fast scanner and across overlapping scheduler runs.
+ENTRY_CANDLE_STATE_FILE = "fx_ai_entry_candle_state.json"
+ENTRY_CANDLE_RESOLUTION = RESOLUTION
+
+def _load_entry_candle_state():
+    try:
+        if not os.path.exists(ENTRY_CANDLE_STATE_FILE):
+            return {}
+        with open(ENTRY_CANDLE_STATE_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return data if isinstance(data, dict) else {}
+    except Exception as exc:
+        log(f"Entry candle state load failed; using empty state: {exc}")
+        return {}
+
+
+def _save_entry_candle_state(state):
+    try:
+        temp_file = f"{ENTRY_CANDLE_STATE_FILE}.tmp"
+        with open(temp_file, "w", encoding="utf-8") as file:
+            json.dump(state, file, indent=2)
+        os.replace(temp_file, ENTRY_CANDLE_STATE_FILE)
+    except Exception as exc:
+        log(f"Entry candle state save failed: {exc}")
+
+
+def completed_candle_key(df):
+    """Return the timestamp of the last fully completed strategy candle."""
+    if df is None or len(df) < 3:
+        return None
+    value = df.iloc[-2].get("time")
+    if value is None:
+        return None
+    parsed = pd.to_datetime(value, utc=True, errors="coerce")
+    if pd.isna(parsed):
+        return None
+    return parsed.isoformat()
+
+
+def candle_entry_is_fresh(epic, direction, df):
+    """Allow a strategy entry only when the completed candle is new."""
+    key = completed_candle_key(df)
+    if key is None:
+        return False, None, "COMPLETED_CANDLE_UNAVAILABLE"
+    state = _load_entry_candle_state()
+    row = state.get(str(epic), {})
+    if row.get("candle") == key and row.get("direction") == direction:
+        return False, key, "SAME_COMPLETED_CANDLE"
+    return True, key, None
+
+
+def mark_candle_entry(epic, direction, candle_key):
+    if not candle_key:
+        return
+    state = _load_entry_candle_state()
+    state[str(epic)] = {
+        "candle": candle_key,
+        "direction": direction,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _save_entry_candle_state(state)
+
 
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
     """Continuously protect positions and scan for new entries from live quotes.
@@ -2372,6 +2440,22 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
         log(f"{epic}: SIGNAL = {signal}")
+        # Candle strategy freshness gate: never re-enter from the same completed
+        # candle after a close. This is deliberately based on candle identity,
+        # not an arbitrary number of trades or a timer.
+        candle_fresh, entry_candle_key, candle_rejection = candle_entry_is_fresh(epic, signal, df)
+        if not candle_fresh:
+            record_entry_rejection(
+                epic,
+                candle_rejection,
+                f"direction={signal}; candle={entry_candle_key or 'UNKNOWN'}"
+            )
+            log(
+                f"{epic}: CANDLE ENTRY BLOCK | reason={candle_rejection} | "
+                f"direction={signal} | candle={entry_candle_key or 'UNKNOWN'}"
+            )
+            return None
+        log(f"{epic}: CANDLE ENTRY CONFIRMED | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
         if CORRELATION_FILTER_ENABLED and not correlation_allows_entry(api, epic, df, positions, signal):
@@ -2426,12 +2510,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
-        if existing_count >= dynamic_max_positions:
-            record_entry_rejection(
-                epic, "ADAPTIVE_POSITION_CAP",
-                f"existing={existing_count}; dynamic_max={dynamic_max_positions}; regime={regime_now}; strength={strength:.2f}"
-            )
-            return None
+        # No arbitrary position-count cap. Additional exposure is governed only
+        # by the strategy signal plus the live basket/portfolio risk budget.
+        log(
+            f"{epic}: POSITION CAP | fixed_count_limit=DISABLED | "
+            f"existing={existing_count} | risk_budget_controls_entry=True"
+        )
         if epic_positions:
             last_entry = LAST_ENTRY_AT.get(epic)
             if (
@@ -2674,6 +2758,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         ERROR_STREAKS.pop(epic, None)
         SAFETY["consecutive_errors"] = 0
         LAST_ENTRY_AT[epic] = time.monotonic()
+        # Persist the completed candle that actually authorized the confirmed
+        # broker fill. If the order was not confirmed, this marker is never saved.
+        mark_candle_entry(epic, signal, entry_candle_key)
         save_safety_state(SAFETY)
 
         # Further entries are evaluated on the next scheduled scan, not through
