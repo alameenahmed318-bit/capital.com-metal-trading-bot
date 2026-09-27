@@ -1,152 +1,54 @@
 {
-  "last_updated": "2026-09-27T12:18:46.881387+00:00",
+  "last_updated": "2026-09-27T18:15:01.110211+00:00",
   "currency": "AED",
   "source": "Capital.com API /accounts + /history/transactions",
   "pnl_policy": "Broker-reported only; no inferred or reconstructed trade P/L",
-  "broker_account_profit_loss": -4.54,
+  "broker_account_profit_loss": 0.0,
   "overall": {
-    "open_trades": 1,
-    "closed_trades_seen": 10,
+    "open_trades": 0,
+    "closed_trades_seen": 33,
     "closed_trades_with_explicit_pnl": 0,
-    "closed_trades_without_explicit_pnl": 10,
+    "closed_trades_without_explicit_pnl": 33,
     "winners": 0,
     "losers": 0,
     "win_rate": 0,
     "explicit_closed_trade_pnl": 0,
-    "broker_account_profit_loss": -4.54,
+    "broker_account_profit_loss": 0.0,
     "best_trade": null,
     "worst_trade": null,
     "average_win": null,
     "average_loss": null
   },
   "by_epic": {
-    "EURUSD": {
+    "GOLD": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
       "win_rate": 0,
       "pnl": 0
     },
-    "GBPUSD": {
+    "SILVER": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
       "win_rate": 0,
       "pnl": 0
     },
-    "USDJPY": {
+    "OIL_CRUDE": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
       "win_rate": 0,
       "pnl": 0
     },
-    "USDCHF": {
+    "US100": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
       "win_rate": 0,
       "pnl": 0
     },
-    "USDCAD": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "AUDUSD": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "NZDUSD": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "EURGBP": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "EURJPY": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "GBPJPY": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "AUDJPY": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "EURCHF": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "GBPCHF": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "AUDCAD": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "AUDCHF": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "NZDJPY": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "CADJPY": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "EURUSD_W": {
-      "trades_with_explicit_pnl": 0,
-      "winners": 0,
-      "losers": 0,
-      "win_rate": 0,
-      "pnl": 0
-    },
-    "BTCUSD": {
+    "US500": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
