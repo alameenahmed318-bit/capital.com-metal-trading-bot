@@ -10,8 +10,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from capital_api import CapitalAPI
 
-LEDGER_JSON = "broker_trade_ledger.json"
-LEDGER_CSV = "broker_trade_ledger.csv"
+LEDGER_JSON = os.environ.get("TRADE_LEDGER_JSON", "broker_trade_ledger.json")
+LEDGER_CSV = os.environ.get("TRADE_LEDGER_CSV", "broker_trade_ledger.csv")
 LOOKBACK_DAYS = max(1, int(os.environ.get("TRADE_LEDGER_LOOKBACK_DAYS", "30")))
 
 def key(tx):
