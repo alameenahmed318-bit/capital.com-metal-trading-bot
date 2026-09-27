@@ -16,6 +16,7 @@ from execution_costs import evaluate_pretrade_cost
 import ai_engine
 import ai_pipeline
 import ai_outcomes
+import professional_ai_monitor
 from capital_websocket import CapitalLivePriceStream
 
 DEMO_ONLY = True
@@ -2407,6 +2408,11 @@ def run_cycle():
     # One bounded management pass only; the next scheduled run handles the next scan.
     monitor_open_positions(api, account_currency)
     save_live_stats(api, account_currency)
+    try:
+        ai_health = professional_ai_monitor.run()
+        log(f"AI HEALTH | status={ai_health.get('status', 'UNKNOWN')} | samples={ai_health.get('samples', 0)} | anomalies={ai_health.get('anomalies', [])}")
+    except Exception as ai_health_exc:
+        log(f"AI HEALTH | monitor warning: {ai_health_exc}")
     if LIVE_PRICE_STREAM is not None:
         try:
             LIVE_PRICE_STREAM.stop()
