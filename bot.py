@@ -1403,6 +1403,19 @@ def portfolio_reserved_risk(api, positions, account_currency, market_cache=None)
     ]
     return None if any(r is None for r in risks) else sum(risks)
 
+def confirm_position_closed(api, deal_id, attempts=1):
+    """Confirm broker close with minimal extra REST traffic."""
+    for _ in range(max(1, int(attempts))):
+        try:
+            open_ids = {str(position_deal_id(p)) for p in api.get_open_positions() if position_deal_id(p)}
+            if str(deal_id) not in open_ids:
+                return True
+        except Exception as exc:
+            log(f"POSITION CLOSE CONFIRMATION FAILED | deal={deal_id} | {exc}")
+            return False
+    return False
+
+
 def ai_manage_positions(api, positions, epic, ai_decision):
     """AI position manager: HOLD / PROTECT / EXIT using the final AI market state.
 
@@ -1438,6 +1451,9 @@ def ai_manage_positions(api, positions, epic, ai_decision):
         pnl = position_unrealized_pnl(position)
         if not deal_id:
             continue
+        if pnl is None:
+            log(f"{epic}: AI position management skipped | deal={deal_id} | broker P/L unavailable; preserving last protection state.")
+            continue
 
         protection = STATE.setdefault("position_telemetry", {}).get(str(deal_id), {})
         peak_profit = safe_float(protection.get("peak_profit"), pnl)
@@ -1472,6 +1488,7 @@ def ai_manage_positions(api, positions, epic, ai_decision):
         if ai_authorized_exit:
             try:
                 response = api.close_position(deal_id)
+                confirmed = confirm_position_closed(api, deal_id)
                 if explicit_exit:
                     reason = "EXPLICIT_AI_EXIT"
                 elif reversal_exit:
@@ -1483,7 +1500,7 @@ def ai_manage_positions(api, positions, epic, ai_decision):
                 log(
                     f"{epic}: AI EXIT | reason={reason} | existing={direction} | "
                     f"AI={signal} | action={action_bias} | confidence={confidence:.3f} | "
-                    f"pnl={pnl:.2f} | deal={deal_id} | response={response}"
+                    f"pnl={pnl:.2f} | deal={deal_id} | response={response} | confirmed_closed={confirmed}"
                 )
             except Exception as exc:
                 log(f"{epic}: AI EXIT failed | deal={deal_id} | {exc}")
@@ -1512,7 +1529,14 @@ def update_profit_telemetry(positions, epic):
         deal_id = position_deal_id(position)
         if not deal_id:
             continue
-        pnl = float(position_unrealized_pnl(position))
+        pnl = position_unrealized_pnl(position)
+        if pnl is None:
+            log(f"{epic}: PROFIT TELEMETRY HOLD | deal={deal_id} | broker P/L unavailable; last valid peak preserved.")
+            existing = trails.get(str(deal_id))
+            if existing:
+                result.append(dict(telemetry.get(str(deal_id), {})))
+            continue
+        pnl = float(pnl)
         key = str(deal_id)
         trail = trails.get(key) or {
             "peak_profit": pnl,
@@ -1575,6 +1599,9 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         deal_id = position_deal_id(position)
         pnl = position_unrealized_pnl(position)
         if not deal_id:
+            continue
+        if pnl is None:
+            log(f"{epic}: PROFIT TRAIL HOLD | deal={deal_id} | broker P/L unavailable; preserving peak/floor.")
             continue
 
         deal_key = str(deal_id)
@@ -1644,11 +1671,12 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         if trail.get("activated") and floor is not None and pnl <= floor:
             try:
                 response = api.close_position(deal_id)
+                confirmed = confirm_position_closed(api, deal_id)
                 log(
                     f"{epic}: DYNAMIC PROFIT PROTECTION CLOSE | deal={deal_id} | "
                     f"peak={peak:.2f} {account_currency} | current={pnl:.2f} {account_currency} | "
                     f"giveback={giveback:.2f} | protected={protected_fraction:.0%} | "
-                    f"floor={floor:.2f} {account_currency} | response={response}"
+                    f"floor={floor:.2f} {account_currency} | response={response} | confirmed_closed={confirmed}"
                 )
                 trails.pop(deal_key, None)
                 telemetry.pop(deal_key, None)
