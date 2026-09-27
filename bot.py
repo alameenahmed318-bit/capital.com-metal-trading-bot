@@ -1411,6 +1411,12 @@ def ai_manage_positions(api, positions, epic, ai_decision):
     confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
     pm = advanced.get("position_management") if isinstance(advanced.get("position_management"), dict) else {}
     action_bias = str(pm.get("action_bias") or "WAIT").upper()
+    profit_actions = (advanced.get("profit_management") or {}).get("actions", []) if isinstance(advanced.get("profit_management"), dict) else []
+    profit_action_by_deal = {
+        str(item.get("deal_id")): str(item.get("action") or "WAIT").upper()
+        for item in profit_actions
+        if item.get("deal_id")
+    }
     explicit_exit = bool(
         ai_decision.get("exit")
         or ai_decision.get("should_exit")
@@ -1448,7 +1454,9 @@ def ai_manage_positions(api, positions, epic, ai_decision):
             and signal == direction
             and confidence >= exit_confidence
         )
-        ai_authorized_exit = explicit_exit or reversal_exit or negative_edge_exit
+        ai_profit_action = profit_action_by_deal.get(str(deal_id), "WAIT")
+        STATE.setdefault("profit_trail", {}).setdefault(str(deal_id), {})["ai_profit_action"] = ai_profit_action
+        ai_authorized_exit = explicit_exit or reversal_exit or negative_edge_exit or ai_profit_action == "EXIT"
 
         if ai_authorized_exit:
             try:
@@ -1457,6 +1465,8 @@ def ai_manage_positions(api, positions, epic, ai_decision):
                     reason = "EXPLICIT_AI_EXIT"
                 elif reversal_exit:
                     reason = "AI_REVERSAL"
+                elif ai_profit_action == "EXIT":
+                    reason = "AI_PROFIT_EXIT"
                 else:
                     reason = "AI_NEGATIVE_EXPECTED_EDGE"
                 log(
