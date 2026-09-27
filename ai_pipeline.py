@@ -183,7 +183,12 @@ def evaluate(
                 and ai_decision.get("signal") in {"BUY", "SELL"}
                 and enforced_signal != ai_decision.get("signal")
             )
+            # Dynamic profit-lock exit: protect a profitable trade when a
+            # meaningful share of the peak has been given back. This is based
+            # on live giveback/velocity, not a fixed AED profit target.
             if reversal_now:
+                action = "EXIT"
+            elif giveback_ratio >= 0.60 or (giveback_ratio >= 0.50 and velocity < 0):
                 action = "EXIT"
             elif enhanced_uncertainty >= 0.85 or (velocity < 0 and giveback_ratio >= 0.35):
                 action = "PROTECT"
@@ -216,8 +221,11 @@ def evaluate(
         "multihorizon_agreement": float(multihorizon.get("agreement", 0.0) or 0.0),
         "reason": "AI_MARKET_STATE",
     }
+    profit_exit = any(str(item.get("action") or "").upper() == "EXIT" for item in profit_actions)
     if position_management["reversal"]:
         position_management["action_bias"] = "EXIT_REVERSAL"
+    elif profit_exit:
+        position_management["action_bias"] = "EXIT_PROFIT_GIVEBACK"
     elif edge_negative and float(ai_decision.get("confidence", 0.0) or 0.0) >= 0.65:
         position_management["action_bias"] = "EXIT_NEGATIVE_EDGE"
     elif position_management["high_uncertainty"]:
