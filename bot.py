@@ -1456,7 +1456,11 @@ def ai_manage_positions(api, positions, epic, ai_decision):
         )
         ai_profit_action = profit_action_by_deal.get(str(deal_id), "WAIT")
         STATE.setdefault("profit_trail", {}).setdefault(str(deal_id), {})["ai_profit_action"] = ai_profit_action
-        ai_authorized_exit = explicit_exit or reversal_exit or negative_edge_exit or ai_profit_action == "EXIT"
+        profit_giveback_exit = (
+            ai_profit_action == "EXIT"
+            or action_bias == "EXIT_PROFIT_GIVEBACK"
+        )
+        ai_authorized_exit = explicit_exit or reversal_exit or negative_edge_exit or profit_giveback_exit
 
         if ai_authorized_exit:
             try:
@@ -1465,8 +1469,8 @@ def ai_manage_positions(api, positions, epic, ai_decision):
                     reason = "EXPLICIT_AI_EXIT"
                 elif reversal_exit:
                     reason = "AI_REVERSAL"
-                elif ai_profit_action == "EXIT":
-                    reason = "AI_PROFIT_EXIT"
+                elif profit_giveback_exit:
+                    reason = "AI_DYNAMIC_PROFIT_LOCK"
                 else:
                     reason = "AI_NEGATIVE_EXPECTED_EDGE"
                 log(
@@ -2000,7 +2004,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             f"SL_ATR={ai_decision.get('sl_atr')} | TP_ATR={ai_decision.get('tp_atr')} | "
             f"{ai_decision.get('reason')}"
         )
-        if ai_engine.AI_ENABLED and not spread_allows_entry(api, epic, market=market, ai_decision=ai_decision):
+        # Spread is an ENTRY-quality decision only. It must never prevent
+        # management/protection/exit of an already-open position.
+        if not epic_positions and ai_engine.AI_ENABLED and not spread_allows_entry(
+            api, epic, market=market, ai_decision=ai_decision
+        ):
             record_entry_rejection(
                 epic,
                 "AI_SPREAD_DECISION",
