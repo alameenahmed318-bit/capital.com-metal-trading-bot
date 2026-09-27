@@ -12,7 +12,6 @@ import pandas as pd
 import config
 from capital_api import CapitalAPI
 from portfolio_risk import portfolio_risk_overlay
-from execution_costs import evaluate_pretrade_cost
 import ai_engine
 import ai_pipeline
 import ai_outcomes
@@ -54,11 +53,8 @@ PORTFOLIO_VOL_TARGET_ANNUAL = getattr(config, "PORTFOLIO_VOL_TARGET_ANNUAL", 0.1
 PORTFOLIO_RISK_MIN_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MIN_MULTIPLIER", 0.35)
 PORTFOLIO_RISK_MAX_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MAX_MULTIPLIER", 1.00)
 PORTFOLIO_COV_LOOKBACK = getattr(config, "PORTFOLIO_COV_LOOKBACK", 192)
-PRETRADE_COST_FILTER_ENABLED = False
 MAX_COST_TO_STOP_RATIO = getattr(config, "MAX_COST_TO_STOP_RATIO", 0.40)
 EXTRA_SLIPPAGE_BUFFER_PCT = getattr(config, "EXTRA_SLIPPAGE_BUFFER_PCT", 0.01)
-ALPHA_ENSEMBLE_ENABLED = False
-ALPHA_MIN_AGREEMENT = getattr(config, "ALPHA_MIN_AGREEMENT", 2)
 XAU_WORKING_ORDER_ENABLED = False  # Gold uses market orders on BUY and SELL signals
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
@@ -116,10 +112,6 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # existing exposure. All rejections are persisted with an exact reason.
 LATE_ENTRY_MAX_ATR = 0.50
 LATE_ENTRY_STRONG_MAX_ATR = 0.75
-CORRELATION_FILTER_ENABLED = False
-CORRELATION_LOOKBACK = 96
-CORRELATION_THRESHOLD = 0.80
-CORRELATION_CACHE_SECONDS = 60
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
 
@@ -142,9 +134,6 @@ ERROR_STREAKS = {}
 SAFETY_STATE_FILE = "fx_ai_bot_safety_state.json"
 
 # Conservative strategy-quality upgrades.
-SESSION_FILTER_ENABLED = False
-SESSION_START_UTC = getattr(config, "SESSION_START_UTC", 7)
-SESSION_END_UTC = getattr(config, "SESSION_END_UTC", 20)
 WEEKEND_FILTER_ENABLED = getattr(config, "WEEKEND_FILTER_ENABLED", True)
 ADAPTIVE_RISK_ENABLED = getattr(config, "ADAPTIVE_RISK_ENABLED", True)
 ADAPTIVE_RISK_HIGH_VOL_1 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_1", 1.25)
@@ -919,23 +908,6 @@ def add_indicators(df):
 def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
 
-def session_allows_entry(epic=None):
-    # Crypto is a 24/7 market; still require broker OPEN status before entering.
-    if epic == "BTCUSD":
-        return True
-    now = datetime.now(timezone.utc)
-    # EURUSD_W is treated as a permanent FX instrument.
-    # Broker marketStatus remains the final entry gate, so the bot will
-    # trade it whenever the broker exposes the market as OPEN.
-    if not SESSION_FILTER_ENABLED:
-        return True
-    # On weekends, scan every configured market; broker marketStatus is the entry gate.
-    if WEEKEND_FILTER_ENABLED and now.weekday() >= 5:
-        return True
-    hour = now.hour + now.minute / 60.0
-    return SESSION_START_UTC <= hour < SESSION_END_UTC
-
-
 def adaptive_risk_multiplier(df):
     if not ADAPTIVE_RISK_ENABLED or len(df) < VOL_REGIME_SLOW + 5:
         return 1.0
@@ -1097,39 +1069,6 @@ def dynamic_entry_policy(df, htf_df, epic, direction, strength):
     strong = float(strength) >= strength_floor
     max_positions = None
     return regime, vol_ratio, score_floor, strength_floor, max_positions, strong
-
-def alpha_ensemble_confirmation(df, direction):
-    """Independent confirmation from trend, momentum, slope and structure."""
-    if len(df) < 80:
-        return False, {"reason": "insufficient_history"}
-    cur = df.iloc[-2]
-    close = safe_float(cur.get("close"))
-    if close is None or close <= 0:
-        return False, {"reason": "invalid_price"}
-    closes = df["close"].astype(float)
-    ema9 = closes.ewm(span=9, adjust=False).mean().iloc[-2]
-    ema21 = closes.ewm(span=21, adjust=False).mean().iloc[-2]
-    ema50 = closes.ewm(span=50, adjust=False).mean().iloc[-2]
-    ema200 = closes.ewm(span=200, adjust=False).mean().iloc[-2]
-    roc5 = close / float(closes.iloc[-7]) - 1.0
-    roc20 = close / float(closes.iloc[-22]) - 1.0
-    x20 = np.arange(20, dtype=float)
-    x60 = np.arange(60, dtype=float)
-    slope20 = float(np.polyfit(x20, closes.iloc[-21:-1].to_numpy(dtype=float), 1)[0])
-    slope60 = float(np.polyfit(x60, closes.iloc[-61:-1].to_numpy(dtype=float), 1)[0])
-    recent20 = df.iloc[-21:-1]
-    high20 = float(recent20["high"].max())
-    low20 = float(recent20["low"].min())
-    want = 1 if direction == "BUY" else -1
-    votes = {
-        "trend": 1 if (ema9 > ema21 and ema50 > ema200) else -1 if (ema9 < ema21 and ema50 < ema200) else 0,
-        "momentum": 1 if (roc5 > 0 and roc20 > 0) else -1 if (roc5 < 0 and roc20 < 0) else 0,
-        "slope": 1 if (slope20 > 0 and slope60 > 0) else -1 if (slope20 < 0 and slope60 < 0) else 0,
-        "structure": 1 if close > high20 else -1 if close < low20 else 0,
-    }
-    agreement = sum(1 for v in votes.values() if v == want)
-    opposed = sum(1 for v in votes.values() if v == -want)
-    return agreement >= ALPHA_MIN_AGREEMENT and agreement > opposed, {"votes": votes, "agreement": agreement, "opposed": opposed}
 
 def asset_specific_strategy_scores(df, epic, direction, atr, rsi, ema9, ema21, ema50, htf50, htf200):
     """Local, non-blocking strategy layer tailored to the asset class.
@@ -1347,18 +1286,8 @@ def quant_signal_score(df, epic, htf_df):
     dynamic_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
     log(f"{epic}: ADAPTIVE ENTRY FLOOR | regime={regime} | floor={dynamic_floor:.1f} | vol_ratio={vol_ratio:.2f} | news_stress={max(abs(news_buy), abs(news_sell)):.2f}")
     if buy_score >= dynamic_floor and buy_score > sell_score + 8:
-        if ALPHA_ENSEMBLE_ENABLED:
-            ok, details = alpha_ensemble_confirmation(df, "BUY")
-            log(f"{epic}: ALPHA ENSEMBLE BUY | {details}")
-            if not ok:
-                return None
         return "BUY"
     if sell_score >= dynamic_floor and sell_score > buy_score + 8:
-        if ALPHA_ENSEMBLE_ENABLED:
-            ok, details = alpha_ensemble_confirmation(df, "SELL")
-            log(f"{epic}: ALPHA ENSEMBLE SELL | {details}")
-            if not ok:
-                return None
         return "SELL"
     return None
 
@@ -1449,81 +1378,6 @@ def market_entry_strength(df, htf_df, direction):
         sign * roc5 > 0,
     ])
     return votes / 4.0
-
-
-# Cache 15m closes for correlation checks so the 10-second monitor does not
-# repeatedly download the same history during one short monitoring window.
-CORRELATION_CACHE = {}
-
-def correlation_allows_entry(api, epic, df, positions, signal):
-    """Block only when the new trade materially duplicates existing directional risk."""
-    if not CORRELATION_FILTER_ENABLED:
-        return True
-
-    candidate = df[["close"]].copy()
-    if candidate.empty:
-        return True
-    candidate["ret"] = candidate["close"].astype(float).pct_change()
-    candidate_ret = candidate["ret"].dropna().tail(CORRELATION_LOOKBACK)
-    if len(candidate_ret) < max(30, CORRELATION_LOOKBACK // 2):
-        return True
-
-    open_epics = []
-    for position in positions:
-        other_epic = position_epic(position)
-        other_direction = position_direction(position)
-        if other_epic and other_epic != epic and other_direction in ("BUY", "SELL"):
-            open_epics.append((other_epic, other_direction))
-
-    checked = set()
-    for other_epic, other_direction in open_epics:
-        if other_epic in checked:
-            continue
-        checked.add(other_epic)
-        now = time.monotonic()
-        cached = CORRELATION_CACHE.get(other_epic)
-        if cached and now - cached["time"] < CORRELATION_CACHE_SECONDS:
-            other_df = cached["df"]
-        else:
-            try:
-                raw_other = api.get_candles(
-                    epic=other_epic,
-                    resolution=RESOLUTION,
-                    max_candles=max(CANDLE_COUNT, CORRELATION_LOOKBACK + 20),
-                )
-                other_df = candles_to_dataframe(raw_other)
-                CORRELATION_CACHE[other_epic] = {"time": now, "df": other_df}
-            except Exception as exc:
-                log(f"{epic}: correlation check skipped for {other_epic}; data unavailable: {exc}")
-                continue
-
-        if other_df is None or other_df.empty or "close" not in other_df.columns:
-            continue
-        other_ret = other_df["close"].astype(float).pct_change().dropna().tail(CORRELATION_LOOKBACK)
-        joined = pd.concat([candidate_ret.rename("candidate"), other_ret.rename("other")], axis=1).dropna()
-        if len(joined) < max(30, CORRELATION_LOOKBACK // 2):
-            continue
-        corr = safe_float(joined["candidate"].corr(joined["other"]))
-        if corr is None:
-            continue
-
-        # Positive correlation is relevant when both trades point the same way:
-        # BUY+BUY or SELL+SELL concentrates directional exposure. Opposite-side
-        # trades are not blocked by this filter merely because markets correlate.
-        same_direction = signal == other_direction
-        if same_direction and corr >= CORRELATION_THRESHOLD:
-            record_entry_rejection(
-                epic,
-                "HIGH_CORRELATION_EXPOSURE",
-                f"candidate={signal} vs {other_epic}={other_direction}; correlation={corr:.3f}; threshold={CORRELATION_THRESHOLD:.2f}",
-            )
-            return False
-
-        log(
-            f"{epic}: CORRELATION CHECK | vs={other_epic} | corr={corr:.3f} | "
-            f"candidate={signal} existing={other_direction} | blocked={same_direction and corr >= CORRELATION_THRESHOLD}"
-        )
-    return True
 
 
 def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None):
@@ -2219,9 +2073,6 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS, position_management_only=False):
     log("")
     owned_positions = filter_owned_positions(positions)
-    if not session_allows_entry(epic) and not get_positions_for_epic(owned_positions, epic):
-        log(f"{epic}: liquidity session filter active; no new entry now.")
-        return None
     log("=" * 60)
     log(f"PROCESSING {epic}")
     log("=" * 60)
@@ -2549,8 +2400,6 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: CANDLE ENTRY CONFIRMED | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
-        if CORRELATION_FILTER_ENABLED and not correlation_allows_entry(api, epic, df, positions, signal):
-            log(f"{epic}: correlation warning only; AI entry remains eligible.")
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
@@ -2568,27 +2417,6 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
             return None
         log(f"{epic}: DYNAMIC PRICE | strength={strength:.2f} | entry={trade['entry']} | SL={trade['stop_level']} | ATR={trade['atr']:.6f}")
-        if PRETRADE_COST_FILTER_ENABLED:
-            cost_ok, cost_diag = evaluate_pretrade_cost(
-                epic=epic,
-                market=market,
-                entry_price=execution_price,
-                risk_distance=trade["risk_distance"],
-                execution_quality_file=EXECUTION_QUALITY_FILE,
-                max_cost_to_risk=MAX_COST_TO_STOP_RATIO,
-                extra_slippage_buffer_pct=EXTRA_SLIPPAGE_BUFFER_PCT,
-            )
-            log(f"{epic}: PRE-TRADE COST | {cost_diag}")
-            if not cost_ok:
-                # Never override the configured cost-to-stop limit. This applies
-                # to both active AI bots, including strong signals.
-                record_entry_rejection(
-                    epic,
-                    "PRETRADE_COST",
-                    str(cost_diag),
-                )
-                log(f"{epic}: PRE-TRADE COST BLOCKED | {cost_diag}")
-                return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
         # No arbitrary position-count cap. Additional exposure is governed only
