@@ -1077,6 +1077,61 @@ def alpha_ensemble_confirmation(df, direction):
     opposed = sum(1 for v in votes.values() if v == -want)
     return agreement >= ALPHA_MIN_AGREEMENT and agreement > opposed, {"votes": votes, "agreement": agreement, "opposed": opposed}
 
+def asset_specific_strategy_scores(df, epic, direction, atr, rsi, ema9, ema21, ema50, htf50, htf200):
+    """Local, non-blocking strategy layer tailored to the asset class.
+    Uses only already-fetched candles; never makes an extra API request.
+    Returns a bounded score bonus for the requested direction.
+    """
+    if direction not in {"BUY", "SELL"} or len(df) < 30:
+        return 0.0, []
+    sign = 1 if direction == "BUY" else -1
+    close = df["close"]
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    price = safe_float(cur["close"], 0.0) or 0.0
+    prev_close = safe_float(prev["close"], price) or price
+    atr_val = safe_float(atr, 0.0) or 0.0
+    if price <= 0 or atr_val <= 0:
+        return 0.0, []
+    bonus = 0.0
+    reasons = []
+    epic_u = str(epic).upper()
+    if epic_u in set(getattr(config, "FX_EPICS", [])):
+        if sign * (ema9 - ema21) > 0 and sign * (ema21 - ema50) > 0 and sign * (htf50 - htf200) > 0:
+            bonus += 2.5; reasons.append("FX_TREND_ALIGNMENT")
+        pullback = (price - prev_close) / atr_val
+        if sign * pullback > 0 and abs(pullback) <= 0.60:
+            bonus += 1.5; reasons.append("FX_PULLBACK_RECLAIM")
+        roc10 = price / (safe_float(close.iloc[-12], price) or price) - 1.0
+        if sign * roc10 > 0 and ((direction == "BUY" and 45 <= rsi <= 68) or (direction == "SELL" and 32 <= rsi <= 55)):
+            bonus += 2.0; reasons.append("FX_MOMENTUM_RSI")
+        if abs((price - prev_close) / atr_val) > 1.25:
+            bonus -= 1.0; reasons.append("FX_STRETCH_PENALTY")
+    if epic_u in {"GOLD", "SILVER"}:
+        atr20 = safe_float(df["atr"].rolling(20).mean().iloc[-2], atr_val) or atr_val
+        atr50 = safe_float(df["atr"].rolling(50).mean().iloc[-2], atr_val) or atr_val
+        vol_ratio = atr20 / atr50 if atr50 > 0 else 1.0
+        recent10 = df.iloc[-11:-1]
+        prior10 = df.iloc[-21:-11]
+        hh = float(recent10["high"].max()) if not recent10.empty else price
+        ll = float(recent10["low"].min()) if not recent10.empty else price
+        prior_hh = float(prior10["high"].max()) if not prior10.empty else hh
+        prior_ll = float(prior10["low"].min()) if not prior10.empty else ll
+        if sign * (ema9 - ema21) > 0 and sign * (ema21 - ema50) > 0:
+            bonus += 2.0; reasons.append("METAL_TREND")
+        if vol_ratio >= 1.10 and sign * (price - prev_close) > 0:
+            bonus += 2.0; reasons.append("METAL_VOL_EXPANSION")
+        if direction == "BUY" and price > prior_hh:
+            bonus += 2.0; reasons.append("METAL_BREAKOUT")
+        elif direction == "SELL" and price < prior_ll:
+            bonus += 2.0; reasons.append("METAL_BREAKDOWN")
+        if direction == "BUY" and price > prev_close and rsi < 72:
+            bonus += 1.0; reasons.append("METAL_PULLBACK_CONTINUATION")
+        elif direction == "SELL" and price < prev_close and rsi > 28:
+            bonus += 1.0; reasons.append("METAL_PULLBACK_CONTINUATION")
+    return max(-1.0, min(7.0, bonus)), reasons
+
+
 def quant_signal_score(df, epic, htf_df):
     """Institutional-style multi-factor score inspired by trend, momentum,
     breakout, volatility and disciplined risk frameworks.
@@ -1171,6 +1226,15 @@ def quant_signal_score(df, epic, htf_df):
     if speed_votes_buy < 3: buy_score = min(buy_score, 69.0)
     if speed_votes_sell < 3: sell_score = min(sell_score, 69.0)
     log(f"{epic}: SPEED ENSEMBLE | BUY={speed_votes_buy}/4 SELL={speed_votes_sell}/4")
+
+    # Asset-specific strategies are local score bonuses only. The common
+    # strategy remains the sole entry authority; no extra network/API call is made.
+    asset_bonus_buy, buy_reasons = asset_specific_strategy_scores(df, epic, "BUY", atr, rsi, ema9, ema21, ema50, htf50, htf200)
+    asset_bonus_sell, sell_reasons = asset_specific_strategy_scores(df, epic, "SELL", atr, rsi, ema9, ema21, ema50, htf50, htf200)
+    buy_score = max(0.0, min(100.0, buy_score + asset_bonus_buy))
+    sell_score = max(0.0, min(100.0, sell_score + asset_bonus_sell))
+    if buy_reasons or sell_reasons:
+        log(f"{epic}: ASSET STRATEGY | BUY+{asset_bonus_buy:.1f} {buy_reasons} | SELL+{asset_bonus_sell:.1f} {sell_reasons}")
 
     regime = market_regime(df, htf_df)
 
