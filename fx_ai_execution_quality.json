@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-27T16:56:34.473191+00:00",
+  "updated_at": "2026-09-27T19:00:28.685663+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -105,6 +105,21 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 0.0012
+    },
+    {
+      "timestamp": "2026-09-27T19:00:28.685663+00:00",
+      "epic": "BTCUSD",
+      "direction": "BUY",
+      "requested_executable_price": 84828.15,
+      "actual_fill_price": 84818.8,
+      "spread_pct_at_order": 0.0589600740066849,
+      "slippage_price": -9.35,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_5cd671b7-ea51-4ca7-b3bc-b464109cad98",
+      "deal_id": "00000000-6607-e27a-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.0097
     }
   ]
 }

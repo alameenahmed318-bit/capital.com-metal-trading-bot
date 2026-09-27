@@ -1,0 +1,10 @@
+{
+  "updated_at": "2026-09-27T19:05:43.031263+00:00",
+  "dataset": {
+    "rows": 0,
+    "path": "ai_training_dataset.parquet"
+  },
+  "total_closed_realized_samples": 0,
+  "epics": {},
+  "learning_policy": "Per-epic realized outcomes only; broker P/L labels; walk-forward/calibration/drift/cost governance; AI remains support-only for entry."
+}

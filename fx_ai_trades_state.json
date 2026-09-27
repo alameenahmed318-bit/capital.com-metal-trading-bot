@@ -1,5 +1,35 @@
 {
-  "risk_distance": {},
-  "profit_trail": {},
-  "position_telemetry": {}
+  "risk_distance": {
+    "00000000-6607-e27d-0493-972c0004511e": 268.99814378184965
+  },
+  "profit_trail": {
+    "00000000-6607-e27d-0493-972c0004511e": {
+      "peak_profit": -2.15,
+      "peak_time": "2026-09-27T19:00:31.544175+00:00",
+      "activated": false,
+      "last_pnl": -4.26,
+      "last_update_ts": 1790535918.0964773,
+      "giveback": 2.04,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.018846,
+      "current_profit": -4.26,
+      "last_update": "2026-09-27T19:05:18.666747+00:00",
+      "protected_fraction": 0.3,
+      "protected_floor": null
+    }
+  },
+  "position_telemetry": {
+    "00000000-6607-e27d-0493-972c0004511e": {
+      "epic": "BTCUSD",
+      "direction": "BUY",
+      "current_profit": -4.19,
+      "peak_profit": -2.15,
+      "giveback": 2.04,
+      "protected_fraction": 0.3,
+      "protected_floor": null,
+      "peak_time": "2026-09-27T19:00:31.544175+00:00",
+      "last_update": "2026-09-27T19:05:18.666747+00:00"
+    }
+  }
 }
