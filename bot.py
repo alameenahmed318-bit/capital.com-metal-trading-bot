@@ -2433,7 +2433,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             if top_level_deal_id:
                 opened_deal_ids.insert(0, str(top_level_deal_id))
             opened_deal_ids = list(dict.fromkeys(opened_deal_ids))
-            deal_id = opened_deal_ids[0] if opened_deal_ids else confirmation.get("dealReference")
+            # Never use dealReference as a substitute for the permanent opened
+            # position/deal ID. Without a real opened deal ID we cannot safely
+            # verify direction, price, SL/TP, ownership, or later closure.
+            if not opened_deal_ids:
+                raise RuntimeError(
+                    f"Capital.com confirmation has no opened dealId for {deal_reference}; execution state unconfirmed."
+                )
+            deal_id = opened_deal_ids[0]
             for opened_deal_id in opened_deal_ids:
                 register_owned_position(opened_deal_id)
             # HARD POST-FILL DIRECTION CHECK: the requested direction is not
