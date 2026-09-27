@@ -70,6 +70,8 @@ jobs:
           CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
           IS_DEMO: ${{ secrets.IS_DEMO }}
           TRADE_LEDGER_LOOKBACK_DAYS: "30"
+          TRADE_LEDGER_JSON: "metals_broker_trade_ledger.json"
+          TRADE_LEDGER_CSV: "metals_broker_trade_ledger.csv"
 
       - name: Quant validation
         if: ${{ always() }}
@@ -86,10 +88,17 @@ jobs:
           VOL_MANAGED_SIZING: "true"
           RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
+          QUANT_VALIDATION_PATH: "metals_quant_validation.json"
 
       - name: Build realized AI dataset and registry
         if: ${{ always() }}
         run: python ai_dataset_job.py
+        env:
+          AI_OUTCOMES_DB: "metals_ai_outcomes.db"
+          AI_DATASET_PATH: "metals_ai_training_dataset.parquet"
+          AI_MODEL_REGISTRY: "metals_ai_model_registry.json"
+          AI_MODEL_REGISTRY_PREFIX: "metals_"
+          AI_LEARNING_REPORT: "metals_ai_learning_report.json"
 
       - name: Persist Metals bot state
         if: ${{ always() }}
@@ -107,12 +116,12 @@ jobs:
             metals_energy_ai_execution_quality.json
             metals_energy_ai_entry_rejections.json
             fx_ai_entry_candle_state.json
-            quant_validation.json
-            ai_outcomes.db
-            ai_training_dataset.parquet
-            ai_model_registry.json
-            broker_trade_ledger.json
-            broker_trade_ledger.csv
+            metals_quant_validation.json
+            metals_ai_outcomes.db
+            metals_ai_training_dataset.parquet
+            metals_ai_model_registry.json
+            metals_broker_trade_ledger.json
+            metals_broker_trade_ledger.csv
           )
           for f in "${STATE_FILES[@]}"; do
             if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
