@@ -1,6 +1,6 @@
 """Capital.com Metals + Energy AI Bot.
 
-Trades precious/industrial metals and crude oil only. FX and indices are intentionally excluded.
+Trades precious/industrial metals, crude oil, and indices. FX is intentionally excluded.
 Shared execution/risk protections remain in bot.py.
 """
 import bot as base
@@ -29,7 +29,7 @@ base.SESSION_FILTER_ENABLED = False
 base.CORRELATION_FILTER_ENABLED = False
 
 def run_cycle():
-    base.log(f"STARTING {STRATEGY_ID} | METALS+OIL ONLY | markets={base.EPICS}")
+    base.log(f"STARTING {STRATEGY_ID} | METALS+OIL+INDICES | markets={base.EPICS}")
     return base.run_cycle()
 
 if __name__ == "__main__":
