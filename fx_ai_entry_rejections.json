@@ -2020,5 +2020,155 @@
     "epic": "EURUSD_W",
     "reason": "PRETRADE_COST",
     "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T20:11:39.260080+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84801.450000; completed_close=84717.100000; distance=0.62 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:12:13.163405+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84808.800000; completed_close=84717.100000; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:12:47.979633+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84809.200000; completed_close=84717.100000; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:13:22.365086+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84808.800000; completed_close=84717.100000; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:13:52.338801+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84809.250000; completed_close=84717.100000; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:14:26.710744+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84822.950000; completed_close=84717.100000; distance=0.77 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:15:01.640010+00:00",
+    "epic": "BTCUSD",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=84823.050000; completed_close=84717.100000; distance=0.77 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T20:15:36.823617+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:16:11.221998+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:16:46.217922+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:17:20.679844+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:17:55.399487+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:18:25.001199+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:18:59.874354+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:19:35.202205+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:20:09.559494+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:20:39.611262+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:21:14.008644+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:21:48.868214+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:22:23.683319+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:22:53.293295+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:23:28.482413+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:24:02.965848+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:24:37.815402+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T20:25:07.368064+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
   }
 ]
