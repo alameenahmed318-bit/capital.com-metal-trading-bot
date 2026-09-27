@@ -1,0 +1,20 @@
+{
+  "updated_at": "2026-09-27T04:01:25.097183+00:00",
+  "orders": [
+    {
+      "timestamp": "2026-09-27T04:01:25.097183+00:00",
+      "epic": "EURUSD_W",
+      "direction": "BUY",
+      "requested_executable_price": 1.13931,
+      "actual_fill_price": 1.13931,
+      "spread_pct_at_order": 0.0790263948158793,
+      "slippage_price": 0.0,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_05754036-9704-4e68-a1d6-f6dc358d839b",
+      "deal_id": "00000000-6604-fc0e-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 1600.0
+    }
+  ]
+}

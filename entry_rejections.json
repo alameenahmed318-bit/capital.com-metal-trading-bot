@@ -1,17 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T10:17:41.173271+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-26T10:17:57.778195+00:00",
-    "epic": "BTCUSD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T10:17:58.606978+00:00",
     "epic": "EURUSD_W",
     "reason": "SAFETY_STOP",
@@ -5998,5 +5986,17 @@
     "epic": "EURUSD_W",
     "reason": "LATE_ENTRY",
     "details": "SELL quote=1.138600; completed_close=1.139050; distance=0.54 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T04:00:13.763240+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138120; completed_close=1.139050; distance=1.11 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T04:00:27.221513+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139420; completed_close=1.138940; distance=0.58 ATR; limit=0.50 ATR"
   }
 ]
