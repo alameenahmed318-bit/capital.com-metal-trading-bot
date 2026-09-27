@@ -1621,6 +1621,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
                         account_currency=account_currency, allow_entry_without_signal=False,
                         market=None, candle_cache=candle_cache,
                         candle_cache_ttl=max(CANDLE_CACHE_DEFAULT_TTL_SECONDS, interval + 2.0),
+                        position_management_only=True,
                     )
             else:
                 log(f"OPEN POSITION MONITOR | pass={iteration} | no open positions")
@@ -1635,7 +1636,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 
     log(f"OPEN POSITION MONITOR | completed | passes={iteration}")
 
-def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
+def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS, position_management_only=False):
     log("")
     owned_positions = filter_owned_positions(positions)
     if not session_allows_entry(epic) and not get_positions_for_epic(owned_positions, epic):
@@ -1879,6 +1880,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             )
             return None
         ai_manage_positions(api, owned_positions, epic, ai_decision)
+        if position_management_only:
+            log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
+            return None
         signal = (ai_decision.get('advanced_ai', {}).get('signal_after') if ai_engine.AI_ENABLED else legacy_signal)
         confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         strong_signal = bool(signal in {"BUY", "SELL"} and confidence >= STRONG_SIGNAL_MIN_CONFIDENCE)
