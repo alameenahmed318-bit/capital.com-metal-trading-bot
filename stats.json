@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-27T09:53:07.356372+00:00",
+  "last_updated": "2026-09-27T10:07:35.388335+00:00",
   "currency": "AED",
   "source": "Capital.com API /accounts + /history/transactions",
   "pnl_policy": "Broker-reported only; no inferred or reconstructed trade P/L",
@@ -140,6 +140,13 @@
       "pnl": 0
     },
     "EURUSD_W": {
+      "trades_with_explicit_pnl": 0,
+      "winners": 0,
+      "losers": 0,
+      "win_rate": 0,
+      "pnl": 0
+    },
+    "BTCUSD": {
       "trades_with_explicit_pnl": 0,
       "winners": 0,
       "losers": 0,
