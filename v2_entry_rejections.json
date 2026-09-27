@@ -1,17 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T12:08:15.694727+00:00",
-    "epic": "USDJPY_W",
-    "reason": "MARKET_UNAVAILABLE",
-    "details": "temporarily unavailable during this run"
-  },
-  {
-    "timestamp": "2026-09-26T12:08:25.328958+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SPREAD_FILTER",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T12:08:26.246851+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
@@ -5998,5 +5986,17 @@
     "epic": "EURUSD_W",
     "reason": "LATE_ENTRY",
     "details": "SELL quote=1.138520; completed_close=1.138930; distance=0.55 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T07:13:11.236833+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138330; completed_close=1.138990; distance=0.87 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T07:13:24.315055+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138330; completed_close=1.138990; distance=0.87 ATR; limit=0.50 ATR"
   }
 ]
