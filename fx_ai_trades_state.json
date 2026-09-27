@@ -1,6 +1,5 @@
 {
   "risk_distance": {
-    "00000000-6608-2912-0493-972c0004511e": 258.60910452209646,
     "00000000-6608-34c4-0493-972c0004511e": 259.859104522111,
     "00000000-6608-36b3-0493-972c0004511e": 252.73300786722393
   },
@@ -9,14 +8,14 @@
       "peak_profit": -0.25,
       "peak_time": "2026-09-27T20:45:13.155735+00:00",
       "activated": false,
-      "last_pnl": -0.91,
-      "last_update_ts": 1790542516.6052144,
-      "giveback": 0.66,
+      "last_pnl": -0.35,
+      "last_update_ts": 1790543479.016739,
+      "giveback": 0.1,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
-      "current_profit": -0.91,
-      "last_update": "2026-09-27T20:55:16.980697+00:00",
+      "current_profit": -0.35,
+      "last_update": "2026-09-27T21:11:19.480360+00:00",
       "protected_fraction": 0.3,
       "protected_floor": null
     },
@@ -24,14 +23,14 @@
       "peak_profit": -0.38,
       "peak_time": "2026-09-27T20:45:28.650163+00:00",
       "activated": false,
-      "last_pnl": -1.08,
-      "last_update_ts": 1790542516.6052144,
-      "giveback": 0.7,
+      "last_pnl": -0.49,
+      "last_update_ts": 1790543479.016739,
+      "giveback": 0.11,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
-      "current_profit": -1.08,
-      "last_update": "2026-09-27T20:55:16.980727+00:00",
+      "current_profit": -0.49,
+      "last_update": "2026-09-27T21:11:19.480392+00:00",
       "protected_fraction": 0.3,
       "protected_floor": null
     }
@@ -40,24 +39,24 @@
     "00000000-6608-34c4-0493-972c0004511e": {
       "epic": "BTCUSD",
       "direction": "BUY",
-      "current_profit": -0.91,
+      "current_profit": -0.35,
       "peak_profit": -0.25,
-      "giveback": 0.66,
+      "giveback": 0.1,
       "protected_fraction": 0.3,
       "protected_floor": null,
       "peak_time": "2026-09-27T20:45:13.155735+00:00",
-      "last_update": "2026-09-27T20:55:16.980697+00:00"
+      "last_update": "2026-09-27T21:11:19.480360+00:00"
     },
     "00000000-6608-36b3-0493-972c0004511e": {
       "epic": "BTCUSD",
       "direction": "BUY",
-      "current_profit": -1.08,
+      "current_profit": -0.49,
       "peak_profit": -0.38,
-      "giveback": 0.7,
+      "giveback": 0.11,
       "protected_fraction": 0.3,
       "protected_floor": null,
       "peak_time": "2026-09-27T20:45:28.650163+00:00",
-      "last_update": "2026-09-27T20:55:16.980727+00:00"
+      "last_update": "2026-09-27T21:11:19.480392+00:00"
     }
   }
 }
