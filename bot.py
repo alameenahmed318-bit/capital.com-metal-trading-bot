@@ -1641,11 +1641,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
 
         htf_df = get_cached_candles(api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         # Capital.com can return only a handful of HOUR candles for some
-        # instruments/session windows. V2 needs at least 60 HTF observations.
+        # instruments/session windows. The integrated AI bots need a usable HTF history.
         # If the native HOUR response is short, rebuild 1H candles from the
         # already-fetched 15m history instead of skipping the signal engine.
         native_htf_count = len(htf_df)
-        if STRATEGY_ID in {"CAPITAL_V2_QUANT_HYBRID", "CAPITAL_V3_RAPID_PROFIT", "CAPITAL_V4_SMART_OPPORTUNITY"} and native_htf_count < 205:
+        if STRATEGY_ID in {"CAPITAL_MULTI_MARKET_AI", "CAPITAL_GOLD_AI", "CAPITAL_V2_QUANT_HYBRID", "CAPITAL_V3_RAPID_PROFIT", "CAPITAL_V4_SMART_OPPORTUNITY"} and native_htf_count < 205:
             try:
                 # Capital.com may return only a few native HOUR candles. Rebuild
                 # from a larger 15m window, but count only complete 4-candle hours.
@@ -1697,7 +1697,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
-        # AI is the primary decision engine for every V1/V2/V3/V4 process.
+        # AI is the primary decision engine for both active bot processes.
         # Legacy strategy output is retained only as diagnostic context.
         legacy_signal = generate_signal(df, epic, htf_df)
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
