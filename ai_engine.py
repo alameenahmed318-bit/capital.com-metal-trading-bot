@@ -251,7 +251,7 @@ def _realized_walk_forward(frame, profile):
     a=float(np.mean(scores)); b=float(np.mean(bals)); p=float(np.mean(prec)); d=float(np.mean(dirs))
     return {"ok":a>=profile["wf_acc"] and b>=profile["wf_acc"] and p>=profile["wf_precision"] and d>=profile["wf_directional_rate"],"accuracy":a,"balanced_accuracy":b,"directional_precision":p,"directional_rate":d,"folds":len(scores),"samples":total,"label_source":"realized_trade_outcomes"}
 
-def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_V1") -> dict[str,Any]:
+def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_FX_AI") -> dict[str,Any]:
     profile=_profile(strategy_id)
     result={"enabled":AI_ENABLED,"strategy_id":strategy_id,"signal":None,"raw_signal":None,
             "confidence":0.0,"buy_probability":0.0,"sell_probability":0.0,"wait_probability":1.0,
