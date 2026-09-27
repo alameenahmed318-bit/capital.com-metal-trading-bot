@@ -1646,8 +1646,11 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             except Exception as exc:
                 log(f"{epic}: dynamic profit-protection close failed | deal={deal_id} | {exc}")
 
+    # Only prune deals belonging to this market. Other markets may be
+    # monitored later in the same pass; deleting their peaks here would
+    # reset profit protection before their next quote arrives.
     for deal_key in list(trails.keys()):
-        if deal_key not in active_deals:
+        if deal_key not in active_deals and (telemetry.get(deal_key) or {}).get("epic") == epic:
             trails.pop(deal_key, None)
             telemetry.pop(deal_key, None)
 
