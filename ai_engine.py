@@ -276,10 +276,28 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_FX_AI") 
     if ai_outcomes is not None:
         try: realized=ai_outcomes.realized_training_frame()
         except Exception: realized=None
+    # HARD INSTRUMENT ISOLATION:
+    # Realized outcomes are only valid for the same epic. Mixing GOLD/FX/etc.
+    # in one directional model can transfer a regime learned from one market
+    # into another and produce an apparently confident but wrong entry.
+    realized_all = realized
+    realized = None
+    if realized_all is not None and not realized_all.empty and "epic" in realized_all.columns:
+        epic_key = str(epic).strip().upper()
+        scoped = realized_all[
+            realized_all["epic"].astype(str).str.strip().str.upper() == epic_key
+        ].copy()
+        realized = scoped if not scoped.empty else pd.DataFrame()
     realized_samples = int(len(realized)) if realized is not None else 0
     result["realized_samples"] = realized_samples
+    result["realized_scope"] = str(epic).strip().upper()
+    result["realized_global_samples"] = int(len(realized_all)) if realized_all is not None else 0
     result["learning_ready"] = bool(realized_samples >= REALIZED_MIN_SAMPLES)
-    use_realized = realized is not None and realized_samples >= REALIZED_MIN_SAMPLES and all(f in realized.columns for f in REALIZED_FEATURES)
+    use_realized = (
+        realized is not None
+        and realized_samples >= REALIZED_MIN_SAMPLES
+        and all(f in realized.columns for f in REALIZED_FEATURES)
+    )
     if use_realized:
         wf=_realized_walk_forward(realized,profile)
         # Realized validation is advisory only. If it is not validated yet,
@@ -308,6 +326,7 @@ def decide(df, htf_df, epic, existing_signal=None, strategy_id="CAPITAL_FX_AI") 
         result["validation_advisory"] = False
     model=_make_model(profile)
     if use_realized:
+        # The realized model is trained ONLY on this epic's own closed trades.
         model.fit(realized[REALIZED_FEATURES].astype(float), (realized["outcome_label"]>0).astype(int))
         train_size=len(realized)
     else:
