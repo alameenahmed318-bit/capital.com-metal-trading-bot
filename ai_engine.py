@@ -97,8 +97,8 @@ def _features(df, htf):
     return out.replace([np.inf,-np.inf],np.nan)
 
 def _label(df):
-    # Backward-compatible helper; use the V1 profile explicitly.
-    return _label_profile(df, PROFILES["CAPITAL_V1"])
+    # Shared compatibility helper; default to the active FX profile.
+    return _label_profile(df, PROFILES["CAPITAL_FX_AI"])
 
 def _make_model(profile):
     return HistGradientBoostingClassifier(
