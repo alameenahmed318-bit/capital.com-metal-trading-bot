@@ -14,9 +14,9 @@ base.SAFETY_STATE_FILE = "metals_energy_ai_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "metals_energy_ai_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "metals_energy_ai_entry_rejections.json"
 
-# Metals + oil only. No FX and no indices.
+# Metals + oil + indices only. No FX.
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
-              if epic in {"GOLD", "SILVER", "OIL_CRUDE"}]
+              if epic in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}]
 
 base.MIN_ENTRY_SCORE = 50.0
 base.MIN_ENTRY_STRENGTH = 0.55
