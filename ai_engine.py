@@ -19,7 +19,7 @@ try:
 except Exception:
     ai_outcomes = None
 
-AI_ENABLED = os.environ.get("AI_TRADING_ENABLED", "true").lower() in {"1","true","yes"}
+AI_ENABLED = os.environ.get("AI_TRADING_ENABLED", "false").lower() in {"1","true","yes"}
 AI_REQUIRE_STRATEGY_AGREEMENT = os.environ.get("AI_REQUIRE_STRATEGY_AGREEMENT", "false").lower() in {"1","true","yes"}
 BASE_MODEL_DIR = os.environ.get("AI_MODEL_DIR","ai_models")
 DECISION_CACHE = {}
