@@ -27,9 +27,7 @@ ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 
-MAX_POSITIONS_PER_EPIC = 3
 STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
-STRONG_SIGNAL_MAX_LEGS = 3
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
@@ -2030,8 +2028,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         signal = (ai_decision.get('advanced_ai', {}).get('signal_after') if ai_engine.AI_ENABLED else legacy_signal)
         confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         strong_signal = bool(signal in {"BUY", "SELL"} and confidence >= STRONG_SIGNAL_MIN_CONFIDENCE)
-        strong_target_legs = STRONG_SIGNAL_MAX_LEGS if strong_signal else 1
-        log(f"{epic}: ENTRY MODE | strong={strong_signal} | confidence={confidence:.3f} | target_legs={strong_target_legs}")
+        log(f"{epic}: ENTRY MODE | strong={strong_signal} | confidence={confidence:.3f} | risk-budgeted entries")
         epic_positions = get_positions_for_epic(owned_positions, epic)
         account_epic_positions = get_positions_for_epic(positions, epic)
         if not epic_positions and account_epic_positions:
@@ -2119,9 +2116,6 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 remaining = PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS - (time.monotonic() - last_entry)
                 record_entry_rejection(epic, "PROFITABLE_ADD_COOLDOWN", f"remaining={remaining:.0f}s")
                 return None
-        if existing_count >= min(MAX_POSITIONS_PER_EPIC, strong_target_legs):
-            record_entry_rejection(epic, "MAX_POSITIONS_PER_EPIC", f"limit={MAX_POSITIONS_PER_EPIC}")
-            return None
         # Reuse the current market snapshots already fetched for this scan.
         # Risk calculations used to request the same market repeatedly.
         risk_market_cache = {epic: market}
@@ -2191,9 +2185,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     profitable_position = True
                     break
 
-            if strong_signal or (ADD_TO_PROFITABLE_BASKET and profitable_position):
-                mode = "strong AI signal" if strong_signal else "profitable basket"
-                log(f"{epic}: {mode}; adding next leg up to target {strong_target_legs} (hard cap {MAX_POSITIONS_PER_EPIC}).")
+            if strong_signal and profitable_position:
+                log(f"{epic}: profitable basket + strong AI signal; add-on evaluated within remaining risk budget.")
             else:
                 # Never add to a losing/flat basket. Grid, averaging, and
                 # martingale are disabled; extra legs are allowed only when
@@ -2303,37 +2296,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         LAST_ENTRY_AT[epic] = time.monotonic()
         save_safety_state(SAFETY)
 
-        # Strong AI opportunities may build a small 3-leg basket in the same
-        # scan. This is not Grid/Martingale/Averaging: every additional leg
-        # must pass the full AI decision, execution-cost, portfolio-risk and
-        # broker confirmation path again. If the AI weakens or reverses, the
-        # chain stops immediately.
-        if strong_signal:
-            try:
-                refreshed_positions = api.get_open_positions()
-                refreshed_epic_positions = get_positions_for_epic(
-                    filter_owned_positions(refreshed_positions), epic
-                )
-                if len(refreshed_epic_positions) < STRONG_SIGNAL_MAX_LEGS:
-                    log(
-                        f"{epic}: STRONG AI CONTINUATION | "
-                        f"confirmed_legs={len(refreshed_epic_positions)} | "
-                        f"target={STRONG_SIGNAL_MAX_LEGS}"
-                    )
-                    process_epic(
-                        api=api,
-                        epic=epic,
-                        positions=refreshed_positions,
-                        balance=balance,
-                        account_currency=account_currency,
-                        allow_entry_without_signal=False,
-                        market=None,
-                        candle_cache=candle_cache,
-                        candle_cache_ttl=candle_cache_ttl,
-                    )
-            except Exception as continuation_exc:
-                log(f"{epic}: STRONG AI continuation stopped safely: {continuation_exc}")
-
+        # Further entries are evaluated on the next scheduled scan, not through
+        # recursive API calls. Portfolio and basket risk remain hard safeguards.
         return response
     except Exception as exc:
         error_text = str(exc)
@@ -2533,7 +2497,7 @@ def run_cycle():
     log("DEMO MODE / LIVE TRADING DISABLED")
     log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
     log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
-    log(f"Controlled aggressive mode: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; profitable-basket add={ADD_TO_PROFITABLE_BASKET}, max positions/epic={MAX_POSITIONS_PER_EPIC}, grid step={GRID_STEP_R}R, martingale x{MARTINGALE_MULTIPLIER}, max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
+    log(f"Risk-budgeted entries: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; no fixed position-count cap; max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
     log("Logging in to Capital.com...")
     api.login()
