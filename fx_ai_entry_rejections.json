@@ -274,5 +274,17 @@
     "epic": "BTCUSD",
     "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
     "details": "open_account_positions=1"
+  },
+  {
+    "timestamp": "2026-09-27T14:27:48.405233+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138420; completed_close=1.139000; distance=0.72 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T14:27:52.992362+00:00",
+    "epic": "BTCUSD",
+    "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
+    "details": "open_account_positions=1"
   }
 ]
