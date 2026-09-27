@@ -168,6 +168,35 @@ def evaluate(
     if MODE == "enforce" and not meta["accepted"]:
         enforced_signal = None
 
+    # Position-management guidance is advisory here; bot.py combines it with
+    # the actual open position and broker-reported P/L before closing anything.
+    edge_negative = bool(
+        expected_edge.get("available")
+        and expected_edge.get("expected_gross_pnl") is not None
+        and float(expected_edge.get("expected_gross_pnl")) < 0.0
+    )
+    position_management = {
+        "action_bias": "WAIT",
+        "reversal": bool(
+            enforced_signal in {"BUY", "SELL"}
+            and ai_decision.get("signal") in {"BUY", "SELL"}
+            and enforced_signal != ai_decision.get("signal")
+        ),
+        "high_uncertainty": bool(enhanced_uncertainty >= 0.85),
+        "negative_expected_edge": edge_negative,
+        "market_regime": str(regime.get("regime") or "UNKNOWN").upper(),
+        "multihorizon_agreement": float(multihorizon.get("agreement", 0.0) or 0.0),
+        "reason": "AI_MARKET_STATE",
+    }
+    if position_management["reversal"]:
+        position_management["action_bias"] = "EXIT_REVERSAL"
+    elif edge_negative and float(ai_decision.get("confidence", 0.0) or 0.0) >= 0.65:
+        position_management["action_bias"] = "EXIT_NEGATIVE_EDGE"
+    elif position_management["high_uncertainty"]:
+        position_management["action_bias"] = "PROTECT"
+    elif enforced_signal in {"BUY", "SELL"}:
+        position_management["action_bias"] = "HOLD"
+
     return {
         "mode": MODE,
         "regime": regime,
