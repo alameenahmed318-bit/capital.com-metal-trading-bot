@@ -1713,12 +1713,14 @@ def cleanup_state(positions):
     if changed:
         save_state(STATE)
 
-LIVE_PRICE_MAX_AGE_SECONDS = 10.0
+# Open positions use the live WebSocket as the primary price source.
+# Keep the management loop fast without turning it into a 1-second REST/API storm.
+LIVE_PRICE_MAX_AGE_SECONDS = 3.0
 LIVE_PRICE_STREAM = None
-OPEN_POSITION_MONITOR_SECONDS = 10
+OPEN_POSITION_MONITOR_SECONDS = 2
 OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
-# Prevent the 10-second signal loop from stacking the same profitable-basket
-# leg repeatedly; signals are still evaluated every 10 seconds.
+# Prevent the fast management loop from stacking the same profitable-basket
+# leg repeatedly; signals are still evaluated through the normal entry path.
 PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS = 60
 LAST_ENTRY_AT = {}
 
