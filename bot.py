@@ -1681,8 +1681,16 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             "last_update": now_iso,
         }
 
-        if trail.get("activated") and floor is not None and pnl <= floor:
+        # LOSS-PRESERVATION RULE: this discretionary profit manager may only
+        # close while the broker still reports a non-negative P/L. Once P/L is
+        # negative, only the hard loss guard or the broker SL may close it.
+        if trail.get("activated") and floor is not None and pnl >= 0.0 and pnl <= floor:
             try:
+                log(
+                    f"{epic}: PROFIT EXIT INTENT | reason=DYNAMIC_PROFIT_PROTECTION | "
+                    f"deal={deal_id} | peak={peak:.2f} {account_currency} | "
+                    f"current={pnl:.2f} {account_currency} | floor={floor:.2f} {account_currency}"
+                )
                 response = api.close_position(deal_id)
                 confirmed = confirm_position_closed(api, deal_id)
                 log(
@@ -1695,6 +1703,11 @@ def manage_profit_trailing(api, positions, epic, account_currency):
                 telemetry.pop(deal_key, None)
             except Exception as exc:
                 log(f"{epic}: dynamic profit-protection close failed | deal={deal_id} | {exc}")
+        elif trail.get("activated") and floor is not None and pnl < 0.0:
+            log(
+                f"{epic}: PROFIT EXIT BLOCKED | deal={deal_id} | current={pnl:.2f} {account_currency} | "
+                f"floor={floor:.2f} {account_currency} | broker_SL_or_hard_loss_guard_only=True"
+            )
 
     # Only prune deals belonging to this market. Other markets may be
     # monitored later in the same pass; deleting their peaks here would
