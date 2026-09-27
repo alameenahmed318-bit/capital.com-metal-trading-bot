@@ -151,9 +151,9 @@ ADAPTIVE_RISK_HIGH_VOL_1 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_1", 1.25)
 ADAPTIVE_RISK_HIGH_VOL_2 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_2", 1.50)
 ADAPTIVE_RISK_LOW_VOL = getattr(config, "ADAPTIVE_RISK_LOW_VOL", 0.75)
 BREAKOUT_CONFIRM_ATR = getattr(config, "BREAKOUT_CONFIRM_ATR", 0.05)
-MIN_ENTRY_SCORE = getattr(config, "MIN_ENTRY_SCORE", 50.0)
+MIN_ENTRY_SCORE = None  # Legacy compatibility only; active gate is dynamic_entry_score_floor().
 # Active AI bots use their profile-specific confidence floor.
-MIN_ENTRY_STRENGTH = 0.55
+MIN_ENTRY_STRENGTH = None  # Legacy compatibility only; active gate is dynamic_entry_policy().
 
 MIN_TRADE_SIZE = getattr(config, "MIN_TRADE_SIZE", {"GOLD": 0.01, "EURUSD": 0.01, "SILVER": 1.0, "OIL_CRUDE": 0.01, "US100": 0.01, "US500": 0.01})
 STATE_FILE = "fx_ai_trades_state.json"
