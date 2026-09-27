@@ -1765,7 +1765,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             )
             return None
         ai_manage_positions(api, owned_positions, epic, ai_decision)
-        signal = ai_decision.get('signal') if ai_engine.AI_ENABLED else legacy_signal
+        signal = (ai_decision.get('advanced_ai', {}).get('signal_after') if ai_engine.AI_ENABLED else legacy_signal)
         confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         strong_signal = bool(signal in {"BUY", "SELL"} and confidence >= STRONG_SIGNAL_MIN_CONFIDENCE)
         strong_target_legs = STRONG_SIGNAL_MAX_LEGS if strong_signal else 1
@@ -1878,9 +1878,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         else:
             requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK
 
-        risk_multiplier = adaptive_risk_multiplier(df)
+        legacy_risk_multiplier = adaptive_risk_multiplier(df)
+        ai_risk_multiplier = safe_float(ai_decision.get('advanced_ai', {}).get('risk_multiplier')) if ai_engine.AI_ENABLED else None
+        risk_multiplier = float(np.clip(ai_risk_multiplier if ai_risk_multiplier is not None else legacy_risk_multiplier, PORTFOLIO_RISK_MIN_MULTIPLIER, PORTFOLIO_RISK_MAX_MULTIPLIER))
         requested_risk *= risk_multiplier
-        log(f"{epic}: ADAPTIVE RISK | multiplier={risk_multiplier:.2f} | requested={requested_risk:.2f}")
+        log(f"{epic}: AI RISK AUTHORITY | multiplier={risk_multiplier:.3f} | requested={requested_risk:.2f} | legacy_vol_mult={legacy_risk_multiplier:.2f}")
         # Hard cap: every new position may risk at most MAX_LOSS_PER_POSITION
         # in account currency. This also caps the secondary loss guard below.
         base_risk_amount = min(
