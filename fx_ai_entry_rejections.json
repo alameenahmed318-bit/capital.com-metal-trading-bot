@@ -160,5 +160,29 @@
     "epic": "BTCUSD",
     "reason": "PROFITABLE_ADD_COOLDOWN",
     "details": "remaining=28s"
+  },
+  {
+    "timestamp": "2026-09-27T11:43:34.015667+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00124158, 'cost_to_stop_ratio': 0.9704, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T11:43:38.340515+00:00",
+    "epic": "BTCUSD",
+    "reason": "MAX_POSITIONS_PER_EPIC",
+    "details": "limit=5"
+  },
+  {
+    "timestamp": "2026-09-27T11:44:07.943236+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00124158, 'cost_to_stop_ratio': 0.9704, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T11:44:10.714314+00:00",
+    "epic": "BTCUSD",
+    "reason": "MAX_POSITIONS_PER_EPIC",
+    "details": "limit=5"
   }
 ]
