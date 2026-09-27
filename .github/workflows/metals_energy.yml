@@ -2,15 +2,17 @@ name: Capital Metals & Energy AI Bot
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
 
-# Keep Metals runs serialized with each other, but do not block the FX bot.
+# Metals has its own queue and never blocks the FX workflow.
 concurrency:
   group: capital-metals-ai
   cancel-in-progress: false
   queue: max
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   trade-metals:
@@ -26,6 +28,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           echo "EXECUTION_SHA=$(git rev-parse HEAD)"
+          git log -1 --oneline
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -55,3 +58,89 @@ jobs:
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Run broker trade ledger
+        if: ${{ always() }}
+        run: python trade_ledger.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          TRADE_LEDGER_LOOKBACK_DAYS: "30"
+
+      - name: Quant validation
+        if: ${{ always() }}
+        run: python quant_validation.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
+          STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
+
+      - name: Build realized AI dataset and registry
+        if: ${{ always() }}
+        run: python ai_dataset_job.py
+
+      - name: Persist Metals bot state
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          STATE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STATE_DIR"' EXIT
+          STATE_FILES=(
+            metals_energy_ai_strategy_positions.json
+            metals_energy_ai_trades_state.json
+            metals_energy_ai_bot_safety_state.json
+            metals_energy_ai_open_positions.json
+            metals_energy_ai_execution_quality.json
+            metals_energy_ai_entry_rejections.json
+            quant_validation.json
+            ai_outcomes.db
+            ai_training_dataset.parquet
+            ai_model_registry.json
+            broker_trade_ledger.json
+            broker_trade_ledger.csv
+          )
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
+          done
+
+          git reset --hard HEAD
+          git pull --rebase -X theirs origin main
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$STATE_DIR/$f" ]; then cp -a "$STATE_DIR/$f" "$f"; fi
+          done
+
+          EXISTING_STATE_FILES=()
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then EXISTING_STATE_FILES+=( "$f" ); fi
+          done
+          if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
+            echo "No Metals state files to persist."
+            exit 0
+          fi
+
+          git add -f "${EXISTING_STATE_FILES[@]}"
+          if git diff --cached --quiet; then
+            echo "No Metals state changes to persist."
+            exit 0
+          fi
+
+          git commit -m "Update Metals AI state [skip ci]"
+          git push origin main || {
+            git pull --rebase -X theirs origin main
+            git push origin main
+          }
