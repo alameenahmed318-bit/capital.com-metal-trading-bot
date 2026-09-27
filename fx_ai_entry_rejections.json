@@ -1498,5 +1498,365 @@
     "epic": "EURUSD_W",
     "reason": "PRETRADE_COST",
     "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:24:43.734933+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:24:47.732668+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:25:16.653922+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:25:17.074062+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:25:45.255075+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:25:45.670167+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:26:11.516615+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:26:15.327648+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:26:40.190391+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:26:40.596701+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:27:09.889755+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:27:10.899601+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:27:40.186256+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:27:40.598870+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:28:05.305232+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:28:09.118107+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:28:33.990291+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:28:35.569709+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:29:02.398746+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:29:03.016716+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:29:32.725991+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:29:33.141283+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:29:57.995718+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:30:01.806110+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:30:27.931836+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:30:28.347560+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:30:56.374623+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:30:56.976168+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:31:26.244853+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:31:27.265057+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:31:51.970469+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:31:55.781458+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:32:20.628445+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:32:22.282475+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:32:49.119752+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:32:49.730092+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:33:19.002166+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:33:19.421611+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:33:44.050173+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:33:48.458210+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:34:14.406013+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:34:14.822893+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:34:42.865027+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:34:43.482113+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:35:12.822726+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:35:13.247742+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:35:37.889830+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:35:41.703530+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:36:06.545867+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:36:08.779052+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:36:36.865286+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:36:37.289292+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:37:05.509959+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:37:05.916786+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:37:31.805391+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:37:36.206924+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:38:02.127949+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:38:02.538698+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T19:38:30.579570+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0007, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00104158, 'cost_to_stop_ratio': 0.6194, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T19:38:31.195210+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
   }
 ]
