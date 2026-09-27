@@ -20,7 +20,7 @@ from ai_expected_edge import estimate as estimate_expected_edge
 import ai_outcomes
 import ai_calibration
 
-MODE = os.environ.get("AI_ADVANCED_GATES_MODE", "shadow").strip().lower()
+MODE = os.environ.get("AI_ADVANCED_GATES_MODE", "enforce").strip().lower()
 if MODE not in {"shadow", "enforce"}:
     MODE = "shadow"
 
@@ -184,5 +184,5 @@ def evaluate(
         "risk_multiplier": mult,
         "signal_before": ai_decision.get("signal"),
         "signal_after": enforced_signal,
-        "entry_filter_policy": "AI_DIAGNOSTICS_ADVISORY",
+        "entry_filter_policy": "AI_PRIMARY_DIRECTION_ENFORCED",
     }
