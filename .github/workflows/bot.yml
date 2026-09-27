@@ -67,6 +67,8 @@ jobs:
           CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
           IS_DEMO: ${{ secrets.IS_DEMO }}
           TRADE_LEDGER_LOOKBACK_DAYS: "30"
+          TRADE_LEDGER_JSON: "fx_broker_trade_ledger.json"
+          TRADE_LEDGER_CSV: "fx_broker_trade_ledger.csv"
 
       - name: Run quant validation
         run: python quant_validation.py
@@ -82,9 +84,16 @@ jobs:
           VOL_MANAGED_SIZING: "true"
           RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          QUANT_VALIDATION_PATH: "fx_quant_validation.json"
 
       - name: Build realized AI dataset and registry
         run: python ai_dataset_job.py
+        env:
+          AI_OUTCOMES_DB: "fx_ai_outcomes.db"
+          AI_DATASET_PATH: "fx_ai_training_dataset.parquet"
+          AI_MODEL_REGISTRY: "fx_ai_model_registry.json"
+          AI_MODEL_REGISTRY_PREFIX: "fx_"
+          AI_LEARNING_REPORT: "fx_ai_learning_report.json"
 
       - name: Persist bot state
         if: ${{ always() }}
@@ -108,11 +117,11 @@ jobs:
             fx_ai_execution_quality.json
             fx_ai_entry_rejections.json
             fx_ai_entry_candle_state.json
-            quant_validation.json
-            ai_outcomes.db
-            ai_training_dataset.parquet
-            ai_model_registry.json
-            ai_model_registry_EURUSD.json
+            fx_quant_validation.json
+            fx_ai_outcomes.db
+            fx_ai_training_dataset.parquet
+            fx_ai_model_registry.json
+            fx_ai_model_registry_EURUSD.json
             ai_model_registry_GBPUSD.json
             ai_model_registry_USDJPY.json
             ai_model_registry_USDCHF.json
@@ -136,9 +145,9 @@ jobs:
             ai_model_registry_OIL_CRUDE.json
             ai_model_registry_US100.json
             ai_model_registry_US500.json
-            ai_learning_report.json
-            broker_trade_ledger.json
-            broker_trade_ledger.csv
+            fx_ai_learning_report.json
+            fx_broker_trade_ledger.json
+            fx_broker_trade_ledger.csv
           )
 
           for f in "${STATE_FILES[@]}"; do
