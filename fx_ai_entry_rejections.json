@@ -196,5 +196,29 @@
     "epic": "EURUSD_W",
     "reason": "LATE_ENTRY",
     "details": "SELL quote=1.138410; completed_close=1.139130; distance=0.91 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T12:18:10.141414+00:00",
+    "epic": "EURUSD_W",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T12:18:14.497412+00:00",
+    "epic": "BTCUSD",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T12:18:44.105077+00:00",
+    "epic": "EURUSD_W",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T12:18:46.880641+00:00",
+    "epic": "BTCUSD",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
   }
 ]
