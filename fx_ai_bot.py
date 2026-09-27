@@ -13,6 +13,7 @@ base.OPEN_POSITIONS_FILE = "fx_ai_open_positions.json"
 base.SAFETY_STATE_FILE = "fx_ai_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "fx_ai_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
+base.ENTRY_CANDLE_STATE_FILE = "fx_ai_entry_candle_state.json"
 
 # Currency instruments only. Do not silently include metals, energy or indices.
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
