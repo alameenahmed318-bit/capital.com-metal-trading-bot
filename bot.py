@@ -54,7 +54,7 @@ PORTFOLIO_VOL_TARGET_ANNUAL = getattr(config, "PORTFOLIO_VOL_TARGET_ANNUAL", 0.1
 PORTFOLIO_RISK_MIN_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MIN_MULTIPLIER", 0.35)
 PORTFOLIO_RISK_MAX_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MAX_MULTIPLIER", 1.00)
 PORTFOLIO_COV_LOOKBACK = getattr(config, "PORTFOLIO_COV_LOOKBACK", 192)
-PRETRADE_COST_FILTER_ENABLED = getattr(config, "PRETRADE_COST_FILTER_ENABLED", True)
+PRETRADE_COST_FILTER_ENABLED = False
 MAX_COST_TO_STOP_RATIO = getattr(config, "MAX_COST_TO_STOP_RATIO", 0.40)
 EXTRA_SLIPPAGE_BUFFER_PCT = getattr(config, "EXTRA_SLIPPAGE_BUFFER_PCT", 0.01)
 ALPHA_ENSEMBLE_ENABLED = False
@@ -1352,10 +1352,63 @@ def quant_signal_score(df, epic, htf_df):
     return None
 
 
+
+def classic_25sep_signal(df, epic, htf_df):
+    """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
+    This is the sole entry authority. AI remains advisory only.
+    """
+    if df is None or htf_df is None or len(df) < 205 or len(htf_df) < 205:
+        return None
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    close = safe_float(cur["close"])
+    prev_close = safe_float(prev["close"])
+    atr = safe_float(cur["atr"])
+    rsi = safe_float(cur["rsi"])
+    if None in (close, prev_close, atr, rsi) or atr <= 0:
+        return None
+
+    m15 = df["close"].astype(float)
+    h1 = htf_df["close"].astype(float)
+    ema9 = m15.ewm(span=9, adjust=False).mean().iloc[-2]
+    ema21 = m15.ewm(span=21, adjust=False).mean().iloc[-2]
+    h50 = h1.ewm(span=50, adjust=False).mean().iloc[-2]
+    h200 = h1.ewm(span=200, adjust=False).mean().iloc[-2]
+
+    # Read the completed candle, not the still-forming candle.
+    body = abs(float(cur["close"]) - float(cur["open"]))
+    candle_range = max(float(cur["high"]) - float(cur["low"]), 1e-12)
+    body_ratio = body / candle_range
+    close_pos_buy = (float(cur["close"]) - float(cur["low"])) / candle_range
+    close_pos_sell = (float(cur["high"]) - float(cur["close"])) / candle_range
+
+    recent20 = df.iloc[-21:-1]
+    prior_high = float(recent20["high"].max())
+    prior_low = float(recent20["low"].min())
+
+    buy_trend = ema9 > ema21 and h50 > h200
+    sell_trend = ema9 < ema21 and h50 < h200
+    buy_momentum = close > prev_close and 45 <= rsi <= 70
+    sell_momentum = close < prev_close and 30 <= rsi <= 55
+    buy_breakout = close > prior_high
+    sell_breakout = close < prior_low
+
+    buy_candle = float(cur["close"]) > float(cur["open"]) and close_pos_buy >= 0.55
+    sell_candle = float(cur["close"]) < float(cur["open"]) and close_pos_sell >= 0.55
+    buy = (buy_trend and buy_momentum and buy_candle) or (buy_breakout and buy_candle and rsi < 75)
+    sell = (sell_trend and sell_momentum and sell_candle) or (sell_breakout and sell_candle and rsi > 25)
+
+    if buy and not sell:
+        log(f"{epic}: 25SEP CLASSIC BUY | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
+        return "BUY"
+    if sell and not buy:
+        log(f"{epic}: 25SEP CLASSIC SELL | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
+        return "SELL"
+    return None
+
+
 def generate_signal(df, epic, htf_df=None):
-    if not STRATEGY_SELECTOR_ENABLED:
-        return quant_signal_score(df, epic, htf_df)
-    return quant_signal_score(df, epic, htf_df)
+    return classic_25sep_signal(df, epic, htf_df)
 
 
 def market_entry_strength(df, htf_df, direction):
@@ -1462,7 +1515,7 @@ def correlation_allows_entry(api, epic, df, positions, signal):
     return True
 
 
-def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None, ai_decision=None):
+def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None):
     # Use only the latest completed 15m candle for volatility.
     current = df.iloc[-2]
     atr = safe_float(current["atr"])
@@ -1491,14 +1544,9 @@ def calculate_trade(df, direction, entry_price=None, strength=0.75, epic=None, a
             )
         return None
 
-    # Strong aligned signals receive more volatility room; position sizing
-    # automatically shrinks as stop distance widens.
-    if ai_decision and ai_decision.get("signal") == direction:
-        sl_mult = float(ai_decision.get("sl_atr", 2.0))
-        tp_mult = float(ai_decision.get("tp_atr", 3.0))
-    else:
-        sl_mult = 1.5 + 0.5 * min(1.0, max(0.0, strength))
-        tp_mult = 0.0
+    # 25/9 protection: fixed 2 ATR SL and 3 ATR TP. AI does not alter execution.
+    sl_mult = 2.0
+    tp_mult = 3.0
     sl_distance = atr * sl_mult
     profit_level = None
     if tp_mult > 0:
@@ -2468,20 +2516,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Strategy-only entry gate. AI confidence is informational and cannot delay,
         # block, reverse or modify the strategy entry.
         strength = strategy_strength
-        regime_now, vol_ratio_now, adaptive_score_floor, required_strength, dynamic_max_positions, strong_signal = dynamic_entry_policy(
-            df, htf_df, epic, signal, strength
-        )
-        if strength < required_strength:
-            record_entry_rejection(
-                epic, "ADAPTIVE_STRENGTH_FLOOR",
-                f"regime={regime_now}; strength={strength:.2f}; required={required_strength:.2f}; vol_ratio={vol_ratio_now:.2f}"
-            )
-            log(f"{epic}: adaptive strength below floor ({strength:.2f} < {required_strength:.2f}); no trade.")
-            return None
-        log(
-            f"{epic}: ADAPTIVE ENTRY | regime={regime_now} | strength={strength:.2f} | "
-            f"required={required_strength:.2f} | dynamic_max_positions={dynamic_max_positions} | strong={strong_signal}"
-        )
+        regime_now = "25SEP_CLASSIC"
+        vol_ratio_now = 1.0
+        strong_signal = True
+        log(f"{epic}: CLASSIC ENTRY | strategy=25SEP | strength={strength:.2f} | filters=MINIMAL")
         trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
@@ -2554,10 +2592,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK
 
         legacy_risk_multiplier = adaptive_risk_multiplier(df)
-        ai_risk_multiplier = safe_float(ai_decision.get('advanced_ai', {}).get('risk_multiplier')) if ai_engine.AI_ENABLED else None
-        risk_multiplier = float(np.clip(ai_risk_multiplier if ai_risk_multiplier is not None else legacy_risk_multiplier, PORTFOLIO_RISK_MIN_MULTIPLIER, PORTFOLIO_RISK_MAX_MULTIPLIER))
+        # AI is advisory only: it cannot change entry direction or risk sizing.
+        risk_multiplier = float(np.clip(legacy_risk_multiplier, PORTFOLIO_RISK_MIN_MULTIPLIER, PORTFOLIO_RISK_MAX_MULTIPLIER))
         requested_risk *= risk_multiplier
-        log(f"{epic}: AI RISK AUTHORITY | multiplier={risk_multiplier:.3f} | requested={requested_risk:.2f} | legacy_vol_mult={legacy_risk_multiplier:.2f}")
+        log(f"{epic}: AI ASSISTANT | risk remains strategy-owned | multiplier={risk_multiplier:.3f} | requested={requested_risk:.2f} | legacy_vol_mult={legacy_risk_multiplier:.2f}")
         # Hard cap: every new position may risk at most MAX_LOSS_PER_POSITION
         # in account currency. This also caps the secondary loss guard below.
         base_risk_amount = min(
