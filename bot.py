@@ -1397,22 +1397,44 @@ def portfolio_reserved_risk(api, positions, account_currency, market_cache=None)
     )
 
 def ai_manage_positions(api, positions, epic, ai_decision):
-    """Let the ML model manage direction changes on already-open positions."""
+    """AI is the primary discretionary exit; broker SL/TP and trailing remain safety nets.
+    
+    Exit only when the final AI direction is clearly opposite the open position,
+    or when the AI pipeline explicitly requests an exit. This avoids closing a
+    winning trade merely because it crossed a fixed profit amount.
+    """
     if not ai_decision or not ai_decision.get("enabled"):
         return
-    signal = ai_decision.get("raw_signal") or ai_decision.get("signal")
+
+    advanced = ai_decision.get("advanced_ai") if isinstance(ai_decision.get("advanced_ai"), dict) else {}
+    signal = advanced.get("signal_after") or ai_decision.get("signal") or ai_decision.get("raw_signal")
     confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
+    explicit_exit = bool(
+        ai_decision.get("exit")
+        or ai_decision.get("should_exit")
+        or advanced.get("exit")
+        or advanced.get("should_exit")
+    )
     exit_confidence = max(0.65, float(os.environ.get("AI_EXIT_CONFIDENCE", "0.65")))
-    if signal not in ("BUY", "SELL") or confidence < exit_confidence:
-        return
+
     for position in get_positions_for_epic(positions, epic):
         direction = position_direction(position)
         deal_id = position_deal_id(position)
-        if not deal_id or direction == signal:
+        if not deal_id:
             continue
+
+        opposite_signal = signal in ("BUY", "SELL") and direction in ("BUY", "SELL") and signal != direction
+        ai_authorized_exit = explicit_exit or (opposite_signal and confidence >= exit_confidence)
+        if not ai_authorized_exit:
+            continue
+
         try:
             response = api.close_position(deal_id)
-            log(f"{epic}: AI EXIT | existing={direction} | AI={signal} | confidence={confidence:.3f} | deal={deal_id} | response={response}")
+            reason = "EXPLICIT_AI_EXIT" if explicit_exit else "AI_REVERSAL"
+            log(
+                f"{epic}: AI EXIT | reason={reason} | existing={direction} | "
+                f"AI={signal} | confidence={confidence:.3f} | deal={deal_id} | response={response}"
+            )
         except Exception as exc:
             log(f"{epic}: AI EXIT failed | deal={deal_id} | {exc}")
 
