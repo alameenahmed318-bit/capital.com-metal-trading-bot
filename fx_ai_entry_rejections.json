@@ -262,5 +262,17 @@
     "epic": "BTCUSD",
     "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
     "details": "open_account_positions=1"
+  },
+  {
+    "timestamp": "2026-09-27T13:51:36.154893+00:00",
+    "epic": "EURUSD_W",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T13:51:41.345905+00:00",
+    "epic": "BTCUSD",
+    "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
+    "details": "open_account_positions=1"
   }
 ]
