@@ -47,7 +47,7 @@ FX_EPICS = [
     "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
 ]
 # Metals + energy bot: metals and crude oil only.
-METALS_ENERGY_EPICS = ["GOLD", "SILVER", "OIL_CRUDE"]
+METALS_ENERGY_EPICS = ["GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"]
 # Compatibility universe used by shared validation/market configuration.
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
 
