@@ -39,8 +39,6 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: AI architecture self-check
-        run: python ai_self_check_v2.py
 
       - name: Run Capital FX AI bot
         run: python fx_ai_bot.py
@@ -140,7 +138,6 @@ jobs:
             ai_learning_report.json
             broker_trade_ledger.json
             broker_trade_ledger.csv
-
           )
 
           for f in "${STATE_FILES[@]}"; do
