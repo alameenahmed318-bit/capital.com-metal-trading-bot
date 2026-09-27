@@ -106,6 +106,7 @@ jobs:
             metals_energy_ai_open_positions.json
             metals_energy_ai_execution_quality.json
             metals_energy_ai_entry_rejections.json
+            fx_ai_entry_candle_state.json
             quant_validation.json
             ai_outcomes.db
             ai_training_dataset.parquet
