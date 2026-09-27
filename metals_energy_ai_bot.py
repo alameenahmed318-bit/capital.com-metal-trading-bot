@@ -13,6 +13,7 @@ base.OPEN_POSITIONS_FILE = "metals_energy_ai_open_positions.json"
 base.SAFETY_STATE_FILE = "metals_energy_ai_bot_safety_state.json"
 base.EXECUTION_QUALITY_FILE = "metals_energy_ai_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "metals_energy_ai_entry_rejections.json"
+base.ENTRY_CANDLE_STATE_FILE = "metals_energy_ai_entry_candle_state.json"
 
 # Metals + oil + indices only. No FX.
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
