@@ -113,6 +113,8 @@ jobs:
             ai_outcomes.db
             ai_training_dataset.parquet
             ai_model_registry.json
+            ai_model_registry_*.json
+            ai_learning_report.json
             broker_trade_ledger.json
             broker_trade_ledger.csv
 
