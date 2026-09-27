@@ -39,15 +39,17 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # EURUSD_W is enabled for weekend FX where the connected account exposes it.
 # USDJPY_W returned broker 404 in repeated runs; leave it disabled until
 # the exact epic is verified for this account. Never guess broker identifiers.
-EPICS = [
-    "GOLD",
-    "EURUSD",
-    "SILVER",
-    "OIL_CRUDE",
-    "US100",
-    "US500",
-    "EURUSD_W",
+# Asset universe is deliberately split between the two active bots.
+# FX bot: currency pairs only. Broker availability is checked at runtime.
+FX_EPICS = [
+    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
+    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
+    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
 ]
+# Metals + energy bot: metals and crude oil only.
+METALS_ENERGY_EPICS = ["GOLD", "SILVER", "OIL_CRUDE"]
+# Compatibility universe used by shared validation/market configuration.
+EPICS = FX_EPICS + METALS_ENERGY_EPICS
 
 FORWARD_TEST_EPICS = EPICS
 
