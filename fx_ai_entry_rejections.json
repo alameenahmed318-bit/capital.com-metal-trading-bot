@@ -922,5 +922,263 @@
     "epic": "BTCUSD",
     "reason": "ACCOUNT_EPIC_ALREADY_OWNED",
     "details": "open_account_positions=8"
+  },
+  {
+    "timestamp": "2026-09-27T16:52:23.831139+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138500; completed_close=1.139070; distance=0.67 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:52:59.876638+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138380; completed_close=1.139070; distance=0.81 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:53:35.115339+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00124161, 'cost_to_stop_ratio': 0.8297, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T16:54:08.002759+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138350; completed_close=1.139070; distance=0.84 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:54:39.862985+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138550; completed_close=1.139070; distance=0.61 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:54:40.302692+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:55:07.744456+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138460; completed_close=1.139070; distance=0.71 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:55:08.447814+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:55:36.801363+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138460; completed_close=1.139070; distance=0.71 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:56:03.422491+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138470; completed_close=1.139070; distance=0.70 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:56:07.057021+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:56:32.416335+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138470; completed_close=1.139070; distance=0.70 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:57:02.726483+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138470; completed_close=1.139070; distance=0.70 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:57:03.744495+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:57:31.226449+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138530; completed_close=1.139070; distance=0.63 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:57:31.780730+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:57:55.692819+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138530; completed_close=1.139070; distance=0.63 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:58:00.412578+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:58:23.501577+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138490; completed_close=1.139070; distance=0.68 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:58:23.845352+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:58:52.275658+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138430; completed_close=1.139070; distance=0.75 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:58:53.265680+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:59:20.742348+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138170; completed_close=1.139070; distance=1.05 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:59:21.051362+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T16:59:46.032862+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138130; completed_close=1.139070; distance=1.10 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T16:59:49.749513+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T17:00:12.901014+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=1.138450; completed_close=1.139070; distance=0.73 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:00:43.443544+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.140000; completed_close=1.138840; distance=1.37 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:01:11.654326+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139390; completed_close=1.138840; distance=0.65 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:01:36.962106+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139750; completed_close=1.138840; distance=1.08 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:02:04.925145+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139380; completed_close=1.138840; distance=0.64 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:02:33.537318+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139960; completed_close=1.138840; distance=1.32 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:03:02.086390+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139320; completed_close=1.138840; distance=0.57 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:03:26.870213+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139780; completed_close=1.138840; distance=1.11 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:03:54.772489+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139780; completed_close=1.138840; distance=1.11 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:04:23.505045+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139700; completed_close=1.138840; distance=1.02 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:04:51.849722+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139550; completed_close=1.138840; distance=0.84 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:05:17.896712+00:00",
+    "epic": "EURUSD_W",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=1.139710; completed_close=1.138840; distance=1.03 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-27T17:05:21.491351+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T17:05:45.718267+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00124178, 'cost_to_stop_ratio': 0.8383, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T17:05:46.139531+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-27T17:06:13.375195+00:00",
+    "epic": "EURUSD_W",
+    "reason": "PRETRADE_COST",
+    "details": "{'spread_price': 0.0009, 'median_slippage_pct': 0.01, 'slippage_source': 'fallback_buffer', 'estimated_round_trip_cost': 0.00124178, 'cost_to_stop_ratio': 0.8383, 'max_cost_to_risk': 0.4, 'allowed': False}"
+  },
+  {
+    "timestamp": "2026-09-27T17:06:14.942482+00:00",
+    "epic": "BTCUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
   }
 ]
