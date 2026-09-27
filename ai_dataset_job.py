@@ -26,6 +26,10 @@ def _profile_for_epic(epic):
     return "CAPITAL_FX_AI"
 
 
+REGISTRY_PREFIX = os.environ.get("AI_MODEL_REGISTRY_PREFIX", "")
+LEARNING_REPORT_PATH = os.environ.get("AI_LEARNING_REPORT", "ai_learning_report.json")
+
+
 def _safe_name(value):
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(value).strip().upper()) or "UNKNOWN"
 
@@ -167,7 +171,7 @@ def main():
             "trade_entry_gate": "NOT_USED",
         }
 
-        registry_path = f"ai_model_registry_{_safe_name(epic)}.json"
+        registry_path = f"{REGISTRY_PREFIX}ai_model_registry_{_safe_name(epic)}.json"
         registry_reports[epic] = ai_outcomes.update_registry(
             metrics["model_version"],
             metrics,
@@ -198,7 +202,7 @@ def main():
             "AI remains support-only for entry."
         ),
     }
-    with open("ai_learning_report.json", "w", encoding="utf-8") as handle:
+    with open(LEARNING_REPORT_PATH, "w", encoding="utf-8") as handle:
         json.dump(summary, handle, ensure_ascii=False, indent=2, default=str)
     print(json.dumps(summary, indent=2, default=str))
 
