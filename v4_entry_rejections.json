@@ -1,11 +1,5 @@
 [
   {
-    "timestamp": "2026-09-26T13:03:03.481417+00:00",
-    "epic": "EURUSD_W",
-    "reason": "SPREAD_FILTER",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-26T13:03:03.487035+00:00",
     "epic": "USDJPY_W",
     "reason": "MARKET_UNAVAILABLE",
@@ -5995,6 +5989,12 @@
   },
   {
     "timestamp": "2026-09-27T07:45:31.877042+00:00",
+    "epic": "EURUSD_W",
+    "reason": "AI_SPREAD_DECISION",
+    "details": "AI rejected current spread; legacy_cap=0.1500%"
+  },
+  {
+    "timestamp": "2026-09-27T07:57:36.297564+00:00",
     "epic": "EURUSD_W",
     "reason": "AI_SPREAD_DECISION",
     "details": "AI rejected current spread; legacy_cap=0.1500%"
