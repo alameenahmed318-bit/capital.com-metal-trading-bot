@@ -26,7 +26,7 @@ DECISION_CACHE = {}
 WF_FOLDS = 5
 REALIZED_MIN_SAMPLES = int(os.environ.get("AI_REALIZED_MIN_SAMPLES", "200"))
 
-# Flexible AI entry floors: widen opportunity capture without changing hard risk controls.
+# Active-bot AI entry profiles: FX and metals-energy only; hard risk controls remain outside this module.
 # These floors only affect AI signal admission; risk, broker status, spread, sizing, SL/TP remain enforced outside this module.
 PROFILES = {
     "CAPITAL_FX_AI": {"min_train":140,"horizon":4,"label_atr":0.08,"min_conf":0.54,"wf_min_train":100,"wf_acc":0.40,"wf_precision":0.45,"wf_directional_rate":0.05,"max_iter":220,"lr":0.055,"leaf":17,"seed":505},
