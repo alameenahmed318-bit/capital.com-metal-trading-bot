@@ -1461,13 +1461,13 @@ def ai_manage_positions(api, positions, epic, ai_decision):
             log(
                 f"{epic}: AI PROTECT | existing={direction} | AI={signal} | "
                 f"confidence={confidence:.3f} | pnl={pnl:.2f} | "
-                f"uncertainty={advanced.get("enhanced_uncertainty")} | "
-                f"regime={(advanced.get("regime") or {}).get("regime", "UNKNOWN")}"
+                f"uncertainty={advanced.get('enhanced_uncertainty')} | "
+                f"regime={(advanced.get('regime') or {}).get('regime', 'UNKNOWN')}"
             )
         elif action_bias == "HOLD" and direction == signal:
             log(
                 f"{epic}: AI HOLD | existing={direction} | confidence={confidence:.3f} | "
-                f"pnl={pnl:.2f} | regime={(advanced.get("regime") or {}).get("regime", "UNKNOWN")}"
+                f"pnl={pnl:.2f} | regime={(advanced.get('regime') or {}).get('regime', 'UNKNOWN')}"
             )
 
 def manage_profit_trailing(api, positions, epic, account_currency):
