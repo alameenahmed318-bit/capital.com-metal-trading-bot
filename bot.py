@@ -652,7 +652,7 @@ def position_profit_level(position):
 
 def position_unrealized_pnl(position):
     nested = _position_nested(position)
-    return safe_float(_first_value(
+    raw = _first_value(
         position.get("profitLoss"),
         position.get("unrealizedProfitLoss"),
         position.get("unrealizedPnl"),
@@ -663,7 +663,13 @@ def position_unrealized_pnl(position):
         nested.get("profit"),
         position.get("upl"),
         nested.get("upl"),
-    ), 0.0) or 0.0
+    )
+    # Missing broker P/L is unknown, not zero. Preserve the last valid reading
+    # in position telemetry so profit protection never treats missing data as
+    # a fresh flat/profit reset.
+    if raw is None or safe_float(raw, None) is None:
+        return None
+    return safe_float(raw, None)
 
 def position_summary(position):
     return {
@@ -1362,8 +1368,9 @@ def position_size_value(position):
 
 def estimated_position_risk_account(position, api, account_currency, market_cache=None):
     entry, stop, size = position_open_level(position), position_stop_level(position), position_size_value(position)
+    # Unknown risk must never be interpreted as zero risk.
     if entry is None or stop is None or size <= 0:
-        return 0.0
+        return None
     try:
         epic = position_epic(position)
         market = None
@@ -1376,23 +1383,25 @@ def estimated_position_risk_account(position, api, account_currency, market_cach
         lot_size = safe_float(market.get("instrument", {}).get("lotSize"), 1.0) or 1.0
         quote_to_account = quote_to_account_rate(market, account_currency)
         if quote_to_account is None:
-            return 0.0
+            return None
         return abs(entry - stop) * size * lot_size * quote_to_account
     except Exception:
-        return 0.0
+        return None
 
 def basket_reserved_risk(api, positions, epic, account_currency, market_cache=None):
-    return sum(
+    risks = [
         estimated_position_risk_account(p, api, account_currency, market_cache=market_cache)
         for p in get_positions_for_epic(positions, epic)
-    )
+    ]
+    return None if any(r is None for r in risks) else sum(risks)
 
 
 def portfolio_reserved_risk(api, positions, account_currency, market_cache=None):
-    return sum(
+    risks = [
         estimated_position_risk_account(p, api, account_currency, market_cache=market_cache)
         for p in positions
-    )
+    ]
+    return None if any(r is None for r in risks) else sum(risks)
 
 def ai_manage_positions(api, positions, epic, ai_decision):
     """AI position manager: HOLD / PROTECT / EXIT using the final AI market state.
