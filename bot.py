@@ -2624,3 +2624,126 @@ def save_live_stats(api, account_currency):
                 "win_rate": round(len(winners) / len(closed_pnls) * 100, 1) if closed_pnls else 0,
                 "explicit_closed_trade_pnl": round(sum(closed_pnls), 2),
                 "broker_account_profit_loss": broker_pnl,
+                "best_trade": round(max(closed_pnls), 2) if closed_pnls else None,
+                "worst_trade": round(min(closed_pnls), 2) if closed_pnls else None,
+                "average_win": round(sum(winners) / len(winners), 2) if winners else None,
+                "average_loss": round(sum(losers) / len(losers), 2) if losers else None,
+            },
+            "by_epic": by_epic,
+        }
+        with open("stats.json", "w", encoding="utf-8") as file:
+            json.dump(stats, file, indent=2)
+        log(f"STATS SAVED | broker account P/L={broker_pnl:.2f} {broker_currency or account_currency} | closed seen={len(closed_pnls)+unknown_closed} | explicit trade P/L={len(closed_pnls)} | unknown={unknown_closed}")
+    except Exception as exc:
+        log(f"Live stats save failed; continuing safely: {exc}")
+
+
+def log_trade_report(api, account_currency):
+    try:
+        today = utc_day()
+        now = datetime.now(timezone.utc)
+        report = get_closed_trade_report(api, f"{today}T00:00:00", now.strftime("%Y-%m-%dT%H:%M:%S"))
+        broker_currency = report["broker_currency"] or account_currency
+        broker_pnl = report["broker_account_pnl"]
+        broker_pnl_text = f"{broker_pnl:.2f} {broker_currency}" if broker_pnl is not None else "UNAVAILABLE"
+        log(
+            f"TRADE REPORT | today={today} | closed seen={report['closed']} | "
+            f"closed with explicit P/L={report['closed'] - report['unknown_pnl']} | "
+            f"unknown P/L={report['unknown_pnl']} | broker account P/L={broker_pnl_text}"
+        )
+    except Exception as exc:
+        log(f"Trade report unavailable; continuing safely: {exc}")
+
+def run_cycle():
+    log("Starting trading cycle...")
+    log("DEMO MODE / LIVE TRADING DISABLED")
+    log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
+    log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
+    log(f"Risk-budgeted entries: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; no fixed position-count cap; max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
+    api = CapitalAPI()
+    log("Logging in to Capital.com...")
+    api.login()
+
+    # Start the authenticated Capital.com WebSocket once per bot run.
+    # It streams live bid/offer prices while the normal AI/candle engine runs.
+    global LIVE_PRICE_STREAM
+    try:
+        LIVE_PRICE_STREAM = CapitalLivePriceStream(
+            cst=api.cst,
+            security_token=api.security_token,
+            epics=EPICS,
+            log_fn=log,
+        )
+        LIVE_PRICE_STREAM.start()
+        log(
+            f"LIVE PRICE FEED | WebSocket active | markets={len(EPICS)} | "
+            f"max_quote_age={LIVE_PRICE_MAX_AGE_SECONDS:.1f}s"
+        )
+    except Exception as live_start_exc:
+        LIVE_PRICE_STREAM = None
+        log(f"LIVE PRICE FEED | unavailable; REST fallback active: {live_start_exc}")
+
+    balance = api.get_balance()
+    account_currency = api.get_account_currency()
+    log(f"Account balance: {balance} {account_currency}")
+
+    # A successful login/account read proves the API is healthy. Do not let
+    # stale errors from an earlier bot run permanently block this run.
+    if int(SAFETY.get("consecutive_errors", 0)) > 0:
+        SAFETY["consecutive_errors"] = 0
+        save_safety_state(SAFETY)
+
+    reset_daily_safety(balance)
+    update_loss_cooldowns_from_history(api)
+    try:
+        reconciliation = ai_outcomes.reconcile(api)
+        dataset_report = ai_outcomes.build_training_dataset()
+        log(f"AI OUTCOME RECONCILIATION | {reconciliation} | DATASET={dataset_report}")
+    except Exception as outcome_exc:
+        log(f"AI outcome reconciliation unavailable; trading continues safely: {outcome_exc}")
+    log_trade_report(api, account_currency)
+    for cycle_epic in EPICS:
+        # Refresh account state before EVERY epic so newly opened/closed positions
+        # are immediately reflected in subsequent decisions within this run.
+        positions = api.get_open_positions()
+        log(f"Open positions before {cycle_epic}: {len(positions)}")
+        log_and_save_open_positions(positions)
+        cleanup_state(positions)
+        # Refresh balance before EVERY epic so risk sizing reflects any
+        # positions opened/closed earlier in this same cycle.
+        balance = api.get_balance()
+        log(f"Refreshed balance before {cycle_epic}: {balance} {account_currency}")
+        process_epic(
+            api=api,
+            epic=cycle_epic,
+            positions=positions,
+            balance=balance,
+            account_currency=account_currency,
+        )
+        time.sleep(1)
+    # Refresh the persisted report after all markets have been processed so
+    # closures that happened during this cycle are included.
+    # Keep the live WebSocket/fast scanner active for the remainder of the cycle.
+    # This allows new entries during the cycle instead of waiting for the next
+    # 15-minute GitHub Actions invocation.
+    monitor_open_positions(api, account_currency)
+    save_live_stats(api, account_currency)
+    try:
+        ai_health = professional_ai_monitor.run()
+        log(f"AI HEALTH | status={ai_health.get('status', 'UNKNOWN')} | samples={ai_health.get('samples', 0)} | anomalies={ai_health.get('anomalies', [])}")
+    except Exception as ai_health_exc:
+        log(f"AI HEALTH | monitor warning: {ai_health_exc}")
+    if LIVE_PRICE_STREAM is not None:
+        try:
+            LIVE_PRICE_STREAM.stop()
+        except Exception as live_stop_exc:
+            log(f"LIVE PRICE FEED | shutdown warning: {live_stop_exc}")
+        LIVE_PRICE_STREAM = None
+    log("Trading cycle completed.")
+
+if __name__ == "__main__":
+    try:
+        run_cycle()
+    except Exception as exc:
+        log(f"MAIN ERROR: {exc}")
+        traceback.print_exc()
