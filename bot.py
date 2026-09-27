@@ -2004,7 +2004,7 @@ def candle_entry_is_fresh(epic, direction, df):
         return False, None, "COMPLETED_CANDLE_UNAVAILABLE"
     state = _load_entry_candle_state()
     row = state.get(str(epic), {})
-    if row.get("candle") == key and row.get("direction") == direction:
+    if row.get("candle") == key:
         return False, key, "SAME_COMPLETED_CANDLE"
     return True, key, None
 
