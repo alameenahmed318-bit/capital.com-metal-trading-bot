@@ -1,4 +1,4 @@
-name: Capital Multi-Market AI Bot
+name: Capital FX AI Bot
 
 on:
   workflow_dispatch:
@@ -40,8 +40,8 @@ jobs:
       - name: AI architecture self-check
         run: python ai_self_check_v2.py
 
-      - name: Run Capital bot
-        run: python multi_market_ai_bot.py
+      - name: Run Capital FX AI bot
+        run: python fx_ai_bot.py
         env:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -100,12 +100,12 @@ jobs:
           trap 'rm -rf "$STATE_DIR"' EXIT
 
           STATE_FILES=(
-            multi_market_strategy_positions.json
-            multi_market_trades_state.json
-            multi_market_bot_safety_state.json
-            multi_market_open_positions.json
-            multi_market_execution_quality.json
-            multi_market_entry_rejections.json
+            fx_ai_strategy_positions.json
+            fx_ai_trades_state.json
+            fx_ai_bot_safety_state.json
+            fx_ai_open_positions.json
+            fx_ai_execution_quality.json
+            fx_ai_entry_rejections.json
             quant_validation.json
             ai_outcomes.db
             ai_training_dataset.parquet
@@ -138,7 +138,7 @@ jobs:
           done
 
           if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
-            echo "No V1 state files exist to persist."
+            echo "No FX AI state files exist to persist."
             exit 0
           fi
 
@@ -148,7 +148,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Update multi-market AI state [skip ci]"
+          git commit -m "Update FX AI state [skip ci]"
 
           # Retry once if another repository update lands between pull and push.
           git push origin main || {
