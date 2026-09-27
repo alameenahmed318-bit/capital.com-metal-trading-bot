@@ -1843,11 +1843,19 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 cache=candle_cache, ttl_seconds=candle_cache_ttl
             )
             if df.empty:
-                log(f"{epic}: no candle data.")
+                log(f"{epic}: no candle data; running price-independent loss and profit guards.")
+                enforce_max_position_loss(api, owned_positions, epic, account_currency)
+                fresh_positions = filter_owned_positions(api.get_open_positions())
+                update_profit_telemetry(fresh_positions, epic)
+                manage_profit_trailing(api, fresh_positions, epic, account_currency)
                 return None
             df = add_indicators(df)
             if len(df) < 3:
-                log(f"{epic}: insufficient candles.")
+                log(f"{epic}: insufficient candles; running price-independent loss and profit guards.")
+                enforce_max_position_loss(api, owned_positions, epic, account_currency)
+                fresh_positions = filter_owned_positions(api.get_open_positions())
+                update_profit_telemetry(fresh_positions, epic)
+                manage_profit_trailing(api, fresh_positions, epic, account_currency)
                 return None
 
         hard_loss_closed = enforce_max_position_loss(api, owned_positions, epic, account_currency)
