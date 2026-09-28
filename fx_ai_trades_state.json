@@ -1,21 +1,20 @@
 {
   "risk_distance": {
-    "00000000-6676-dae2-0493-972c0004511e": 0.0010353382360374457,
-    "00000000-6676-dc9b-0493-972c0004511e": 0.0008226764946252333
+    "00000000-6676-dae2-0493-972c0004511e": 0.0010353382360374457
   },
   "profit_trail": {
     "00000000-6676-dae2-0493-972c0004511e": {
       "peak_profit": -0.1,
       "peak_time": "2026-09-28T09:16:21.772506+00:00",
       "activated": false,
-      "last_pnl": -3.34,
-      "last_update_ts": 1790587620.6423454,
-      "giveback": 3.15,
+      "last_pnl": -2.67,
+      "last_update_ts": 1790588849.9129603,
+      "giveback": 2.57,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
-      "profit_acceleration": -0.074247,
-      "current_profit": -3.34,
-      "last_update": "2026-09-28T09:27:01.029119+00:00",
+      "profit_acceleration": 0.064586,
+      "current_profit": -2.67,
+      "last_update": "2026-09-28T09:47:30.312546+00:00",
       "protected_fraction": 0.3,
       "protected_floor": null
     }
@@ -24,13 +23,13 @@
     "00000000-6676-dae2-0493-972c0004511e": {
       "epic": "EURUSD",
       "direction": "SELL",
-      "current_profit": -3.25,
+      "current_profit": -2.67,
       "peak_profit": -0.1,
-      "giveback": 3.15,
+      "giveback": 2.57,
       "protected_fraction": 0.3,
       "protected_floor": null,
       "peak_time": "2026-09-28T09:16:21.772506+00:00",
-      "last_update": "2026-09-28T09:27:01.029119+00:00"
+      "last_update": "2026-09-28T09:47:30.312546+00:00"
     }
   }
 }
