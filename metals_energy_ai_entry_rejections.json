@@ -1,1745 +1,5 @@
 [
   {
-    "timestamp": "2026-09-28T17:21:57.829540+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.346000; completed_close=61.600000; distance=0.89 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:02.778248+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:22:05.225953+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:22.090700+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:24.111012+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.357000; completed_close=61.600000; distance=0.85 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:27.704085+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:22:30.166961+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:47.037112+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:49.069232+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.371000; completed_close=61.600000; distance=0.80 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:22:52.646442+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:22:54.682481+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:23:11.558751+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:23:13.577618+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.385000; completed_close=61.600000; distance=0.75 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:23:17.163292+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:23:19.194228+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:23:36.056207+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:23:38.076478+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.390000; completed_close=61.600000; distance=0.73 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:23:41.954749+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:23:44.146270+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:01.009183+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:03.034125+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.270000; completed_close=61.600000; distance=1.15 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:06.678884+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:24:08.659787+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:25.673120+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:27.693498+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.298000; completed_close=61.600000; distance=1.05 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:31.257807+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:24:33.300293+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:50.213884+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:52.221837+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.297000; completed_close=61.600000; distance=1.06 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:24:56.050109+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:24:58.249679+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:25:15.110667+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:25:17.139208+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.354000; completed_close=61.600000; distance=0.86 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:25:20.734501+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:25:22.760440+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:25:39.624517+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:25:41.659530+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.396000; completed_close=61.600000; distance=0.71 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:25:45.270415+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:25:47.273551+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:04.138768+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:06.162776+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.391000; completed_close=61.600000; distance=0.73 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:09.757913+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:26:11.792781+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:28.226020+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:30.247352+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.375000; completed_close=61.600000; distance=0.78 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:33.697901+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:26:35.740913+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:53.181590+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:55.624215+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.355000; completed_close=61.600000; distance=0.85 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:26:59.230445+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:27:01.262154+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:27:18.131348+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:27:20.157558+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.375000; completed_close=61.600000; distance=0.78 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:27:23.739840+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:27:26.208715+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:27:43.077325+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:27:45.104727+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.367000; completed_close=61.600000; distance=0.81 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:27:48.687174+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:27:50.720960+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:07.630501+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:09.651216+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.357000; completed_close=61.600000; distance=0.85 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:13.266029+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:28:15.241377+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:32.115203+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:34.208284+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.358000; completed_close=61.600000; distance=0.84 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:37.720826+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:28:39.753002+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:54.786255+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:28:56.806742+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.368000; completed_close=61.600000; distance=0.81 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:00.268121+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:29:02.300788+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:18.163755+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:20.170178+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.363000; completed_close=61.600000; distance=0.83 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:23.772379+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:29:25.802776+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:42.674760+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:44.699974+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.365000; completed_close=61.600000; distance=0.82 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:29:48.285340+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:29:50.321532+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:30:07.185555+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:30:09.210894+00:00",
-    "epic": "SILVER",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=61.384000; completed_close=61.600000; distance=0.75 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T17:30:12.866885+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:30:14.832298+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T17:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T17:30:38.771839+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:30:42.363243+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:30:45.845591+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:45:16.563183+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:45:24.711917+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:45:32.601000+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:45:40.443178+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:01.594952+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:06.941708+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:12.361424+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:17.787945+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:39.796208+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:45.361541+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:50.672466+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:46:56.196837+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:47:18.256176+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:47:23.675081+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:47:28.993779+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:47:34.462300+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:47:56.497220+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:01.993775+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:07.490113+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:12.937607+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:35.146909+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:40.725707+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:46.189562+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:48:51.692756+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:49:13.998660+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:49:19.437867+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:49:24.770532+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:49:30.220236+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:49:52.315252+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:49:57.828110+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:50:03.231875+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:50:08.805920+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:50:30.868224+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:50:36.292204+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:50:41.865424+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:50:47.274134+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:09.429770+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:14.731916+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:20.183766+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:25.634958+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:47.815379+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:53.147793+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:51:58.714713+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:52:04.158218+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:52:26.323679+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:52:31.760699+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:52:37.264062+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:52:42.832466+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:05.477642+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:10.889657+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:16.408273+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:22.280280+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:43.885245+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:49.452720+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:53:54.886372+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:54:00.795879+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:54:22.536728+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:54:28.008926+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:54:33.403886+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:54:39.259994+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:00.948987+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:06.394380+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:11.696901+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:17.733847+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:39.519959+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:44.828730+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:50.381013+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:55:56.389852+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:56:17.816175+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:56:23.135865+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:56:28.561204+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:56:34.573860+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:56:57.436848+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:02.986651+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:08.355756+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:13.761599+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:35.921155+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:41.268583+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:46.684753+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:57:52.222102+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:58:14.142831+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:58:19.566836+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:58:25.120669+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:58:30.567021+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:58:52.617155+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:58:58.018105+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:59:03.626521+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:59:08.997418+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:59:31.043947+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:59:36.426232+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T17:59:42.003069+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:00:58.683064+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:06.012917+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:13.339011+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:20.675103+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:37.550510+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:42.145110+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:46.643008+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:01:51.238950+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:10.678546+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:15.129728+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:19.770629+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:24.226209+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:43.663159+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:48.125358+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:52.755143+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:02:57.285998+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:15.715536+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:20.192896+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:24.806778+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:29.285245+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:48.725059+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:53.177031+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:03:57.813728+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:02.265021+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:21.702928+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:26.160545+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:30.794248+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:35.249130+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:54.221113+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:04:58.802037+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:05:03.312111+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:05:07.987353+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:05:27.428489+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:05:31.881154+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:05:36.517004+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:05:41.566127+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:01.004415+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:05.511710+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:10.093987+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:14.675691+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:34.112320+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:38.568972+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:43.204836+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:06:47.660584+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:07.462444+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:12.490256+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:17.200260+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:21.666237+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:41.102612+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:46.155240+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:51.207354+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:07:56.257768+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:15.697360+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:20.745816+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:25.234552+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:29.841821+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:49.359015+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:53.788630+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:08:58.425920+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:02.910414+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:20.774668+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:25.381115+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:29.870127+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:34.468667+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:52.372788+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:09:56.940449+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:01.465961+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:06.072406+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:25.512207+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:29.967990+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:34.602507+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:39.058499+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:10:58.497092+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:02.975574+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:07.586822+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:12.088974+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:31.528390+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:36.577573+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:41.626720+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:11:46.681801+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:04.529474+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:09.486186+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:14.202088+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:18.699423+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:38.138465+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:43.188208+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:47.680563+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:12:52.280717+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:11.717659+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:16.769866+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:21.823604+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:26.872769+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:46.645631+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:51.431883+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:13:56.412680+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:00.897007+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:19.323814+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:23.852579+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:28.415591+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:32.944501+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:51.776972+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:14:56.423690+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:15:00.900999+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:15:05.513855+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:15:24.952152+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:25:13.746880+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:25:21.730046+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:25:29.699655+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:25:37.851242+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:25:59.370806+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:26:04.753452+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:26:10.416900+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T18:26:15.805017+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-28T18:26:38.137185+00:00",
     "epic": "GOLD",
     "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
@@ -5998,5 +4258,1745 @@
     "epic": "SILVER",
     "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
     "details": "STALE_COMPLETED_CANDLE:2726s"
+  },
+  {
+    "timestamp": "2026-09-28T21:29:34.966713+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3575s"
+  },
+  {
+    "timestamp": "2026-09-28T21:29:38.201554+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3578s"
+  },
+  {
+    "timestamp": "2026-09-28T21:29:52.295004+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3592s"
+  },
+  {
+    "timestamp": "2026-09-28T21:29:53.544434+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3594s"
+  },
+  {
+    "timestamp": "2026-09-28T21:29:53.559635+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3594s"
+  },
+  {
+    "timestamp": "2026-09-28T21:29:53.574488+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3594s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:04.241371+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3604s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:04.989364+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3605s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:05.005016+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3605s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:05.020118+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3605s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:15.125317+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3615s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:16.339164+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3616s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:16.354315+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3616s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:16.369267+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3616s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:27.001692+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3627s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:27.753956+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3628s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:27.769714+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3628s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:27.784675+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3628s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:37.879102+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3638s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:39.089317+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3639s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:39.104981+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3639s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:39.120650+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3639s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:49.752001+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3650s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:50.493470+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3650s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:50.508983+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3651s"
+  },
+  {
+    "timestamp": "2026-09-28T21:30:50.524105+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3651s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:00.635895+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3661s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:01.811627+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3662s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:01.826973+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3662s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:01.842010+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3662s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:12.488735+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3672s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:13.239247+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3673s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:13.254629+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3673s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:13.269898+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3673s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:23.427407+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3683s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:24.615635+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3685s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:24.631099+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3685s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:24.646177+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3685s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:35.425368+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3695s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:36.170947+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3696s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:36.186042+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3696s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:36.200919+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3696s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:46.438754+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3706s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:47.615108+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3708s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:47.630456+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3708s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:47.647973+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3708s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:58.309327+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3718s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:59.043441+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3719s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:59.058895+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3719s"
+  },
+  {
+    "timestamp": "2026-09-28T21:31:59.074305+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3719s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:09.474615+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3729s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:10.683124+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3731s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:10.698796+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3731s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:10.717167+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3731s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:21.440453+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3741s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:22.188244+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3742s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:22.203431+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3742s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:22.218472+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3742s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:32.458679+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3752s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:33.663917+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3754s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:33.679539+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3754s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:33.694863+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3754s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:44.467442+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3764s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:45.211720+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3765s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:45.227036+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3765s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:45.242298+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3765s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:55.475982+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3775s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:56.680864+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3777s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:56.696133+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3777s"
+  },
+  {
+    "timestamp": "2026-09-28T21:32:56.711282+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3777s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:07.534300+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3788s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:08.276307+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3788s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:08.291508+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3788s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:08.306552+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3788s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:18.536086+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3799s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:19.729065+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3800s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:19.744206+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3800s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:19.759319+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3800s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:30.422326+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3810s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:31.167578+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3811s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:31.182640+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3811s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:31.197556+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3811s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:41.657005+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3822s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:42.914655+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3823s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:42.929966+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3823s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:42.945094+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3823s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:53.679410+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3834s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:54.452445+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3834s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:54.467682+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3834s"
+  },
+  {
+    "timestamp": "2026-09-28T21:33:54.482524+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3834s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:04.695578+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3845s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:05.885110+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3846s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:05.900466+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3846s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:05.915626+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3846s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:16.930462+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3857s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:17.687465+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3858s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:17.702984+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3858s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:17.718330+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3858s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:28.140924+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3868s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:29.326297+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3869s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:29.341585+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3869s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:29.356835+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3869s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:40.146500+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3880s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:40.886577+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3881s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:40.901853+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3881s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:40.916970+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3881s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:51.307274+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3891s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:52.508407+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3893s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:52.525079+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3893s"
+  },
+  {
+    "timestamp": "2026-09-28T21:34:52.540242+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3893s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:03.409833+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3903s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:04.452176+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3904s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:04.467996+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3904s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:04.483288+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3904s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:14.882112+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3915s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:16.101137+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3916s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:16.118077+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3916s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:16.133877+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3916s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:26.874755+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3927s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:28.111205+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3928s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:28.126677+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3928s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:28.141890+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3928s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:40.688994+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3941s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:42.489443+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3942s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:42.504499+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3943s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:42.519638+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3943s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:54.927379+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3955s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:56.062116+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3956s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:56.077337+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3956s"
+  },
+  {
+    "timestamp": "2026-09-28T21:35:56.092343+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3956s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:07.398490+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3967s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:08.604247+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3969s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:08.619643+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3969s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:08.634665+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3969s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:20.363399+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3980s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:21.096752+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3981s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:21.112363+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3981s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:21.129054+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3981s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:31.483194+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3991s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:32.981316+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3993s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:32.996547+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3993s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:33.011589+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:3993s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:44.351373+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4004s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:45.084077+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4005s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:45.099235+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4005s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:45.114263+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4005s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:56.627310+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4017s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:58.245499+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4018s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:58.261050+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4018s"
+  },
+  {
+    "timestamp": "2026-09-28T21:36:58.276311+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4018s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:09.742872+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4030s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:10.522206+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4031s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:10.537549+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4031s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:10.552640+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4031s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:21.574747+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4042s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:23.055605+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4043s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:23.071051+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4043s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:23.086812+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4043s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:34.421628+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4054s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:35.675950+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4056s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:35.691362+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4056s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:35.707445+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4056s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:46.306298+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4066s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:47.742297+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4068s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:47.757274+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4068s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:47.772378+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4068s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:59.116069+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4079s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:59.862810+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4080s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:59.877858+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4080s"
+  },
+  {
+    "timestamp": "2026-09-28T21:37:59.892709+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4080s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:10.712710+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4091s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:11.897968+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4092s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:11.913266+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4092s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:11.928896+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4092s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:22.742903+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4103s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:23.468241+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4103s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:23.483567+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4103s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:23.498694+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4103s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:33.731500+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4114s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:34.932018+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4115s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:34.947246+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4115s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:34.962637+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4115s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:45.735402+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4126s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:46.493465+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4126s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:46.509449+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4127s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:46.524845+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4127s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:56.860282+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4137s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:58.152735+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4138s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:58.167931+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4138s"
+  },
+  {
+    "timestamp": "2026-09-28T21:38:58.182968+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4138s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:09.041835+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4149s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:09.786366+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4150s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:09.801519+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4150s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:09.817134+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4150s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:20.376534+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4160s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:21.592043+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4162s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:21.607529+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4162s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:21.622637+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4162s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:32.473759+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4172s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:33.336359+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4173s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:33.351687+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4173s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:33.366626+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4173s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:43.561511+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4184s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:44.762310+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4185s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:44.778423+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4185s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:44.794282+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4185s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:55.418350+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4195s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:56.174690+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4196s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:56.189938+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4196s"
+  },
+  {
+    "timestamp": "2026-09-28T21:39:56.204823+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4196s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:06.724326+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4207s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:07.912207+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4208s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:07.927614+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4208s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:07.942899+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4208s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:19.312190+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4219s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:20.196716+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4220s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:20.212358+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4220s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:20.227497+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4220s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:30.458180+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4230s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:31.661012+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4232s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:31.676684+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4232s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:31.691978+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4232s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:42.398542+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4242s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:43.145012+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4243s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:43.160451+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4243s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:43.175979+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4243s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:53.264256+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4253s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:54.471284+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4254s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:54.486683+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4254s"
+  },
+  {
+    "timestamp": "2026-09-28T21:40:54.501905+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4255s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:05.319203+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4265s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:06.083092+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4266s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:06.098300+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4266s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:06.113484+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4266s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:16.736173+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4277s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:17.937475+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4278s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:17.952853+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4278s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:17.967920+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4278s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:28.959925+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4289s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:29.713532+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4290s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:29.728913+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4290s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:29.743973+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4290s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:40.105224+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4300s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:41.276479+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4301s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:41.291758+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4301s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:41.306763+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4301s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:52.002225+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4312s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:52.750706+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4313s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:52.765686+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4313s"
+  },
+  {
+    "timestamp": "2026-09-28T21:41:52.780488+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4313s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:03.256879+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4323s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:04.502948+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4325s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:04.518943+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4325s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:04.533978+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4325s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:15.345604+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4335s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:16.297981+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4336s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:16.313242+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4336s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:16.328402+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4336s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:26.617162+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4347s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:27.830455+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4348s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:27.845851+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4348s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:27.860951+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4348s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:38.699973+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4359s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:39.438612+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4359s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:39.453845+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4359s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:39.468833+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4359s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:49.821464+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4370s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:51.011158+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4371s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:51.026214+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4371s"
+  },
+  {
+    "timestamp": "2026-09-28T21:42:51.041068+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4371s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:02.147856+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4382s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:02.898127+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4383s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:02.913017+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4383s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:02.927852+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4383s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:13.168827+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4393s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:14.364425+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4394s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:14.379469+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4394s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:14.394373+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4394s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:25.093299+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4405s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:25.846504+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4406s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:25.861546+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4406s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:25.876333+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4406s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:36.224860+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4416s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:37.417292+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4417s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:37.433103+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4417s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:37.448104+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4417s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:48.316661+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4428s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:49.055387+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4429s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:49.071264+00:00",
+    "epic": "GOLD",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4429s"
+  },
+  {
+    "timestamp": "2026-09-28T21:43:49.086414+00:00",
+    "epic": "SILVER",
+    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
+    "details": "STALE_COMPLETED_CANDLE:4429s"
   }
 ]
