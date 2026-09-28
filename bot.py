@@ -869,7 +869,7 @@ def candles_to_dataframe(raw):
         rows.append({
             # Capital supplies snapshotTime in broker-local time and snapshotTimeUTC
             # as an unambiguous UTC timestamp. Never interpret local time as UTC.
-            "time": candle.get("snapshotTimeUTC") or candle.get("snapshotTime"),
+            "time": candle.get("snapshotTimeUTC") or (candle.get("snapshotTime") if str(candle.get("snapshotTime", "")).endswith(("Z", "+00:00")) else None),
             "open": mid(candle.get("openPrice", {})),
             "high": mid(candle.get("highPrice", {})),
             "low": mid(candle.get("lowPrice", {})),
