@@ -31,7 +31,7 @@ STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
-MAX_BASKET_RISK = 0.04
+MAX_BASKET_RISK = 0.02
 
 EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
 
@@ -1790,7 +1790,7 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             and pnl >= 0.0
             and peak >= PROFIT_PROTECTION_MIN_PEAK
             and giveback_ratio >= PROFIT_PROTECTION_MIN_GIVEBACK_RATIO
-            and not ai_still_supports_trade
+            and (pnl < floor or not ai_still_supports_trade)
         )
         if protection_close_allowed:
             try:
@@ -2478,7 +2478,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # against this bot's basket/portfolio allocation. Account-level safety
         # (daily loss/equity protection) still sees the full broker account.
         reserved_risk = basket_reserved_risk(api, owned_positions, epic, account_currency, market_cache=risk_market_cache)
-        portfolio_reserved = portfolio_reserved_risk(api, owned_positions, account_currency, market_cache=risk_market_cache)
+        portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency, market_cache=risk_market_cache)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
         # Unknown reserved risk is fail-closed for NEW entries only. Existing
@@ -2515,7 +2515,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             risk_amount = 0.0
         else:
             risk_positions = []
-            for p in owned_positions:
+            for p in positions:
                 rp = dict(p)
                 rp["risk_amount_account"] = estimated_position_risk_account(
                     p, api, account_currency, market_cache=risk_market_cache
