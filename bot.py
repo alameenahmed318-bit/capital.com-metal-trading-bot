@@ -4,6 +4,7 @@ import os
 import re
 import time
 import traceback
+import threading
 from datetime import datetime, timezone
 
 import numpy as np
@@ -1063,8 +1064,6 @@ def dynamic_entry_score_floor(regime, vol_ratio, news_buy=0.0, news_sell=0.0):
             floor += 8.0
         elif vol > 1.25:
             floor += 3.0
-    if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
-        floor += 8.0
     return float(np.clip(floor, 45.0, 80.0))
 
 
@@ -1082,8 +1081,6 @@ def dynamic_entry_policy(df, htf_df, epic, direction, strength):
         strength_floor += 0.05
     elif vol_ratio > 1.50:
         strength_floor += 0.08
-    if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
-        strength_floor += 0.05
     strength_floor = float(np.clip(strength_floor, 0.50, 0.90))
     # Position count is NOT fixed here. The strategy decides whether another
     # leg is justified from the live basket state and its risk budget.
@@ -3079,6 +3076,15 @@ def run_cycle():
     api = CapitalAPI()
     log("Logging in to Capital.com...")
     api.login()
+
+    # Refresh external market/news context in the background. It is advisory-only
+    # and never blocks the executable entry path or acts as an entry veto.
+    try:
+        news_thread = threading.Thread(target=capital_news.refresh, name="capital-news-refresh", daemon=True)
+        news_thread.start()
+        log("MARKET NEWS | Tavily/Capital.com refresh started | mode=NON_BLOCKING_ADVISORY")
+    except Exception as news_start_exc:
+        log(f"MARKET NEWS | refresh unavailable; trading continues: {news_start_exc}")
 
     # Start the authenticated Capital.com WebSocket once per bot run.
     # It streams live bid/offer prices while the normal AI/candle engine runs.
