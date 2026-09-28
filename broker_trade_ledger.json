@@ -1,5 +1,65 @@
 [
   {
+    "date": "2026-09-29T01:09:24.497",
+    "dateUtc": "2026-09-28T21:09:24.497",
+    "instrumentName": "AUDCAD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140179673413512",
+    "size": "-0.5",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667c-c226-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T01:06:00.343",
+    "dateUtc": "2026-09-28T21:06:00.343",
+    "instrumentName": "EURCHF",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140179459503661",
+    "size": "-0.8",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667b-acee-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T01:05:01.391",
+    "dateUtc": "2026-09-28T21:05:01.391",
+    "instrumentName": "USDCAD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140179397637507",
+    "size": "-1.76",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667c-4744-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T01:05:01.339",
+    "dateUtc": "2026-09-28T21:05:01.339",
+    "instrumentName": "USDCHF",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140179397637492",
+    "size": "-6.83",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667c-3a09-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T01:05:00.919",
+    "dateUtc": "2026-09-28T21:05:00.919",
+    "instrumentName": "USDCAD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140179396588902",
+    "size": "-0.35",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667c-8ad7-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-29T00:34:18.457",
     "dateUtc": "2026-09-28T20:34:18.457",
     "instrumentName": "AUDCHF",
