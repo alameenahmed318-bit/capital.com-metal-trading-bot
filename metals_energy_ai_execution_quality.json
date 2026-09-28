@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T18:54:16.051285+00:00",
+  "updated_at": "2026-09-28T20:28:54.981633+00:00",
   "orders": [
     {
       "timestamp": "2026-09-28T10:23:21.765862+00:00",
@@ -915,6 +915,21 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 1.1
+    },
+    {
+      "timestamp": "2026-09-28T20:28:54.981633+00:00",
+      "epic": "GOLD",
+      "direction": "SELL",
+      "requested_executable_price": 4117.44,
+      "actual_fill_price": 4117.36,
+      "spread_pct_at_order": 0.012142730511524667,
+      "slippage_price": 0.08,
+      "slippage_pct": 0.001943,
+      "deal_reference": "o_16961b71-57e7-4638-8081-92edc79d637e",
+      "deal_id": "00000000-667c-c169-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.01
     }
   ]
 }
