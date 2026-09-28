@@ -38,14 +38,13 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # and US500 (S&P 500 / US 500).
 # EURUSD_W is enabled as a permanent FX instrument where the connected
 # account exposes the market.
-# BTCUSD is included in the FX/other liquid-markets scan; broker availability
-# is checked at runtime and the bot will not guess or force an unavailable epic.
+# BTCUSD is permanently excluded from automated trading.
 # USDJPY_W returned broker 404 in repeated runs; leave it disabled until
 # the exact epic is verified for this account.
 FX_EPICS = [
     "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
     "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
-    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W", "BTCUSD",
+    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
 ]
 # Metals + energy bot: metals, crude oil, and major indices.
 METALS_ENERGY_EPICS = ["GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"]
@@ -83,7 +82,6 @@ MARKET_RSI_SETTINGS = {
     "US100": (40, 70, 30, 60),
     "US500": (40, 70, 30, 60),
     "EURUSD_W": (40, 70, 30, 60),
-    "BTCUSD": (40, 70, 30, 60),
     "USDJPY_W": (40, 70, 30, 60),
 }
 
@@ -104,7 +102,6 @@ INSTRUMENT_PRECISION = {
     "US100": 2,
     "US500": 2,
     "EURUSD_W": 2,
-    "BTCUSD": 2,
     "USDJPY_W": 2,
 }
 
@@ -116,7 +113,6 @@ MIN_TRADE_SIZE = {
     "US100": 0.01,
     "US500": 0.01,
     "EURUSD_W": 0.01,
-    "BTCUSD": 0.01,
     "USDJPY_W": 0.01,
 }
 
