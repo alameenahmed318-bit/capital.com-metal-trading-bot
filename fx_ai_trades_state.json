@@ -1,7 +1,5 @@
 {
   "risk_distance": {
-    "00000000-6677-61f7-0493-972c0004511e": 0.0010033820196516292,
-    "00000000-6677-6380-0493-972c0004511e": 0.0008734099514981312,
     "00000000-6677-6478-0493-972c0004511e": 0.0008234946157751702
   },
   "profit_trail": {
@@ -9,14 +7,14 @@
       "peak_profit": 0.59,
       "peak_time": "2026-09-28T10:22:58.750581+00:00",
       "activated": true,
-      "last_pnl": -0.94,
-      "last_update_ts": 1790591255.6600006,
-      "giveback": 1.53,
-      "giveback_ratio": 2.5932,
+      "last_pnl": -5.05,
+      "last_update_ts": 1790593392.2100947,
+      "giveback": 5.64,
+      "giveback_ratio": 9.5593,
       "profit_velocity": 0.0,
-      "profit_acceleration": -0.091619,
-      "current_profit": -0.94,
-      "last_update": "2026-09-28T10:27:36.068821+00:00",
+      "profit_acceleration": 0.058067,
+      "current_profit": -5.05,
+      "last_update": "2026-09-28T11:03:12.651153+00:00",
       "protected_fraction": 0.3557,
       "protected_floor": 0.21
     }
@@ -25,13 +23,13 @@
     "00000000-6677-6478-0493-972c0004511e": {
       "epic": "NZDUSD",
       "direction": "SELL",
-      "current_profit": -0.94,
+      "current_profit": -5.05,
       "peak_profit": 0.59,
-      "giveback": 1.53,
+      "giveback": 5.64,
       "protected_fraction": 0.3557,
       "protected_floor": 0.21,
       "peak_time": "2026-09-28T10:22:58.750581+00:00",
-      "last_update": "2026-09-28T10:27:36.068821+00:00"
+      "last_update": "2026-09-28T11:03:12.651153+00:00"
     }
   }
 }

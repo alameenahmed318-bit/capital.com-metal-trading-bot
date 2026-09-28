@@ -1,257 +1,5 @@
 [
   {
-    "timestamp": "2026-09-28T07:36:01.608819+00:00",
-    "epic": "EURUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13138s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:03.161126+00:00",
-    "epic": "GBPUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13137s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:04.700413+00:00",
-    "epic": "USDJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13135s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:08.555161+00:00",
-    "epic": "USDCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13131s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:10.245567+00:00",
-    "epic": "USDCAD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13130s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:11.784562+00:00",
-    "epic": "AUDUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13128s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:13.333543+00:00",
-    "epic": "NZDUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13127s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:17.193017+00:00",
-    "epic": "EURGBP",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13123s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:18.881979+00:00",
-    "epic": "EURJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13121s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:23.213169+00:00",
-    "epic": "GBPJPY",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T07:36:23.884475+00:00",
-    "epic": "AUDJPY",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T07:36:27.756429+00:00",
-    "epic": "EURCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13112s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:29.431382+00:00",
-    "epic": "GBPCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13111s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:30.978733+00:00",
-    "epic": "AUDCAD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13109s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:32.478788+00:00",
-    "epic": "AUDCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13108s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:36.334793+00:00",
-    "epic": "NZDJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13104s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:38.019753+00:00",
-    "epic": "CADJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13102s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:40.570575+00:00",
-    "epic": "BTCUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13099s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:44.420866+00:00",
-    "epic": "EURUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13096s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:46.094247+00:00",
-    "epic": "GBPUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13094s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:47.643021+00:00",
-    "epic": "USDJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13092s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:49.166504+00:00",
-    "epic": "USDCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13091s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:53.154076+00:00",
-    "epic": "USDCAD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13087s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:54.709942+00:00",
-    "epic": "AUDUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13085s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:56.252101+00:00",
-    "epic": "NZDUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13084s"
-  },
-  {
-    "timestamp": "2026-09-28T07:36:57.766043+00:00",
-    "epic": "EURGBP",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13082s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:01.643136+00:00",
-    "epic": "EURJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13078s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:03.333187+00:00",
-    "epic": "GBPJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13077s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:04.860225+00:00",
-    "epic": "AUDJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13075s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:06.467239+00:00",
-    "epic": "EURCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13074s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:10.351208+00:00",
-    "epic": "GBPCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13070s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:12.011594+00:00",
-    "epic": "AUDCAD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13068s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:13.539121+00:00",
-    "epic": "AUDCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13066s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:15.088047+00:00",
-    "epic": "NZDJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13065s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:18.957019+00:00",
-    "epic": "CADJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13061s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:21.657724+00:00",
-    "epic": "BTCUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13058s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:23.154175+00:00",
-    "epic": "EURUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13057s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:27.022023+00:00",
-    "epic": "GBPUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13053s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:28.678562+00:00",
-    "epic": "USDJPY",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13051s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:30.201841+00:00",
-    "epic": "USDCHF",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13050s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:31.723015+00:00",
-    "epic": "USDCAD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13048s"
-  },
-  {
-    "timestamp": "2026-09-28T07:37:35.714628+00:00",
-    "epic": "AUDUSD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_TIME_IN_FUTURE:-13044s"
-  },
-  {
     "timestamp": "2026-09-28T07:37:37.260286+00:00",
     "epic": "NZDUSD",
     "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
@@ -5998,5 +5746,257 @@
     "epic": "NZDUSD",
     "reason": "SAME_COMPLETED_CANDLE",
     "details": "direction=SELL; candle=2026-09-28T10:00:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T10:48:24.868941+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:48:46.326110+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:49:38.974496+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:49:55.761482+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:50:45.538688+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:51:02.662920+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:51:51.953099+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:52:08.821904+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:52:54.533414+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:53:15.872984+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:54:01.193467+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:54:17.981379+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:55:07.305427+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:55:24.571763+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:56:13.859341+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:56:30.783592+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:57:16.192120+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:57:37.083376+00:00",
+    "epic": "EURCHF",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.945920; completed_close=0.945625; distance=0.75 ATR; limit=0.75 ATR"
+  },
+  {
+    "timestamp": "2026-09-28T10:58:22.475287+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:58:39.286335+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:59:28.620190+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T10:59:45.850461+00:00",
+    "epic": "EURCHF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:00:02.723168+00:00",
+    "epic": "CADJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:00:27.713230+00:00",
+    "epic": "USDCAD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:00:36.351773+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:00:41.423928+00:00",
+    "epic": "EURJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:00:44.195319+00:00",
+    "epic": "GBPJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:00:51.748028+00:00",
+    "epic": "AUDJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:09.103937+00:00",
+    "epic": "NZDJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:11.855133+00:00",
+    "epic": "CADJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:36.690815+00:00",
+    "epic": "USDCAD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:40.759284+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:49.952618+00:00",
+    "epic": "EURJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:52.742767+00:00",
+    "epic": "GBPJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:01:55.523933+00:00",
+    "epic": "AUDJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:02:17.494463+00:00",
+    "epic": "NZDJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:02:20.220913+00:00",
+    "epic": "CADJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:02:45.073511+00:00",
+    "epic": "USDCAD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:02:49.714389+00:00",
+    "epic": "NZDUSD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:02:59.557430+00:00",
+    "epic": "EURJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:03:02.304343+00:00",
+    "epic": "GBPJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T11:03:05.103467+00:00",
+    "epic": "AUDJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
   }
 ]
