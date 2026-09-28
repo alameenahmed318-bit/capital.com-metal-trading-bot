@@ -2511,17 +2511,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             f"SL_ATR={ai_decision.get('sl_atr')} | TP_ATR={ai_decision.get('tp_atr')} | "
             f"{ai_decision.get('reason')}"
         )
-        # Spread is an ENTRY-quality decision only. It must never prevent
-        # management/protection/exit of an already-open position.
-        if not epic_positions and not spread_allows_entry(
-            api, epic, market=market, ai_decision=None
-        ):
-            record_entry_rejection(
-                epic,
-                "AI_SPREAD_DECISION",
-                f"AI rejected current spread; legacy_cap={MAX_SPREAD_PCT:.4f}%",
-            )
-            return None
+        # Spread is checked again immediately before execution below, using the
+        # freshest executable quote. Do not make the earlier REST snapshot a
+        # final entry decision because spread can change between signal and order.
         # AI SUPPORT-ONLY: advisory analysis never manages or closes positions.
         # Broker-side SL/TP, trailing and profit protection remain authoritative.
         # Do not call AI position-management actions on the entry path.
@@ -2607,7 +2599,25 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
+        # Keep the market object synchronized with the exact quote used for the
+        # order so spread checks, sizing and diagnostics all reference the same
+        # executable prices.
+        market = dict(market)
+        market_snapshot = dict(market.get("snapshot", {}) or {})
+        market_snapshot["bid"] = live_bid
+        market_snapshot["offer"] = live_offer
+        market["snapshot"] = market_snapshot
         order_spread_pct = market_spread_pct(market)
+        if not epic_positions and not spread_allows_entry(
+            api, epic, market=market, ai_decision=None
+        ):
+            record_entry_rejection(
+                epic,
+                "ENTRY_SPREAD_TOO_WIDE",
+                f"final_executable_spread={order_spread_pct:.4f}%"
+                if order_spread_pct is not None else "final_executable_spread=UNKNOWN",
+            )
+            return None
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         # Strategy-only entry gate. AI confidence is informational and cannot delay,
         # block, reverse or modify the strategy entry.
