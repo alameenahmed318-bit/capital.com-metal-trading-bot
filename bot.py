@@ -867,7 +867,9 @@ def candles_to_dataframe(raw):
             ask = safe_float(price.get("ask"))
             return (bid + ask) / 2 if bid is not None and ask is not None else (bid if bid is not None else ask)
         rows.append({
-            "time": candle.get("snapshotTime"),
+            # Capital supplies snapshotTime in broker-local time and snapshotTimeUTC
+            # as an unambiguous UTC timestamp. Never interpret local time as UTC.
+            "time": candle.get("snapshotTimeUTC") or candle.get("snapshotTime"),
             "open": mid(candle.get("openPrice", {})),
             "high": mid(candle.get("highPrice", {})),
             "low": mid(candle.get("lowPrice", {})),
