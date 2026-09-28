@@ -72,10 +72,12 @@ TRAILING_ENABLED = True
 TRAILING_START_R = 2.00
 TRAILING_DISTANCE_R = 1.50
 
-# Dynamic profit protection. It tracks every profitable position from the
-# first positive broker-reported P/L and computes the protected floor from the
-# live peak. No fixed +profit activation/close amount is used.
+# Dynamic profit protection. Winning trades are allowed to run when the
+# AI still agrees with the position direction. Small gains are never a standalone
+# reason to close; protection is a safety net after a meaningful profit develops.
 PROFIT_TRAIL_ENABLED = True
+PROFIT_PROTECTION_MIN_PEAK = 2.0
+PROFIT_PROTECTION_MIN_GIVEBACK_RATIO = 0.35
 
 # Hard per-position loss guard in account currency (AED for an AED account).
 # This is a secondary protection; the broker-side ATR stop remains the primary stop.
@@ -1551,7 +1553,10 @@ def ai_manage_positions(api, positions, epic, ai_decision):
             and confidence >= exit_confidence
         )
         ai_profit_action = profit_action_by_deal.get(str(deal_id), "WAIT")
-        STATE.setdefault("profit_trail", {}).setdefault(str(deal_id), {})["ai_profit_action"] = ai_profit_action
+        profit_trail_state = STATE.setdefault("profit_trail", {}).setdefault(str(deal_id), {})
+        profit_trail_state["ai_profit_action"] = ai_profit_action
+        profit_trail_state["ai_signal"] = signal
+        profit_trail_state["ai_confidence"] = confidence
         profit_giveback_exit = (
             ai_profit_action == "EXIT"
             or action_bias == "EXIT_PROFIT_GIVEBACK"
@@ -1727,9 +1732,8 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         trail["giveback"] = round(giveback, 2)
         trail["last_update"] = now_iso
 
-        # Activate as soon as the position has any positive broker-reported P/L.
-        # A tiny positive peak is tracked, but a close is only possible after a
-        # real giveback to the dynamic floor.
+        # Track from the first positive P/L for telemetry, but do not allow
+        # small profit to become an automatic close trigger.
         if pnl > 0:
             if not trail.get("activated"):
                 trail["activated"] = True
@@ -1754,10 +1758,29 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             "last_update": now_iso,
         }
 
-        # LOSS-PRESERVATION RULE: this discretionary profit manager may only
-        # close while the broker still reports a non-negative P/L. Once P/L is
-        # negative, only the hard loss guard or the broker SL may close it.
-        if trail.get("activated") and floor is not None and pnl >= 0.0 and pnl <= floor:
+        # WINNER-FREEDOM RULE:
+        # 1) A small positive peak is never enough to trigger a discretionary close.
+        # 2) If AI still agrees with the current direction, let the winner run.
+        # 3) Even when AI is neutral, require a meaningful giveback before closing.
+        # Losses remain protected by the broker SL / hard-loss guard.
+        ai_signal = str(trail.get("ai_signal") or "").upper()
+        ai_confidence = float(safe_float(trail.get("ai_confidence"), 0.0) or 0.0)
+        position_dir = str(position_direction(position) or "").upper()
+        ai_still_supports_trade = (
+            ai_signal in {"BUY", "SELL"}
+            and ai_signal == position_dir
+            and ai_confidence >= 0.65
+        )
+        giveback_ratio = (giveback / peak) if peak > 0 else 0.0
+        protection_close_allowed = (
+            trail.get("activated")
+            and floor is not None
+            and pnl >= 0.0
+            and peak >= PROFIT_PROTECTION_MIN_PEAK
+            and giveback_ratio >= PROFIT_PROTECTION_MIN_GIVEBACK_RATIO
+            and not ai_still_supports_trade
+        )
+        if protection_close_allowed:
             try:
                 log(
                     f"{epic}: PROFIT EXIT INTENT | reason=DYNAMIC_PROFIT_PROTECTION | "
