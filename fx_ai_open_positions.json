@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T12:59:26.192594+00:00",
+  "updated_at": "2026-09-28T13:17:33.729770+00:00",
   "positions": [
     {
       "dealId": "00000000-6678-96f2-0493-972c0004511e",
@@ -10,7 +10,62 @@
       "current": 30420.0,
       "stopLoss": 30337.31889765172,
       "takeProfit": 30558.771653522424,
-      "profitLoss": 0.76
+      "profitLoss": 0.28
+    },
+    {
+      "dealId": "00000000-6678-d5fa-0493-972c0004511e",
+      "epic": "US100",
+      "direction": "BUY",
+      "size": 0.006,
+      "entry": 30447.0,
+      "current": 30447.0,
+      "stopLoss": 30359.312212767552,
+      "takeProfit": 30573.53168084867,
+      "profitLoss": -0.32
+    },
+    {
+      "dealId": "00000000-6678-d6b0-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "BUY",
+      "size": 0.2,
+      "entry": 7717.5,
+      "current": 7717.5,
+      "stopLoss": 7703.264637537953,
+      "takeProfit": 7736.8530436930705,
+      "profitLoss": -0.81
+    },
+    {
+      "dealId": "00000000-6678-d728-0493-972c0004511e",
+      "epic": "BTCUSD",
+      "direction": "BUY",
+      "size": 0.0065,
+      "entry": 83477.25,
+      "current": 83477.25,
+      "stopLoss": 83072.06856932912,
+      "takeProfit": 84115.14714600633,
+      "profitLoss": -2.68
+    },
+    {
+      "dealId": "00000000-6678-d760-0493-972c0004511e",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "size": 500.0,
+      "entry": 1.13687,
+      "current": 1.13687,
+      "stopLoss": 1.1379005911003874,
+      "takeProfit": 1.1353991133494188,
+      "profitLoss": 0.79
+    },
+    {
+      "dealId": "00000000-6678-d828-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "SELL",
+      "size": 2.6,
+      "entry": 93.336,
+      "current": 93.336,
+      "stopLoss": 94.33331882908183,
+      "takeProfit": 91.80252175637726,
+      "profitLoss": 4.87
     },
     {
       "dealId": "00000000-6678-b446-0493-972c0004511e",
@@ -21,7 +76,18 @@
       "current": 1.13699,
       "stopLoss": 1.137996790415966,
       "takeProfit": 1.135479814376051,
-      "profitLoss": -0.13
+      "profitLoss": 1.01
+    },
+    {
+      "dealId": "00000000-6678-f5ba-0493-972c0004511e",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "size": 500.0,
+      "entry": 1.13634,
+      "current": 1.13634,
+      "stopLoss": 1.1373576917360644,
+      "takeProfit": 1.1347134623959039,
+      "profitLoss": -0.18
     },
     {
       "dealId": "00000000-6678-bffb-0493-972c0004511e",
@@ -32,7 +98,7 @@
       "current": 4148.31,
       "stopLoss": 4167.5290633933955,
       "takeProfit": 4119.681404909908,
-      "profitLoss": -0.47
+      "profitLoss": -0.07
     },
     {
       "dealId": "00000000-6678-c038-0493-972c0004511e",
@@ -43,7 +109,7 @@
       "current": 61.238,
       "stopLoss": 61.664503312263484,
       "takeProfit": 60.58074503160478,
-      "profitLoss": -0.71
+      "profitLoss": -0.64
     },
     {
       "dealId": "00000000-6678-c074-0493-972c0004511e",
@@ -54,7 +120,7 @@
       "current": 30447.0,
       "stopLoss": 30360.67469067526,
       "takeProfit": 30578.98796398711,
-      "profitLoss": 0.16
+      "profitLoss": -0.32
     }
   ]
 }
