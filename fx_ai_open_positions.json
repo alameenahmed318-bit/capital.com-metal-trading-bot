@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T21:23:50.943540+00:00",
+  "updated_at": "2026-09-28T21:40:39.168097+00:00",
   "positions": [
     {
       "dealId": "00000000-667c-2b16-0493-972c0004511e",
@@ -10,7 +10,29 @@
       "current": 157.393,
       "stopLoss": 157.09274922102676,
       "takeProfit": 157.81837616845988,
-      "profitLoss": -1.01
+      "profitLoss": -0.97
+    },
+    {
+      "dealId": "00000000-667e-23d7-0493-972c0004511e",
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "size": 2200.0,
+      "entry": 0.70168,
+      "current": 0.70168,
+      "stopLoss": 0.702595785599695,
+      "takeProfit": 0.7003063216004572,
+      "profitLoss": -3.23
+    },
+    {
+      "dealId": "00000000-667e-2402-0493-972c0004511e",
+      "epic": "NZDUSD",
+      "direction": "SELL",
+      "size": 2100.0,
+      "entry": 0.5664,
+      "current": 0.5664,
+      "stopLoss": 0.5673678095108244,
+      "takeProfit": 0.5649482857337633,
+      "profitLoss": -2.7
     },
     {
       "dealId": "00000000-667b-a979-0493-972c0004511e",
@@ -98,7 +120,7 @@
       "current": 157.41,
       "stopLoss": 157.13819570524674,
       "takeProfit": 157.8402064421299,
-      "profitLoss": -0.3
+      "profitLoss": -0.29
     },
     {
       "dealId": "00000000-667c-d48d-0493-972c0004511e",
