@@ -906,6 +906,25 @@ def add_indicators(df):
     previous_close = df["close"].shift(1)
     true_range = pd.concat([df["high"] - df["low"], (df["high"] - previous_close).abs(), (df["low"] - previous_close).abs()], axis=1).max(axis=1)
     df["atr"] = true_range.ewm(alpha=1 / ATR_PERIOD, min_periods=ATR_PERIOD, adjust=False).mean()
+
+    # Additional strategy context is observation-only. It never vetoes or changes
+    # the executable entry authority.
+    bb_mid = df["close"].rolling(20).mean()
+    bb_std = df["close"].rolling(20).std(ddof=0)
+    df["bb_mid"] = bb_mid
+    df["bb_upper"] = bb_mid + 2.0 * bb_std
+    df["bb_lower"] = bb_mid - 2.0 * bb_std
+    df["bb_z"] = (df["close"] - bb_mid) / bb_std.replace(0, np.nan)
+
+    up_move = df["high"].diff()
+    down_move = -df["low"].diff()
+    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
+    tr14 = true_range.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
+    plus_di = 100.0 * plus_dm.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean() / tr14.replace(0, np.nan)
+    minus_di = 100.0 * minus_dm.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean() / tr14.replace(0, np.nan)
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
+    df["adx"] = dx.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
     return df
 
 def get_rsi_settings(epic):
@@ -2360,6 +2379,40 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
+        # M5/M1 timing context is observation-only. It is deliberately not a
+        # condition, score, or veto, so existing entry frequency is preserved.
+        micro_context = {}
+        try:
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+            def _micro_fetch(resolution, count):
+                raw = api.get_candles(epic=epic, resolution=resolution, max_candles=count)
+                frame = add_indicators(candles_to_dataframe(raw))
+                if frame is None or len(frame) < 3:
+                    return None
+                row = frame.iloc[-2]
+                return {
+                    "close": safe_float(row.get("close")),
+                    "bb_z": safe_float(row.get("bb_z")),
+                    "adx": safe_float(row.get("adx")),
+                    "time": str(row.get("time")),
+                }
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = {
+                    "M5": pool.submit(_micro_fetch, "MINUTE_5", 80),
+                    "M1": pool.submit(_micro_fetch, "MINUTE", 80),
+                }
+                for label, future in futures.items():
+                    try:
+                        micro_context[label] = future.result(timeout=0.75)
+                    except FutureTimeoutError:
+                        micro_context[label] = None
+                    except Exception as micro_exc:
+                        micro_context[label] = None
+                        log(f"{epic}: {label} extra-context unavailable | {micro_exc}")
+            log(f"{epic}: EXTRA M5/M1 CONTEXT | M5={micro_context.get('M5')} | M1={micro_context.get('M1')} | mode=OBSERVATION_ONLY")
+        except Exception as micro_exc:
+            log(f"{epic}: M5/M1 observation unavailable | {micro_exc}")
+
         # AI is SUPPORT-ONLY. The legacy strategy remains the sole entry authority.
         # AI output is retained for advisory analysis, logging and learning only.
         legacy_signal = generate_signal(df, epic, htf_df)
