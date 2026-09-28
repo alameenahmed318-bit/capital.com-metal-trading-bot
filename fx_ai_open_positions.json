@@ -1,6 +1,17 @@
 {
-  "updated_at": "2026-09-28T09:33:38.285472+00:00",
+  "updated_at": "2026-09-28T09:57:14.893142+00:00",
   "positions": [
+    {
+      "dealId": "00000000-6677-1572-0493-972c0004511e",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "size": 1000.0,
+      "entry": 1.13774,
+      "current": 1.13774,
+      "stopLoss": null,
+      "takeProfit": null,
+      "profitLoss": 1.21
+    },
     {
       "dealId": "00000000-6676-dae2-0493-972c0004511e",
       "epic": "EURUSD",
@@ -10,7 +21,7 @@
       "current": 1.13753,
       "stopLoss": 1.1385653382360374,
       "takeProfit": 1.1359769926459438,
-      "profitLoss": -2.67
+      "profitLoss": 1.15
     }
   ]
 }
