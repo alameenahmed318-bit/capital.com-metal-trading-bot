@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T11:29:37.509978+00:00",
+  "updated_at": "2026-09-28T11:47:35.018251+00:00",
   "positions": [
     {
       "dealId": "00000000-6677-9e95-0493-972c0004511e",
@@ -10,7 +10,7 @@
       "current": 61.377,
       "stopLoss": 61.72659332836586,
       "takeProfit": 60.812610007451205,
-      "profitLoss": -0.38
+      "profitLoss": 0.63
     },
     {
       "dealId": "00000000-6677-9f4b-0493-972c0004511e",
@@ -21,18 +21,18 @@
       "current": 30301.0,
       "stopLoss": 30381.853950875004,
       "takeProfit": 30182.219073687495,
-      "profitLoss": -7.39
+      "profitLoss": -7.34
     },
     {
-      "dealId": "00000000-6677-6478-0493-972c0004511e",
-      "epic": "NZDUSD",
+      "dealId": "00000000-6677-fa97-0493-972c0004511e",
+      "epic": "SILVER",
       "direction": "SELL",
-      "size": 3200.0,
-      "entry": 0.56548,
-      "current": 0.56548,
-      "stopLoss": 0.5663201612824419,
-      "takeProfit": 0.5642447580763372,
-      "profitLoss": -8.82
+      "size": 1.5,
+      "entry": 61.31,
+      "current": 61.31,
+      "stopLoss": 61.690742180237635,
+      "takeProfit": 60.78638672964355,
+      "profitLoss": -0.24
     },
     {
       "dealId": "00000000-6677-be25-0493-972c0004511e",
@@ -43,7 +43,7 @@
       "current": 61.297,
       "stopLoss": 61.693908090677354,
       "takeProfit": 60.78663786398398,
-      "profitLoss": -0.52
+      "profitLoss": -0.31
     },
     {
       "dealId": "00000000-6677-da96-0493-972c0004511e",
@@ -54,7 +54,7 @@
       "current": 0.70118,
       "stopLoss": 0.7019870837226262,
       "takeProfit": 0.6999693744160608,
-      "profitLoss": -4.0
+      "profitLoss": -4.73
     },
     {
       "dealId": "00000000-6677-dee1-0493-972c0004511e",
@@ -65,7 +65,7 @@
       "current": 1.1371,
       "stopLoss": 1.1380861854572735,
       "takeProfit": 1.1356707218140893,
-      "profitLoss": -4.32
+      "profitLoss": -2.88
     },
     {
       "dealId": "00000000-6677-def1-0493-972c0004511e",
@@ -76,7 +76,7 @@
       "current": 4150.16,
       "stopLoss": 4166.227695478789,
       "takeProfit": 4125.883456781816,
-      "profitLoss": -0.65
+      "profitLoss": -0.33
     },
     {
       "dealId": "00000000-6677-e01e-0493-972c0004511e",
@@ -87,7 +87,18 @@
       "current": 61.423,
       "stopLoss": 61.6744146557254,
       "takeProfit": 60.760878016411894,
-      "profitLoss": 0.16
+      "profitLoss": 0.35
+    },
+    {
+      "dealId": "00000000-6678-266d-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 1.5,
+      "entry": 61.311,
+      "current": 61.311,
+      "stopLoss": 61.66961773877851,
+      "takeProfit": 60.78807339183223,
+      "profitLoss": -0.24
     }
   ]
 }
