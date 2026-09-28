@@ -1889,12 +1889,14 @@ def manage_trailing_stops(api, positions, epic, current_price, df=None):
             candidate = max(current_price - volatility_gap, structure_stop)
             # Preserve room for noise and avoid a stop above the market.
             candidate = min(candidate, current_price - 0.75 * atr)
+            candidate = max(candidate, entry + 0.10 * stored_risk) if epic in {"US100", "US500"} and current_price - (entry + 0.10 * stored_risk) >= 0.75 * atr else candidate
             if current_sl is not None and candidate <= current_sl + 0.05 * atr:
                 continue
         else:
             structure_stop = swing_high + 0.15 * atr if swing_high is not None else current_price + volatility_gap
             candidate = min(current_price + volatility_gap, structure_stop)
             candidate = max(candidate, current_price + 0.75 * atr)
+            candidate = min(candidate, entry - 0.10 * stored_risk) if epic in {"US100", "US500"} and (entry - 0.10 * stored_risk) - current_price >= 0.75 * atr else candidate
             if current_sl is not None and candidate >= current_sl - 0.05 * atr:
                 continue
         try:
