@@ -1,17 +1,6 @@
 {
-  "updated_at": "2026-09-28T16:59:40.867549+00:00",
+  "updated_at": "2026-09-28T17:16:22.845983+00:00",
   "positions": [
-    {
-      "dealId": "00000000-667b-0d75-0493-972c0004511e",
-      "epic": "GOLD",
-      "direction": "SELL",
-      "size": 0.13,
-      "entry": 4143.93,
-      "current": 4143.93,
-      "stopLoss": 4163.330581017944,
-      "takeProfit": 4112.004128473086,
-      "profitLoss": 7.08
-    },
     {
       "dealId": "00000000-667b-1d91-0493-972c0004511e",
       "epic": "US100",
@@ -21,7 +10,7 @@
       "current": 30391.9,
       "stopLoss": 30252.134937143765,
       "takeProfit": 30634.047594284355,
-      "profitLoss": -0.26
+      "profitLoss": 0.0
     },
     {
       "dealId": "00000000-667b-1de7-0493-972c0004511e",
@@ -32,7 +21,7 @@
       "current": 7713.5,
       "stopLoss": 7690.325943596112,
       "takeProfit": 7750.761084605833,
-      "profitLoss": -0.48
+      "profitLoss": 0.03
     },
     {
       "dealId": "00000000-667b-4b66-0493-972c0004511e",
@@ -43,7 +32,7 @@
       "current": 4129.73,
       "stopLoss": 4153.636368326661,
       "takeProfit": 4093.8954475100077,
-      "profitLoss": 0.05
+      "profitLoss": -0.7
     },
     {
       "dealId": "00000000-667b-27d3-0493-972c0004511e",
@@ -54,7 +43,18 @@
       "current": 4137.86,
       "stopLoss": 4162.7383966592,
       "takeProfit": 4103.792405011201,
-      "profitLoss": 0.64
+      "profitLoss": -0.11
+    },
+    {
+      "dealId": "00000000-667b-8d71-0493-972c0004511e",
+      "epic": "GOLD",
+      "direction": "SELL",
+      "size": 0.02,
+      "entry": 4138.79,
+      "current": 4138.79,
+      "stopLoss": 4163.567889020026,
+      "takeProfit": 4102.473166469961,
+      "profitLoss": -0.04
     },
     {
       "dealId": "00000000-667b-5522-0493-972c0004511e",
@@ -65,7 +65,18 @@
       "current": 61.198,
       "stopLoss": 61.749696583543134,
       "takeProfit": 60.35795512468529,
-      "profitLoss": 0.25
+      "profitLoss": -5.73
+    },
+    {
+      "dealId": "00000000-667b-6238-0493-972c0004511e",
+      "epic": "GOLD",
+      "direction": "SELL",
+      "size": 0.02,
+      "entry": 4127.88,
+      "current": 4127.88,
+      "stopLoss": 4151.152342021238,
+      "takeProfit": 4093.296486968143,
+      "profitLoss": -0.84
     }
   ]
 }
