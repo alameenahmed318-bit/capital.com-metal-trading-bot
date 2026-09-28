@@ -2184,6 +2184,35 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 
     log(f"FAST MONITOR | completed | passes={iteration}")
 
+def refresh_entry_execution_quote(api, epic, market, current_bid=None, current_offer=None):
+    """Refresh the executable quote immediately before entry without adding a veto.
+    
+    This is execution-timing optimization only: if a fresh live quote is
+    unavailable, the existing quote is used. It never rejects or delays a
+    valid strategy signal.
+    """
+    bid, offer = current_bid, current_offer
+    try:
+        if LIVE_PRICE_STREAM is not None:
+            quote = LIVE_PRICE_STREAM.get_quote(epic)
+            age = LIVE_PRICE_STREAM.age_seconds(epic)
+            if quote and age is not None and age <= 1.50:
+                bid = safe_float(quote.get("bid")) or bid
+                offer = safe_float(quote.get("offer")) or offer
+                log(f"{epic}: ENTRY TIMING | fresh WS quote age={age:.2f}s | bid={bid} | offer={offer} | mode=ADVISORY")
+                return bid, offer
+    except Exception as exc:
+        log(f"{epic}: ENTRY TIMING | fresh WS quote unavailable; using existing quote | {exc}")
+    try:
+        snapshot = market.get("snapshot", {}) or {}
+        bid = safe_float(snapshot.get("bid")) or bid
+        offer = safe_float(snapshot.get("offer") or snapshot.get("ask")) or offer
+    except Exception:
+        pass
+    log(f"{epic}: ENTRY TIMING | existing executable quote used | bid={bid} | offer={offer} | mode=NON_BLOCKING")
+    return bid, offer
+
+
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS, position_management_only=False):
     log("")
     owned_positions = filter_owned_positions(positions)
@@ -2554,6 +2583,25 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: CANDLE ENTRY CONFIRMED | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
+        # Final micro-timing refresh: use the freshest executable quote available
+        # immediately before the order. This improves entry pricing without adding
+        # a wait, a new condition, or any trade-count restriction.
+        live_bid, live_offer = refresh_entry_execution_quote(
+            api, epic, market, current_bid=live_bid, current_offer=live_offer
+        )
+        # M1/M5 context remains advisory only. It can describe the timing quality
+        # but can never veto, postpone, reverse, or remove a strategy entry.
+        timing_m1 = micro_context.get("M1") if isinstance(micro_context, dict) else None
+        timing_m5 = micro_context.get("M5") if isinstance(micro_context, dict) else None
+        log(
+            f"{epic}: ENTRY TIMING CONTEXT | direction={signal} | "
+            f"M1_close={timing_m1.get('close') if timing_m1 else None} | "
+            f"M1_BBz={timing_m1.get('bb_z') if timing_m1 else None} | "
+            f"M1_ADX={timing_m1.get('adx') if timing_m1 else None} | "
+            f"M5_close={timing_m5.get('close') if timing_m5 else None} | "
+            f"M5_BBz={timing_m5.get('bb_z') if timing_m5 else None} | "
+            f"M5_ADX={timing_m5.get('adx') if timing_m5 else None} | mode=NON_BLOCKING"
+        )
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
