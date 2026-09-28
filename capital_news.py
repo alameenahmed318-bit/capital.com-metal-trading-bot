@@ -1,11 +1,13 @@
 """Non-blocking Capital.com news cache used by the two active bots."""
 import json, os, time, re
+import urllib.request
 from html.parser import HTMLParser
 from urllib.request import Request, urlopen
 
 CACHE_FILE = "capital_news_cache.json"
 MAX_AGE_SECONDS = 1800
 TIMEOUT_SECONDS = 8
+TAVILY_API_URL = "https://api.tavily.com/search"
 CAP = "https://" + "capital.com"
 SOURCE_URLS = {
     "gold": CAP + "/en-int/analysis/gold-news",
@@ -47,8 +49,36 @@ class P(HTMLParser):
    if 15<=len(s)<=240: self.items.append((self.href,s))
    self.on=False
 
+def _tavily_items():
+ """Get fresh market/news context from Tavily when configured."""
+ key=os.getenv("TAVILY_API_KEY")
+ if not key: return [], []
+ queries=[
+  ("gold","gold XAUUSD latest market news Federal Reserve yields dollar"),
+  ("forex","forex latest market news Federal Reserve ECB BOE BOJ RBA currencies"),
+ ]
+ out=[]; errors=[]
+ for category,query in queries:
+  try:
+   body=json.dumps({"api_key":key,"query":query,"topic":"news","search_depth":"basic","max_results":6,"include_answer":False,"include_raw_content":False}).encode("utf-8")
+   req=urllib.request.Request(TAVILY_API_URL,data=body,headers={"Content-Type":"application/json","User-Agent":"Capital-AI-Bot/1.0"},method="POST")
+   with urllib.request.urlopen(req,timeout=TIMEOUT_SECONDS) as resp: data=json.loads(resp.read().decode("utf-8","ignore"))
+   for item in data.get("results",[]) or []:
+    title=str(item.get("title") or "").strip(); url=str(item.get("url") or "").strip()
+    blob=(title+" "+str(item.get("content") or "")).lower()
+    if not title: continue
+    pos=sum(x in blob for x in POS); neg=sum(x in blob for x in NEG)
+    sentiment="BULLISH" if pos>neg else "BEARISH" if neg>pos else "NEUTRAL"
+    strength=min(1.0,0.35+0.15*abs(pos-neg)) if pos!=neg else 0.0
+    out.append({"category":category,"title":title,"url":url,"sentiment":sentiment,"strength":strength,"source":"TAVILY"})
+  except Exception as e: errors.append(category+": "+str(e))
+ return out,errors
+
 def refresh():
  items=[]; errors=[]
+ tavily_items,tavily_errors=_tavily_items()
+ items.extend(tavily_items)
+ errors.extend(["tavily: "+str(x) for x in tavily_errors])
  for category,url in SOURCE_URLS.items():
   try:
    req=Request(url,headers={"User-Agent":"Mozilla/5.0"})
