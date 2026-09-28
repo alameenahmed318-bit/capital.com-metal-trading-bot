@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T08:46:01.057659+00:00",
+  "updated_at": "2026-09-28T09:00:52.256216+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -297,6 +297,51 @@
       "slippage_pct": 0.0,
       "deal_reference": "o_83f6a075-6781-4e2a-a4a4-31cbb37a7b8a",
       "deal_id": "00000000-6676-9248-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 3300.0
+    },
+    {
+      "timestamp": "2026-09-28T09:00:26.741048+00:00",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "requested_executable_price": 1.13749,
+      "actual_fill_price": 1.13747,
+      "spread_pct_at_order": 0.0061537109074538575,
+      "slippage_price": 2e-05,
+      "slippage_pct": 0.001758,
+      "deal_reference": "o_74b754bf-28f1-4f73-9064-88bbcc1db7cc",
+      "deal_id": "00000000-6676-b55c-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 2600.0
+    },
+    {
+      "timestamp": "2026-09-28T09:00:47.064112+00:00",
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "requested_executable_price": 0.7016,
+      "actual_fill_price": 0.7016,
+      "spread_pct_at_order": 0.00855151575616051,
+      "slippage_price": 0.0,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_1667c889-501d-4e76-ad7e-27568919ca3d",
+      "deal_id": "00000000-6676-b6c6-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 600.0
+    },
+    {
+      "timestamp": "2026-09-28T09:00:52.256216+00:00",
+      "epic": "NZDUSD",
+      "direction": "SELL",
+      "requested_executable_price": 0.56602,
+      "actual_fill_price": 0.56603,
+      "spread_pct_at_order": 0.024731049833070534,
+      "slippage_price": -1e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_c36c3ad0-5b35-4cf1-aa6b-9eb0dbc4eede",
+      "deal_id": "00000000-6676-b704-0493-972c0004511e",
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 3300.0
