@@ -1,653 +1,5 @@
 [
   {
-    "timestamp": "2026-09-28T12:29:53.752211+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:29:55.766873+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:29:59.288425+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:30:11.368643+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:30:20.877823+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:30:23.915489+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:30:40.810931+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:30:44.854668+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:30:53.211411+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:30:56.681647+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:31:08.108293+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:31:09.634197+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:31:14.156849+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:31:25.539799+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:31:27.034780+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:31:38.920536+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:31:41.965153+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:31:43.985656+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:31:55.357363+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:31:59.401897+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:08.223571+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:11.823196+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:32:22.630423+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:24.094209+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:29.141373+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:32:40.523989+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:42.019580+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:53.904190+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T12:32:56.947890+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:32:58.969181+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:16.412236+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:25.217109+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:27.797450+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:38.795052+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:40.353751+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:44.397818+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:55.785986+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:33:57.257010+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:08.194815+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:11.230442+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:13.264715+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:23.636486+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:27.675944+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:36.499271+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:39.056037+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:49.900788+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:51.369324+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:34:54.950122+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:06.801506+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:08.354589+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:18.769986+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:21.795901+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:23.813150+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:34.638478+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:38.679254+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:47.028859+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:35:49.502091+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:00.873702+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:02.449324+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:05.985360+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:17.367111+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:18.824004+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:29.757456+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:36:32.789952+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:51:59.805160+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:01.573081+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:05.691574+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:20.133106+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:21.899281+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:23.654755+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:38.196943+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:39.875052+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:41.632542+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:43.989561+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:52:58.248642+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:00.608352+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:02.949938+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:15.241433+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:19.395262+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:21.735448+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:34.015072+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:36.370099+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:41.077791+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:52.882263+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:55.244000+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:53:57.607853+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:11.818959+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:13.501783+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:15.845728+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:18.207270+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:32.970182+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:35.311845+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:37.643166+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:49.404404+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:54.238070+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:54:56.583686+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:09.512369+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:11.272684+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:15.982302+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:27.793130+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:30.148574+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:32.516886+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:48.854419+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:50.041498+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:52.414055+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:55:54.786478+00:00",
-    "epic": "SILVER",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:56:09.709380+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-28T12:56:12.069322+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-28T12:30:00+00:00"
-  },
-  {
     "timestamp": "2026-09-28T12:56:14.388111+00:00",
     "epic": "GOLD",
     "reason": "SAME_COMPLETED_CANDLE",
@@ -5998,5 +5350,653 @@
     "epic": "US100",
     "reason": "SAME_COMPLETED_CANDLE",
     "details": "direction=BUY; candle=2026-09-28T16:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:46:55.154076+00:00",
+    "epic": "GOLD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:02.193250+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:09.294675+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:16.356485+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:35.970813+00:00",
+    "epic": "GOLD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:40.640636+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:45.334750+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:47:50.002564+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:48:16.389393+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:48:20.667908+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:48:24.933649+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:48:43.490366+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:48:47.603841+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:48:51.877245+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:48:56.191148+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:49:14.751173+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:49:18.838545+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:49:23.103662+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:49:27.377189+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:49:45.876285+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:49:49.941885+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:49:54.206650+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:49:58.484513+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:50:17.027440+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:50:21.071310+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:50:25.365927+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:50:29.622795+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:50:48.140110+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:50:52.234374+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:50:56.535198+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:51:00.806848+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:51:19.322216+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:51:23.392273+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:51:27.674088+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:51:31.927260+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:51:50.425152+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:51:54.468576+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:51:58.736304+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:52:03.000018+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:52:21.536099+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:52:25.597143+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:52:29.851637+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:52:34.131380+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:52:52.820974+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:52:56.935474+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:53:01.164473+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:53:05.443761+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:53:23.932914+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:53:27.982659+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:53:32.216062+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:53:36.489693+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:53:56.148524+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:54:00.228236+00:00",
+    "epic": "SILVER",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:54:04.483106+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:54:08.778767+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:54:24.015308+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:54:34.540658+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:54:38.215499+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:54:56.730512+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:54:59.373450+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:55:03.435919+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:55:07.799112+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:55:26.243955+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:55:28.918481+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:55:32.998651+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:55:37.266626+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:55:55.799914+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:55:58.459247+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:56:02.511750+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:56:06.754601+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:56:25.274306+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:56:27.924036+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:56:31.998498+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:56:36.262319+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:56:54.971478+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:56:57.636111+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:57:01.688709+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:57:05.997224+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:57:24.483279+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:57:27.132436+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:57:31.213802+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:57:35.444465+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:57:53.914057+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:57:56.570458+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:58:00.646644+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:58:04.956673+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:58:23.429273+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:58:26.095418+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:58:30.137307+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:58:34.375472+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:58:52.929847+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:58:55.577053+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:58:59.661979+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:59:03.941926+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:59:22.452236+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:59:25.100305+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:59:29.174553+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:59:33.455088+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T16:59:51.942382+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:59:54.594299+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T16:59:58.660415+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T17:00:02.962103+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T17:00:35.759373+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T17:00:40.461182+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T17:00:58.840318+00:00",
+    "epic": "GOLD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T17:01:01.496183+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-28T16:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-28T17:01:05.584890+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-28T17:01:10.239434+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
   }
 ]
