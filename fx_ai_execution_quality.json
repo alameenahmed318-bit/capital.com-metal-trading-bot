@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28T18:53:55.298604+00:00",
+  "updated_at": "2026-09-28T19:12:51.827482+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -780,6 +780,51 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "B",
       "size": 900.0
+    },
+    {
+      "timestamp": "2026-09-28T19:03:52.146476+00:00",
+      "epic": "USDJPY",
+      "direction": "BUY",
+      "requested_executable_price": 157.419,
+      "actual_fill_price": 157.41,
+      "spread_pct_at_order": 0.007623258561872561,
+      "slippage_price": -0.009,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_6f90c941-aad9-4315-8f97-e6f432a3bfd7",
+      "deal_id": "00000000-667c-39c1-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 200.0
+    },
+    {
+      "timestamp": "2026-09-28T19:04:00.857016+00:00",
+      "epic": "USDCHF",
+      "direction": "BUY",
+      "requested_executable_price": 0.83208,
+      "actual_fill_price": 0.83207,
+      "spread_pct_at_order": 0.01682672083268578,
+      "slippage_price": -1e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_edbbd053-5088-4ddf-92fd-33b2ab5bad13",
+      "deal_id": "00000000-667c-3a06-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 1200.0
+    },
+    {
+      "timestamp": "2026-09-28T19:12:51.827482+00:00",
+      "epic": "USDCAD",
+      "direction": "BUY",
+      "requested_executable_price": 1.41725,
+      "actual_fill_price": 1.41726,
+      "spread_pct_at_order": 0.014112832092578624,
+      "slippage_price": 1e-05,
+      "slippage_pct": 0.000706,
+      "deal_reference": "o_8705c704-2e63-465d-a21f-0f8fbd421ede",
+      "deal_id": "00000000-667c-4741-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 600.0
     }
   ]
 }
