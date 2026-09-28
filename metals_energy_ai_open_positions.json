@@ -1,27 +1,27 @@
 {
-  "updated_at": "2026-09-28T09:59:27.572218+00:00",
+  "updated_at": "2026-09-28T10:23:34.462899+00:00",
   "positions": [
     {
-      "dealId": "00000000-6677-1572-0493-972c0004511e",
-      "epic": "EURUSD",
+      "dealId": "00000000-6677-6478-0493-972c0004511e",
+      "epic": "NZDUSD",
       "direction": "SELL",
-      "size": 1000.0,
-      "entry": 1.13774,
-      "current": 1.13774,
-      "stopLoss": null,
-      "takeProfit": null,
-      "profitLoss": 0.88
+      "size": 3200.0,
+      "entry": 0.56548,
+      "current": 0.56548,
+      "stopLoss": 0.5663201612824419,
+      "takeProfit": 0.5642447580763372,
+      "profitLoss": -0.35
     },
     {
-      "dealId": "00000000-6676-dae2-0493-972c0004511e",
-      "epic": "EURUSD",
+      "dealId": "00000000-6677-6e45-0493-972c0004511e",
+      "epic": "GOLD",
       "direction": "SELL",
-      "size": 2600.0,
-      "entry": 1.13753,
-      "current": 1.13753,
-      "stopLoss": 1.1385653382360374,
-      "takeProfit": 1.1359769926459438,
-      "profitLoss": 0.29
+      "size": 0.16,
+      "entry": 4154.77,
+      "current": 4154.77,
+      "stopLoss": 4171.311017798101,
+      "takeProfit": 4129.73347330285,
+      "profitLoss": -0.26
     }
   ]
 }
