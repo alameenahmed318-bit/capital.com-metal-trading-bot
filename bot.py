@@ -114,7 +114,9 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # but block entries that are materially stretched or over-correlated with
 # existing exposure. All rejections are persisted with an exact reason.
 LATE_ENTRY_MAX_ATR = 0.50
-LATE_ENTRY_STRONG_MAX_ATR = 0.75
+# Strong signals may enter later, but never beyond a hard 1.00 ATR chase.
+LATE_ENTRY_STRONG_MAX_ATR = 1.00
+LATE_ENTRY_DYNAMIC_ENABLED = True
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
 
@@ -782,34 +784,29 @@ def original_risk_distance(position):
         return inferred if inferred > 0 else None
     return None
 
-def quote_to_account_rate(market, account_currency):
-    """Convert P/L quoted in the instrument currency into account currency.
-
-    The enabled portfolio instruments are normally USD-quoted. We only use a
-    fixed USD/AED conversion for the AED account case; unknown currency pairs
-    return None instead of silently using an incorrect conversion.
-    """
-    instrument = market.get("instrument", {})
-    quote_currency = (
-        instrument.get("currency")
-        or instrument.get("currencyCode")
-        or instrument.get("quoteCurrency")
-        or market.get("currency")
-        or "USD"
-    )
+def quote_to_account_rate(market, account_currency, epic=None):
+    """Conservative quote-currency to account-currency conversion for sizing."""
+    instrument = market.get("instrument", {}) or {}
+    quote_currency = (instrument.get("currency") or instrument.get("currencyCode")
+                      or instrument.get("quoteCurrency") or market.get("currency"))
     if isinstance(quote_currency, dict):
         quote_currency = quote_currency.get("code") or quote_currency.get("currencyCode")
-    quote_currency = str(quote_currency).upper()
-    account_currency = str(account_currency).upper()
-    if quote_currency == account_currency:
-        return 1.0
-    if quote_currency == "USD" and account_currency == "AED":
-        return 3.6725
-    if quote_currency == "AED" and account_currency == "USD":
-        return 1.0 / 3.6725
+    quote_currency = str(quote_currency or "").upper().strip()
+    account_currency = str(account_currency or "").upper().strip()
+    if (not quote_currency or quote_currency in {"NONE","NULL","NAN"}) and epic:
+        compact = str(epic).upper().replace("_W", "")
+        if len(compact) >= 6 and compact[:6].isalpha():
+            quote_currency = compact[-3:]
+    if quote_currency == account_currency: return 1.0
+    if quote_currency == "USD" and account_currency == "AED": return 3.6725
+    if quote_currency == "AED" and account_currency == "USD": return 1.0 / 3.6725
+    if account_currency == "AED":
+        rates = {"GBP":5.25,"EUR":4.60,"CHF":4.90,"CAD":2.90,"AUD":2.75,"NZD":2.55,"SGD":3.05,"JPY":0.030,"HKD":0.48}
+        return rates.get(quote_currency, 6.00)
+    if account_currency == "USD":
+        rates = {"GBP":1.45,"EUR":1.25,"CHF":1.35,"CAD":0.80,"AUD":0.70,"NZD":0.65,"SGD":0.80,"JPY":0.009}
+        return rates.get(quote_currency, 1.50)
     return None
-
-
 def get_position_size(api, epic, risk_amount_account, risk_distance, account_currency, market=None):
     risk_amount_account = safe_float(risk_amount_account)
     risk_distance = safe_float(risk_distance)
@@ -825,7 +822,7 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
     step = safe_float(dealing.get("minSizeIncrement", {}).get("value"), min_size)
     if min_size <= 0 or step <= 0 or lot_size <= 0:
         return None
-    account_to_quote = quote_to_account_rate(market, account_currency)
+    account_to_quote = quote_to_account_rate(market, account_currency, epic=epic)
     if account_to_quote is None or account_to_quote <= 0:
         log(f"{epic}: unsupported currency conversion for account {account_currency}; trade skipped.")
         return None
@@ -1420,9 +1417,17 @@ def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai
     if price is None or atr is None or atr <= 0 or reference is None:
         return None
 
-    # Avoid chasing a stretched live quote. Recheck on the next scan.
-    # Both active bots use the same hard late-entry protection.
-    max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
+    # Dynamic late-entry protection: stronger/high-confidence signals get more room.
+    max_chase_atr = LATE_ENTRY_MAX_ATR
+    if LATE_ENTRY_DYNAMIC_ENABLED:
+        confidence = safe_float((ai_decision or {}).get("confidence"), 0.0) or 0.0
+        strength_factor = max(0.0, min(1.0, (float(strength) - 0.60) / 0.40))
+        confidence_factor = max(0.0, min(1.0, confidence))
+        max_chase_atr = LATE_ENTRY_MAX_ATR + (LATE_ENTRY_STRONG_MAX_ATR - LATE_ENTRY_MAX_ATR) * max(strength_factor, confidence_factor)
+        regime = str((ai_decision or {}).get("regime") or "").upper()
+        if regime in {"TREND", "BREAKOUT"}:
+            max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr + 0.10)
+        max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr)
     if direction == "BUY" and price > reference + max_chase_atr * atr:
         if epic:
             record_entry_rejection(
