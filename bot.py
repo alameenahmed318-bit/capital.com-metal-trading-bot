@@ -1992,6 +1992,57 @@ def mark_candle_entry(epic, direction, candle_key):
     _save_entry_candle_state(state)
 
 
+# Account-wide profit radar is exit-only: it never vetoes a new signal or
+# changes the existing entry cadence. Each runner observes ALL broker positions,
+# but may close only positions it owns. Peaks are per-runner, not a shared lock.
+PORTFOLIO_PROFIT_RADAR_MIN_PEAK = 20.0
+PORTFOLIO_PROFIT_RADAR_GIVEBACK = 0.40
+PORTFOLIO_PROFIT_RADAR_STATE = {"peak": None, "deal_ids": set()}
+
+def protect_portfolio_profit(api, broker_positions, owned_positions, account_currency):
+    """Protect profitable owned runners after a material account-wide reversal."""
+    state = PORTFOLIO_PROFIT_RADAR_STATE
+    ids = {str(position_deal_id(p)) for p in broker_positions if position_deal_id(p)}
+    if not ids:
+        state["peak"], state["deal_ids"] = None, set()
+        return
+    readings = [position_unrealized_pnl(p) for p in broker_positions]
+    if not readings or any(pnl is None for pnl in readings):
+        log("PORTFOLIO RADAR | incomplete broker P/L; no discretionary exit")
+        return
+    total = sum(readings)
+    # A new portfolio composition resets the comparison baseline. Otherwise a
+    # recently closed winner could trigger a false drawdown on remaining deals.
+    if ids != state["deal_ids"]:
+        state["peak"], state["deal_ids"] = total, ids
+        return
+    state["peak"] = max(float(state["peak"] if state["peak"] is not None else total), total)
+    peak = state["peak"]
+    if peak < PORTFOLIO_PROFIT_RADAR_MIN_PEAK or peak - total < peak * PORTFOLIO_PROFIT_RADAR_GIVEBACK:
+        return
+    log(f"PORTFOLIO PROFIT RADAR | peak={peak:.2f} current={total:.2f} {account_currency} | protecting owned winners only")
+    for p in owned_positions:
+        deal_id = position_deal_id(p)
+        pnl = position_unrealized_pnl(p)
+        if not deal_id or pnl is None or pnl <= 0:
+            continue
+        trail = STATE.get("profit_trail", {}).get(str(deal_id), {})
+        own_peak = safe_float(trail.get("peak_profit"))
+        if own_peak is None or own_peak < PROFIT_PROTECTION_MIN_PEAK:
+            continue
+        if own_peak - pnl < own_peak * PROFIT_PROTECTION_MIN_GIVEBACK_RATIO:
+            continue
+        try:
+            api.close_position(deal_id)
+            confirmed = confirm_position_closed(api, deal_id)
+            log(f"PORTFOLIO RADAR EXIT | deal={deal_id} | peak={own_peak:.2f} current={pnl:.2f} | confirmed={confirmed}")
+            if confirmed:
+                STATE.setdefault("profit_trail", {}).pop(str(deal_id), None)
+                STATE.setdefault("position_telemetry", {}).pop(str(deal_id), None)
+                save_state(STATE)
+        except Exception as exc:
+            log(f"PORTFOLIO RADAR EXIT FAILED | deal={deal_id} | {exc}")
+
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
     """Continuously protect positions and scan for new entries from live quotes.
 
@@ -2022,6 +2073,7 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
         try:
             positions = api.get_open_positions()
             owned = filter_owned_positions(positions)
+            protect_portfolio_profit(api, positions, owned, account_currency)
             open_epics = [epic for epic in EPICS if get_positions_for_epic(owned, epic)]
 
             balance = api.get_balance() if open_epics else None
