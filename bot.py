@@ -2396,7 +2396,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     "adx": safe_float(row.get("adx")),
                     "time": str(row.get("time")),
                 }
-            with ThreadPoolExecutor(max_workers=2) as pool:
+            pool = ThreadPoolExecutor(max_workers=2)
+            try:
                 futures = {
                     "M5": pool.submit(_micro_fetch, "MINUTE_5", 80),
                     "M1": pool.submit(_micro_fetch, "MINUTE", 80),
@@ -2406,9 +2407,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                         micro_context[label] = future.result(timeout=0.75)
                     except FutureTimeoutError:
                         micro_context[label] = None
+                        log(f"{epic}: {label} extra-context timeout; entry path continues unchanged")
                     except Exception as micro_exc:
                         micro_context[label] = None
                         log(f"{epic}: {label} extra-context unavailable | {micro_exc}")
+            finally:
+                # Never wait for a slow optional context request. This keeps the
+                # executable entry path free of M5/M1 latency.
+                pool.shutdown(wait=False, cancel_futures=True)
             log(f"{epic}: EXTRA M5/M1 CONTEXT | M5={micro_context.get('M5')} | M1={micro_context.get('M1')} | mode=OBSERVATION_ONLY")
         except Exception as micro_exc:
             log(f"{epic}: M5/M1 observation unavailable | {micro_exc}")
