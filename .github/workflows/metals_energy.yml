@@ -1,0 +1,156 @@
+name: Capital Metals & Energy AI Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+# Metals has its own queue and never blocks the FX workflow.
+concurrency:
+  group: capital-metals-ai
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: write
+
+jobs:
+  trade-metals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync to latest main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+          echo "EXECUTION_SHA=$(git rev-parse HEAD)"
+          git log -1 --oneline
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Offline architecture self-check
+        run: python ai_self_check_v2.py
+
+      - name: Run Metals and Energy AI bot
+        run: python metals_energy_ai_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
+          STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
+          GITHUB_USERNAME: alameenahmed318-bit
+          GITHUB_REPO: capital.com-metal-trading-bot
+
+      - name: Run broker trade ledger
+        if: ${{ always() }}
+        run: python trade_ledger.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          TRADE_LEDGER_LOOKBACK_DAYS: "30"
+          TRADE_LEDGER_JSON: "metals_broker_trade_ledger.json"
+          TRADE_LEDGER_CSV: "metals_broker_trade_ledger.csv"
+
+      - name: Quant validation
+        if: ${{ always() }}
+        run: python quant_validation.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
+          STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
+          QUANT_VALIDATION_PATH: "metals_quant_validation.json"
+
+      - name: Build realized AI dataset and registry
+        if: ${{ always() }}
+        run: python ai_dataset_job.py
+        env:
+          AI_OUTCOMES_DB: "metals_ai_outcomes.db"
+          AI_DATASET_PATH: "metals_ai_training_dataset.parquet"
+          AI_MODEL_REGISTRY: "metals_ai_model_registry.json"
+          AI_MODEL_REGISTRY_PREFIX: "metals_"
+          AI_LEARNING_REPORT: "metals_ai_learning_report.json"
+
+      - name: Persist Metals bot state
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          STATE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STATE_DIR"' EXIT
+          STATE_FILES=(
+            metals_energy_ai_strategy_positions.json
+            metals_energy_ai_trades_state.json
+            metals_energy_ai_bot_safety_state.json
+            metals_energy_ai_open_positions.json
+            metals_energy_ai_execution_quality.json
+            metals_energy_ai_entry_rejections.json
+            metals_energy_ai_entry_candle_state.json
+            metals_quant_validation.json
+            metals_ai_outcomes.db
+            metals_ai_training_dataset.parquet
+            metals_ai_model_registry.json
+            metals_broker_trade_ledger.json
+            metals_broker_trade_ledger.csv
+          )
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then cp -a "$f" "$STATE_DIR/$f"; fi
+          done
+
+          git reset --hard HEAD
+          git pull --rebase -X theirs origin main
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$STATE_DIR/$f" ]; then cp -a "$STATE_DIR/$f" "$f"; fi
+          done
+
+          EXISTING_STATE_FILES=()
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then EXISTING_STATE_FILES+=( "$f" ); fi
+          done
+          if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
+            echo "No Metals state files to persist."
+            exit 0
+          fi
+
+          git add -f "${EXISTING_STATE_FILES[@]}"
+          if git diff --cached --quiet; then
+            echo "No Metals state changes to persist."
+            exit 0
+          fi
+
+          git commit -m "Update Metals AI state [skip ci]"
+          git push origin main || {
+            git pull --rebase -X theirs origin main
+            git push origin main
+          }
