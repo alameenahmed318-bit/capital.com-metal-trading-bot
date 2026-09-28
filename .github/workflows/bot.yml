@@ -49,6 +49,7 @@ jobs:
           CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
           CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           IS_DEMO: ${{ secrets.IS_DEMO }}
           BALANCE_CAP: ${{ vars.BALANCE_CAP }}
           STRATEGY: ${{ vars.STRATEGY }}
