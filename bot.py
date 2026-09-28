@@ -1351,7 +1351,19 @@ def classic_25sep_signal(df, epic, htf_df):
 
 
 def generate_signal(df, epic, htf_df=None):
-    return classic_25sep_signal(df, epic, htf_df)
+    # Metals/Energy: keep the strict 25SEP candle setup as first choice,
+    # but use the existing multi-factor quant engine as a fallback when the
+    # strict setup is absent. This prevents a valid trend/breakout from being
+    # ignored simply because one candle condition did not align.
+    signal = classic_25sep_signal(df, epic, htf_df)
+    if signal is not None:
+        return signal
+    if STRATEGY_ID == "CAPITAL_METALS_ENERGY_AI":
+        quant_signal = quant_signal_score(df, epic, htf_df)
+        if quant_signal in {"BUY", "SELL"}:
+            log(f"{epic}: METALS QUANT FALLBACK {quant_signal} | strict_25sep=None")
+            return quant_signal
+    return None
 
 
 def market_entry_strength(df, htf_df, direction):
