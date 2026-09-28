@@ -17,7 +17,7 @@ base.ENTRY_CANDLE_STATE_FILE = "metals_energy_ai_entry_candle_state.json"
 
 # Metals + oil + indices only. No FX.
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
-              if epic in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}]
+              if epic in {"GOLD", "SILVER", "US100", "US500"}]
 
 base.MAX_POSITIONS_PER_EPIC = 3
 base.MAX_BASKET_RISK = min(float(getattr(base, "MAX_BASKET_RISK", 0.02)), 0.02)
