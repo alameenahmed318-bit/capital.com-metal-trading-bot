@@ -1,4 +1,27 @@
 {
-  "updated_at": "2026-09-28T07:49:12.936488+00:00",
-  "positions": []
+  "updated_at": "2026-09-28T07:59:23.637506+00:00",
+  "positions": [
+    {
+      "dealId": "00000000-6676-1967-0493-972c0004511e",
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "size": 3600.0,
+      "entry": 0.702,
+      "current": 0.702,
+      "stopLoss": 0.7027409716009886,
+      "takeProfit": 0.7008635425985171,
+      "profitLoss": -1.06
+    },
+    {
+      "dealId": "00000000-6676-19f9-0493-972c0004511e",
+      "epic": "NZDUSD",
+      "direction": "SELL",
+      "size": 3700.0,
+      "entry": 0.56658,
+      "current": 0.56658,
+      "stopLoss": 0.5673025809350684,
+      "takeProfit": 0.5654961285973974,
+      "profitLoss": -2.72
+    }
+  ]
 }
