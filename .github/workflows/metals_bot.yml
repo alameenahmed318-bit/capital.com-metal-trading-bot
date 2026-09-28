@@ -1,0 +1,147 @@
+name: Capital Metals Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+# FX and Metals share one Capital.com account. Serialize API access so
+# the two bots cannot trade the account simultaneously.
+concurrency:
+  group: capital-account-state
+  cancel-in-progress: false
+  queue: max
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Sync to latest main before running
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git reset --hard origin/main
+          echo "EXECUTION_SHA=$(git rev-parse HEAD)"
+          git log -1 --oneline
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Capital Metals bot
+        run: python metals_bot.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: baseline
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+
+      - name: Run metals broker trade ledger
+        run: python trade_ledger.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          TRADE_LEDGER_LOOKBACK_DAYS: "30"
+          TRADE_LEDGER_JSON: "metals_broker_trade_ledger.json"
+          TRADE_LEDGER_CSV: "metals_broker_trade_ledger.csv"
+
+      - name: Run metals quant validation
+        run: python quant_validation.py
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          CAPITAL_BASE_DEMO_URL: ${{ secrets.CAPITAL_BASE_DEMO_URL }}
+          IS_DEMO: ${{ secrets.IS_DEMO }}
+          BALANCE_CAP: ${{ vars.BALANCE_CAP }}
+          STRATEGY: baseline
+          VOL_MANAGED_SIZING: "true"
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE }}
+          VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN }}
+          QUANT_VALIDATION_PATH: "metals_quant_validation.json"
+
+      - name: Persist metals bot state
+        if: ${{ always() }}
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          STATE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$STATE_DIR"' EXIT
+
+          STATE_FILES=(
+            metals_strategy_positions.json
+            metals_trades_state.json
+            metals_bot_safety_state.json
+            metals_open_positions.json
+            metals_execution_quality.json
+            metals_entry_rejections.json
+            metals_entry_candle_state.json
+            metals_quant_validation.json
+            metals_broker_trade_ledger.json
+            metals_broker_trade_ledger.csv
+          )
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then
+              cp -a "$f" "$STATE_DIR/$f"
+            fi
+          done
+
+          git reset --hard HEAD
+          git pull --rebase -X theirs origin main
+
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$STATE_DIR/$f" ]; then
+              cp -a "$STATE_DIR/$f" "$f"
+            fi
+          done
+
+          EXISTING_STATE_FILES=()
+          for f in "${STATE_FILES[@]}"; do
+            if [ -e "$f" ]; then
+              EXISTING_STATE_FILES+=( "$f" )
+            fi
+          done
+
+          if [ "${#EXISTING_STATE_FILES[@]}" -eq 0 ]; then
+            echo "No metals state files exist to persist."
+            exit 0
+          fi
+
+          git add -f "${EXISTING_STATE_FILES[@]}"
+          if git diff --cached --quiet; then
+            echo "No metals state changes to persist."
+            exit 0
+          fi
+
+          git commit -m "Update Metals bot state [skip ci]"
+          git push origin main || {
+            git pull --rebase -X theirs origin main
+            git push origin main
+          }
