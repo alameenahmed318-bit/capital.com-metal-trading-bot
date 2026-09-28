@@ -1805,7 +1805,15 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             and ai_confidence >= 0.65
         )
         giveback_ratio = (giveback / peak) if peak > 0 else 0.0
-        protection_close_allowed = (
+        # US100/US500: protect profits from 1R of estimated original risk.
+        index_protection = False
+        if epic in {"US100", "US500"}:
+            index_risk = estimated_position_risk_account(position, api, account_currency)
+            if index_risk is not None and index_risk > 0:
+                index_protection = peak >= index_risk and (
+                    pnl <= 0.0 or (giveback_ratio >= 0.35 and pnl < peak * 0.35)
+                )
+        protection_close_allowed = index_protection or (
             trail.get("activated")
             and floor is not None
             and pnl >= 0.0
