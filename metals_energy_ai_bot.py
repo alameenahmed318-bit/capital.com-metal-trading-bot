@@ -20,7 +20,7 @@ base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", 
               if epic in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}]
 
 base.MAX_POSITIONS_PER_EPIC = 3
-base.MAX_BASKET_RISK = min(float(getattr(base, "MAX_BASKET_RISK", 0.04)), 0.04)
+base.MAX_BASKET_RISK = min(float(getattr(base, "MAX_BASKET_RISK", 0.02)), 0.02)
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
