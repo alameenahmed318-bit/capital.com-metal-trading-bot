@@ -2000,19 +2000,34 @@ PORTFOLIO_PROFIT_RADAR_GIVEBACK = 0.40
 PORTFOLIO_PROFIT_RADAR_STATE = {"peak": None, "deal_ids": set()}
 
 def protect_portfolio_profit(api, broker_positions, owned_positions, account_currency):
-    """Protect profitable owned runners after a material account-wide reversal."""
+    """Exit-only profit radar for mature, individually profitable owned trades.
+
+    New or immature positions never enter the profit-radar cohort, so their
+    initial drawdown cannot force an older winner to close. This function
+    never changes entry eligibility, scan frequency, or broker stop losses.
+    """
     state = PORTFOLIO_PROFIT_RADAR_STATE
-    ids = {str(position_deal_id(p)) for p in broker_positions if position_deal_id(p)}
+    trails = STATE.get("profit_trail", {})
+    mature = []
+    for p in owned_positions:
+        deal_id = position_deal_id(p)
+        pnl = position_unrealized_pnl(p)
+        if not deal_id or pnl is None or pnl <= 0:
+            continue
+        trail = trails.get(str(deal_id), {})
+        own_peak = safe_float(trail.get("peak_profit"))
+        # A trade must have developed its own meaningful profit first.
+        if own_peak is None or own_peak < PROFIT_PROTECTION_MIN_PEAK:
+            continue
+        mature.append((p, str(deal_id), float(pnl), float(own_peak)))
+
+    ids = {deal_id for _, deal_id, _, _ in mature}
     if not ids:
         state["peak"], state["deal_ids"] = None, set()
         return
-    readings = [position_unrealized_pnl(p) for p in broker_positions]
-    if not readings or any(pnl is None for pnl in readings):
-        log("PORTFOLIO RADAR | incomplete broker P/L; no discretionary exit")
-        return
-    total = sum(readings)
-    # A new portfolio composition resets the comparison baseline. Otherwise a
-    # recently closed winner could trigger a false drawdown on remaining deals.
+    total = sum(pnl for _, _, pnl, _ in mature)
+    # Only changes to the MATURE cohort reset the comparison baseline.
+    # Newly opened positions are excluded until individually profitable.
     if ids != state["deal_ids"]:
         state["peak"], state["deal_ids"] = total, ids
         return
@@ -2020,16 +2035,8 @@ def protect_portfolio_profit(api, broker_positions, owned_positions, account_cur
     peak = state["peak"]
     if peak < PORTFOLIO_PROFIT_RADAR_MIN_PEAK or peak - total < peak * PORTFOLIO_PROFIT_RADAR_GIVEBACK:
         return
-    log(f"PORTFOLIO PROFIT RADAR | peak={peak:.2f} current={total:.2f} {account_currency} | protecting owned winners only")
-    for p in owned_positions:
-        deal_id = position_deal_id(p)
-        pnl = position_unrealized_pnl(p)
-        if not deal_id or pnl is None or pnl <= 0:
-            continue
-        trail = STATE.get("profit_trail", {}).get(str(deal_id), {})
-        own_peak = safe_float(trail.get("peak_profit"))
-        if own_peak is None or own_peak < PROFIT_PROTECTION_MIN_PEAK:
-            continue
+    log(f"PORTFOLIO PROFIT RADAR | mature_peak={peak:.2f} mature_current={total:.2f} {account_currency} | protecting mature owned winners only")
+    for p, deal_id, pnl, own_peak in mature:
         if own_peak - pnl < own_peak * PROFIT_PROTECTION_MIN_GIVEBACK_RATIO:
             continue
         try:
