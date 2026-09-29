@@ -1,27 +1,27 @@
 {
-  "updated_at": "2026-09-29T21:34:32.076711+00:00",
+  "updated_at": "2026-09-29T21:49:50.750130+00:00",
   "positions": [
     {
-      "dealId": "00000000-66d5-123b-0493-972c0004511e",
-      "epic": "USDJPY",
-      "direction": "SELL",
-      "size": 1400.0,
-      "entry": 157.283,
-      "current": 157.283,
-      "stopLoss": 157.44669829891507,
-      "takeProfit": null,
-      "profitLoss": -3.04
-    },
-    {
-      "dealId": "00000000-66d3-a6f2-0493-972c0004511e",
+      "dealId": "00000000-66d5-2cd2-0493-972c0004511e",
       "epic": "US500",
       "direction": "SELL",
-      "size": 0.09,
-      "entry": 7674.1,
-      "current": 7674.1,
-      "stopLoss": 7683.075801960356,
+      "size": 0.01,
+      "entry": 7677.6,
+      "current": 7677.6,
+      "stopLoss": 7682.46552679932,
       "takeProfit": null,
-      "profitLoss": -1.75
+      "profitLoss": -0.06
+    },
+    {
+      "dealId": "00000000-66d5-2c11-0493-972c0004511e",
+      "epic": "GBPJPY",
+      "direction": "SELL",
+      "size": 2000.0,
+      "entry": 208.039,
+      "current": 208.039,
+      "stopLoss": 208.20058900019785,
+      "takeProfit": null,
+      "profitLoss": -5.33
     },
     {
       "dealId": "00000000-66d3-c321-0493-972c0004511e",
