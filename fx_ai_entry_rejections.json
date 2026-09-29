@@ -1,23 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T07:47:44.074638+00:00",
-    "epic": "AUDCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T07:47:53.233392+00:00",
-    "epic": "NZDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T07:48:32.711599+00:00",
-    "epic": "CADJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
     "timestamp": "2026-09-29T07:49:20.642801+00:00",
     "epic": "USDJPY",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5980,23 @@
     "epic": "AUDUSD",
     "reason": "BASKET_NOT_PROFITABLE",
     "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T14:47:34.872981+00:00",
+    "epic": "GBPUSD",
+    "reason": "LATE_ENTRY",
+    "details": "SELL distance=0.97 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T14:53:52.105172+00:00",
+    "epic": "AUDUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T14:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T14:54:10.169973+00:00",
+    "epic": "AUDUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T14:30:00+00:00"
   }
 ]

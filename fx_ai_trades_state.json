@@ -1,5 +1,7 @@
 {
-  "risk_distance": {},
+  "risk_distance": {
+    "00000000-6684-bb31-0493-972c0004511e": 0.0010368254264147114
+  },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
       "peak_profit": 1.25,
@@ -75,6 +77,21 @@
       "last_update": "2026-09-29T10:35:14.236135+00:00",
       "protected_fraction": 0.3782,
       "protected_floor": 0.32
+    },
+    "00000000-6684-bb31-0493-972c0004511e": {
+      "peak_profit": -0.6,
+      "peak_time": "2026-09-29T14:53:40.550537+00:00",
+      "activated": false,
+      "last_pnl": -0.69,
+      "last_update_ts": 1790693649.6479895,
+      "giveback": 0.09,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": -0.69,
+      "last_update": "2026-09-29T14:54:10.166535+00:00",
+      "protected_fraction": 0.3,
+      "protected_floor": null
     }
   },
   "position_telemetry": {
@@ -132,6 +149,17 @@
       "protected_floor": 0.32,
       "peak_time": "2026-09-29T10:02:53.765912+00:00",
       "last_update": "2026-09-29T10:35:14.236135+00:00"
+    },
+    "00000000-6684-bb31-0493-972c0004511e": {
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "current_profit": -0.69,
+      "peak_profit": -0.6,
+      "giveback": 0.09,
+      "protected_fraction": 0.3,
+      "protected_floor": null,
+      "peak_time": "2026-09-29T14:53:40.550537+00:00",
+      "last_update": "2026-09-29T14:54:10.166535+00:00"
     }
   }
 }
