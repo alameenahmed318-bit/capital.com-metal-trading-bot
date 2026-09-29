@@ -1324,6 +1324,16 @@ def early_reversal_signal(df, epic, micro_frames=None):
     low15, high15 = safe_float(recent15["low"].min()), safe_float(recent15["high"].max())
     if low15 is None or high15 is None: return None, 0.0
     cur, prev, prior = m5.iloc[-2], m5.iloc[-3], m5.iloc[-4]
+    # Never use stale completed M5 data for early timing. The trading
+    # workflows scan every 5 minutes; allow a small queue/execution cushion,
+    # otherwise fall back to the normal strategy.
+    cur_time = pd.to_datetime(cur.get("time"), utc=True, errors="coerce")
+    if pd.isna(cur_time):
+        return None, 0.0
+    m5_age_minutes = (datetime.now(timezone.utc) - cur_time.to_pydatetime()).total_seconds() / 60.0
+    if m5_age_minutes > 8.0:
+        log(f"{epic}: EARLY REVERSAL SKIPPED | stale M5 age={m5_age_minutes:.1f}m")
+        return None, 0.0
     c5,o5,lo,hi = [safe_float(cur.get(x)) for x in ("close","open","low","high")]
     pc,pp,rsi,m5atr = safe_float(prev.get("close")),safe_float(prior.get("close")),safe_float(cur.get("rsi")),safe_float(cur.get("atr"))
     if None in (c5,o5,lo,hi,pc,pp,rsi,m5atr) or m5atr <= 0: return None, 0.0
