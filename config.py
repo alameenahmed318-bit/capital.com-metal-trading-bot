@@ -41,10 +41,13 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # BTCUSD is permanently excluded from automated trading.
 # USDJPY_W returned broker 404 in repeated runs; leave it disabled until
 # the exact epic is verified for this account.
+# Permanently excluded from new automated FX entries at the user's request.
+DISABLED_FX_EPICS = frozenset({
+    "NZDUSD", "EURJPY", "NZDJPY", "EURGBP", "USDCAD", "GBPJPY", "USDCHF",
+})
 FX_EPICS = [
-    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
-    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
-    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
+    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "AUDJPY", "EURCHF",
+    "GBPCHF", "AUDCAD", "AUDCHF", "CADJPY", "EURUSD_W",
 ]
 # Metals + energy bot: metals, crude oil, and major indices.
 METALS_ENERGY_EPICS = ["GOLD", "SILVER", "US100", "US500"]
