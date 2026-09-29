@@ -855,29 +855,45 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
 
 CANDLE_CACHE_DEFAULT_TTL_SECONDS = 8.0
 
-def _aggregate_5m_to_15m(raw, max_candles):
-    """Build strategy 15m candles from fresh 5m bars when the native 15m feed lags."""
-    df5 = candles_to_dataframe(raw)
-    if df5.empty or len(df5) < 3:
+def _aggregate_intraday_to_15m(raw, source_minutes, max_candles):
+    """Rebuild completed M15 candles from a faster feed when native M15 lags."""
+    df = candles_to_dataframe(raw)
+    if df.empty:
         return pd.DataFrame()
-    df5["time"] = pd.to_datetime(df5["time"], utc=True, errors="coerce")
-    df5 = df5.dropna(subset=["time"]).sort_values("time").drop_duplicates("time").reset_index(drop=True)
+    df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
+    df = df.dropna(subset=["time"]).sort_values("time").drop_duplicates("time").reset_index(drop=True)
+    source_minutes = int(source_minutes)
+    expected = 15 // source_minutes
+    if expected < 1:
+        return pd.DataFrame()
+    df["bucket"] = df["time"].dt.floor("15min")
+    now = pd.Timestamp.now(tz="UTC")
     rows = []
-    for i in range(2, len(df5)):
-        a, b, d = df5.iloc[i-2], df5.iloc[i-1], df5.iloc[i]
-        if (b["time"] - a["time"]).total_seconds() != 300 or (d["time"] - b["time"]).total_seconds() != 300:
+    for bucket, group in df.groupby("bucket", sort=True):
+        if bucket + pd.Timedelta(minutes=15) > now:
+            continue
+        group = group.sort_values("time")
+        if len(group) != expected:
+            continue
+        deltas = group["time"].diff().dropna().dt.total_seconds()
+        if len(deltas) != expected - 1 or not np.allclose(deltas.to_numpy(dtype=float), source_minutes * 60.0, atol=2.0):
             continue
         rows.append({
-            "time": d["time"] - pd.Timedelta(minutes=10),
-            "open": float(a["open"]),
-            "high": float(max(a["high"], b["high"], d["high"])),
-            "low": float(min(a["low"], b["low"], d["low"])),
-            "close": float(d["close"]),
+            "time": bucket,
+            "open": float(group.iloc[0]["open"]),
+            "high": float(group["high"].max()),
+            "low": float(group["low"].min()),
+            "close": float(group.iloc[-1]["close"]),
         })
-    out = pd.DataFrame(rows)
-    if out.empty:
-        return out
-    return out.drop_duplicates("time").tail(int(max_candles)).reset_index(drop=True)
+    return pd.DataFrame(rows).tail(int(max_candles)).reset_index(drop=True) if rows else pd.DataFrame()
+
+
+def _aggregate_5m_to_15m(raw, max_candles):
+    return _aggregate_intraday_to_15m(raw, 5, max_candles)
+
+
+def _aggregate_1m_to_15m(raw, max_candles):
+    return _aggregate_intraday_to_15m(raw, 1, max_candles)
 
 
 def _strategy_candle_feed_is_stale(df, resolution):
@@ -889,11 +905,11 @@ def _strategy_candle_feed_is_stale(df, resolution):
     if pd.isna(ts):
         return True, None
     age = (pd.Timestamp.now(tz="UTC") - ts).total_seconds()
-    return age > 35 * 60, age
+    return age > 32 * 60, age
 
 
 def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
-    """Short-lived candle cache with fresh 5m->15m fallback when native 15m data lags."""
+    """Short-lived candles with M5/M1 recovery when native M15 data lags."""
     if cache is None:
         df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
     else:
@@ -909,22 +925,28 @@ def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_secon
     stale, age = _strategy_candle_feed_is_stale(df, resolution)
     if resolution == "MINUTE_15" and stale:
         try:
-            raw5 = api.get_candles(
-                epic=epic,
-                resolution="MINUTE_5",
-                max_candles=max(300, int(max_candles) * 3),
-            )
+            raw5 = api.get_candles(epic=epic, resolution="MINUTE_5", max_candles=max(300, int(max_candles) * 3))
             rebuilt = _aggregate_5m_to_15m(raw5, max_candles)
             rebuilt_stale, rebuilt_age = _strategy_candle_feed_is_stale(rebuilt, resolution)
             if not rebuilt.empty and not rebuilt_stale:
-                log(f"{epic}: native 15m stale ({age/60:.1f}m); using fresh 5m->15m rebuild ({rebuilt_age/60:.1f}m).")
+                log(f"{epic}: native M15 stale ({age/60:.1f}m); using fresh M5->M15 rebuild ({rebuilt_age/60:.1f}m).")
                 if cache is not None:
                     cache[(epic, resolution, int(max_candles))] = (time.monotonic(), rebuilt.copy())
                 return rebuilt
-            if not rebuilt.empty:
-                log(f"{epic}: 5m->15m rebuild still stale ({rebuilt_age/60:.1f}m); keeping native data.")
         except Exception as exc:
-            log(f"{epic}: fresh 5m->15m fallback failed: {exc}")
+            log(f"{epic}: M5->M15 fallback failed: {exc}")
+        try:
+            raw1 = api.get_candles(epic=epic, resolution="MINUTE_1", max_candles=max(1200, int(max_candles) * 15))
+            rebuilt1 = _aggregate_1m_to_15m(raw1, max_candles)
+            rebuilt1_stale, rebuilt1_age = _strategy_candle_feed_is_stale(rebuilt1, resolution)
+            if not rebuilt1.empty and not rebuilt1_stale:
+                log(f"{epic}: native M15/M5 stale; using fresh M1->M15 rebuild ({rebuilt1_age/60:.1f}m).")
+                if cache is not None:
+                    cache[(epic, resolution, int(max_candles))] = (time.monotonic(), rebuilt1.copy())
+                return rebuilt1
+        except Exception as exc:
+            log(f"{epic}: M1->M15 fallback failed: {exc}")
+        log(f"{epic}: M15 candle feed remains stale after M5/M1 recovery (native_age={age/60:.1f}m); entry scan waits for fresh data.")
     return df
 
 def candles_to_dataframe(raw):
