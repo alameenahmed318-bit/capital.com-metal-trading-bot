@@ -1,6 +1,11 @@
 {
   "risk_distance": {
-    "00000000-66d3-38dc-0493-972c0004511e": 9.42668465629049
+    "00000000-66d3-38dc-0493-972c0004511e": 9.42668465629049,
+    "00000000-66d3-504e-0493-972c0004511e": 8.634833154424996,
+    "00000000-66d3-5085-0493-972c0004511e": 0.18936621260525754,
+    "00000000-66d3-6006-0493-972c0004511e": 7.660630786035654,
+    "00000000-66d3-6369-0493-972c0004511e": 46.81193048648856,
+    "00000000-66d3-63bd-0493-972c0004511e": 8.741613479451189
   },
   "profit_trail": {
     "00000000-667a-1c62-0493-972c0004511e": {
@@ -18,20 +23,48 @@
       "protected_fraction": 0.4214,
       "protected_floor": 0.59
     },
-    "00000000-66d3-38dc-0493-972c0004511e": {
-      "peak_profit": 1.92,
-      "peak_time": "2026-09-29T19:36:48.242976+00:00",
+    "00000000-66d3-6006-0493-972c0004511e": {
+      "peak_profit": -0.27,
+      "peak_time": "2026-09-29T19:48:57.980450+00:00",
+      "activated": false,
+      "last_pnl": -1.08,
+      "last_update_ts": 1790711422.867404,
+      "giveback": 0.52,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": -0.004109,
+      "current_profit": -1.08,
+      "last_update": "2026-09-29T19:50:23.414712+00:00",
+      "protected_fraction": 0.3,
+      "protected_floor": null
+    },
+    "00000000-66d3-6369-0493-972c0004511e": {
+      "peak_profit": 0.48,
+      "peak_time": "2026-09-29T19:50:24.133187+00:00",
       "activated": true,
-      "last_pnl": 1.81,
-      "last_update_ts": 1790710607.7408218,
+      "last_pnl": 0.48,
+      "last_update_ts": 1790711425.7629979,
+      "giveback": 0.33,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": 0.48,
+      "last_update": "2026-09-29T19:50:26.327075+00:00",
+      "protected_fraction": 0.3458,
+      "protected_floor": 0.17
+    },
+    "00000000-66d3-63bd-0493-972c0004511e": {
+      "peak_profit": -0.08,
+      "peak_time": "2026-09-29T19:50:27.646098+00:00",
+      "activated": false,
+      "last_pnl": -0.08,
+      "last_update_ts": 1790711427.6460896,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
-      "current_profit": 1.81,
-      "last_update": "2026-09-29T19:36:48.242976+00:00",
-      "protected_fraction": 0.4594,
-      "protected_floor": 0.88
+      "current_profit": -0.08,
+      "last_update": "2026-09-29T19:50:27.646117+00:00"
     }
   },
   "position_telemetry": {
@@ -46,16 +79,40 @@
       "peak_time": "2026-09-28T14:50:51.957724+00:00",
       "last_update": "2026-09-28T15:03:25.339561+00:00"
     },
-    "00000000-66d3-38dc-0493-972c0004511e": {
+    "00000000-66d3-6006-0493-972c0004511e": {
       "epic": "GOLD",
       "direction": "BUY",
-      "current_profit": 1.92,
-      "peak_profit": 1.92,
+      "current_profit": -0.79,
+      "peak_profit": -0.27,
+      "giveback": 0.52,
+      "protected_fraction": 0.3,
+      "protected_floor": null,
+      "peak_time": "2026-09-29T19:48:57.980450+00:00",
+      "last_update": "2026-09-29T19:50:23.414712+00:00"
+    },
+    "00000000-66d3-6369-0493-972c0004511e": {
+      "epic": "US100",
+      "direction": "BUY",
+      "current_profit": 0.15,
+      "peak_profit": 0.48,
+      "giveback": 0.33,
+      "protected_fraction": 0.3458,
+      "protected_floor": 0.17,
+      "peak_time": "2026-09-29T19:50:24.133187+00:00",
+      "last_update": "2026-09-29T19:50:26.327075+00:00"
+    },
+    "00000000-66d3-63bd-0493-972c0004511e": {
+      "epic": "US500",
+      "deal_id": "00000000-66d3-63bd-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -0.08,
+      "peak_profit": -0.08,
       "giveback": 0.0,
-      "protected_fraction": 0.4594,
-      "protected_floor": 0.88,
-      "peak_time": "2026-09-29T19:36:48.242976+00:00",
-      "last_update": "2026-09-29T19:36:48.242976+00:00"
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": "2026-09-29T19:50:27.646098+00:00",
+      "last_update": "2026-09-29T19:50:27.646117+00:00"
     }
   }
 }
