@@ -113,9 +113,9 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # Entry-quality upgrades: allow a little more room for normal execution lag,
 # but block entries that are materially stretched or over-correlated with
 # existing exposure. All rejections are persisted with an exact reason.
-LATE_ENTRY_MAX_ATR = 0.50
+LATE_ENTRY_MAX_ATR = 0.35
 # Strong signals may enter later, but never beyond a hard 1.00 ATR chase.
-LATE_ENTRY_STRONG_MAX_ATR = 1.00
+LATE_ENTRY_STRONG_MAX_ATR = 0.75
 LATE_ENTRY_DYNAMIC_ENABLED = True
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
@@ -1407,55 +1407,69 @@ def m5_entry_strength(micro_frames, signal):
 
 
 def v7_signal(df, epic, htf_df=None):
-    """Dynamic Momentum Hybrid V7.
-    M5 is the sole entry timeframe. M15 is context only and never vetoes.
-    Uses live/current M5 candle, EMA9/21, RSI14 and EMA20 Keltner.
+    """Entry timing guard: completed M5 confirmation + live-price confirmation.
+    Avoids chasing extended candles and avoids entering directly into nearby
+    support/resistance unless the completed M5 candle has actually broken it.
     """
     if df is None or len(df) < 60:
         return None
     try:
-        d = df.copy()
+        d = add_indicators(df.copy())
         close = d["close"].astype(float)
         ema9 = close.ewm(span=9, adjust=False).mean()
         ema21 = close.ewm(span=21, adjust=False).mean()
-        keltner_mid = close.ewm(span=20, adjust=False).mean()
-        atr = d["atr"].astype(float)
-        upper = keltner_mid + 1.5 * atr
-        lower = keltner_mid - 1.5 * atr
         rsi = d["rsi"].astype(float)
+        atr = d["atr"].astype(float)
 
-        # Use the current forming M5 candle for live entry timing.
-        cur = d.iloc[-1]
-        price = safe_float(cur["close"])
-        atr0 = safe_float(atr.iloc[-1])
-        if price is None or atr0 is None or atr0 <= 0:
+        # Authority is the LAST COMPLETED M5 candle, never the forming candle.
+        cur = d.iloc[-2]
+        prev = d.iloc[-3]
+        price = safe_float(d.iloc[-1]["close"])
+        c = safe_float(cur["close"])
+        o = safe_float(cur["open"])
+        pc = safe_float(prev["close"])
+        atr0 = safe_float(cur["atr"])
+        r = safe_float(cur["rsi"])
+        e9 = safe_float(ema9.iloc[-2])
+        e21 = safe_float(ema21.iloc[-2])
+        if None in (price, c, o, pc, atr0, r, e9, e21) or atr0 <= 0:
             return None
-        e9, e21 = float(ema9.iloc[-1]), float(ema21.iloc[-1])
-        r = float(rsi.iloc[-1])
-        up = float(upper.iloc[-1])
-        lo = float(lower.iloc[-1])
 
-        # Require a real breakout beyond the Keltner envelope, but do not
-        # chase an already overextended move.
-        buy_break = price > up + 0.15 * atr0
-        sell_break = price < lo - 0.15 * atr0
-        buy = buy_break and e9 > e21 and r >= 51.0
-        sell = sell_break and e9 < e21 and r <= 49.0
+        # Recent completed-candle support/resistance.
+        lookback = d.iloc[-22:-2]
+        support = safe_float(lookback["low"].min())
+        resistance = safe_float(lookback["high"].max())
+        if support is None or resistance is None:
+            return None
 
-        if buy and not sell:
-            distance = max(0.0, price - up) / atr0
-            if distance <= 1.0:
-                log(f"{epic}: V7 BUY | M5 live | EMA9>EMA21 | RSI={r:.1f} | Keltner breakout={distance:.2f}ATR")
-                return "BUY"
-        if sell and not buy:
-            distance = max(0.0, lo - price) / atr0
-            if distance <= 1.0:
-                log(f"{epic}: V7 SELL | M5 live | EMA9<EMA21 | RSI={r:.1f} | Keltner breakout={distance:.2f}ATR")
-                return "SELL"
+        # Direction must be confirmed by the completed M5 candle.
+        bull = c > o and c > pc and e9 > e21 and r >= 50.0
+        bear = c < o and c < pc and e9 < e21 and r <= 50.0
+
+        # A nearby level is not a reason to enter. Only a real completed-candle
+        # breakout can override the level guard.
+        breakout_buffer = 0.05 * atr0
+        broke_resistance = c > resistance + breakout_buffer
+        broke_support = c < support - breakout_buffer
+        near_resistance = (resistance - c) <= SR_BUFFER_ATR * atr0 and c <= resistance
+        near_support = (c - support) <= SR_BUFFER_ATR * atr0 and c >= support
+
+        # Live quote may confirm timing, but cannot create direction by itself.
+        live_delta_atr = abs(price - c) / atr0
+        if live_delta_atr > 0.35:
+            log(f"{epic}: ENTRY TIMING BLOCK | live price {live_delta_atr:.2f} ATR from completed M5 close")
+            return None
+
+        if bull and (broke_resistance or not near_resistance):
+            log(f"{epic}: M5 CONFIRMED BUY | completed candle | RSI={r:.1f} | SR={'BREAKOUT' if broke_resistance else 'CLEAR'}")
+            return "BUY"
+
+        if bear and (broke_support or not near_support):
+            log(f"{epic}: M5 CONFIRMED SELL | completed candle | RSI={r:.1f} | SR={'BREAKDOWN' if broke_support else 'CLEAR'}")
+            return "SELL"
     except Exception as exc:
-        log(f"{epic}: V7 signal unavailable | {exc}")
+        log(f"{epic}: M5 entry timing unavailable | {exc}")
     return None
-
 
 def generate_signal(df, epic, htf_df=None):
     # V7 is the only strategy authority. AI and M15 are support/diagnostic only.
