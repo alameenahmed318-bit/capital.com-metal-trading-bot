@@ -855,17 +855,76 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
 
 CANDLE_CACHE_DEFAULT_TTL_SECONDS = 8.0
 
+def _aggregate_5m_to_15m(raw, max_candles):
+    """Build strategy 15m candles from fresh 5m bars when the native 15m feed lags."""
+    df5 = candles_to_dataframe(raw)
+    if df5.empty or len(df5) < 3:
+        return pd.DataFrame()
+    df5["time"] = pd.to_datetime(df5["time"], utc=True, errors="coerce")
+    df5 = df5.dropna(subset=["time"]).sort_values("time").drop_duplicates("time").reset_index(drop=True)
+    rows = []
+    for i in range(2, len(df5)):
+        a, b, d = df5.iloc[i-2], df5.iloc[i-1], df5.iloc[i]
+        if (b["time"] - a["time"]).total_seconds() != 300 or (d["time"] - b["time"]).total_seconds() != 300:
+            continue
+        rows.append({
+            "time": d["time"] - pd.Timedelta(minutes=10),
+            "open": float(a["open"]),
+            "high": float(max(a["high"], b["high"], d["high"])),
+            "low": float(min(a["low"], b["low"], d["low"])),
+            "close": float(d["close"]),
+        })
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    return out.drop_duplicates("time").tail(int(max_candles)).reset_index(drop=True)
+
+
+def _strategy_candle_feed_is_stale(df, resolution):
+    if df is None or df.empty or "time" not in df.columns:
+        return True, None
+    if resolution != "MINUTE_15":
+        return False, None
+    ts = pd.to_datetime(df.iloc[-1]["time"], utc=True, errors="coerce")
+    if pd.isna(ts):
+        return True, None
+    age = (pd.Timestamp.now(tz="UTC") - ts).total_seconds()
+    return age > 35 * 60, age
+
+
 def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
-    """Short-lived historical-candle cache. Live quotes remain uncached."""
+    """Short-lived candle cache with fresh 5m->15m fallback when native 15m data lags."""
     if cache is None:
-        return candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
-    now = time.monotonic()
-    key = (epic, resolution, int(max_candles))
-    item = cache.get(key)
-    if item is not None and now - item[0] < max(0.0, float(ttl_seconds)):
-        return item[1].copy()
-    df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
-    cache[key] = (now, df.copy())
+        df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
+    else:
+        now = time.monotonic()
+        key = (epic, resolution, int(max_candles))
+        item = cache.get(key)
+        if item is not None and now - item[0] < max(0.0, float(ttl_seconds)):
+            df = item[1].copy()
+        else:
+            df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
+            cache[key] = (now, df.copy())
+
+    stale, age = _strategy_candle_feed_is_stale(df, resolution)
+    if resolution == "MINUTE_15" and stale:
+        try:
+            raw5 = api.get_candles(
+                epic=epic,
+                resolution="MINUTE_5",
+                max_candles=max(300, int(max_candles) * 3),
+            )
+            rebuilt = _aggregate_5m_to_15m(raw5, max_candles)
+            rebuilt_stale, rebuilt_age = _strategy_candle_feed_is_stale(rebuilt, resolution)
+            if not rebuilt.empty and not rebuilt_stale:
+                log(f"{epic}: native 15m stale ({age/60:.1f}m); using fresh 5m->15m rebuild ({rebuilt_age/60:.1f}m).")
+                if cache is not None:
+                    cache[(epic, resolution, int(max_candles))] = (time.monotonic(), rebuilt.copy())
+                return rebuilt
+            if not rebuilt.empty:
+                log(f"{epic}: 5m->15m rebuild still stale ({rebuilt_age/60:.1f}m); keeping native data.")
+        except Exception as exc:
+            log(f"{epic}: fresh 5m->15m fallback failed: {exc}")
     return df
 
 def candles_to_dataframe(raw):
