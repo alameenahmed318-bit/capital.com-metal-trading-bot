@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T05:48:22.003527+00:00",
+  "updated_at": "2026-09-29T06:02:49.063959+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -1497,6 +1497,51 @@
       "slippage_pct": 0.0,
       "deal_reference": "o_b4a45f9c-195b-4495-8d64-bd8c8cb6d92a",
       "deal_id": "00000000-6680-556c-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 200.0
+    },
+    {
+      "timestamp": "2026-09-29T06:01:19.806600+00:00",
+      "epic": "EURJPY",
+      "direction": "SELL",
+      "requested_executable_price": 178.669,
+      "actual_fill_price": 178.665,
+      "spread_pct_at_order": 0.01007398784405505,
+      "slippage_price": 0.004,
+      "slippage_pct": 0.002239,
+      "deal_reference": "o_deda7a80-90aa-40b3-9714-1abe07346a75",
+      "deal_id": "00000000-6680-696f-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 1700.0
+    },
+    {
+      "timestamp": "2026-09-29T06:01:29.324496+00:00",
+      "epic": "GBPJPY",
+      "direction": "SELL",
+      "requested_executable_price": 208.193,
+      "actual_fill_price": 208.192,
+      "spread_pct_at_order": 0.012007367720822584,
+      "slippage_price": 0.001,
+      "slippage_pct": 0.00048,
+      "deal_reference": "o_3ff9f2e8-8b33-4298-82f0-14437fc701b0",
+      "deal_id": "00000000-6680-69ee-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 200.0
+    },
+    {
+      "timestamp": "2026-09-29T06:02:49.063959+00:00",
+      "epic": "CADJPY",
+      "direction": "SELL",
+      "requested_executable_price": 110.875,
+      "actual_fill_price": 110.877,
+      "spread_pct_at_order": 0.006313216719206161,
+      "slippage_price": -0.002,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_721f86d6-994d-4785-9bac-88822ab03976",
+      "deal_id": "00000000-6680-6cb7-0493-972c0004511e",
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 200.0
