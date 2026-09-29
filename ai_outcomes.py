@@ -111,6 +111,33 @@ def _tx_pnl(tx):
         if v is not None: return v
     return None
 
+def _tx_related_ids(tx):
+    """Return all broker identifiers that may refer to the same opened deal."""
+    ids=set()
+    if not isinstance(tx, dict):
+        return ids
+    keys=("dealId","dealID","positionId","dealReference","reference","relatedDealId","relatedDealReference")
+    for key in keys:
+        value=tx.get(key)
+        if value:
+            ids.add(str(value))
+    for container_key in ("deal","source","relatedDeal","position"):
+        nested=tx.get(container_key)
+        if isinstance(nested, dict):
+            for key in keys:
+                value=nested.get(key)
+                if value:
+                    ids.add(str(value))
+    affected=tx.get("affectedDeals")
+    if isinstance(affected,list):
+        for item in affected:
+            if isinstance(item,dict):
+                for key in keys:
+                    value=item.get(key)
+                    if value:
+                        ids.add(str(value))
+    return ids
+
 def _tx_exit_price(tx):
     for k in ("level","closeLevel","closingLevel","price","closePrice","executionPrice"):
         v=_num(tx.get(k))
@@ -133,15 +160,17 @@ def reconcile(api, lookback_days=7):
         for deal_id,entry_time,entry_price,sl,deal_ref in rows:
             match=None
             for tx in txs:
-                tid=_tx_deal_id(tx)
+                tx_ids=_tx_related_ids(tx)
                 note=str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
-                if tid and tid==str(deal_id) and ("close" in note or "closed" in note or "close" in str(tx.get("transactionType","")).lower()):
+                is_close=("close" in note or "closed" in note or "close" in str(tx.get("transactionType","")).lower())
+                if is_close and (str(deal_id) in tx_ids or (deal_ref and str(deal_ref) in tx_ids)):
                     match=tx; break
             if match is None:
+                # Some broker history rows expose only a related/source deal ID.
                 for tx in txs:
-                    tid=_tx_deal_id(tx)
+                    tx_ids=_tx_related_ids(tx)
                     note=str(tx.get("note") or tx.get("description") or tx.get("transactionType") or "").lower()
-                    if deal_ref and tid==str(deal_ref) and ("close" in note or "closed" in note):
+                    if deal_ref and str(deal_ref) in tx_ids and ("close" in note or "closed" in note):
                         match=tx; break
             if match is None: continue
             pnl=_tx_pnl(match)
