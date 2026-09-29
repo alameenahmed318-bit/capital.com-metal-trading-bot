@@ -32,14 +32,14 @@ def _float_env(name, default):
 
 STRATEGY = os.environ.get("STRATEGY", "dynamic_momentum_hybrid_v7")
 
-# Strict automated-trading universe: US indices and EUR/USD only.
-# Other markets are excluded from new automated entries.
+# Strict automated-trading universe. Excluded FX markets cannot receive new entries.
 DISABLED_FX_EPICS = frozenset({
+    "AUDCAD", "GBPUSD", "AUDUSD", "CADJPY", "EURCHF", "EURGBP", "GBPJPY",
     "USDCHF", "USDCAD", "NZDUSD",
     "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
     "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
 })
-FX_EPICS = ["EURUSD", "GBPUSD", "AUDUSD", "USDJPY"]
+FX_EPICS = ["EURUSD", "USDJPY"]
 METALS_ENERGY_EPICS = ["GOLD", "SILVER", "US100", "US500"]
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
 FORWARD_TEST_EPICS = EPICS
