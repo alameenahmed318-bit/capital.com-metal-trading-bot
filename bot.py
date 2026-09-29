@@ -1259,281 +1259,62 @@ def asset_specific_strategy_scores(df, epic, direction, atr, rsi, ema9, ema21, e
     return max(-1.0, min(7.0, bonus)), reasons
 
 
-def quant_signal_score(df, epic, htf_df):
-    """Institutional-style multi-factor score inspired by trend, momentum,
-    breakout, volatility and disciplined risk frameworks.
-    This is our own implementation, not a copy of any firm's proprietary model.
+def market_strategy_signal(df, epic, htf_df=None):
+    """Single active entry strategy.
+
+    Uses only the latest completed M15 candle plus simple market structure:
+    EMA 9/21 direction, candle direction and a 20-candle breakout.
+    No score ladder, regime selector, AI veto, news veto or multi-strategy
+    ensemble controls the entry. AI remains advisory only.
     """
-    if len(df) < 205 or len(htf_df) < HTF_EMA_SLOW + 5:
+    if df is None or len(df) < 25:
         return None
 
     cur = df.iloc[-2]
     prev = df.iloc[-3]
-    close = safe_float(cur["close"])
-    atr = safe_float(cur["atr"])
-    rsi = safe_float(cur["rsi"])
-    if close is None or atr is None or atr <= 0 or rsi is None:
+    close = safe_float(cur.get("close"))
+    prev_close = safe_float(prev.get("close"))
+    open_price = safe_float(cur.get("open"))
+    high = safe_float(cur.get("high"))
+    low = safe_float(cur.get("low"))
+    atr = safe_float(cur.get("atr"))
+
+    if None in (close, prev_close, open_price, high, low):
         return None
 
-    closes = df["close"]
-    ema9 = closes.ewm(span=9, adjust=False).mean().iloc[-2]
-    ema21 = closes.ewm(span=21, adjust=False).mean().iloc[-2]
-    ema50 = closes.ewm(span=50, adjust=False).mean().iloc[-2]
-    ema100 = closes.ewm(span=100, adjust=False).mean().iloc[-2]
-    ema200 = closes.ewm(span=200, adjust=False).mean().iloc[-2]
+    ema9 = float(df["close"].astype(float).ewm(span=9, adjust=False).iloc[-2])
+    ema21 = float(df["close"].astype(float).ewm(span=21, adjust=False).iloc[-2])
 
-    htf_close = htf_df["close"]
-    htf50 = htf_close.ewm(span=50, adjust=False).mean().iloc[-2]
-    htf200 = htf_close.ewm(span=200, adjust=False).mean().iloc[-2]
+    recent = df.iloc[-21:-1]
+    prior_high = float(recent["high"].astype(float).max())
+    prior_low = float(recent["low"].astype(float).min())
 
-    roc5 = (close / safe_float(df["close"].iloc[-7], close) - 1.0) if safe_float(df["close"].iloc[-7]) else 0.0
-    roc20 = (close / safe_float(df["close"].iloc[-22], close) - 1.0) if safe_float(df["close"].iloc[-22]) else 0.0
+    bullish_candle = close > open_price
+    bearish_candle = close < open_price
+    upward = close > prev_close
+    downward = close < prev_close
 
-    recent20 = df.iloc[-21:-1]
-    recent60 = df.iloc[-61:-1]
-    breakout_high = float(recent20["high"].max())
-    breakout_low = float(recent20["low"].min())
-    support = float(recent60["low"].min())
-    resistance = float(recent60["high"].max())
-
-    atr20 = float(df["atr"].rolling(20).mean().iloc[-2]) if "atr" in df else atr
-    atr100 = float(df["atr"].rolling(100).mean().iloc[-2]) if "atr" in df else atr
-    vol_ratio = atr20 / atr100 if atr100 > 0 else 1.0
-
-    scores = {"BUY": 0.0, "SELL": 0.0}
-
-    # Man-style multi-speed trend: fast, medium, slow/HTF.
-    if ema9 > ema21: scores["BUY"] += 15
-    elif ema9 < ema21: scores["SELL"] += 15
-
-    if ema21 > ema50: scores["BUY"] += 15
-    elif ema21 < ema50: scores["SELL"] += 15
-
-    if ema50 > ema100 > ema200: scores["BUY"] += 10
-    elif ema50 < ema100 < ema200: scores["SELL"] += 10
-
-    if htf50 > htf200: scores["BUY"] += 20
-    elif htf50 < htf200: scores["SELL"] += 20
-
-    # AQR-style separation of absolute trend from momentum.
-    if roc5 > 0: scores["BUY"] += 5
-    elif roc5 < 0: scores["SELL"] += 5
-    if roc20 > 0: scores["BUY"] += 10
-    elif roc20 < 0: scores["SELL"] += 10
-
-    # Breakout gets full weight only after a completed-candle confirmation.
-    buy_breakout = close > breakout_high and breakout_confirmation(df, "BUY", atr)
-    sell_breakout = close < breakout_low and breakout_confirmation(df, "SELL", atr)
-    if buy_breakout: scores["BUY"] += 15
-    elif sell_breakout: scores["SELL"] += 15
-
-    # Volatility regime: usable expansion, but reject extreme/noisy conditions.
-    if 0.85 <= vol_ratio <= 1.80:
-        if roc20 > 0: scores["BUY"] += 5
-        elif roc20 < 0: scores["SELL"] += 5
-
-    # RSI is a confirmation, not the primary signal.
-    long_min, long_max, short_min, short_max = get_rsi_settings(epic)
-    if long_min <= rsi <= long_max and roc5 >= 0:
-        scores["BUY"] += 5
-    if short_min <= rsi <= short_max and roc5 <= 0:
-        scores["SELL"] += 5
-
-    # Avoid chasing a trend directly into resistance/support unless a true breakout occurred.
-    if close >= resistance - 0.25 * atr and close <= resistance and close <= breakout_high:
-        scores["BUY"] -= 10
-    if close <= support + 0.25 * atr and close >= support and close >= breakout_low:
-        scores["SELL"] -= 10
-
-    buy_score = max(0.0, min(100.0, scores["BUY"]))
-    sell_score = max(0.0, min(100.0, scores["SELL"]))
-
-    speed_votes_buy = sum([ema9 > ema21, ema21 > ema50, ema50 > ema200, htf50 > htf200])
-    speed_votes_sell = sum([ema9 < ema21, ema21 < ema50, ema50 < ema200, htf50 < htf200])
-    if speed_votes_buy < 3: buy_score = min(buy_score, 69.0)
-    if speed_votes_sell < 3: sell_score = min(sell_score, 69.0)
-    log(f"{epic}: SPEED ENSEMBLE | BUY={speed_votes_buy}/4 SELL={speed_votes_sell}/4")
-
-    # Asset-specific strategies are local score bonuses only. The common
-    # strategy remains the sole entry authority; no extra network/API call is made.
-    asset_bonus_buy, buy_reasons = asset_specific_strategy_scores(df, epic, "BUY", atr, rsi, ema9, ema21, ema50, htf50, htf200)
-    asset_bonus_sell, sell_reasons = asset_specific_strategy_scores(df, epic, "SELL", atr, rsi, ema9, ema21, ema50, htf50, htf200)
-    buy_score = max(0.0, min(100.0, buy_score + asset_bonus_buy))
-    sell_score = max(0.0, min(100.0, sell_score + asset_bonus_sell))
-    if buy_reasons or sell_reasons:
-        log(f"{epic}: ASSET STRATEGY | BUY+{asset_bonus_buy:.1f} {buy_reasons} | SELL+{asset_bonus_sell:.1f} {sell_reasons}")
-
-    regime = market_regime(df, htf_df)
-
-    # Regime-aware weighting without adding new indicators.
-    if regime == "TREND":
-        if htf50 > htf200 and ema9 > ema21 and roc20 > 0:
-            buy_score += 4
-        if htf50 < htf200 and ema9 < ema21 and roc20 < 0:
-            sell_score += 4
-    elif regime == "BREAKOUT":
-        if buy_breakout and roc5 > 0:
-            buy_score += 5
-        if sell_breakout and roc5 < 0:
-            sell_score += 5
-    else:
-        if not buy_breakout:
-            buy_score = min(buy_score, 78.0)
-        if not sell_breakout:
-            sell_score = min(sell_score, 78.0)
-        if close <= support + SR_BUFFER_ATR * atr and rsi <= RANGE_RSI_BUY_MAX:
-            buy_score = max(buy_score, 72.0)
-        if close >= resistance - SR_BUFFER_ATR * atr and rsi >= RANGE_RSI_SELL_MIN:
-            sell_score = max(sell_score, 72.0)
-
-    # Cached Capital.com news support. Reads local cache only: no network I/O
-    # occurs in the order-decision path, so news cannot delay order submission.
-    news_buy, news_buy_reasons = capital_news.score(epic, "BUY")
-    news_sell, news_sell_reasons = capital_news.score(epic, "SELL")
-    buy_score = max(0.0, min(100.0, buy_score + news_buy))
-    sell_score = max(0.0, min(100.0, sell_score + news_sell))
-    if news_buy_reasons or news_sell_reasons:
-        log(
-            f"{epic}: CAPITAL NEWS | BUY{news_buy:+.1f} {news_buy_reasons} | "
-            f"SELL{news_sell:+.1f} {news_sell_reasons}"
-        )
-
-    # Entry-quality bonuses are non-blocking: they only improve the score.
-    # Entry-quality bonuses. These are deliberately non-blocking: they improve
-    # scoring when a pullback/reclaim or high-quality breakout is present, but
-    # they never reject a signal by themselves.
-    pullback_buy = pullback_confirmation_score(df, "BUY", atr)
-    pullback_sell = pullback_confirmation_score(df, "SELL", atr)
-    breakout_quality_buy = breakout_quality_score(df, "BUY", atr) if buy_breakout else 0.0
-    breakout_quality_sell = breakout_quality_score(df, "SELL", atr) if sell_breakout else 0.0
-    # Entry-quality bonuses are applied exactly once and remain non-blocking.
-    buy_score = max(0.0, min(100.0, buy_score + pullback_buy + breakout_quality_buy))
-    sell_score = max(0.0, min(100.0, sell_score + pullback_sell + breakout_quality_sell))
-    log(
-        f"{epic}: ENTRY QUALITY | pullback BUY={pullback_buy:.1f} SELL={pullback_sell:.1f} | "
-        f"breakout BUY={breakout_quality_buy:.1f} SELL={breakout_quality_sell:.1f}"
-    )
-
-    adaptive_mult = adaptive_risk_multiplier(df)
-    log(f"{epic}: QUANT SCORE | BUY={buy_score:.1f} SELL={sell_score:.1f} REGIME={regime} VOL_RATIO={vol_ratio:.2f} | adaptive_risk={adaptive_mult:.2f}")
-
-    dynamic_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
-    log(f"{epic}: ADAPTIVE ENTRY FLOOR | regime={regime} | floor={dynamic_floor:.1f} | vol_ratio={vol_ratio:.2f} | news_stress={max(abs(news_buy), abs(news_sell)):.2f}")
-    if buy_score >= dynamic_floor and buy_score > sell_score + 8:
-        if ALPHA_ENSEMBLE_ENABLED:
-            ok, details = alpha_ensemble_confirmation(df, "BUY")
-            log(f"{epic}: ALPHA ENSEMBLE BUY | {details}")
-            if not ok:
-                return None
-        return "BUY"
-    if sell_score >= dynamic_floor and sell_score > buy_score + 8:
-        if ALPHA_ENSEMBLE_ENABLED:
-            ok, details = alpha_ensemble_confirmation(df, "SELL")
-            log(f"{epic}: ALPHA ENSEMBLE SELL | {details}")
-            if not ok:
-                return None
-        return "SELL"
-    return None
-
-
-
-def classic_25sep_signal(df, epic, htf_df):
-    """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
-    This is the sole entry authority. AI remains advisory only.
-    """
-    if df is None or htf_df is None or len(df) < 205 or len(htf_df) < 205:
-        return None
-    cur = df.iloc[-2]
-    prev = df.iloc[-3]
-    close = safe_float(cur["close"])
-    prev_close = safe_float(prev["close"])
-    atr = safe_float(cur["atr"])
-    rsi = safe_float(cur["rsi"])
-    if None in (close, prev_close, atr, rsi) or atr <= 0:
-        return None
-
-    m15 = df["close"].astype(float)
-    h1 = htf_df["close"].astype(float)
-    ema9 = m15.ewm(span=9, adjust=False).mean().iloc[-2]
-    ema21 = m15.ewm(span=21, adjust=False).mean().iloc[-2]
-    h50 = h1.ewm(span=50, adjust=False).mean().iloc[-2]
-    h200 = h1.ewm(span=200, adjust=False).mean().iloc[-2]
-
-    # Read the completed candle, not the still-forming candle.
-    body = abs(float(cur["close"]) - float(cur["open"]))
-    candle_range = max(float(cur["high"]) - float(cur["low"]), 1e-12)
-    body_ratio = body / candle_range
-    close_pos_buy = (float(cur["close"]) - float(cur["low"])) / candle_range
-    close_pos_sell = (float(cur["high"]) - float(cur["close"])) / candle_range
-
-    recent20 = df.iloc[-21:-1]
-    prior_high = float(recent20["high"].max())
-    prior_low = float(recent20["low"].min())
-
-    buy_trend = ema9 > ema21 and h50 > h200
-    sell_trend = ema9 < ema21 and h50 < h200
-    buy_momentum = close > prev_close and 45 <= rsi <= 70
-    sell_momentum = close < prev_close and 30 <= rsi <= 55
+    buy_trend = ema9 > ema21 and (bullish_candle or upward)
+    sell_trend = ema9 < ema21 and (bearish_candle or downward)
     buy_breakout = close > prior_high
     sell_breakout = close < prior_low
 
-    buy_candle = float(cur["close"]) > float(cur["open"]) and close_pos_buy >= 0.55
-    sell_candle = float(cur["close"]) < float(cur["open"]) and close_pos_sell >= 0.55
-    # FLEXIBLE ENTRY: do not require trend + momentum + candle simultaneously.
-    # A valid directional market condition is enough; confirmations improve
-    # quality but are no longer mandatory entry blockers.
-    buy = (
-        (buy_trend and (buy_momentum or buy_candle))
-        or buy_breakout
-        or (buy_trend and close > prev_close)
-    )
-    sell = (
-        (sell_trend and (sell_momentum or sell_candle))
-        or sell_breakout
-        or (sell_trend and close < prev_close)
-    )
+    buy = buy_trend or buy_breakout
+    sell = sell_trend or sell_breakout
 
     if buy and not sell:
-        log(f"{epic}: 25SEP CLASSIC BUY | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
+        log(f"{epic}: CORE STRATEGY BUY | EMA9/21={ema9:.5f}/{ema21:.5f} | breakout={buy_breakout} | candle={completed_candle_key(df)}")
         return "BUY"
     if sell and not buy:
-        log(f"{epic}: 25SEP CLASSIC SELL | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
+        log(f"{epic}: CORE STRATEGY SELL | EMA9/21={ema9:.5f}/{ema21:.5f} | breakout={sell_breakout} | candle={completed_candle_key(df)}")
         return "SELL"
 
-    # Diagnostic only: explain WAIT without changing the strategy or forcing an entry.
-    log(
-        f"{epic}: 25SEP CLASSIC WAIT | "
-        f"buy_trend={buy_trend} buy_momentum={buy_momentum} buy_candle={buy_candle} buy_breakout={buy_breakout} | "
-        f"sell_trend={sell_trend} sell_momentum={sell_momentum} sell_candle={sell_candle} sell_breakout={sell_breakout} | "
-        f"RSI={rsi:.1f} body={body_ratio:.2f}"
-    )
+    log(f"{epic}: CORE STRATEGY WAIT | EMA9/21={ema9:.5f}/{ema21:.5f} | buy={buy} sell={sell} | candle={completed_candle_key(df)}")
     return None
 
 
 def generate_signal(df, epic, htf_df=None):
-    # Flexible entry mode: use the classic strategy when it has a signal.
-    # If the classic confirmation stack returns WAIT, do not let that WAIT
-    # become a hard entry blocker. Derive direction from current market
-    # structure so the market can still be traded.
-    signal = classic_25sep_signal(df, epic, htf_df)
-    if signal in {"BUY", "SELL"}:
-        return signal
-    try:
-        cur = df.iloc[-2]
-        close = float(cur["close"])
-        ema9 = float(df["close"].ewm(span=9, adjust=False).iloc[-2])
-        ema21 = float(df["close"].ewm(span=21, adjust=False).iloc[-2])
-        prev_close = float(df["close"].iloc[-3])
-        if ema9 > ema21 and close >= prev_close:
-            return "BUY"
-        if ema9 < ema21 and close <= prev_close:
-            return "SELL"
-        # No directional tie: use the latest completed candle direction.
-        return "BUY" if close >= prev_close else "SELL"
-    except Exception:
-        return None
-
-
+    return market_strategy_signal(df, epic, htf_df)
 def market_entry_strength(df, htf_df, direction):
     """Independent 0..1 confidence proxy using completed 15m/1h candles.
     This is not a predicted probability of profit.
@@ -2098,7 +1879,7 @@ OPEN_POSITION_MONITOR_SECONDS = 2
 OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
 # Fast entry scanner: rotate a small number of markets every few seconds.
 # This reduces worst-case entry wait without hammering the broker API.
-FAST_ENTRY_SCAN_SECONDS = 5
+FAST_ENTRY_SCAN_SECONDS = 3
 FAST_ENTRY_MARKETS_PER_SCAN = 4
 # Keep candle data close to the scanner cadence so a new completed
 # candle is recognized quickly; live executable quotes remain uncached.
@@ -2609,10 +2390,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Strategy-only entry gate. AI confidence is informational and cannot delay,
         # block, reverse or modify the strategy entry.
         strength = strategy_strength
-        regime_now = "25SEP_CLASSIC"
+        regime_now = "CORE_MARKET"
         vol_ratio_now = 1.0
         strong_signal = True
-        log(f"{epic}: CLASSIC ENTRY | strategy=25SEP | strength={strength:.2f} | filters=MINIMAL")
+        log(f"{epic}: CORE ENTRY | strategy=single-market | strength={strength:.2f} | filters=MINIMAL")
         trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
