@@ -1,8 +1,10 @@
 {
   "risk_distance": {
     "00000000-66d3-6fae-0493-972c0004511e": 0.1778056738606395,
-    "00000000-66d3-a6d1-0493-972c0004511e": 45.538941523704125,
-    "00000000-66d3-a6f2-0493-972c0004511e": 8.975801960355966
+    "00000000-66d3-a6f2-0493-972c0004511e": 8.975801960355966,
+    "00000000-66d3-bee4-0493-972c0004511e": 40.03176089922272,
+    "00000000-66d3-c321-0493-972c0004511e": 0.14642064005176536,
+    "00000000-66d3-d05e-0493-972c0004511e": 36.86483465814308
   },
   "profit_trail": {
     "00000000-667a-1c62-0493-972c0004511e": {
@@ -20,48 +22,63 @@
       "protected_fraction": 0.4214,
       "protected_floor": 0.59
     },
-    "00000000-66d3-6fae-0493-972c0004511e": {
-      "peak_profit": 1.39,
-      "peak_time": "2026-09-29T20:17:07.219049+00:00",
-      "activated": true,
-      "last_pnl": -4.64,
-      "last_update_ts": 1790714236.2003815,
-      "giveback": 6.38,
-      "giveback_ratio": 4.3381,
-      "profit_velocity": 0.0,
-      "profit_acceleration": 0.0,
-      "current_profit": -4.64,
-      "last_update": "2026-09-29T20:37:16.630846+00:00",
-      "protected_fraction": 0.4214,
-      "protected_floor": 0.59
-    },
-    "00000000-66d3-a6d1-0493-972c0004511e": {
-      "peak_profit": -0.14,
-      "peak_time": "2026-09-29T20:23:47.994363+00:00",
-      "activated": false,
-      "last_pnl": -1.72,
-      "last_update_ts": 1790714220.7060516,
-      "giveback": 1.58,
-      "giveback_ratio": 0.0,
-      "profit_velocity": 0.0,
-      "profit_acceleration": -0.009623,
-      "current_profit": -1.72,
-      "last_update": "2026-09-29T20:37:01.152797+00:00",
-      "protected_fraction": 0.3,
-      "protected_floor": null
-    },
     "00000000-66d3-a6f2-0493-972c0004511e": {
       "peak_profit": -0.2,
       "peak_time": "2026-09-29T20:23:53.657848+00:00",
       "activated": false,
-      "last_pnl": -1.29,
-      "last_update_ts": 1790714224.268627,
-      "giveback": 1.09,
+      "last_pnl": -1.52,
+      "last_update_ts": 1790715276.0480742,
+      "giveback": 1.32,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.001784,
+      "current_profit": -1.52,
+      "last_update": "2026-09-29T20:54:36.356051+00:00",
+      "protected_fraction": 0.3,
+      "protected_floor": null
+    },
+    "00000000-66d3-bee4-0493-972c0004511e": {
+      "peak_profit": 0.97,
+      "peak_time": "2026-09-29T20:52:06.562161+00:00",
+      "activated": true,
+      "last_pnl": 0.96,
+      "last_update_ts": 1790715254.6095495,
+      "giveback": 0.05,
+      "giveback_ratio": 0.0103,
+      "profit_velocity": 0.0,
+      "profit_acceleration": -0.008201,
+      "current_profit": 0.96,
+      "last_update": "2026-09-29T20:54:15.473249+00:00",
+      "protected_fraction": 0.3882,
+      "protected_floor": 0.38
+    },
+    "00000000-66d3-c321-0493-972c0004511e": {
+      "peak_profit": 1.86,
+      "peak_time": "2026-09-29T20:53:51.686291+00:00",
+      "activated": true,
+      "last_pnl": 1.1,
+      "last_update_ts": 1790715264.685729,
+      "giveback": 1.45,
+      "giveback_ratio": 0.4086,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": 1.1,
+      "last_update": "2026-09-29T20:54:24.985051+00:00",
+      "protected_fraction": 0.4553,
+      "protected_floor": 0.85
+    },
+    "00000000-66d3-d05e-0493-972c0004511e": {
+      "peak_profit": 0.0,
+      "peak_time": "2026-09-29T20:51:14.640385+00:00",
+      "activated": false,
+      "last_pnl": 0.0,
+      "last_update_ts": 1790715254.6095495,
+      "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
-      "current_profit": -1.29,
-      "last_update": "2026-09-29T20:37:04.739754+00:00",
+      "current_profit": 0.0,
+      "last_update": "2026-09-29T20:54:15.747600+00:00",
       "protected_fraction": 0.3,
       "protected_floor": null
     }
@@ -78,38 +95,49 @@
       "peak_time": "2026-09-28T14:50:51.957724+00:00",
       "last_update": "2026-09-28T15:03:25.339561+00:00"
     },
-    "00000000-66d3-6fae-0493-972c0004511e": {
-      "epic": "SILVER",
-      "direction": "SELL",
-      "current_profit": -4.99,
-      "peak_profit": 1.39,
-      "giveback": 6.38,
-      "protected_fraction": 0.4214,
-      "protected_floor": 0.59,
-      "peak_time": "2026-09-29T20:17:07.219049+00:00",
-      "last_update": "2026-09-29T20:37:16.630846+00:00"
-    },
-    "00000000-66d3-a6d1-0493-972c0004511e": {
-      "epic": "US100",
-      "direction": "SELL",
-      "current_profit": -1.72,
-      "peak_profit": -0.14,
-      "giveback": 1.58,
-      "protected_fraction": 0.3,
-      "protected_floor": null,
-      "peak_time": "2026-09-29T20:23:47.994363+00:00",
-      "last_update": "2026-09-29T20:37:01.152797+00:00"
-    },
     "00000000-66d3-a6f2-0493-972c0004511e": {
       "epic": "US500",
       "direction": "SELL",
-      "current_profit": -1.29,
+      "current_profit": -1.52,
       "peak_profit": -0.2,
-      "giveback": 1.09,
+      "giveback": 1.32,
       "protected_fraction": 0.3,
       "protected_floor": null,
       "peak_time": "2026-09-29T20:23:53.657848+00:00",
-      "last_update": "2026-09-29T20:37:04.739754+00:00"
+      "last_update": "2026-09-29T20:54:36.356051+00:00"
+    },
+    "00000000-66d3-bee4-0493-972c0004511e": {
+      "epic": "US100",
+      "direction": "SELL",
+      "current_profit": 0.92,
+      "peak_profit": 0.97,
+      "giveback": 0.05,
+      "protected_fraction": 0.3882,
+      "protected_floor": 0.38,
+      "peak_time": "2026-09-29T20:52:06.562161+00:00",
+      "last_update": "2026-09-29T20:54:15.473249+00:00"
+    },
+    "00000000-66d3-c321-0493-972c0004511e": {
+      "epic": "SILVER",
+      "direction": "SELL",
+      "current_profit": 0.41,
+      "peak_profit": 1.86,
+      "giveback": 1.45,
+      "protected_fraction": 0.4553,
+      "protected_floor": 0.85,
+      "peak_time": "2026-09-29T20:53:51.686291+00:00",
+      "last_update": "2026-09-29T20:54:24.985051+00:00"
+    },
+    "00000000-66d3-d05e-0493-972c0004511e": {
+      "epic": "US100",
+      "direction": "SELL",
+      "current_profit": 0.0,
+      "peak_profit": 0.0,
+      "giveback": 0.0,
+      "protected_fraction": 0.3,
+      "protected_floor": null,
+      "peak_time": "2026-09-29T20:51:14.640385+00:00",
+      "last_update": "2026-09-29T20:54:15.747600+00:00"
     }
   }
 }
