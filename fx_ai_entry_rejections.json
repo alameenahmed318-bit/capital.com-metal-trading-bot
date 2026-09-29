@@ -1,197 +1,5 @@
 [
   {
-    "timestamp": "2026-09-28T20:17:49.519697+00:00",
-    "epic": "USDCHF",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:18:08.290986+00:00",
-    "epic": "USDCAD",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=1.417840; completed_close=1.417550; distance=0.60 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T20:18:14.762346+00:00",
-    "epic": "AUDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:18:21.315789+00:00",
-    "epic": "NZDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:18:27.739593+00:00",
-    "epic": "EURGBP",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:19:00.533131+00:00",
-    "epic": "EURCHF",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:19:27.300341+00:00",
-    "epic": "AUDCAD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:19:33.850275+00:00",
-    "epic": "AUDCHF",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:20:27.622319+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:20:33.171982+00:00",
-    "epic": "USDCHF",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:20:38.627755+00:00",
-    "epic": "USDCAD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:20:45.113879+00:00",
-    "epic": "AUDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:21:08.460743+00:00",
-    "epic": "NZDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:21:12.104731+00:00",
-    "epic": "EURGBP",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=0.858180; completed_close=0.857980; distance=0.77 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T20:21:44.420495+00:00",
-    "epic": "EURCHF",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:21:54.427096+00:00",
-    "epic": "AUDCAD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:22:17.627127+00:00",
-    "epic": "AUDCHF",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:22:55.025233+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:23:00.980391+00:00",
-    "epic": "USDCHF",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:23:22.296564+00:00",
-    "epic": "USDCAD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:23:28.872367+00:00",
-    "epic": "AUDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:23:35.340505+00:00",
-    "epic": "NZDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:23:38.740262+00:00",
-    "epic": "EURGBP",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=0.858180; completed_close=0.857980; distance=0.77 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-28T20:24:11.552566+00:00",
-    "epic": "EURCHF",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:24:38.787247+00:00",
-    "epic": "AUDCAD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:24:45.385902+00:00",
-    "epic": "AUDCHF",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:25:38.704025+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:25:44.098117+00:00",
-    "epic": "USDCHF",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:25:49.635623+00:00",
-    "epic": "USDCAD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:25:56.051330+00:00",
-    "epic": "AUDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:26:19.330423+00:00",
-    "epic": "NZDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-28T20:26:22.905555+00:00",
-    "epic": "EURGBP",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=0.858190; completed_close=0.857980; distance=0.81 ATR; limit=0.69 ATR"
-  },
-  {
     "timestamp": "2026-09-28T20:26:55.564115+00:00",
     "epic": "EURCHF",
     "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
@@ -5998,5 +5806,197 @@
     "epic": "USDCAD",
     "reason": "PORTFOLIO_RISK_CAP",
     "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:36:42.346868+00:00",
+    "epic": "USDJPY",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:37:01.182581+00:00",
+    "epic": "USDCAD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:37:15.612974+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858120; completed_close=0.857980; distance=0.76 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:38:30.134175+00:00",
+    "epic": "USDJPY",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=157.454000; completed_close=157.383000; distance=0.77 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:38:32.166347+00:00",
+    "epic": "USDCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:38:55.080449+00:00",
+    "epic": "USDCAD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:39:02.221348+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858150; completed_close=0.857980; distance=0.92 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:39:27.800944+00:00",
+    "epic": "EURCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:40:43.991644+00:00",
+    "epic": "USDJPY",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=157.508000; completed_close=157.383000; distance=1.35 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:40:45.922147+00:00",
+    "epic": "USDCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:40:51.904214+00:00",
+    "epic": "USDCAD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:41:18.153638+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858120; completed_close=0.857980; distance=0.76 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:41:46.065152+00:00",
+    "epic": "EURCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:42:42.752528+00:00",
+    "epic": "USDJPY",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=157.514000; completed_close=157.383000; distance=1.42 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:42:45.343321+00:00",
+    "epic": "USDCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:43:05.808694+00:00",
+    "epic": "USDCAD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:43:13.009099+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858120; completed_close=0.857980; distance=0.76 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:43:40.031213+00:00",
+    "epic": "EURCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:44:52.111509+00:00",
+    "epic": "USDJPY",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=157.538000; completed_close=157.383000; distance=1.68 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:44:54.095830+00:00",
+    "epic": "USDCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:15:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:45:00.076333+00:00",
+    "epic": "USDCAD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:45:24.861238+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858150; completed_close=0.858020; distance=0.73 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:47:50.412802+00:00",
+    "epic": "USDCAD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:47:57.579074+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858150; completed_close=0.858020; distance=0.73 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:48:30.234733+00:00",
+    "epic": "EURCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:49:35.406527+00:00",
+    "epic": "EURUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T01:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:49:38.009739+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T01:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:50:01.572579+00:00",
+    "epic": "USDJPY",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:50:03.684826+00:00",
+    "epic": "USDCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:30:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T01:50:10.572314+00:00",
+    "epic": "USDCAD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T01:50:39.757633+00:00",
+    "epic": "EURGBP",
+    "reason": "LATE_ENTRY",
+    "details": "BUY quote=0.858120; completed_close=0.858020; distance=0.56 ATR; limit=0.50 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:51:10.382144+00:00",
+    "epic": "EURCHF",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T01:30:00+00:00"
   }
 ]
