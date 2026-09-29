@@ -22,6 +22,7 @@ import bot as base
 
 STRATEGY_ID = "METAL_IMPERIUM_IRON_V1"
 base.STRATEGY_ID = STRATEGY_ID
+base.STRATEGY_ALLOWED_EPICS = ["GOLD", "SILVER"]
 
 # Metals state is isolated from FX state.
 base.POSITION_OWNERSHIP_FILE = "metals_energy_ai_strategy_positions.json"
