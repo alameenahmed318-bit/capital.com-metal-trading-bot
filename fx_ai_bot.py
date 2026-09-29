@@ -17,7 +17,8 @@ base.ENTRY_CANDLE_STATE_FILE = "fx_ai_entry_candle_state.json"
 
 # Currency instruments only. Do not silently include metals, energy or indices.
 base.EPICS = [epic for epic in list(dict.fromkeys(getattr(base.config, "EPICS", [])))
-              if epic not in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}]
+              if epic not in {"GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"}
+              and epic not in base.config.DISABLED_FX_EPICS]
 
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
