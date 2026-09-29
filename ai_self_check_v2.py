@@ -43,7 +43,7 @@ def main() -> int:
             tree = parsed.get("bot.py") or ast.parse(source, filename="bot.py")
 
             # AI must never be the executable entry authority.
-            if "signal = legacy_signal" not in source:
+            if not re.search(r"\\blegacy_signal\\s*=\\s*generate_signal\\s*\\(", source):
                 failures.append("ARCHITECTURE: strategy signal is not explicitly assigned as the entry signal.")
             if "no_ai_entry_gate=True" not in source:
                 failures.append("ARCHITECTURE: AI support-only entry marker is missing.")
