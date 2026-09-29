@@ -83,31 +83,31 @@
       "peak_profit": -0.11,
       "peak_time": "2026-09-29T10:36:13.935474+00:00",
       "activated": false,
-      "last_pnl": -2.76,
-      "last_update_ts": 1790680218.4648323,
-      "giveback": 2.57,
+      "last_pnl": -4.33,
+      "last_update_ts": 1790681141.3303103,
+      "giveback": 4.37,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
-      "profit_acceleration": 0.006468,
-      "current_profit": -2.76,
-      "last_update": "2026-09-29T11:10:19.332981+00:00",
+      "profit_acceleration": 0.0,
+      "current_profit": -4.33,
+      "last_update": "2026-09-29T11:25:41.787564+00:00",
       "protected_fraction": 0.3,
       "protected_floor": null
     },
     "00000000-6682-6851-0493-972c0004511e": {
-      "peak_profit": 0.29,
-      "peak_time": "2026-09-29T11:03:09.793107+00:00",
+      "peak_profit": 0.75,
+      "peak_time": "2026-09-29T11:11:40.948642+00:00",
       "activated": true,
-      "last_pnl": -1.63,
-      "last_update_ts": 1790680215.4318821,
-      "giveback": 1.96,
-      "giveback_ratio": 6.6207,
+      "last_pnl": -2.03,
+      "last_update_ts": 1790681145.4886343,
+      "giveback": 3.24,
+      "giveback_ratio": 3.7067,
       "profit_velocity": 0.0,
-      "profit_acceleration": 0.073605,
-      "current_profit": -1.63,
-      "last_update": "2026-09-29T11:10:16.336044+00:00",
-      "protected_fraction": 0.3282,
-      "protected_floor": 0.1
+      "profit_acceleration": 0.0,
+      "current_profit": -2.03,
+      "last_update": "2026-09-29T11:25:45.897351+00:00",
+      "protected_fraction": 0.3696,
+      "protected_floor": 0.28
     }
   },
   "position_telemetry": {
@@ -169,24 +169,24 @@
     "00000000-6682-3faa-0493-972c0004511e": {
       "epic": "AUDUSD",
       "direction": "SELL",
-      "current_profit": -2.68,
+      "current_profit": -4.48,
       "peak_profit": -0.11,
-      "giveback": 2.57,
+      "giveback": 4.37,
       "protected_fraction": 0.3,
       "protected_floor": null,
       "peak_time": "2026-09-29T10:36:13.935474+00:00",
-      "last_update": "2026-09-29T11:10:19.332981+00:00"
+      "last_update": "2026-09-29T11:25:41.787564+00:00"
     },
     "00000000-6682-6851-0493-972c0004511e": {
       "epic": "USDJPY",
       "direction": "BUY",
-      "current_profit": -1.67,
-      "peak_profit": 0.29,
-      "giveback": 1.96,
-      "protected_fraction": 0.3282,
-      "protected_floor": 0.1,
-      "peak_time": "2026-09-29T11:03:09.793107+00:00",
-      "last_update": "2026-09-29T11:10:16.336044+00:00"
+      "current_profit": -2.49,
+      "peak_profit": 0.75,
+      "giveback": 3.24,
+      "protected_fraction": 0.3696,
+      "protected_floor": 0.28,
+      "peak_time": "2026-09-29T11:11:40.948642+00:00",
+      "last_update": "2026-09-29T11:25:45.897351+00:00"
     }
   }
 }

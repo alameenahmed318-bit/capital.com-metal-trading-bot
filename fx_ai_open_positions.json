@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T10:56:12.338654+00:00",
+  "updated_at": "2026-09-29T11:11:39.363116+00:00",
   "positions": [
     {
       "dealId": "00000000-6682-5649-0493-972c0004511e",
@@ -10,7 +10,7 @@
       "current": 4151.2,
       "stopLoss": 4163.444684864942,
       "takeProfit": 4133.0829727025875,
-      "profitLoss": -1.02
+      "profitLoss": -3.24
     },
     {
       "dealId": "00000000-6682-56ff-0493-972c0004511e",
@@ -21,7 +21,18 @@
       "current": 7686.2,
       "stopLoss": 7673.667519465659,
       "takeProfit": 7705.498720801511,
-      "profitLoss": 1.06
+      "profitLoss": 2.38
+    },
+    {
+      "dealId": "00000000-6682-6851-0493-972c0004511e",
+      "epic": "USDJPY",
+      "direction": "BUY",
+      "size": 1400.0,
+      "entry": 157.278,
+      "current": 157.278,
+      "stopLoss": 157.047158615943,
+      "takeProfit": 157.6317620760855,
+      "profitLoss": 0.75
     },
     {
       "dealId": "00000000-6682-3faa-0493-972c0004511e",
@@ -32,7 +43,7 @@
       "current": 0.69902,
       "stopLoss": 0.7002861778770443,
       "takeProfit": 0.6971207331844335,
-      "profitLoss": -2.9
+      "profitLoss": -2.94
     }
   ]
 }
