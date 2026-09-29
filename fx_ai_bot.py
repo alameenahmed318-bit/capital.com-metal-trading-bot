@@ -23,10 +23,15 @@ assert not set(base.EPICS) & set(base.config.DISABLED_FX_EPICS), "Excluded FX pa
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
+base.REVERSE_ENTRY_DIRECTION = True
+
 base.reload_runtime_state()
 
 def run_cycle():
-    base.log(f"STARTING {STRATEGY_ID} | FX ONLY | markets={base.EPICS}")
+    base.log(
+        f"STARTING {STRATEGY_ID} | FX ONLY | markets={base.EPICS} | "
+        f"reverse_entries={base.REVERSE_ENTRY_DIRECTION}"
+    )
     return base.run_cycle()
 
 if __name__ == "__main__":
