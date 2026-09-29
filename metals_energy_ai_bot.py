@@ -1,20 +1,16 @@
-"""Capital.com Metals AI Bot — METAL IMPERIUM IRON V1.
+"""Capital.com Metals AI Bot — METAL IMPERIUM IRON V1 (FLUID).
 
-This wrapper intentionally overrides only the metals strategy runtime.
-The FX bot and its Dynamic Momentum Hybrid V7 implementation are untouched.
+Entry is deliberately simple:
+completed M5 candle + EMA9/EMA21 direction + candle momentum.
+RSI, breakout, M15 and AI are advisory only and never hard entry vetoes.
 
-Entry authority:
-  M5 -> EMA9/EMA21 -> RSI14 -> 14-bar breakout -> ATR -> confirmation.
-Risk:
-  1% per trade, 2% maximum reserved basket risk, one position per epic.
-Protection:
-  1R break-even, 1.5R trailing, broker SL/TP remain authoritative.
+Protection remains in the shared engine:
+ATR stop, break-even, trailing/profit protection, spread/execution checks,
+ownership isolation and portfolio/basket risk budgets.
+
 No grid / martingale / averaging.
-AI is support/diagnostic only and cannot create a trade direction.
 """
 from datetime import datetime, timezone
-import json
-import os
 
 import pandas as pd
 
@@ -22,10 +18,15 @@ import bot as base
 
 STRATEGY_ID = "METAL_IMPERIUM_IRON_V1"
 base.STRATEGY_ID = STRATEGY_ID
-base.STRATEGY_ALLOWED_EPICS = ["GOLD", "SILVER"]
 
-# Metals state is isolated from FX state.
+# ============================================================
+# STRATEGY ISOLATION
+# ============================================================
+base.STRATEGY_ALLOWED_EPICS = ["GOLD", "SILVER", "US100", "US500"]
+base.EPICS = ["GOLD", "SILVER", "US100", "US500"]
+
 base.POSITION_OWNERSHIP_FILE = "metals_energy_ai_strategy_positions.json"
+base.LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 base.STATE_FILE = "metals_energy_ai_trades_state.json"
 base.OPEN_POSITIONS_FILE = "metals_energy_ai_open_positions.json"
 base.SAFETY_STATE_FILE = "metals_energy_ai_bot_safety_state.json"
@@ -33,132 +34,171 @@ base.EXECUTION_QUALITY_FILE = "metals_energy_ai_execution_quality.json"
 base.ENTRY_REJECTION_FILE = "metals_energy_ai_entry_rejections.json"
 base.ENTRY_CANDLE_STATE_FILE = "metals_energy_ai_entry_candle_state.json"
 
-# Metals only.
-base.EPICS = ["GOLD", "SILVER"]
+# ============================================================
+# FLUID M5 PROFILE
+# ============================================================
 base.RESOLUTION = "MINUTE_5"
 base.CANDLE_COUNT = 300
 base.HTF_RESOLUTION = "MINUTE_15"
 base.HTF_CANDLE_COUNT = 300
 base.ENTRY_CANDLE_RESOLUTION = base.RESOLUTION
-# The shared candle validator defaults to M15 (900s); Iron trades M5 (300s).
-# Keep timestamp spacing validation strict instead of bypassing stale candles.
 base.STRATEGY_CANDLE_RESOLUTION_SECONDS = 300
 
-# Unified risk/execution profile.
 base.AGGRESSIVE_BASE_RISK = 0.01
 base.MAX_BASKET_RISK = 0.02
-base.MAX_POSITIONS_PER_EPIC = 1
+
+# There is deliberately no fixed trade-count gate here.
+# Extra legs remain constrained by profitable same-direction exposure,
+# basket/portfolio risk and broker execution checks.
+base.MAX_POSITIONS_PER_EPIC = None
+
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
 
-# Iron strategy parameters.
-IRON_EMA_FAST = 9
-IRON_EMA_SLOW = 21
-IRON_RSI_PERIOD = 14
-IRON_RSI_BUY = 52.0
-IRON_RSI_SELL = 48.0
-IRON_BREAKOUT_LOOKBACK = 14
-IRON_BREAKOUT_BUFFER_ATR = 0.20
-IRON_MIN_ATR = 0.0  # Symbol-specific ATR is checked as positive; no arbitrary price-unit gate.
-IRON_SL_ATR = 1.80
-IRON_TP_ATR = 0.0
-IRON_BE_R = 1.00
-IRON_BE_OFFSET_R = 0.05
-IRON_TRAIL_START_R = 1.50
-IRON_TRAIL_ATR = 1.00
-
-# Keep the base manager aligned with the iron protection policy.
-base.SL_ATR_MULT = IRON_SL_ATR
-base.TP_ATR_MULT = IRON_TP_ATR
+# Dynamic protection.
+base.SL_ATR_MULT = 1.80
+base.TP_ATR_MULT = 0.0
 base.BREAKEVEN_ENABLED = True
-base.BREAKEVEN_START_R = IRON_BE_R
-base.BREAKEVEN_OFFSET_R = IRON_BE_OFFSET_R
+base.BREAKEVEN_START_R = 1.00
+base.BREAKEVEN_OFFSET_R = 0.05
 base.TRAILING_ENABLED = True
-base.TRAILING_START_R = IRON_TRAIL_START_R
-base.TRAILING_DISTANCE_R = IRON_TRAIL_ATR
+base.TRAILING_START_R = 1.00
+base.TRAILING_DISTANCE_R = 1.00
+base.PROFIT_TRAIL_ENABLED = True
 
-# AI cannot veto a valid iron signal merely by becoming unavailable.
-# It remains diagnostic/support-only on this strategy.
+# Entry timing: normal <=0.25 ATR from the completed M5 close;
+# strong market-derived conditions may use <=0.30 ATR.
+MAX_ENTRY_DRIFT_ATR = 0.25
+STRONG_ENTRY_DRIFT_ATR = 0.30
+base.LATE_ENTRY_MAX_ATR = MAX_ENTRY_DRIFT_ATR
+base.LATE_ENTRY_STRONG_MAX_ATR = STRONG_ENTRY_DRIFT_ATR
+base.LATE_ENTRY_DYNAMIC_ENABLED = True
+
+# These older strategy gates are not part of the Iron entry authority.
+base.USE_SUPPORT_RESISTANCE = False
+base.USE_BREAKOUT_CONFIRMATION = False
 base.SESSION_FILTER_ENABLED = False
 base.CORRELATION_FILTER_ENABLED = False
 
 base.reload_runtime_state()
 
 
-def _rsi_atr_frame(df):
-    if df is None or len(df) < max(60, IRON_BREAKOUT_LOOKBACK + 5):
+def _frame(df):
+    """Prepare indicator data without using the forming candle for direction."""
+    if df is None or len(df) < 30:
         return None
-    d = df.copy()
     try:
-        d = base.add_indicators(d)
-        return d
+        return base.add_indicators(df.copy())
     except Exception as exc:
         base.log(f"IRON indicators unavailable | {exc}")
         return None
 
 
-def iron_signal(df, epic, htf_df=None):
-    """Single metals entry authority.
+def _completed_m5_direction(d, epic):
+    """Simple Fluid entry authority: completed M5 + EMA9/EMA21 + candle body."""
+    if d is None or len(d) < 30:
+        return None
 
-    Uses the latest available M5 observation and compares it with the
-    preceding 14 closed M5 candles. M15 is informational only.
+    cur = d.iloc[-2]
+    prev = d.iloc[-3]
+
+    c = base.safe_float(cur.get("close"))
+    o = base.safe_float(cur.get("open"))
+    pc = base.safe_float(prev.get("close"))
+    e9 = base.safe_float(
+        d["close"].ewm(span=9, adjust=False).mean().iloc[-2]
+    )
+    e21 = base.safe_float(
+        d["close"].ewm(span=21, adjust=False).mean().iloc[-2]
+    )
+    atr = base.safe_float(cur.get("atr"))
+
+    if None in (c, o, pc, e9, e21, atr) or atr <= 0:
+        return None
+
+    if c > o and c > pc and e9 > e21:
+        return "BUY"
+
+    if c < o and c < pc and e9 < e21:
+        return "SELL"
+
+    return None
+
+
+def is_wick_dangerous(candle, direction):
+    """Reject only an exceptionally large opposing wick."""
+    try:
+        high = base.safe_float(candle.get("high"))
+        low = base.safe_float(candle.get("low"))
+        open_ = base.safe_float(candle.get("open"))
+        close = base.safe_float(candle.get("close"))
+        if None in (high, low, open_, close) or high <= low:
+            return False
+
+        rng = high - low
+        upper = high - max(open_, close)
+        lower = min(open_, close) - low
+
+        if direction == "BUY":
+            return (upper / rng) > 0.65
+        if direction == "SELL":
+            return (lower / rng) > 0.65
+    except Exception:
+        return False
+
+    return False
+
+
+def iron_signal(df, epic, htf_df=None):
     """
-    d = _rsi_atr_frame(df)
+    Fluid entry:
+      1) completed M5 candle
+      2) EMA9/EMA21 direction
+      3) candle momentum
+      4) only reject a very large opposing wick
+
+    M15/HTF, RSI, breakout and AI do not veto the technical signal.
+    Live price is handled by the shared execution/timing path.
+    """
+    d = _frame(df)
     if d is None:
         return None
 
     try:
-        cur = d.iloc[-1]
-        close = base.safe_float(cur.get("close"))
-        atr = base.safe_float(cur.get("atr"))
-        rsi = base.safe_float(cur.get("rsi"))
-
-        if close is None or atr is None or rsi is None or atr <= 0:
+        direction = _completed_m5_direction(d, epic)
+        if direction is None:
             return None
 
-        ema9 = float(d["close"].ewm(span=IRON_EMA_FAST, adjust=False).mean().iloc[-1])
-        ema21 = float(d["close"].ewm(span=IRON_EMA_SLOW, adjust=False).mean().iloc[-1])
-
-        # Exclude the current observation from the breakout range.
-        prior = d.iloc[-(IRON_BREAKOUT_LOOKBACK + 1):-1]
-        if len(prior) < IRON_BREAKOUT_LOOKBACK:
+        candle = d.iloc[-2]
+        if is_wick_dangerous(candle, direction):
+            base.log(f"{epic}: IRON FLUID HOLD | opposing wick >65%")
             return None
 
-        resistance = float(prior["high"].max())
-        support = float(prior["low"].min())
-        buy_zone = resistance + IRON_BREAKOUT_BUFFER_ATR * atr
-        sell_zone = support - IRON_BREAKOUT_BUFFER_ATR * atr
+        atr = base.safe_float(candle.get("atr"))
+        close = base.safe_float(candle.get("close"))
+        e9 = base.safe_float(
+            d["close"].ewm(span=9, adjust=False).mean().iloc[-2]
+        )
+        e21 = base.safe_float(
+            d["close"].ewm(span=21, adjust=False).mean().iloc[-2]
+        )
 
-        buy = close > buy_zone and ema9 > ema21 and rsi >= IRON_RSI_BUY
-        sell = close < sell_zone and ema9 < ema21 and rsi <= IRON_RSI_SELL
-
-        if buy and not sell:
-            base.log(
-                f"{epic}: IRON BUY | M5 | EMA9>EMA21 | RSI={rsi:.1f} | "
-                f"breakout=+{(close-resistance)/atr:.2f}ATR | buffer=0.20ATR"
-            )
-            return "BUY"
-
-        if sell and not buy:
-            base.log(
-                f"{epic}: IRON SELL | M5 | EMA9<EMA21 | RSI={rsi:.1f} | "
-                f"breakout=+{(support-close)/atr:.2f}ATR | buffer=0.20ATR"
-            )
-            return "SELL"
+        base.log(
+            f"{epic}: IRON FLUID {direction} | M5 completed | "
+            f"EMA9={e9:.5f} EMA21={e21:.5f} | ATR={atr:.6f} | close={close:.5f}"
+        )
+        return direction
 
     except Exception as exc:
-        base.log(f"{epic}: IRON signal unavailable | {exc}")
-
-    return None
+        base.log(f"{epic}: IRON FLUID signal unavailable | {exc}")
+        return None
 
 
 def m5_entry_direction(micro_frames, epic=None):
     if not isinstance(micro_frames, dict):
         return None
     m5 = micro_frames.get("M5_DF")
-    if m5 is None:
-        return None
     return iron_signal(m5, epic, None)
 
 
@@ -167,109 +207,134 @@ def generate_signal(df, epic, htf_df=None):
 
 
 def m5_entry_strength(micro_frames, signal):
-    if signal not in {"BUY", "SELL"}:
+    """Non-blocking strength estimate; never acts as an entry gate."""
+    if signal not in {"BUY", "SELL"} or not isinstance(micro_frames, dict):
         return 0.0
-    m5 = micro_frames.get("M5_DF") if isinstance(micro_frames, dict) else None
-    d = _rsi_atr_frame(m5)
+
+    d = _frame(micro_frames.get("M5_DF"))
     if d is None:
         return 0.0
+
     try:
-        cur = d.iloc[-1]
-        rsi = base.safe_float(cur.get("rsi"))
+        cur = d.iloc[-2]
+        prev = d.iloc[-3]
+        c = base.safe_float(cur.get("close"))
+        o = base.safe_float(cur.get("open"))
+        pc = base.safe_float(prev.get("close"))
         atr = base.safe_float(cur.get("atr"))
-        close = base.safe_float(cur.get("close"))
-        if None in (rsi, atr, close) or atr <= 0:
-            return 0.0
-        prior = d.iloc[-(IRON_BREAKOUT_LOOKBACK + 1):-1]
-        resistance = float(prior["high"].max())
-        support = float(prior["low"].min())
-        breakout_strength = (
-            (close - resistance) / atr if signal == "BUY"
-            else (support - close) / atr
+        e9 = base.safe_float(
+            d["close"].ewm(span=9, adjust=False).mean().iloc[-2]
         )
-        ema9 = float(d["close"].ewm(span=9, adjust=False).mean().iloc[-1])
-        ema21 = float(d["close"].ewm(span=21, adjust=False).mean().iloc[-1])
-        trend_ok = ema9 > ema21 if signal == "BUY" else ema9 < ema21
-        rsi_ok = rsi >= IRON_RSI_BUY if signal == "BUY" else rsi <= IRON_RSI_SELL
-        score = 0.60
-        if trend_ok:
-            score += 0.15
-        if rsi_ok:
-            score += 0.10
-        if breakout_strength >= IRON_BREAKOUT_BUFFER_ATR:
-            score += 0.10
-        return min(score, 0.95)
+        e21 = base.safe_float(
+            d["close"].ewm(span=21, adjust=False).mean().iloc[-2]
+        )
+
+        if None in (c, o, pc, atr, e9, e21) or atr <= 0:
+            return 0.0
+
+        aligned = (
+            signal == "BUY"
+            and c > o and c > pc and e9 > e21
+        ) or (
+            signal == "SELL"
+            and c < o and c < pc and e9 < e21
+        )
+
+        # This is only diagnostic. It does not block an otherwise valid signal.
+        strength = 0.75 if aligned else 0.60
+        if is_wick_dangerous(cur, signal):
+            strength = 0.55
+
+        return strength
+
     except Exception:
         return 0.0
 
 
-def safety_allows_new_entry(balance, positions, epic=None, account_currency=None):
-    """Metals-only 2% daily loss gate using a fixed UTC day-start balance."""
-    if not getattr(base, "KILL_SWITCH_ENABLED", True):
-        return True
-
-    base.reset_daily_safety(balance)
-    equity = base.account_equity(balance, positions)
-    start_balance = base.safe_float(base.SAFETY.get("day_start_balance"), balance) or balance
-
-    if start_balance <= 0:
-        return False
-
-    daily_floor = start_balance * (1.0 - 0.02)
-    if equity <= daily_floor:
-        base.log(
-            f"{epic}: IRON DAILY LOSS STOP | start={start_balance:.2f} | "
-            f"equity={equity:.2f} | limit=2%"
-        )
-        return False
-
-    if epic is not None and int(base.ERROR_STREAKS.get(epic, 0)) >= base.MAX_CONSECUTIVE_ERRORS:
-        base.log(f"{epic}: IRON error isolation stop for this run.")
-        return False
-
-    return True
-
-
-def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None, early_entry=False):
-    """Iron risk/target engine: 1.8 ATR SL and 2.2 ATR TP."""
+def calculate_trade(
+    df,
+    direction,
+    entry_price=None,
+    strength=1.0,
+    epic=None,
+    ai_decision=None,
+    early_entry=False,
+):
+    """
+    Shared risk model with Fluid timing.
+    Uses completed M5 ATR for the stop and live executable price for entry.
+    """
     if df is None or len(df) < 30 or direction not in {"BUY", "SELL"}:
         return None
 
-    current = df.iloc[-1]
-    atr = base.safe_float(current.get("atr"))
-    price = base.safe_float(entry_price) if entry_price is not None else base.safe_float(current.get("close"))
-    if atr is None or atr <= 0 or price is None:
+    d = _frame(df)
+    if d is None:
         return None
 
-    stop_distance = IRON_SL_ATR * atr
-    target_distance = IRON_TP_ATR * atr
+    current = d.iloc[-2]
+    atr = base.safe_float(current.get("atr"))
+    reference = base.safe_float(current.get("close"))
+    price = (
+        base.safe_float(entry_price)
+        if entry_price is not None
+        else reference
+    )
 
-    stop_level = price - stop_distance if direction == "BUY" else price + stop_distance
-    profit_level = price + target_distance if direction == "BUY" else price - target_distance
+    if None in (atr, reference, price) or atr <= 0:
+        return None
+
+    # Do not chase a completed M5 move. Strongness is market-derived only.
+    max_chase_atr = MAX_ENTRY_DRIFT_ATR
+    if float(strength or 0.0) >= 0.75:
+        max_chase_atr = STRONG_ENTRY_DRIFT_ATR
+
+    drift = abs(price - reference) / atr
+    if not early_entry and drift > max_chase_atr:
+        if epic:
+            base.record_entry_rejection(
+                epic,
+                "LATE_ENTRY",
+                f"{direction} distance={drift:.2f} ATR; limit={max_chase_atr:.2f} ATR",
+            )
+        return None
+
+    stop_distance = atr * 1.80
+    stop_level = (
+        price - stop_distance
+        if direction == "BUY"
+        else price + stop_distance
+    )
 
     return {
         "entry": price,
         "stop_level": stop_level,
-        "profit_level": profit_level,
+        "profit_level": None,
         "risk_distance": stop_distance,
         "atr": atr,
         "signal_strength": strength,
     }
 
 
-# Ensure the base execution path resolves these metals-only overrides.
+# ============================================================
+# CONNECT THE FLUID STRATEGY TO THE EXISTING EXECUTION ENGINE
+# ============================================================
 base.generate_signal = generate_signal
 base.m5_entry_direction = m5_entry_direction
 base.m5_entry_strength = m5_entry_strength
 base.calculate_trade = calculate_trade
-base.safety_allows_new_entry = safety_allows_new_entry
+
+# Keep the shared safety implementation. KILL_SWITCH_ENABLED=False in the
+# current base means the old daily entry kill-switch does not block new trades.
+base.safety_allows_new_entry = base.safety_allows_new_entry
 
 
 def run_cycle():
     base.log(
-        f"STARTING {STRATEGY_ID} | M5 authority | M15 support | "
-        f"markets={base.EPICS} | risk=1% | max_basket=2% | "
-        f"SL=1.8ATR | TP=dynamic | BE=1R | TRAIL=1.5R"
+        f"STARTING {STRATEGY_ID} | "
+        f"M5 authority | M15 support-only | markets={base.EPICS} | "
+        f"entry=FLUID | drift=0.25/0.30ATR | "
+        f"SL=1.8ATR | TP=dynamic | BE=1R | trailing=1R | "
+        f"grid=False | martingale=False | averaging=False"
     )
     return base.run_cycle()
 
