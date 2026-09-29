@@ -67,7 +67,7 @@ MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 # Give losing trades more breathing room while keeping risk sizing tied to the wider stop.
 # The position size is reduced automatically as risk distance increases.
 SL_ATR_MULT = 1.8
-TP_ATR_MULT = 2.0
+TP_ATR_MULT = 0.0  # Dynamic profit protection owns exits; broker SL remains the hard loss guard.
 TRAILING_ENABLED = True
 # Give winning trades more room before the protective stop starts following price.
 TRAILING_START_R = 1.00
