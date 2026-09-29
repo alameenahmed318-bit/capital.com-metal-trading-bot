@@ -1,8 +1,8 @@
 """Offline architecture and syntax self-check.
 
 The active architecture intentionally uses one simple market strategy rather
-than the retired dynamic score-gate system. This checker therefore validates
-the current strategy contract instead of requiring legacy score variables.
+than the retired dynamic score-gate system. This checker validates the current
+strategy contract instead of requiring legacy score variables.
 """
 from pathlib import Path
 import ast
@@ -45,7 +45,6 @@ def main() -> int:
                 failures.append(
                     "ARCHITECTURE: strategy signal is not explicitly assigned as the entry signal."
                 )
-
             if "no_ai_entry_gate=True" not in source:
                 failures.append(
                     "ARCHITECTURE: AI support-only entry marker is missing."
@@ -66,19 +65,23 @@ def main() -> int:
                     + "; AI must remain support-only."
                 )
 
-            # The old dynamic score gate was intentionally removed.
-            # Validate the current single market-strategy contract instead.
             if "def market_strategy_signal(" not in source:
-                failures.append(
-                    "STRATEGY: active market_strategy_signal() is missing."
-                )
+                failures.append("STRATEGY: active market_strategy_signal() is missing.")
             if "strategy_signal = legacy_signal" not in source:
-                failures.append(
-                    "STRATEGY: strategy signal is not the sole entry authority."
-                )
+                failures.append("STRATEGY: strategy signal is not the sole entry authority.")
 
         except Exception as exc:
             failures.append(f"ARCHITECTURE CHECK ERROR: {exc}")
+
+    fx_path = ROOT / "fx_ai_bot.py"
+    if fx_path.is_file():
+        source = fx_path.read_text(encoding="utf-8")
+        try:
+            ast.parse(source, filename="fx_ai_bot.py")
+            if "base.REVERSE_ENTRY_DIRECTION = True" not in source:
+                failures.append("FX: reverse execution direction is not enabled.")
+        except Exception as exc:
+            failures.append(f"FX CHECK ERROR: {exc}")
 
     metals_path = ROOT / "metals_energy_ai_bot.py"
     if metals_path.is_file():
@@ -86,17 +89,11 @@ def main() -> int:
         try:
             ast.parse(source, filename="metals_energy_ai_bot.py")
             if "base.MAX_POSITIONS_PER_EPIC = None" not in source:
-                failures.append(
-                    "METALS: artificial per-epic position cap is enabled."
-                )
+                failures.append("METALS: artificial per-epic position cap is enabled.")
             if "base.REVERSE_ENTRY_DIRECTION = True" not in source:
-                failures.append(
-                    "METALS: reverse execution direction is not enabled."
-                )
+                failures.append("METALS: reverse execution direction is not enabled.")
             if "def iron_signal(" not in source:
-                failures.append(
-                    "METALS: METAL IMPERIUM IRON strategy is missing."
-                )
+                failures.append("METALS: METAL IMPERIUM IRON strategy is missing.")
         except Exception as exc:
             failures.append(f"METALS CHECK ERROR: {exc}")
 
@@ -107,10 +104,9 @@ def main() -> int:
     print(
         "AI architecture self-check passed: "
         "single strategy entry authority; AI support-only; "
-        "metals reverse execution enabled; syntax valid."
+        "FX and metals reverse execution enabled; syntax valid."
     )
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
