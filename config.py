@@ -30,7 +30,7 @@ def _float_env(name, default):
         return float(default)
 
 
-STRATEGY = os.environ.get("STRATEGY", "baseline")
+STRATEGY = os.environ.get("STRATEGY", "dynamic_momentum_hybrid_v7")
 
 # Strict automated-trading universe: US indices and EUR/USD only.
 # Other markets are excluded from new automated entries.
@@ -51,7 +51,7 @@ HTF_RESOLUTION = "MINUTE_5"
 HTF_CANDLE_COUNT = 300
 HTF_EMA_FAST = 50
 HTF_EMA_SLOW = 200
-MAX_PORTFOLIO_RISK = min(_float_env("MAX_PORTFOLIO_RISK", 0.03), 0.03)
+MAX_PORTFOLIO_RISK = min(_float_env("MAX_PORTFOLIO_RISK", 0.02), 0.02)
 MACRO_HOURS_UTC = (12, 13, 14, 15)
 VOL_MANAGED_SIZING = os.environ.get("VOL_MANAGED_SIZING", "true").lower() == "true"
 
