@@ -16,7 +16,7 @@ base.ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 base.ENTRY_CANDLE_STATE_FILE = "fx_ai_entry_candle_state.json"
 
 # Explicit allowlist: no other currency pairs can be traded.
-base.EPICS = ["EURUSD"]
+base.EPICS = ["EURUSD", "GBPUSD", "AUDUSD", "USDJPY"]
 
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
