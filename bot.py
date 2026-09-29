@@ -2460,8 +2460,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
-        # M5/M1 timing context is observation-only. It is deliberately not a
-        # condition, score, or veto, so existing entry frequency is preserved.
+        # M5/M1 are timing data. M5 may trigger an early reversal entry;
+        # M1 remains observational and never vetoes a strategy entry.
         micro_context = {}
         try:
             from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
@@ -2490,7 +2490,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 }
                 for label, future in futures.items():
                     try:
-                        micro_context[label] = future.result(timeout=0.75)
+                        micro_context[label] = future.result(timeout=1.20)
                     except FutureTimeoutError:
                         micro_context[label] = None
                         log(f"{epic}: {label} extra-context timeout; entry path continues unchanged")
@@ -2501,7 +2501,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 # Never wait for a slow optional context request. This keeps the
                 # executable entry path free of M5/M1 latency.
                 pool.shutdown(wait=False, cancel_futures=True)
-            log(f"{epic}: EXTRA M5/M1 CONTEXT | M5={micro_context.get('M5')} | M1={micro_context.get('M1')} | mode=OBSERVATION_ONLY")
+            log(f"{epic}: EXTRA M5/M1 CONTEXT | M5={micro_context.get('M5')} | M1={micro_context.get('M1')} | M5_MODE=EARLY_TIMING | M1_MODE=OBSERVATION")
         except Exception as micro_exc:
             log(f"{epic}: M5/M1 observation unavailable | {micro_exc}")
 
@@ -2588,9 +2588,21 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
         # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
-        signal = legacy_signal or early_signal
-        early_entry = legacy_signal is None and early_signal in {"BUY", "SELL"}
-        strategy_strength = (early_strength if early_entry else market_entry_strength(df, htf_df, signal)) if signal in {"BUY","SELL"} else 0.0
+        # If the fresh M5 reversal agrees with the legacy direction, use the
+        # early trigger for timing even when the 15m strategy has already
+        # produced a late signal. This is the key fix: do not wait for the
+        # price to travel to the top/bottom of the move before entering.
+        if early_signal in {"BUY", "SELL"} and (
+            legacy_signal is None or legacy_signal == early_signal
+        ):
+            signal = early_signal
+            early_entry = True
+        else:
+            signal = legacy_signal
+            early_entry = False
+        strategy_strength = (
+            early_strength if early_entry else market_entry_strength(df, htf_df, signal)
+        ) if signal in {"BUY","SELL"} else 0.0
         ai_support_signal = ai_decision.get("signal") or ai_decision.get("raw_signal")
         ai_support_confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         log(
@@ -2646,8 +2658,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         live_bid, live_offer = refresh_entry_execution_quote(
             api, epic, market, current_bid=live_bid, current_offer=live_offer
         )
-        # M1/M5 context remains advisory only. It can describe the timing quality
-        # but can never veto, postpone, reverse, or remove a strategy entry.
+        # M5 can provide the early-reversal timing trigger selected above.
+        # M1 remains advisory and can never veto, postpone, reverse, or remove an entry.
         timing_m1 = micro_context.get("M1") if isinstance(micro_context, dict) else None
         timing_m5 = micro_context.get("M5") if isinstance(micro_context, dict) else None
         log(
