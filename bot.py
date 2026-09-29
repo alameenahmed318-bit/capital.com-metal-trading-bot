@@ -136,7 +136,7 @@ BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
 BREAKEVEN_START_R = 1.25
 BREAKEVEN_OFFSET_R = 0.10
-KILL_SWITCH_ENABLED = True
+KILL_SWITCH_ENABLED = False
 MAX_CONSECUTIVE_ERRORS = 3
 # Error isolation: one broken/unavailable epic must never disable entries on
 # unrelated markets. Critical failures are tracked per epic for this run.
@@ -1466,6 +1466,14 @@ def classic_25sep_signal(df, epic, htf_df):
     if sell and not buy:
         log(f"{epic}: 25SEP CLASSIC SELL | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
         return "SELL"
+
+    # Diagnostic only: explain WAIT without changing the strategy or forcing an entry.
+    log(
+        f"{epic}: 25SEP CLASSIC WAIT | "
+        f"buy_trend={buy_trend} buy_momentum={buy_momentum} buy_candle={buy_candle} buy_breakout={buy_breakout} | "
+        f"sell_trend={sell_trend} sell_momentum={sell_momentum} sell_candle={sell_candle} sell_breakout={sell_breakout} | "
+        f"RSI={rsi:.1f} body={body_ratio:.2f}"
+    )
     return None
 
 
