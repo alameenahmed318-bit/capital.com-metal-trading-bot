@@ -29,7 +29,7 @@ ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 # 25/9 entry inversion requested for demo testing: strategy direction is
 # intentionally flipped only at order execution. Position management is normal.
-REVERSE_ENTRY_DIRECTION = True
+REVERSE_ENTRY_DIRECTION = False
 
 STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
@@ -108,7 +108,7 @@ ADD_TO_PROFITABLE_BASKET = False
 PROFITABLE_ADD_RISK = 0.002
 
 # Free, local risk/execution protections (no external paid service).
-SPREAD_FILTER_ENABLED = True
+SPREAD_FILTER_ENABLED = False
 MAX_SPREAD_PCT = 0.15
 EXECUTION_QUALITY_ENABLED = True
 EXECUTION_QUALITY_FILE = "fx_ai_execution_quality.json"
@@ -1457,8 +1457,19 @@ def classic_25sep_signal(df, epic, htf_df):
 
     buy_candle = float(cur["close"]) > float(cur["open"]) and close_pos_buy >= 0.55
     sell_candle = float(cur["close"]) < float(cur["open"]) and close_pos_sell >= 0.55
-    buy = (buy_trend and buy_momentum and buy_candle) or (buy_breakout and buy_candle and rsi < 75)
-    sell = (sell_trend and sell_momentum and sell_candle) or (sell_breakout and sell_candle and rsi > 25)
+    # FLEXIBLE ENTRY: do not require trend + momentum + candle simultaneously.
+    # A valid directional market condition is enough; confirmations improve
+    # quality but are no longer mandatory entry blockers.
+    buy = (
+        (buy_trend and (buy_momentum or buy_candle))
+        or buy_breakout
+        or (buy_trend and close > prev_close)
+    )
+    sell = (
+        (sell_trend and (sell_momentum or sell_candle))
+        or sell_breakout
+        or (sell_trend and close < prev_close)
+    )
 
     if buy and not sell:
         log(f"{epic}: 25SEP CLASSIC BUY | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
@@ -1594,25 +1605,8 @@ def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai
     if price is None or atr is None or atr <= 0 or reference is None:
         return None
 
-    # Avoid chasing a stretched live quote. Recheck on the next scan.
-    # Both active bots use the same hard late-entry protection.
-    max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
-    if direction == "BUY" and price > reference + max_chase_atr * atr:
-        if epic:
-            record_entry_rejection(
-                epic,
-                "LATE_ENTRY",
-                f"BUY quote={price:.6f}; completed_close={reference:.6f}; distance={(price-reference)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
-            )
-        return None
-    if direction == "SELL" and price < reference - max_chase_atr * atr:
-        if epic:
-            record_entry_rejection(
-                epic,
-                "LATE_ENTRY",
-                f"SELL quote={price:.6f}; completed_close={reference:.6f}; distance={(reference-price)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
-            )
-        return None
+    # Late-entry filter disabled: current executable price may be used when
+    # the strategy has a valid directional signal. Broker quote validity remains mandatory.
 
     # 25/9 protection: fixed 2 ATR SL and 3 ATR TP. AI does not alter execution.
     sl_mult = 2.0
@@ -2504,15 +2498,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         )
         # Spread is an ENTRY-quality decision only. It must never prevent
         # management/protection/exit of an already-open position.
-        if not epic_positions and not spread_allows_entry(
-            api, epic, market=market, ai_decision=None
-        ):
-            record_entry_rejection(
-                epic,
-                "AI_SPREAD_DECISION",
-                f"AI rejected current spread; legacy_cap={MAX_SPREAD_PCT:.4f}%",
-            )
-            return None
+        # Spread filter disabled: the broker quote is still validated above,
+        # but spread is no longer an entry veto.
         # AI SUPPORT-ONLY: advisory analysis never manages or closes positions.
         # Broker-side SL/TP, trailing and profit protection remain authoritative.
         # Do not call AI position-management actions on the entry path.
@@ -2568,19 +2555,10 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # Candle strategy freshness gate: never re-enter from the same completed
         # candle after a close. This is deliberately based on candle identity,
         # not an arbitrary number of trades or a timer.
-        candle_fresh, entry_candle_key, candle_rejection = candle_entry_is_fresh(epic, signal, df)
-        if not candle_fresh:
-            record_entry_rejection(
-                epic,
-                candle_rejection,
-                f"direction={signal}; candle={entry_candle_key or 'UNKNOWN'}"
-            )
-            log(
-                f"{epic}: CANDLE ENTRY BLOCK | reason={candle_rejection} | "
-                f"direction={signal} | candle={entry_candle_key or 'UNKNOWN'}"
-            )
-            return None
-        log(f"{epic}: CANDLE ENTRY CONFIRMED | completed_candle={entry_candle_key} | direction={signal}")
+        # Candle-repeat gate disabled: valid signals may be evaluated again on
+        # subsequent fast scans. Risk budgets remain the exposure safeguard.
+        entry_candle_key = completed_candle_key(df)
+        log(f"{epic}: CANDLE ENTRY GATE DISABLED | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
         if CORRELATION_FILTER_ENABLED and not correlation_allows_entry(api, epic, df, positions, signal):
