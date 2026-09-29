@@ -22,8 +22,8 @@ base.STRATEGY_ID = STRATEGY_ID
 # ============================================================
 # STRATEGY ISOLATION
 # ============================================================
-base.STRATEGY_ALLOWED_EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500", "BTCUSD"]
-base.EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500", "BTCUSD"]
+base.STRATEGY_ALLOWED_EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500", "BTCUSD", "OIL_CRUDE"]
+base.EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500", "BTCUSD", "OIL_CRUDE"]
 
 base.POSITION_OWNERSHIP_FILE = "metals_energy_ai_strategy_positions.json"
 base.LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
