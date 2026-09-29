@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T07:38:48.627499+00:00",
+  "updated_at": "2026-09-29T08:11:17.223904+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -1829,6 +1829,36 @@
       "deal_id": "00000000-6681-0d4a-0493-972c0004511e",
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
+      "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T08:05:38.204417+00:00",
+      "epic": "AUDCAD",
+      "direction": "SELL",
+      "requested_executable_price": 0.99147,
+      "actual_fill_price": 0.99148,
+      "spread_pct_at_order": 0.025211906070531163,
+      "slippage_price": -1e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_9e2b5e28-961b-43e2-b378-3631f7252261",
+      "deal_id": "00000000-6681-3d82-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T08:11:17.223904+00:00",
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "requested_executable_price": 0.6986,
+      "actual_fill_price": 0.69856,
+      "spread_pct_at_order": 0.00858823697807838,
+      "slippage_price": 4e-05,
+      "slippage_pct": 0.005726,
+      "deal_reference": "o_5b520bfe-d233-4a4e-b3ee-2466636d7871",
+      "deal_id": "00000000-6681-4827-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "B",
       "size": 100.0
     }
   ]
