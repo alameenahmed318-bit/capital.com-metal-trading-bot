@@ -58,7 +58,7 @@ IRON_BREAKOUT_LOOKBACK = 14
 IRON_BREAKOUT_BUFFER_ATR = 0.20
 IRON_MIN_ATR = 0.0  # Symbol-specific ATR is checked as positive; no arbitrary price-unit gate.
 IRON_SL_ATR = 1.80
-IRON_TP_ATR = 2.20
+IRON_TP_ATR = 0.0
 IRON_BE_R = 1.00
 IRON_BE_OFFSET_R = 0.05
 IRON_TRAIL_START_R = 1.50
@@ -265,7 +265,7 @@ def run_cycle():
     base.log(
         f"STARTING {STRATEGY_ID} | M5 authority | M15 support | "
         f"markets={base.EPICS} | risk=1% | max_basket=2% | "
-        f"SL=1.8ATR | TP=2.2ATR | BE=1R | TRAIL=1.5R"
+        f"SL=1.8ATR | TP=dynamic | BE=1R | TRAIL=1.5R"
     )
     return base.run_cycle()
 
