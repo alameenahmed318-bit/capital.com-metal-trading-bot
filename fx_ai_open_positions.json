@@ -1,4 +1,82 @@
 {
-  "updated_at": "2026-09-29T22:44:00.057435+00:00",
-  "positions": []
+  "updated_at": "2026-09-29T23:05:43.592430+00:00",
+  "positions": [
+    {
+      "dealId": "00000000-66d5-71a1-0493-972c0004511e",
+      "epic": "US100",
+      "direction": "SELL",
+      "size": 0.016,
+      "entry": 30390.6,
+      "current": 30390.6,
+      "stopLoss": 30416.816650116158,
+      "takeProfit": 30353.02502482576,
+      "profitLoss": -0.37
+    },
+    {
+      "dealId": "00000000-66d5-71d7-0493-972c0004511e",
+      "epic": "GOLD",
+      "direction": "SELL",
+      "size": 0.32,
+      "entry": 4178.16,
+      "current": 4178.16,
+      "stopLoss": 4183.57112289773,
+      "takeProfit": 4170.043315653405,
+      "profitLoss": -2.53
+    },
+    {
+      "dealId": "00000000-66d5-71ea-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 11.6,
+      "entry": 61.461,
+      "current": 61.461,
+      "stopLoss": 61.614461014741266,
+      "takeProfit": 61.23330847788811,
+      "profitLoss": -3.84
+    },
+    {
+      "dealId": "00000000-66d5-7c21-0493-972c0004511e",
+      "epic": "US100",
+      "direction": "SELL",
+      "size": 0.013,
+      "entry": 30390.6,
+      "current": 30390.6,
+      "stopLoss": 30414.023029965807,
+      "takeProfit": 30354.965455051293,
+      "profitLoss": -0.3
+    },
+    {
+      "dealId": "00000000-66d5-7c53-0493-972c0004511e",
+      "epic": "BTCUSD",
+      "direction": "SELL",
+      "size": 0.0021,
+      "entry": 83650.65,
+      "current": 83650.65,
+      "stopLoss": 83803.92611836162,
+      "takeProfit": 83433.36082245756,
+      "profitLoss": -0.97
+    },
+    {
+      "dealId": "00000000-66d5-7b4d-0493-972c0004511e",
+      "epic": "GOLD",
+      "direction": "SELL",
+      "size": 0.1,
+      "entry": 4180.41,
+      "current": 4180.41,
+      "stopLoss": 4185.390100867063,
+      "takeProfit": 4172.664848699406,
+      "profitLoss": 0.04
+    },
+    {
+      "dealId": "00000000-66d5-7b75-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 2.8,
+      "entry": 61.503,
+      "current": 61.503,
+      "stopLoss": 61.644458732109285,
+      "takeProfit": 61.29081190183607,
+      "profitLoss": -0.49
+    }
+  ]
 }
