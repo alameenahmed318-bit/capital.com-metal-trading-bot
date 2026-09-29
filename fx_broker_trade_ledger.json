@@ -1,5 +1,65 @@
 [
   {
+    "date": "2026-09-29T12:47:39.260",
+    "dateUtc": "2026-09-29T08:47:39.260",
+    "instrumentName": "USDCAD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140223603449190",
+    "size": "0.01",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6681-5712-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T12:47:31.721",
+    "dateUtc": "2026-09-29T08:47:31.721",
+    "instrumentName": "NZDJPY",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140223595060525",
+    "size": "0.04",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6680-a526-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T12:47:09.864",
+    "dateUtc": "2026-09-29T08:47:09.864",
+    "instrumentName": "USDCHF",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140223571991778",
+    "size": "0.46",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6681-6738-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T12:47:09.864",
+    "dateUtc": "2026-09-29T08:47:09.864",
+    "instrumentName": "USDCHF",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140223571991777",
+    "size": "1.47",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6680-b382-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T12:23:00.615",
+    "dateUtc": "2026-09-29T08:23:00.615",
+    "instrumentName": "GBPJPY",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140222052597094",
+    "size": "-0.61",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6681-0d4d-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-29T12:03:55.123",
     "dateUtc": "2026-09-29T08:03:55.123",
     "instrumentName": "EURJPY",
