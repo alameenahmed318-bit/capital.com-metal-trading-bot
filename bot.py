@@ -1349,6 +1349,60 @@ def early_reversal_signal(df, epic, micro_frames=None):
     if bear and near_high and sell_context and rsi>=42: return "SELL",0.72
     return None,0.0
 
+def m5_entry_direction(micro_frames, epic=None):
+    """Return the current completed-M5 directional bias for entry timing.
+    This is a direction guard, not a trade predictor. It blocks a stale/contrary
+    M15 decision when the completed M5 structure is clearly moving the other way.
+    """
+    if not isinstance(micro_frames, dict):
+        return None
+    m5 = micro_frames.get("M5_DF")
+    if m5 is None or len(m5) < 20:
+        return None
+    try:
+        m5 = add_indicators(m5.copy())
+        cur = m5.iloc[-2]
+        prev = m5.iloc[-3]
+        prev2 = m5.iloc[-4]
+        close = safe_float(cur.get("close"))
+        open_ = safe_float(cur.get("open"))
+        prev_close = safe_float(prev.get("close"))
+        prev2_close = safe_float(prev2.get("close"))
+        ema9 = safe_float(m5["close"].ewm(span=9, adjust=False).mean().iloc[-2])
+        ema21 = safe_float(m5["close"].ewm(span=21, adjust=False).mean().iloc[-2])
+        rsi = safe_float(cur.get("rsi"))
+        if None in (close, open_, prev_close, prev2_close, ema9, ema21, rsi):
+            return None
+
+        cur_time = pd.to_datetime(cur.get("time"), utc=True, errors="coerce")
+        if pd.isna(cur_time):
+            return None
+        age = (datetime.now(timezone.utc) - cur_time.to_pydatetime()).total_seconds() / 60.0
+        if age > 8.0:
+            if epic:
+                log(f"{epic}: M5 ENTRY GUARD SKIPPED | stale age={age:.1f}m")
+            return None
+
+        bullish = (
+            close > open_ and close > prev_close > prev2_close
+            and close >= ema9 and ema9 > ema21
+            and rsi >= 50
+        )
+        bearish = (
+            close < open_ and close < prev_close < prev2_close
+            and close <= ema9 and ema9 < ema21
+            and rsi <= 50
+        )
+        if bullish and not bearish:
+            return "BUY"
+        if bearish and not bullish:
+            return "SELL"
+    except Exception as exc:
+        if epic:
+            log(f"{epic}: M5 ENTRY GUARD unavailable | {exc}")
+    return None
+
+
 def classic_25sep_signal(df, epic, htf_df):
     """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
     This is the sole entry authority. AI remains advisory only.
@@ -2597,11 +2651,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if position_management_only:
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
-        # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
-        # If the fresh M5 reversal agrees with the legacy direction, use the
-        # early trigger for timing even when the 15m strategy has already
-        # produced a late signal. This is the key fix: do not wait for the
-        # price to travel to the top/bottom of the move before entering.
+        # STRATEGY IS THE ENTRY AUTHORITY. AI remains advisory only.
+        # M5 is now the entry-direction guard: a clearly bullish completed M5
+        # cannot be paired with a SELL entry, and vice versa. This prevents a
+        # stale M15/H1 context from opening against the actual move.
+        m5_bias = m5_entry_direction(micro_frames, epic)
         if early_signal in {"BUY", "SELL"} and (
             legacy_signal is None or legacy_signal == early_signal
         ):
@@ -2610,6 +2664,18 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         else:
             signal = legacy_signal
             early_entry = False
+
+        if signal in {"BUY", "SELL"} and m5_bias in {"BUY", "SELL"} and m5_bias != signal:
+            log(
+                f"{epic}: ENTRY BLOCKED | strategy={signal} | M5_BIAS={m5_bias} | "
+                f"reason=completed_M5_direction_conflict"
+            )
+            record_entry_rejection(epic, "M5_DIRECTION_CONFLICT",
+                                   f"strategy={signal};m5_bias={m5_bias}")
+            signal = None
+            early_entry = False
+        elif signal in {"BUY", "SELL"} and m5_bias == signal:
+            log(f"{epic}: ENTRY DIRECTION CONFIRMED | signal={signal} | M5_BIAS={m5_bias}")
         strategy_strength = (
             early_strength if early_entry else market_entry_strength(df, htf_df, signal)
         ) if signal in {"BUY","SELL"} else 0.0
