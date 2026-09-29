@@ -1,1637 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T10:59:46.508586+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T10:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T10:59:49.101586+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T10:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T10:59:59.956096+00:00",
-    "epic": "GOLD",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-29T10:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:00:06.000771+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:00:08.572875+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T10:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:00:21.230997+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:00:29.027679+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:00:34.076946+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:00:46.716123+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:00:54.949755+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:01:00.002228+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:01:12.667388+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:01:20.883271+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:01:25.514338+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:01:37.320872+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:17:11.551520+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:17:23.612377+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:17:30.637483+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:17:43.552067+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:17:52.041587+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:17:56.797316+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:18:10.686624+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:18:19.209487+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:18:23.842643+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:18:37.814123+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:18:46.345559+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:18:50.978788+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:04.867695+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:13.417095+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:18.095809+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:32.023021+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:40.548162+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:45.203080+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:19:59.173111+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:20:07.723325+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:20:12.358752+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:20:26.309707+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:20:34.839136+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:20:39.459823+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:20:53.442486+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:01.953493+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:06.643012+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:20.544997+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:29.062226+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:33.729259+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:47.694997+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:21:56.218175+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:00.845234+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:14.784610+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:23.279324+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:27.926699+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:41.890393+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:50.405835+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:22:55.123313+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:23:09.054524+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:23:17.555648+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:23:22.235933+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:23:36.166913+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:23:44.647709+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:23:49.336928+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:03.567057+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:12.120284+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:16.807461+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:30.734339+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:39.211027+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:43.907037+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:24:57.818466+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:25:06.298140+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:25:10.995170+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:25:24.905778+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:25:33.395269+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:25:38.040828+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:25:51.933696+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:00.478388+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:05.133555+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:19.052710+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:27.554108+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:32.188195+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:46.107976+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:54.595808+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:26:59.298276+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:27:13.265319+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:27:21.728121+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:27:26.407507+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:27:40.382972+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:27:48.864077+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:27:53.509360+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:28:07.435636+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:28:15.935007+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:28:20.603884+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:28:34.517689+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:28:43.066533+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:28:47.723782+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:29:01.333690+00:00",
-    "epic": "GOLD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:29:35.846075+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:29:42.139129+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:29:45.983473+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:30:04.221678+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:30:10.597230+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:00:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:30:15.851348+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:30:34.054498+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:30:41.991972+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:30:47.690091+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:31:05.301024+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:31:13.183977+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:31:18.850741+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T11:43:11.395384+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:43:14.693391+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:43:34.843618+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:43:38.171002+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:43:58.471686+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:44:01.823623+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:44:22.223452+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:44:25.490408+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:44:45.749095+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:44:49.098088+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:45:09.337417+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:45:12.645656+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:45:33.423564+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:45:37.188900+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:45:57.954954+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:46:01.721791+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:46:22.578652+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:46:26.355704+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:46:47.186223+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:46:50.933863+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:47:11.645573+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:47:15.422242+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:47:36.251104+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:47:40.018684+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:48:00.867366+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:48:04.618543+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:48:25.516991+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:48:52.699185+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:48:56.498585+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:49:17.851106+00:00",
-    "epic": "US100",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T11:49:21.624500+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:49:48.795918+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:50:10.881502+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:50:14.643328+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:50:36.564438+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:50:40.326029+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:51:02.335916+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:51:06.117626+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:51:29.514948+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:51:32.841400+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:51:53.152535+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:51:56.449508+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:52:16.644174+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:52:19.967997+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:52:40.338174+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:52:43.670294+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:53:03.869752+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:53:07.236346+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:53:27.487720+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:53:30.805918+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:53:50.966584+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:53:54.280884+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:54:14.646418+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:54:17.989681+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:54:38.184291+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:54:41.516556+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:55:01.773037+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:55:05.143759+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:55:25.369465+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:55:28.678536+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:55:48.822370+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:55:52.186636+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:56:12.376795+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:56:15.713350+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:56:36.264898+00:00",
-    "epic": "US100",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T11:56:39.570128+00:00",
-    "epic": "US500",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T11:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T15:09:57.579582+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:00.116759+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:03.315510+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_SPACING_INVALID:300s"
-  },
-  {
-    "timestamp": "2026-09-29T15:10:05.024009+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "CANDLE_SPACING_INVALID:300s"
-  },
-  {
-    "timestamp": "2026-09-29T15:10:07.942612+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:08.482912+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:13.860951+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:14.427848+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:19.732760+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:20.303964+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:26.203482+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:27.205901+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:32.504320+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:33.084611+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:38.405683+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:38.946454+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:44.250743+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:44.814435+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:50.695083+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:51.699807+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:56.993565+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:10:57.564757+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:02.865036+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:03.450861+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:08.770092+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:09.323271+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:15.175384+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:16.188001+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:21.484716+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:22.067409+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:27.337643+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:27.938180+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:33.293335+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:33.849492+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:39.734010+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:40.734883+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:46.128612+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:46.608733+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:51.905243+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:52.498133+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:57.841824+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:11:58.408509+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:04.293074+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:05.339856+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:10.626601+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:11.197722+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:16.501915+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:17.087885+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:22.393801+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:22.977206+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:28.853281+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:29.875515+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:35.202812+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:35.793951+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:41.102315+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:41.656496+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:46.979333+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:47.509132+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:53.399896+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:54.383424+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:12:59.692171+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:00.311413+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:05.805133+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:06.232950+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:11.522837+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:12.113805+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:18.001054+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:18.984937+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:24.312510+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:24.848830+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:30.144484+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:30.739304+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:36.079623+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:36.636859+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:42.560865+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:43.563927+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:48.880295+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:49.418941+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:54.754035+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:13:55.331750+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:00.738605+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:01.282177+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:07.205996+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:08.249788+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:13.583706+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:14.130705+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:19.542118+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:20.060315+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:25.373579+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:25.940254+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:31.897900+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:32.896713+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:38.236202+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:38.793229+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:44.196661+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:44.752657+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:50.094728+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:50.665042+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:56.656462+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T15:14:57.682661+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-29T15:15:03.089638+00:00",
     "epic": "GOLD",
     "reason": "SAFETY_STOP",
@@ -5995,6 +4363,1638 @@
   },
   {
     "timestamp": "2026-09-29T15:54:31.708673+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:05.156682+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:07.665188+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:10.184967+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:11.171818+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:16.707403+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:17.197370+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:22.869378+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:23.361092+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:28.834967+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:29.348715+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:35.344167+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:36.323928+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:41.780929+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:42.302416+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:47.749461+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:48.278647+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:53.798232+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:58:54.296409+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:00.292722+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:01.309113+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:06.774385+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:07.277881+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:12.741235+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:13.254986+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:18.703312+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:19.223437+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:25.194502+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:26.214857+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:31.655228+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:32.170939+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:37.647533+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:38.158677+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:43.614792+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:44.126548+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:50.124748+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:51.105430+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:56.549510+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T15:59:57.075357+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:02.559891+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:03.049742+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:08.596324+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:09.110958+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:15.095235+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:16.078560+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:21.543304+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:22.059421+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:27.519490+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:28.033713+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:33.500820+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:34.015749+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:40.074380+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:41.068287+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:46.564300+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:47.057982+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:52.504207+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:53.054584+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:58.551573+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:00:59.056512+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:05.217946+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:06.322356+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:11.774937+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:12.275016+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:17.749459+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:18.276520+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:23.720790+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:24.258410+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:30.249810+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:31.237677+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:36.707945+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:37.233467+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:42.672212+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:43.207607+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:48.670147+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:49.190085+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:55.170165+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:01:56.184133+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:01.631092+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:02.169633+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:07.627845+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:08.150603+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:13.614899+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:14.148168+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:20.123287+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:21.155252+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:26.622832+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:27.145394+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:32.612462+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:33.135873+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:38.608671+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:39.122694+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:45.115452+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:46.123254+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:51.592147+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:52.117712+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:57.593153+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:02:58.102028+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:03.567280+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:04.093967+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:10.108589+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:11.100305+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:16.568387+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:17.095438+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:22.556907+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:23.077771+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:28.529883+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:29.051300+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:35.072408+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:36.059138+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:41.520498+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:42.029206+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:47.489675+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:48.023944+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:53.479116+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:54.011984+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:03:59.987776+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:00.998187+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:06.463285+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:07.006592+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:12.506157+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:13.027999+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:18.479852+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:19.023792+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:24.999748+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:26.012740+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:31.472362+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:31.997387+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:37.456318+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:37.999196+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:43.506105+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:44.056139+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:50.097064+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:51.066647+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:56.536431+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:04:57.061547+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:02.629982+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:03.135633+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:08.709142+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:09.201437+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:15.199012+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:16.194044+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:21.649362+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:22.168665+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:27.635453+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:28.146772+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:33.608545+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:34.134279+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:40.156727+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:41.144927+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:46.609105+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:47.135760+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:52.600956+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:53.121537+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:58.574433+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:05:59.106379+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:05.101779+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:06.117786+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:11.594964+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:12.133933+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:17.605679+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:18.122285+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:23.599702+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:24.095694+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:30.102321+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:31.104307+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:36.575669+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:37.086908+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:42.539581+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:43.061655+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:48.532923+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:49.047966+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:55.056103+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:06:56.037266+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:01.516200+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:02.055585+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:07.631419+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:08.196382+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:13.688690+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:14.189522+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:20.183382+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:21.175049+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:26.643919+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:27.173985+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:32.634397+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:33.149735+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:38.613407+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:39.141714+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:45.126168+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:46.150887+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:51.609835+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:52.110993+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:57.573302+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:07:58.098309+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:03.572598+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:04.066831+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:10.070514+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:11.083684+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:16.557598+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:17.079914+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:22.533048+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:23.052521+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:28.525596+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:29.045649+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:35.049802+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:36.049775+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:41.557185+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:42.075203+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:47.575389+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:48.107936+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:53.596647+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:08:54.067947+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:00.176542+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:01.154547+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:06.600594+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:07.140564+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:12.631228+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:13.127304+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:18.563176+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:19.103308+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:25.143473+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:26.167367+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:31.634306+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:32.179309+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:37.637243+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:38.158075+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:43.629001+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:44.151007+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:50.147579+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:51.146668+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:56.602639+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:09:57.143976+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:02.595261+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:03.127250+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:08.630613+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:09.150088+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:15.155254+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:16.145271+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:21.582546+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:22.135562+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:27.587488+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:28.094434+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:33.555838+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:34.063911+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:40.049571+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:41.039732+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:46.506945+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:47.042277+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:52.488773+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:53.005412+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:58.496210+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:10:58.971076+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:04.969462+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:06.018743+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:11.467497+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:12.011157+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:17.491723+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:18.018575+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:23.464745+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:24.005076+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:29.994394+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:30.980041+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:36.427714+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:36.958152+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:42.399829+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:42.931887+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:48.379777+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:48.928672+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:54.896068+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:11:55.915654+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:12:01.393858+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:12:01.904506+00:00",
+    "epic": "SILVER",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:12:07.364172+00:00",
+    "epic": "GOLD",
+    "reason": "SAFETY_STOP",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T16:12:07.885639+00:00",
     "epic": "SILVER",
     "reason": "SAFETY_STOP",
     "details": ""
