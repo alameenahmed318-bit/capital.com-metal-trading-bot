@@ -2112,11 +2112,19 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
             positions = api.get_open_positions()
             owned = filter_owned_positions(positions)
             protect_portfolio_profit(api, positions, owned, account_currency)
-            open_epics = [epic for epic in EPICS if get_positions_for_epic(owned, epic)]
+
+            # IMPORTANT: manage every position owned by this strategy, even if
+            # its market was removed from the current NEW-ENTRY allowlist.
+            # Historical positions must never lose fast SL/profit protection
+            # merely because the market universe changed.
+            managed_epics = list(dict.fromkeys(
+                [position_epic(p) for p in owned if position_epic(p)]
+            ))
+            open_epics = [epic for epic in managed_epics if get_positions_for_epic(owned, epic)]
 
             balance = api.get_balance() if open_epics else None
 
-            # Priority 1: protect every open position on the fast 2-second loop.
+            # Priority 1: protect every owned open position on the fast 2-second loop.
             for epic in open_epics:
                 if time.monotonic() >= deadline:
                     break
