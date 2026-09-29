@@ -4,7 +4,6 @@ import os
 import re
 import time
 import traceback
-import threading
 from datetime import datetime, timezone
 
 import numpy as np
@@ -13,6 +12,7 @@ import pandas as pd
 import config
 from capital_api import CapitalAPI
 from portfolio_risk import portfolio_risk_overlay
+from execution_costs import evaluate_pretrade_cost
 import ai_engine
 import ai_pipeline
 import ai_outcomes
@@ -22,19 +22,20 @@ from capital_websocket import CapitalLivePriceStream
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_FX_AI"
-# Runner-specific market boundary; wrappers set this to their own universe.
-STRATEGY_ALLOWED_EPICS = None
 POSITION_OWNERSHIP_FILE = "fx_ai_strategy_positions.json"
 LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 ALLOW_GRID = False
 ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
+# 25/9 entry inversion requested for demo testing: strategy direction is
+# intentionally flipped only at order execution. Position management is normal.
+REVERSE_ENTRY_DIRECTION = True
 
 STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
-MAX_BASKET_RISK = 0.10
+MAX_BASKET_RISK = 0.04
 
 EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
 
@@ -56,8 +57,11 @@ PORTFOLIO_VOL_TARGET_ANNUAL = getattr(config, "PORTFOLIO_VOL_TARGET_ANNUAL", 0.1
 PORTFOLIO_RISK_MIN_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MIN_MULTIPLIER", 0.35)
 PORTFOLIO_RISK_MAX_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MAX_MULTIPLIER", 1.00)
 PORTFOLIO_COV_LOOKBACK = getattr(config, "PORTFOLIO_COV_LOOKBACK", 192)
+PRETRADE_COST_FILTER_ENABLED = False
 MAX_COST_TO_STOP_RATIO = getattr(config, "MAX_COST_TO_STOP_RATIO", 0.40)
 EXTRA_SLIPPAGE_BUFFER_PCT = getattr(config, "EXTRA_SLIPPAGE_BUFFER_PCT", 0.01)
+ALPHA_ENSEMBLE_ENABLED = False
+ALPHA_MIN_AGREEMENT = getattr(config, "ALPHA_MIN_AGREEMENT", 2)
 XAU_WORKING_ORDER_ENABLED = False  # Gold uses market orders on BUY and SELL signals
 XAU_WORKING_TRIGGER = getattr(config, "XAU_WORKING_TRIGGER", 4400.0)
 
@@ -68,19 +72,17 @@ MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
 # Give losing trades more breathing room while keeping risk sizing tied to the wider stop.
 # The position size is reduced automatically as risk distance increases.
-SL_ATR_MULT = 1.8
-TP_ATR_MULT = 0.0  # Dynamic profit protection owns exits; broker SL remains the hard loss guard.
+SL_ATR_MULT = 2.0
+TP_ATR_MULT = 3.0
 TRAILING_ENABLED = True
 # Give winning trades more room before the protective stop starts following price.
-TRAILING_START_R = 1.00
-TRAILING_DISTANCE_R = 1.00
+TRAILING_START_R = 2.00
+TRAILING_DISTANCE_R = 1.50
 
-# Dynamic profit protection. Winning trades are allowed to run when the
-# AI still agrees with the position direction. Small gains are never a standalone
-# reason to close; protection is a safety net after a meaningful profit develops.
+# Dynamic profit protection. It tracks every profitable position from the
+# first positive broker-reported P/L and computes the protected floor from the
+# live peak. No fixed +profit activation/close amount is used.
 PROFIT_TRAIL_ENABLED = True
-PROFIT_PROTECTION_MIN_PEAK = 2.0
-PROFIT_PROTECTION_MIN_GIVEBACK_RATIO = 0.35
 
 # Hard per-position loss guard in account currency (AED for an AED account).
 # This is a secondary protection; the broker-side ATR stop remains the primary stop.
@@ -94,20 +96,20 @@ RANGE_RSI_BUY_MAX = 48
 RANGE_RSI_SELL_MIN = 52
 
 # Strategy v2 filters
-USE_SUPPORT_RESISTANCE = False
-USE_BREAKOUT_CONFIRMATION = False
+USE_SUPPORT_RESISTANCE = True
+USE_BREAKOUT_CONFIRMATION = True
 SR_LOOKBACK = 60
 SR_BUFFER_ATR = 0.25
 BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
-ADD_TO_PROFITABLE_BASKET = True
+ADD_TO_PROFITABLE_BASKET = False
 # Smaller incremental risk for additional legs while the existing basket is profitable.
-PROFITABLE_ADD_RISK = 0.0015
+PROFITABLE_ADD_RISK = 0.002
 
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
-MAX_SPREAD_PCT = 0.40
+MAX_SPREAD_PCT = 0.15
 EXECUTION_QUALITY_ENABLED = True
 EXECUTION_QUALITY_FILE = "fx_ai_execution_quality.json"
 MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
@@ -115,27 +117,26 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # Entry-quality upgrades: allow a little more room for normal execution lag,
 # but block entries that are materially stretched or over-correlated with
 # existing exposure. All rejections are persisted with an exact reason.
-LATE_ENTRY_MAX_ATR = 1.00
-# Confirmed strong signals get slightly more room, but never chase far.
-LATE_ENTRY_STRONG_MAX_ATR = 1.50
-LATE_ENTRY_DYNAMIC_ENABLED = True
-
-# User-requested entry experiment: reverse BUY/SELL only for NEW broker entries.
-# Keep False to restore normal execution direction.
-REVERSE_ENTRY_DIRECTION = True
+LATE_ENTRY_MAX_ATR = 0.50
+LATE_ENTRY_STRONG_MAX_ATR = 0.75
+CORRELATION_FILTER_ENABLED = False
+CORRELATION_LOOKBACK = 96
+CORRELATION_THRESHOLD = 0.80
+CORRELATION_CACHE_SECONDS = 60
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
 
 DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
 DAILY_LOSS_LIMIT_PCT = 0.03  # Fallback for non-AED accounts
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
-LOSS_COOLDOWN_MINUTES = 0
+LOSS_COOLDOWN_MINUTES = 3
+SIDEWAYS_FILTER_ENABLED = False
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
-BREAKEVEN_START_R = 0.75
+BREAKEVEN_START_R = 1.25
 BREAKEVEN_OFFSET_R = 0.10
-KILL_SWITCH_ENABLED = False
+KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
 # Error isolation: one broken/unavailable epic must never disable entries on
 # unrelated markets. Critical failures are tracked per epic for this run.
@@ -144,6 +145,9 @@ ERROR_STREAKS = {}
 SAFETY_STATE_FILE = "fx_ai_bot_safety_state.json"
 
 # Conservative strategy-quality upgrades.
+SESSION_FILTER_ENABLED = False
+SESSION_START_UTC = getattr(config, "SESSION_START_UTC", 7)
+SESSION_END_UTC = getattr(config, "SESSION_END_UTC", 20)
 WEEKEND_FILTER_ENABLED = getattr(config, "WEEKEND_FILTER_ENABLED", True)
 ADAPTIVE_RISK_ENABLED = getattr(config, "ADAPTIVE_RISK_ENABLED", True)
 ADAPTIVE_RISK_HIGH_VOL_1 = getattr(config, "ADAPTIVE_RISK_HIGH_VOL_1", 1.25)
@@ -160,21 +164,6 @@ OPEN_POSITIONS_FILE = "fx_ai_open_positions.json"
 
 def log(message):
     print(f"[BOT] {message}")
-
-def get_validated_balance(api, retries=3, delay_seconds=0.8):
-    """Return a usable broker balance; never size a trade from a transient zero/invalid read."""
-    last_error = None
-    for attempt in range(1, retries + 1):
-        try:
-            value = safe_float(api.get_balance())
-            if value is not None and value > 0:
-                return value
-            last_error = f"invalid balance={value!r}"
-        except Exception as exc:
-            last_error = str(exc)
-        if attempt < retries:
-            time.sleep(delay_seconds)
-    raise RuntimeError(f"Capital.com balance unavailable/invalid after {retries} attempts: {last_error}")
 
 def _load_owned_deals():
     if not os.path.exists(POSITION_OWNERSHIP_FILE):
@@ -226,29 +215,14 @@ def _load_legacy_owned_deals():
         return set()
 
 def filter_owned_positions(positions):
-    # Defense in depth: a strategy may manage only positions that are both
-    # explicitly owned by its deal-ID registry AND inside its runner market
-    # universe. This prevents cross-strategy position management.
+    # Each strategy has its own ownership registry. On first use, migrate only
+    # that strategy's entries from the old shared registry; never adopt every
+    # open account position.
     if not os.path.exists(POSITION_OWNERSHIP_FILE):
         legacy_owned = _load_legacy_owned_deals()
         _save_owned_deals(legacy_owned)
     owned = _load_owned_deals()
-    allowed = STRATEGY_ALLOWED_EPICS
-    allowed_set = {str(x).upper() for x in allowed} if allowed is not None else None
-    result = []
-    for p in positions:
-        deal_id = position_deal_id(p)
-        epic = position_epic(p)
-        if not deal_id or str(deal_id) not in owned:
-            continue
-        if allowed_set is not None and str(epic or "").upper() not in allowed_set:
-            log(
-                f"OWNERSHIP ISOLATION | strategy={STRATEGY_ID} | "
-                f"IGNORED deal={deal_id} epic={epic} | allowed={sorted(allowed_set)}"
-            )
-            continue
-        result.append(p)
-    return result
+    return [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
 
 def _confirmed_position_direction(confirmation, confirmed_positions=None, deal_id=None):
     """Return the broker-confirmed direction for an opened deal."""
@@ -820,29 +794,34 @@ def original_risk_distance(position):
         return inferred if inferred > 0 else None
     return None
 
-def quote_to_account_rate(market, account_currency, epic=None):
-    """Conservative quote-currency to account-currency conversion for sizing."""
-    instrument = market.get("instrument", {}) or {}
-    quote_currency = (instrument.get("currency") or instrument.get("currencyCode")
-                      or instrument.get("quoteCurrency") or market.get("currency"))
+def quote_to_account_rate(market, account_currency):
+    """Convert P/L quoted in the instrument currency into account currency.
+
+    The enabled portfolio instruments are normally USD-quoted. We only use a
+    fixed USD/AED conversion for the AED account case; unknown currency pairs
+    return None instead of silently using an incorrect conversion.
+    """
+    instrument = market.get("instrument", {})
+    quote_currency = (
+        instrument.get("currency")
+        or instrument.get("currencyCode")
+        or instrument.get("quoteCurrency")
+        or market.get("currency")
+        or "USD"
+    )
     if isinstance(quote_currency, dict):
         quote_currency = quote_currency.get("code") or quote_currency.get("currencyCode")
-    quote_currency = str(quote_currency or "").upper().strip()
-    account_currency = str(account_currency or "").upper().strip()
-    if (not quote_currency or quote_currency in {"NONE","NULL","NAN"}) and epic:
-        compact = str(epic).upper().replace("_W", "")
-        if len(compact) >= 6 and compact[:6].isalpha():
-            quote_currency = compact[-3:]
-    if quote_currency == account_currency: return 1.0
-    if quote_currency == "USD" and account_currency == "AED": return 3.6725
-    if quote_currency == "AED" and account_currency == "USD": return 1.0 / 3.6725
-    if account_currency == "AED":
-        rates = {"GBP":5.25,"EUR":4.60,"CHF":4.90,"CAD":2.90,"AUD":2.75,"NZD":2.55,"SGD":3.05,"JPY":0.030,"HKD":0.48}
-        return rates.get(quote_currency, 6.00)
-    if account_currency == "USD":
-        rates = {"GBP":1.45,"EUR":1.25,"CHF":1.35,"CAD":0.80,"AUD":0.70,"NZD":0.65,"SGD":0.80,"JPY":0.009}
-        return rates.get(quote_currency, 1.50)
+    quote_currency = str(quote_currency).upper()
+    account_currency = str(account_currency).upper()
+    if quote_currency == account_currency:
+        return 1.0
+    if quote_currency == "USD" and account_currency == "AED":
+        return 3.6725
+    if quote_currency == "AED" and account_currency == "USD":
+        return 1.0 / 3.6725
     return None
+
+
 def get_position_size(api, epic, risk_amount_account, risk_distance, account_currency, market=None):
     risk_amount_account = safe_float(risk_amount_account)
     risk_distance = safe_float(risk_distance)
@@ -858,7 +837,7 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
     step = safe_float(dealing.get("minSizeIncrement", {}).get("value"), min_size)
     if min_size <= 0 or step <= 0 or lot_size <= 0:
         return None
-    account_to_quote = quote_to_account_rate(market, account_currency, epic=epic)
+    account_to_quote = quote_to_account_rate(market, account_currency)
     if account_to_quote is None or account_to_quote <= 0:
         log(f"{epic}: unsupported currency conversion for account {account_currency}; trade skipped.")
         return None
@@ -874,10 +853,7 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
         size = round(max(0, size - step), decimals)
     return size if size >= min_size else None
 
-CANDLE_CACHE_DEFAULT_TTL_SECONDS = 2.0
-# Entry decisions must always use a fresh broker candle response.
-ENTRY_CANDLE_CACHE_TTL_SECONDS = 0.0
-STRATEGY_CANDLE_RESOLUTION_SECONDS = 900
+CANDLE_CACHE_DEFAULT_TTL_SECONDS = 8.0
 
 def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
     """Short-lived historical-candle cache. Live quotes remain uncached."""
@@ -903,9 +879,7 @@ def candles_to_dataframe(raw):
             ask = safe_float(price.get("ask"))
             return (bid + ask) / 2 if bid is not None and ask is not None else (bid if bid is not None else ask)
         rows.append({
-            # Capital supplies snapshotTime in broker-local time and snapshotTimeUTC
-            # as an unambiguous UTC timestamp. Never interpret local time as UTC.
-            "time": candle.get("snapshotTimeUTC") or (candle.get("snapshotTime") if str(candle.get("snapshotTime", "")).endswith(("Z", "+00:00")) else None),
+            "time": candle.get("snapshotTime"),
             "open": mid(candle.get("openPrice", {})),
             "high": mid(candle.get("highPrice", {})),
             "low": mid(candle.get("lowPrice", {})),
@@ -916,15 +890,7 @@ def candles_to_dataframe(raw):
         return df
     for column in ["open", "high", "low", "close"]:
         df[column] = pd.to_numeric(df[column], errors="coerce")
-    # Never trust API response order for candle recency.
-    df["time"] = pd.to_datetime(df["time"], utc=True, errors="coerce")
-    df = (
-        df.dropna(subset=["time", "open", "high", "low", "close"])
-          .drop_duplicates(subset=["time"], keep="last")
-          .sort_values("time")
-          .reset_index(drop=True)
-    )
-    return df
+    return df.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
 
 def add_indicators(df):
     df = df.copy()
@@ -940,29 +906,27 @@ def add_indicators(df):
     previous_close = df["close"].shift(1)
     true_range = pd.concat([df["high"] - df["low"], (df["high"] - previous_close).abs(), (df["low"] - previous_close).abs()], axis=1).max(axis=1)
     df["atr"] = true_range.ewm(alpha=1 / ATR_PERIOD, min_periods=ATR_PERIOD, adjust=False).mean()
-
-    # Additional strategy context is observation-only. It never vetoes or changes
-    # the executable entry authority.
-    bb_mid = df["close"].rolling(20).mean()
-    bb_std = df["close"].rolling(20).std(ddof=0)
-    df["bb_mid"] = bb_mid
-    df["bb_upper"] = bb_mid + 2.0 * bb_std
-    df["bb_lower"] = bb_mid - 2.0 * bb_std
-    df["bb_z"] = (df["close"] - bb_mid) / bb_std.replace(0, np.nan)
-
-    up_move = df["high"].diff()
-    down_move = -df["low"].diff()
-    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
-    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
-    tr14 = true_range.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
-    plus_di = 100.0 * plus_dm.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean() / tr14.replace(0, np.nan)
-    minus_di = 100.0 * minus_dm.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean() / tr14.replace(0, np.nan)
-    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
-    df["adx"] = dx.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
     return df
 
 def get_rsi_settings(epic):
     return MARKET_RSI_SETTINGS.get(epic, (42, 68, 32, 58))
+
+def session_allows_entry(epic=None):
+    # Crypto is a 24/7 market; still require broker OPEN status before entering.
+    if epic == "BTCUSD":
+        return True
+    now = datetime.now(timezone.utc)
+    # EURUSD_W is treated as a permanent FX instrument.
+    # Broker marketStatus remains the final entry gate, so the bot will
+    # trade it whenever the broker exposes the market as OPEN.
+    if not SESSION_FILTER_ENABLED:
+        return True
+    # On weekends, scan every configured market; broker marketStatus is the entry gate.
+    if WEEKEND_FILTER_ENABLED and now.weekday() >= 5:
+        return True
+    hour = now.hour + now.minute / 60.0
+    return SESSION_START_UTC <= hour < SESSION_END_UTC
+
 
 def adaptive_risk_multiplier(df):
     if not ADAPTIVE_RISK_ENABLED or len(df) < VOL_REGIME_SLOW + 5:
@@ -1088,7 +1052,7 @@ def market_regime(df, htf_df):
 def dynamic_entry_score_floor(regime, vol_ratio, news_buy=0.0, news_sell=0.0):
     """Adaptive score floor from market regime, volatility and cached news stress."""
     regime = str(regime or "RANGE").upper()
-    floor = {"TREND": 40.0, "BREAKOUT": 45.0, "RANGE": 50.0}.get(regime, 45.0)
+    floor = {"TREND": 45.0, "BREAKOUT": 52.0, "RANGE": 62.0}.get(regime, 58.0)
     vol = safe_float(vol_ratio)
     if vol is not None:
         if vol < 0.85:
@@ -1097,6 +1061,8 @@ def dynamic_entry_score_floor(regime, vol_ratio, news_buy=0.0, news_sell=0.0):
             floor += 8.0
         elif vol > 1.25:
             floor += 3.0
+    if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
+        floor += 8.0
     return float(np.clip(floor, 45.0, 80.0))
 
 
@@ -1109,18 +1075,53 @@ def dynamic_entry_policy(df, htf_df, epic, direction, strength):
     news_buy, _ = capital_news.score(epic, "BUY")
     news_sell, _ = capital_news.score(epic, "SELL")
     score_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
-    strength_floor = {"TREND": 0.40, "BREAKOUT": 0.45, "RANGE": 0.50}.get(regime, 0.45)
+    strength_floor = {"TREND": 0.50, "BREAKOUT": 0.55, "RANGE": 0.65}.get(regime, 0.60)
     if vol_ratio < 0.85:
         strength_floor += 0.05
     elif vol_ratio > 1.50:
         strength_floor += 0.08
-    strength_floor = float(np.clip(strength_floor, 0.40, 0.75))
+    if max(abs(float(news_buy or 0.0)), abs(float(news_sell or 0.0))) >= 1.0:
+        strength_floor += 0.05
+    strength_floor = float(np.clip(strength_floor, 0.50, 0.90))
     # Position count is NOT fixed here. The strategy decides whether another
     # leg is justified from the live basket state and its risk budget.
     # No arbitrary numeric trade-count ladder is imposed by this policy.
     strong = float(strength) >= strength_floor
     max_positions = None
     return regime, vol_ratio, score_floor, strength_floor, max_positions, strong
+
+def alpha_ensemble_confirmation(df, direction):
+    """Independent confirmation from trend, momentum, slope and structure."""
+    if len(df) < 80:
+        return False, {"reason": "insufficient_history"}
+    cur = df.iloc[-2]
+    close = safe_float(cur.get("close"))
+    if close is None or close <= 0:
+        return False, {"reason": "invalid_price"}
+    closes = df["close"].astype(float)
+    ema9 = closes.ewm(span=9, adjust=False).mean().iloc[-2]
+    ema21 = closes.ewm(span=21, adjust=False).mean().iloc[-2]
+    ema50 = closes.ewm(span=50, adjust=False).mean().iloc[-2]
+    ema200 = closes.ewm(span=200, adjust=False).mean().iloc[-2]
+    roc5 = close / float(closes.iloc[-7]) - 1.0
+    roc20 = close / float(closes.iloc[-22]) - 1.0
+    x20 = np.arange(20, dtype=float)
+    x60 = np.arange(60, dtype=float)
+    slope20 = float(np.polyfit(x20, closes.iloc[-21:-1].to_numpy(dtype=float), 1)[0])
+    slope60 = float(np.polyfit(x60, closes.iloc[-61:-1].to_numpy(dtype=float), 1)[0])
+    recent20 = df.iloc[-21:-1]
+    high20 = float(recent20["high"].max())
+    low20 = float(recent20["low"].min())
+    want = 1 if direction == "BUY" else -1
+    votes = {
+        "trend": 1 if (ema9 > ema21 and ema50 > ema200) else -1 if (ema9 < ema21 and ema50 < ema200) else 0,
+        "momentum": 1 if (roc5 > 0 and roc20 > 0) else -1 if (roc5 < 0 and roc20 < 0) else 0,
+        "slope": 1 if (slope20 > 0 and slope60 > 0) else -1 if (slope20 < 0 and slope60 < 0) else 0,
+        "structure": 1 if close > high20 else -1 if close < low20 else 0,
+    }
+    agreement = sum(1 for v in votes.values() if v == want)
+    opposed = sum(1 for v in votes.values() if v == -want)
+    return agreement >= ALPHA_MIN_AGREEMENT and agreement > opposed, {"votes": votes, "agreement": agreement, "opposed": opposed}
 
 def asset_specific_strategy_scores(df, epic, direction, atr, rsi, ema9, ema21, ema50, htf50, htf200):
     """Local, non-blocking strategy layer tailored to the asset class.
@@ -1338,163 +1339,79 @@ def quant_signal_score(df, epic, htf_df):
     dynamic_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
     log(f"{epic}: ADAPTIVE ENTRY FLOOR | regime={regime} | floor={dynamic_floor:.1f} | vol_ratio={vol_ratio:.2f} | news_stress={max(abs(news_buy), abs(news_sell)):.2f}")
     if buy_score >= dynamic_floor and buy_score > sell_score + 8:
+        if ALPHA_ENSEMBLE_ENABLED:
+            ok, details = alpha_ensemble_confirmation(df, "BUY")
+            log(f"{epic}: ALPHA ENSEMBLE BUY | {details}")
+            if not ok:
+                return None
         return "BUY"
     if sell_score >= dynamic_floor and sell_score > buy_score + 8:
+        if ALPHA_ENSEMBLE_ENABLED:
+            ok, details = alpha_ensemble_confirmation(df, "SELL")
+            log(f"{epic}: ALPHA ENSEMBLE SELL | {details}")
+            if not ok:
+                return None
         return "SELL"
     return None
 
 
 
-def early_reversal_signal(df, epic, micro_frames=None):
-    """Early M5 reversal trigger after a meaningful M15 local extreme."""
-    if df is None or len(df) < 30 or not isinstance(micro_frames, dict):
-        return None, 0.0
-    m5 = micro_frames.get("M5_DF")
-    if m5 is None or len(m5) < 8:
-        return None, 0.0
-    m5 = add_indicators(m5)
-    cur15 = df.iloc[-2]
-    atr15 = safe_float(cur15.get("atr")); close15 = safe_float(cur15.get("close"))
-    if atr15 is None or atr15 <= 0 or close15 is None: return None, 0.0
-    recent15 = df.iloc[-9:-1]
-    low15, high15 = safe_float(recent15["low"].min()), safe_float(recent15["high"].max())
-    if low15 is None or high15 is None: return None, 0.0
-    cur, prev, prior = m5.iloc[-2], m5.iloc[-3], m5.iloc[-4]
-    # Never use genuinely stale completed M5 data for early timing.
-    # The workflow can run on a 15-minute schedule, so allow the latest
-    # completed M5 candle up to 12 minutes old; the normal V7 M5 path remains
-    # the entry authority.
-    cur_time = pd.to_datetime(cur.get("time"), utc=True, errors="coerce")
-    if pd.isna(cur_time):
-        return None, 0.0
-    m5_age_minutes = (datetime.now(timezone.utc) - cur_time.to_pydatetime()).total_seconds() / 60.0
-    if m5_age_minutes > 12.0:
-        log(f"{epic}: EARLY REVERSAL SKIPPED | stale M5 age={m5_age_minutes:.1f}m")
-        return None, 0.0
-    c5,o5,lo,hi = [safe_float(cur.get(x)) for x in ("close","open","low","high")]
-    pc,pp,rsi,m5atr = safe_float(prev.get("close")),safe_float(prior.get("close")),safe_float(cur.get("rsi")),safe_float(cur.get("atr"))
-    if None in (c5,o5,lo,hi,pc,pp,rsi,m5atr) or m5atr <= 0: return None, 0.0
-    m5low,m5high = safe_float(m5.iloc[-7:-2]["low"].min()),safe_float(m5.iloc[-7:-2]["high"].max())
-    if m5low is None or m5high is None: return None, 0.0
-    bull = c5>o5 and c5>pc and pc<=pp and lo<=m5low+0.15*m5atr and c5>=lo+0.60*max(hi-lo,0.25*m5atr)
-    bear = c5<o5 and c5<pc and pc>=pp and hi>=m5high-0.15*m5atr and c5<=hi-0.60*max(hi-lo,0.25*m5atr)
-    near_low,near_high=(close15-low15)<=0.55*atr15,(high15-close15)<=0.55*atr15
-    ema9=df["close"].ewm(span=9,adjust=False).mean().iloc[-2]; ema21=df["close"].ewm(span=21,adjust=False).mean().iloc[-2]
-    buy_context=float(ema9)>=float(ema21) or close15>float(ema21)-0.75*atr15
-    sell_context=float(ema9)<=float(ema21) or close15<float(ema21)+0.75*atr15
-    if bull and near_low and buy_context and rsi<=58: return "BUY",0.72
-    if bear and near_high and sell_context and rsi>=42: return "SELL",0.72
-    return None,0.0
-
-def m5_entry_direction(micro_frames, epic=None):
-    """V7 live M5 entry authority. M15 never vetoes this direction."""
-    if not isinstance(micro_frames, dict):
-        return None
-    m5 = micro_frames.get("M5_DF")
-    if m5 is None or len(m5) < 60:
-        return None
-    return v7_signal(m5, epic, None)
-
-
-def m5_entry_strength(micro_frames, signal):
-    """Score the completed M5 entry direction without using M15 as a direction gate."""
-    if signal not in {"BUY", "SELL"} or not isinstance(micro_frames, dict):
-        return 0.0
-    m5 = micro_frames.get("M5_DF")
-    if m5 is None or len(m5) < 20:
-        return 0.0
-    try:
-        m5 = add_indicators(m5.copy())
-        cur = m5.iloc[-2]
-        prev = m5.iloc[-3]
-        close = safe_float(cur.get("close"))
-        open_ = safe_float(cur.get("open"))
-        prev_close = safe_float(prev.get("close"))
-        ema9 = safe_float(m5["close"].ewm(span=9, adjust=False).mean().iloc[-2])
-        ema21 = safe_float(m5["close"].ewm(span=21, adjust=False).mean().iloc[-2])
-        rsi = safe_float(cur.get("rsi"))
-        if None in (close, open_, prev_close, ema9, ema21, rsi):
-            return 0.0
-        score = 0.60
-        if (signal == "BUY" and close > open_ and close > prev_close and ema9 > ema21 and rsi >= 50) or            (signal == "SELL" and close < open_ and close < prev_close and ema9 < ema21 and rsi <= 50):
-            score += 0.20
-        if (signal == "BUY" and close >= ema9) or (signal == "SELL" and close <= ema9):
-            score += 0.10
-        if (signal == "BUY" and rsi >= 55) or (signal == "SELL" and rsi <= 45):
-            score += 0.05
-        return min(score, 0.95)
-    except Exception:
-        return 0.0
-
-
-def v7_signal(df, epic, htf_df=None):
-    """Entry timing guard: completed M5 confirmation + live-price confirmation.
-    Avoids chasing extended candles and avoids entering directly into nearby
-    support/resistance unless the completed M5 candle has actually broken it.
+def classic_25sep_signal(df, epic, htf_df):
+    """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
+    This is the sole entry authority. AI remains advisory only.
     """
-    if df is None or len(df) < 60:
+    if df is None or htf_df is None or len(df) < 205 or len(htf_df) < 205:
         return None
-    try:
-        d = add_indicators(df.copy())
-        close = d["close"].astype(float)
-        ema9 = close.ewm(span=9, adjust=False).mean()
-        ema21 = close.ewm(span=21, adjust=False).mean()
-        rsi = d["rsi"].astype(float)
-        atr = d["atr"].astype(float)
+    cur = df.iloc[-2]
+    prev = df.iloc[-3]
+    close = safe_float(cur["close"])
+    prev_close = safe_float(prev["close"])
+    atr = safe_float(cur["atr"])
+    rsi = safe_float(cur["rsi"])
+    if None in (close, prev_close, atr, rsi) or atr <= 0:
+        return None
 
-        # Authority is the LAST COMPLETED M5 candle, never the forming candle.
-        cur = d.iloc[-2]
-        prev = d.iloc[-3]
-        price = safe_float(d.iloc[-1]["close"])
-        c = safe_float(cur["close"])
-        o = safe_float(cur["open"])
-        pc = safe_float(prev["close"])
-        atr0 = safe_float(cur["atr"])
-        r = safe_float(cur["rsi"])
-        e9 = safe_float(ema9.iloc[-2])
-        e21 = safe_float(ema21.iloc[-2])
-        if None in (price, c, o, pc, atr0, r, e9, e21) or atr0 <= 0:
-            return None
+    m15 = df["close"].astype(float)
+    h1 = htf_df["close"].astype(float)
+    ema9 = m15.ewm(span=9, adjust=False).mean().iloc[-2]
+    ema21 = m15.ewm(span=21, adjust=False).mean().iloc[-2]
+    h50 = h1.ewm(span=50, adjust=False).mean().iloc[-2]
+    h200 = h1.ewm(span=200, adjust=False).mean().iloc[-2]
 
-        # Recent completed-candle support/resistance.
-        lookback = d.iloc[-22:-2]
-        support = safe_float(lookback["low"].min())
-        resistance = safe_float(lookback["high"].max())
-        if support is None or resistance is None:
-            return None
+    # Read the completed candle, not the still-forming candle.
+    body = abs(float(cur["close"]) - float(cur["open"]))
+    candle_range = max(float(cur["high"]) - float(cur["low"]), 1e-12)
+    body_ratio = body / candle_range
+    close_pos_buy = (float(cur["close"]) - float(cur["low"])) / candle_range
+    close_pos_sell = (float(cur["high"]) - float(cur["close"])) / candle_range
 
-        # Direction must be confirmed by the completed M5 candle.
-        bull = c > o and (c > pc or e9 > e21) and r >= 45.0
-        bear = c < o and (c < pc or e9 < e21) and r <= 55.0
+    recent20 = df.iloc[-21:-1]
+    prior_high = float(recent20["high"].max())
+    prior_low = float(recent20["low"].min())
 
-        # A nearby level is not a reason to enter. Only a real completed-candle
-        # breakout can override the level guard.
-        breakout_buffer = 0.02 * atr0
-        broke_resistance = c > resistance + breakout_buffer
-        broke_support = c < support - breakout_buffer
-        near_resistance = False
-        near_support = False
+    buy_trend = ema9 > ema21 and h50 > h200
+    sell_trend = ema9 < ema21 and h50 < h200
+    buy_momentum = close > prev_close and 45 <= rsi <= 70
+    sell_momentum = close < prev_close and 30 <= rsi <= 55
+    buy_breakout = close > prior_high
+    sell_breakout = close < prior_low
 
-        # Live quote may confirm timing, but cannot create direction by itself.
-        live_delta_atr = abs(price - c) / atr0
-        if live_delta_atr > 1.00:
-            log(f"{epic}: ENTRY TIMING BLOCK | live price {live_delta_atr:.2f} ATR from completed M5 close")
-            return None
+    buy_candle = float(cur["close"]) > float(cur["open"]) and close_pos_buy >= 0.55
+    sell_candle = float(cur["close"]) < float(cur["open"]) and close_pos_sell >= 0.55
+    buy = (buy_trend and buy_momentum and buy_candle) or (buy_breakout and buy_candle and rsi < 75)
+    sell = (sell_trend and sell_momentum and sell_candle) or (sell_breakout and sell_candle and rsi > 25)
 
-        if bull:
-            log(f"{epic}: M5 CONFIRMED BUY | completed candle | RSI={r:.1f} | SR={'BREAKOUT' if broke_resistance else 'CLEAR'}")
-            return "BUY"
-
-        if bear:
-            log(f"{epic}: M5 CONFIRMED SELL | completed candle | RSI={r:.1f} | SR={'BREAKDOWN' if broke_support else 'CLEAR'}")
-            return "SELL"
-    except Exception as exc:
-        log(f"{epic}: M5 entry timing unavailable | {exc}")
+    if buy and not sell:
+        log(f"{epic}: 25SEP CLASSIC BUY | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
+        return "BUY"
+    if sell and not buy:
+        log(f"{epic}: 25SEP CLASSIC SELL | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
+        return "SELL"
     return None
 
+
 def generate_signal(df, epic, htf_df=None):
-    # V7 is the only strategy authority. AI and M15 are support/diagnostic only.
-    return v7_signal(df, epic, htf_df)
+    return classic_25sep_signal(df, epic, htf_df)
 
 
 def market_entry_strength(df, htf_df, direction):
@@ -1526,8 +1443,83 @@ def market_entry_strength(df, htf_df, direction):
     return votes / 4.0
 
 
-def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None, early_entry=False):
-    # V7 uses M5 volatility as the primary risk/target engine.
+# Cache 15m closes for correlation checks so the 10-second monitor does not
+# repeatedly download the same history during one short monitoring window.
+CORRELATION_CACHE = {}
+
+def correlation_allows_entry(api, epic, df, positions, signal):
+    """Block only when the new trade materially duplicates existing directional risk."""
+    if not CORRELATION_FILTER_ENABLED:
+        return True
+
+    candidate = df[["close"]].copy()
+    if candidate.empty:
+        return True
+    candidate["ret"] = candidate["close"].astype(float).pct_change()
+    candidate_ret = candidate["ret"].dropna().tail(CORRELATION_LOOKBACK)
+    if len(candidate_ret) < max(30, CORRELATION_LOOKBACK // 2):
+        return True
+
+    open_epics = []
+    for position in positions:
+        other_epic = position_epic(position)
+        other_direction = position_direction(position)
+        if other_epic and other_epic != epic and other_direction in ("BUY", "SELL"):
+            open_epics.append((other_epic, other_direction))
+
+    checked = set()
+    for other_epic, other_direction in open_epics:
+        if other_epic in checked:
+            continue
+        checked.add(other_epic)
+        now = time.monotonic()
+        cached = CORRELATION_CACHE.get(other_epic)
+        if cached and now - cached["time"] < CORRELATION_CACHE_SECONDS:
+            other_df = cached["df"]
+        else:
+            try:
+                raw_other = api.get_candles(
+                    epic=other_epic,
+                    resolution=RESOLUTION,
+                    max_candles=max(CANDLE_COUNT, CORRELATION_LOOKBACK + 20),
+                )
+                other_df = candles_to_dataframe(raw_other)
+                CORRELATION_CACHE[other_epic] = {"time": now, "df": other_df}
+            except Exception as exc:
+                log(f"{epic}: correlation check skipped for {other_epic}; data unavailable: {exc}")
+                continue
+
+        if other_df is None or other_df.empty or "close" not in other_df.columns:
+            continue
+        other_ret = other_df["close"].astype(float).pct_change().dropna().tail(CORRELATION_LOOKBACK)
+        joined = pd.concat([candidate_ret.rename("candidate"), other_ret.rename("other")], axis=1).dropna()
+        if len(joined) < max(30, CORRELATION_LOOKBACK // 2):
+            continue
+        corr = safe_float(joined["candidate"].corr(joined["other"]))
+        if corr is None:
+            continue
+
+        # Positive correlation is relevant when both trades point the same way:
+        # BUY+BUY or SELL+SELL concentrates directional exposure. Opposite-side
+        # trades are not blocked by this filter merely because markets correlate.
+        same_direction = signal == other_direction
+        if same_direction and corr >= CORRELATION_THRESHOLD:
+            record_entry_rejection(
+                epic,
+                "HIGH_CORRELATION_EXPOSURE",
+                f"candidate={signal} vs {other_epic}={other_direction}; correlation={corr:.3f}; threshold={CORRELATION_THRESHOLD:.2f}",
+            )
+            return False
+
+        log(
+            f"{epic}: CORRELATION CHECK | vs={other_epic} | corr={corr:.3f} | "
+            f"candidate={signal} existing={other_direction} | blocked={same_direction and corr >= CORRELATION_THRESHOLD}"
+        )
+    return True
+
+
+def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None):
+    # Use only the latest completed 15m candle for volatility.
     current = df.iloc[-2]
     atr = safe_float(current["atr"])
     price = safe_float(entry_price) if entry_price is not None else safe_float(current["close"])
@@ -1535,38 +1527,29 @@ def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai
     if price is None or atr is None or atr <= 0 or reference is None:
         return None
 
-    # Dynamic late-entry protection: stronger/high-confidence signals get more room.
-    max_chase_atr = LATE_ENTRY_MAX_ATR
-    if LATE_ENTRY_DYNAMIC_ENABLED:
-        # Market-derived strength controls chase allowance; AI cannot loosen it.
-        strength_factor = max(0.0, min(1.0, (float(strength) - 0.60) / 0.40))
-        max_chase_atr = LATE_ENTRY_MAX_ATR + (LATE_ENTRY_STRONG_MAX_ATR - LATE_ENTRY_MAX_ATR) * strength_factor
-        regime = str((ai_decision or {}).get("regime") or "").upper()
-        if regime in {"TREND", "BREAKOUT"}:
-            max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr + 0.10)
-        max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr)
-    if not early_entry:
-        if direction == "BUY" and price > reference + max_chase_atr * atr:
-            if epic:
-                record_entry_rejection(epic, "LATE_ENTRY", f"BUY distance={(price-reference)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR")
-            return None
-        if direction == "SELL" and price < reference - max_chase_atr * atr:
-            if epic:
-                record_entry_rejection(epic, "LATE_ENTRY", f"SELL distance={(reference-price)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR")
-            return None
-    else:
-        # Early timing is based on M5. Keep a hard cap so the fix cannot turn
-        # into unrestricted chasing.
-        if direction == "BUY" and price > reference + 0.60 * atr:
-            if epic: record_entry_rejection(epic, "EARLY_REVERSAL_STRETCHED", f"BUY distance={(price-reference)/atr:.2f} ATR")
-            return None
-        if direction == "SELL" and price < reference - 0.60 * atr:
-            if epic: record_entry_rejection(epic, "EARLY_REVERSAL_STRETCHED", f"SELL distance={(reference-price)/atr:.2f} ATR")
-            return None
+    # Avoid chasing a stretched live quote. Recheck on the next scan.
+    # Both active bots use the same hard late-entry protection.
+    max_chase_atr = LATE_ENTRY_STRONG_MAX_ATR if strength >= 1.0 else LATE_ENTRY_MAX_ATR
+    if direction == "BUY" and price > reference + max_chase_atr * atr:
+        if epic:
+            record_entry_rejection(
+                epic,
+                "LATE_ENTRY",
+                f"BUY quote={price:.6f}; completed_close={reference:.6f}; distance={(price-reference)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
+            )
+        return None
+    if direction == "SELL" and price < reference - max_chase_atr * atr:
+        if epic:
+            record_entry_rejection(
+                epic,
+                "LATE_ENTRY",
+                f"SELL quote={price:.6f}; completed_close={reference:.6f}; distance={(reference-price)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
+            )
+        return None
 
-    # V7: adaptive M5 ATR protection. AI does not alter execution.
-    sl_mult = SL_ATR_MULT
-    tp_mult = TP_ATR_MULT
+    # 25/9 protection: fixed 2 ATR SL and 3 ATR TP. AI does not alter execution.
+    sl_mult = 2.0
+    tp_mult = 3.0
     sl_distance = atr * sl_mult
     profit_level = None
     if tp_mult > 0:
@@ -1705,10 +1688,7 @@ def ai_manage_positions(api, positions, epic, ai_decision):
             and confidence >= exit_confidence
         )
         ai_profit_action = profit_action_by_deal.get(str(deal_id), "WAIT")
-        profit_trail_state = STATE.setdefault("profit_trail", {}).setdefault(str(deal_id), {})
-        profit_trail_state["ai_profit_action"] = ai_profit_action
-        profit_trail_state["ai_signal"] = signal
-        profit_trail_state["ai_confidence"] = confidence
+        STATE.setdefault("profit_trail", {}).setdefault(str(deal_id), {})["ai_profit_action"] = ai_profit_action
         profit_giveback_exit = (
             ai_profit_action == "EXIT"
             or action_bias == "EXIT_PROFIT_GIVEBACK"
@@ -1884,8 +1864,9 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         trail["giveback"] = round(giveback, 2)
         trail["last_update"] = now_iso
 
-        # Track from the first positive P/L for telemetry, but do not allow
-        # small profit to become an automatic close trigger.
+        # Activate as soon as the position has any positive broker-reported P/L.
+        # A tiny positive peak is tracked, but a close is only possible after a
+        # real giveback to the dynamic floor.
         if pnl > 0:
             if not trail.get("activated"):
                 trail["activated"] = True
@@ -1910,37 +1891,10 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             "last_update": now_iso,
         }
 
-        # WINNER-FREEDOM RULE:
-        # 1) A small positive peak is never enough to trigger a discretionary close.
-        # 2) If AI still agrees with the current direction, let the winner run.
-        # 3) Even when AI is neutral, require a meaningful giveback before closing.
-        # Losses remain protected by the broker SL / hard-loss guard.
-        ai_signal = str(trail.get("ai_signal") or "").upper()
-        ai_confidence = float(safe_float(trail.get("ai_confidence"), 0.0) or 0.0)
-        position_dir = str(position_direction(position) or "").upper()
-        ai_still_supports_trade = (
-            ai_signal in {"BUY", "SELL"}
-            and ai_signal == position_dir
-            and ai_confidence >= 0.65
-        )
-        giveback_ratio = (giveback / peak) if peak > 0 else 0.0
-        # US100/US500: protect profits from 1R of estimated original risk.
-        index_protection = False
-        if epic in {"US100", "US500"}:
-            index_risk = estimated_position_risk_account(position, api, account_currency)
-            if index_risk is not None and index_risk > 0:
-                index_protection = peak >= index_risk and (
-                    pnl <= 0.0 or (giveback_ratio >= 0.35 and pnl < peak * 0.35)
-                )
-        protection_close_allowed = index_protection or (
-            trail.get("activated")
-            and floor is not None
-            and pnl >= 0.0
-            and peak >= PROFIT_PROTECTION_MIN_PEAK
-            and giveback_ratio >= PROFIT_PROTECTION_MIN_GIVEBACK_RATIO
-            and (pnl < floor or not ai_still_supports_trade)
-        )
-        if protection_close_allowed:
+        # LOSS-PRESERVATION RULE: this discretionary profit manager may only
+        # close while the broker still reports a non-negative P/L. Once P/L is
+        # negative, only the hard loss guard or the broker SL may close it.
+        if trail.get("activated") and floor is not None and pnl >= 0.0 and pnl <= floor:
             try:
                 log(
                     f"{epic}: PROFIT EXIT INTENT | reason=DYNAMIC_PROFIT_PROTECTION | "
@@ -1955,13 +1909,8 @@ def manage_profit_trailing(api, positions, epic, account_currency):
                     f"giveback={giveback:.2f} | protected={protected_fraction:.0%} | "
                     f"floor={floor:.2f} {account_currency} | response={response} | confirmed_closed={confirmed}"
                 )
-                if confirmed:
-                    trails.pop(deal_key, None)
-                    telemetry.pop(deal_key, None)
-                else:
-                    trail["pending_close_confirmation"] = True
-                    trail["last_close_attempt"] = now_iso
-                    log(f"{epic}: CLOSE UNCONFIRMED | deal={deal_id} | preserving profit trail and retrying reconciliation")
+                trails.pop(deal_key, None)
+                telemetry.pop(deal_key, None)
             except Exception as exc:
                 log(f"{epic}: dynamic profit-protection close failed | deal={deal_id} | {exc}")
         elif trail.get("activated") and floor is not None and pnl < 0.0:
@@ -2013,26 +1962,17 @@ def manage_trailing_stops(api, positions, epic, current_price, df=None):
             candidate = max(current_price - volatility_gap, structure_stop)
             # Preserve room for noise and avoid a stop above the market.
             candidate = min(candidate, current_price - 0.75 * atr)
-            candidate = max(candidate, entry + 0.10 * stored_risk) if epic in {"US100", "US500"} and current_price - (entry + 0.10 * stored_risk) >= 0.75 * atr else candidate
             if current_sl is not None and candidate <= current_sl + 0.05 * atr:
                 continue
         else:
             structure_stop = swing_high + 0.15 * atr if swing_high is not None else current_price + volatility_gap
             candidate = min(current_price + volatility_gap, structure_stop)
             candidate = max(candidate, current_price + 0.75 * atr)
-            candidate = min(candidate, entry - 0.10 * stored_risk) if epic in {"US100", "US500"} and (entry - 0.10 * stored_risk) - current_price >= 0.75 * atr else candidate
             if current_sl is not None and candidate >= current_sl - 0.05 * atr:
                 continue
         try:
             api.modify_position(deal_id=deal_id, stop_level=candidate)
-            # Broker acknowledgement alone does not guarantee the new SL was persisted.
-            refreshed = next((p for p in api.get_open_positions() if str(position_deal_id(p)) == str(deal_id)), None)
-            confirmed_sl = position_stop_level(refreshed) if refreshed is not None else None
-            sl_confirmed = confirmed_sl is not None and abs(confirmed_sl - candidate) <= max(1e-8, 0.05 * atr)
-            if sl_confirmed:
-                log(f"{epic}: ADAPTIVE SL CONFIRMED | {direction} | old={current_sl} | broker_sl={confirmed_sl} | ATR={atr:.6f}")
-            else:
-                log(f"{epic}: ADAPTIVE SL UNCONFIRMED | deal={deal_id} | requested={candidate} | broker_sl={confirmed_sl}; keep monitoring")
+            log(f"{epic}: ADAPTIVE SL | {direction} | old={current_sl} | new={candidate} | ATR={atr:.6f}")
         except Exception as exc:
             log(f"{epic}: adaptive SL update rejected; previous broker SL retained | {exc}")
     save_state(STATE)
@@ -2095,28 +2035,6 @@ def _save_entry_candle_state(state):
         log(f"Entry candle state save failed: {exc}")
 
 
-def strategy_candles_are_fresh(df, now=None):
-    """Fail closed when the latest completed 15m candle is missing/stale."""
-    if df is None or len(df) < 3:
-        return False, "INSUFFICIENT_CANDLES"
-    times = pd.to_datetime(df["time"], utc=True, errors="coerce")
-    if times.isna().any():
-        return False, "INVALID_CANDLE_TIME"
-    completed = times.iloc[-2]
-    previous = times.iloc[-3]
-    spacing = (completed - previous).total_seconds()
-    if spacing <= 0 or abs(spacing - STRATEGY_CANDLE_RESOLUTION_SECONDS) > 2:
-        return False, f"CANDLE_SPACING_INVALID:{spacing:.0f}s"
-    current_time = pd.Timestamp.now(tz="UTC") if now is None else pd.Timestamp(now, tz="UTC")
-    age = (current_time - completed).total_seconds()
-    # Allows normal start-time timestamping of a completed 15m bar,
-    # but rejects genuinely stale broker data.
-    if age < -120:
-        return False, f"CANDLE_TIME_IN_FUTURE:{age:.0f}s"
-    if age > 2400:
-        return False, f"STALE_COMPLETED_CANDLE:{age:.0f}s"
-    return True, None
-
 def completed_candle_key(df):
     """Return the timestamp of the last fully completed strategy candle."""
     if df is None or len(df) < 3:
@@ -2154,64 +2072,6 @@ def mark_candle_entry(epic, direction, candle_key):
     _save_entry_candle_state(state)
 
 
-# Account-wide profit radar is exit-only: it never vetoes a new signal or
-# changes the existing entry cadence. Each runner observes ALL broker positions,
-# but may close only positions it owns. Peaks are per-runner, not a shared lock.
-PORTFOLIO_PROFIT_RADAR_MIN_PEAK = 20.0
-PORTFOLIO_PROFIT_RADAR_GIVEBACK = 0.40
-PORTFOLIO_PROFIT_RADAR_STATE = {"peak": None, "deal_ids": set()}
-
-def protect_portfolio_profit(api, broker_positions, owned_positions, account_currency):
-    """Exit-only profit radar for mature, individually profitable owned trades.
-
-    New or immature positions never enter the profit-radar cohort, so their
-    initial drawdown cannot force an older winner to close. This function
-    never changes entry eligibility, scan frequency, or broker stop losses.
-    """
-    state = PORTFOLIO_PROFIT_RADAR_STATE
-    trails = STATE.get("profit_trail", {})
-    mature = []
-    for p in owned_positions:
-        deal_id = position_deal_id(p)
-        pnl = position_unrealized_pnl(p)
-        if not deal_id or pnl is None or pnl <= 0:
-            continue
-        trail = trails.get(str(deal_id), {})
-        own_peak = safe_float(trail.get("peak_profit"))
-        # A trade must have developed its own meaningful profit first.
-        if own_peak is None or own_peak < PROFIT_PROTECTION_MIN_PEAK:
-            continue
-        mature.append((p, str(deal_id), float(pnl), float(own_peak)))
-
-    ids = {deal_id for _, deal_id, _, _ in mature}
-    if not ids:
-        state["peak"], state["deal_ids"] = None, set()
-        return
-    total = sum(pnl for _, _, pnl, _ in mature)
-    # Only changes to the MATURE cohort reset the comparison baseline.
-    # Newly opened positions are excluded until individually profitable.
-    if ids != state["deal_ids"]:
-        state["peak"], state["deal_ids"] = total, ids
-        return
-    state["peak"] = max(float(state["peak"] if state["peak"] is not None else total), total)
-    peak = state["peak"]
-    if peak < PORTFOLIO_PROFIT_RADAR_MIN_PEAK or peak - total < peak * PORTFOLIO_PROFIT_RADAR_GIVEBACK:
-        return
-    log(f"PORTFOLIO PROFIT RADAR | mature_peak={peak:.2f} mature_current={total:.2f} {account_currency} | protecting mature owned winners only")
-    for p, deal_id, pnl, own_peak in mature:
-        if own_peak - pnl < own_peak * PROFIT_PROTECTION_MIN_GIVEBACK_RATIO:
-            continue
-        try:
-            api.close_position(deal_id)
-            confirmed = confirm_position_closed(api, deal_id)
-            log(f"PORTFOLIO RADAR EXIT | deal={deal_id} | peak={own_peak:.2f} current={pnl:.2f} | confirmed={confirmed}")
-            if confirmed:
-                STATE.setdefault("profit_trail", {}).pop(str(deal_id), None)
-                STATE.setdefault("position_telemetry", {}).pop(str(deal_id), None)
-                save_state(STATE)
-        except Exception as exc:
-            log(f"PORTFOLIO RADAR EXIT FAILED | deal={deal_id} | {exc}")
-
 def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION_MONITOR_WINDOW_SECONDS):
     """Continuously protect positions and scan for new entries from live quotes.
 
@@ -2242,20 +2102,11 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
         try:
             positions = api.get_open_positions()
             owned = filter_owned_positions(positions)
-            protect_portfolio_profit(api, positions, owned, account_currency)
-
-            # IMPORTANT: manage every position owned by this strategy, even if
-            # its market was removed from the current NEW-ENTRY allowlist.
-            # Historical positions must never lose fast SL/profit protection
-            # merely because the market universe changed.
-            managed_epics = list(dict.fromkeys(
-                [position_epic(p) for p in owned if position_epic(p)]
-            ))
-            open_epics = [epic for epic in managed_epics if get_positions_for_epic(owned, epic)]
+            open_epics = [epic for epic in EPICS if get_positions_for_epic(owned, epic)]
 
             balance = api.get_balance() if open_epics else None
 
-            # Priority 1: protect every owned open position on the fast 2-second loop.
+            # Priority 1: protect every open position on the fast 2-second loop.
             for epic in open_epics:
                 if time.monotonic() >= deadline:
                     break
@@ -2335,38 +2186,12 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 
     log(f"FAST MONITOR | completed | passes={iteration}")
 
-def refresh_entry_execution_quote(api, epic, market, current_bid=None, current_offer=None):
-    """Refresh the executable quote immediately before entry without adding a veto.
-    
-    This is execution-timing optimization only: if a fresh live quote is
-    unavailable, the existing quote is used. It never rejects or delays a
-    valid strategy signal.
-    """
-    bid, offer = current_bid, current_offer
-    try:
-        if LIVE_PRICE_STREAM is not None:
-            quote = LIVE_PRICE_STREAM.get_quote(epic)
-            age = LIVE_PRICE_STREAM.age_seconds(epic)
-            if quote and age is not None and age <= 1.50:
-                bid = safe_float(quote.get("bid")) or bid
-                offer = safe_float(quote.get("offer")) or offer
-                log(f"{epic}: ENTRY TIMING | fresh WS quote age={age:.2f}s | bid={bid} | offer={offer} | mode=ADVISORY")
-                return bid, offer
-    except Exception as exc:
-        log(f"{epic}: ENTRY TIMING | fresh WS quote unavailable; using existing quote | {exc}")
-    try:
-        snapshot = market.get("snapshot", {}) or {}
-        bid = safe_float(snapshot.get("bid")) or bid
-        offer = safe_float(snapshot.get("offer") or snapshot.get("ask")) or offer
-    except Exception:
-        pass
-    log(f"{epic}: ENTRY TIMING | existing executable quote used | bid={bid} | offer={offer} | mode=NON_BLOCKING")
-    return bid, offer
-
-
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS, position_management_only=False):
     log("")
     owned_positions = filter_owned_positions(positions)
+    if not session_allows_entry(epic) and not get_positions_for_epic(owned_positions, epic):
+        log(f"{epic}: liquidity session filter active; no new entry now.")
+        return None
     log("=" * 60)
     log(f"PROCESSING {epic}")
     log("=" * 60)
@@ -2479,10 +2304,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # No existing position: only now spend the candle API/indicator work
         # needed to search for a fresh entry.
         if df is None:
-            # ENTRY CANDLES: bypass cache; read the broker's newest candle set now.
             df = get_cached_candles(
                 api, epic, RESOLUTION, CANDLE_COUNT,
-                cache=candle_cache, ttl_seconds=ENTRY_CANDLE_CACHE_TTL_SECONDS
+                cache=candle_cache, ttl_seconds=candle_cache_ttl
             )
             if df.empty:
                 log(f"{epic}: no candle data.")
@@ -2492,16 +2316,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 log(f"{epic}: insufficient candles.")
                 return None
 
-        fresh_ok, fresh_reason = strategy_candles_are_fresh(df)
-        if not fresh_ok:
-            record_entry_rejection(epic, "STALE_OR_INVALID_STRATEGY_CANDLE", fresh_reason)
-            log(f"{epic}: ENTRY BLOCKED | candle data not fresh: {fresh_reason}")
-            return None
-
-        htf_df = get_cached_candles(
-            api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT,
-            cache=candle_cache, ttl_seconds=ENTRY_CANDLE_CACHE_TTL_SECONDS
-        )
+        htf_df = get_cached_candles(api, epic, HTF_RESOLUTION, HTF_CANDLE_COUNT, cache=candle_cache, ttl_seconds=candle_cache_ttl)
         # Capital.com can return only a handful of HOUR candles for some
         # instruments/session windows. The integrated AI bots need a usable HTF history.
         # If the native HOUR response is short, rebuild 1H candles from the
@@ -2559,61 +2374,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
-        # M5/M1 are timing data. M5 may trigger an early reversal entry;
-        # M1 remains observational and never vetoes a strategy entry.
-        micro_context = {}
-        try:
-            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
-            def _micro_fetch(resolution, count):
-                raw = api.get_candles(epic=epic, resolution=resolution, max_candles=count)
-                frame = candles_to_dataframe(raw)
-                if frame is None or len(frame) < 8:
-                    return None
-                enriched = add_indicators(frame)
-                if enriched is None or len(enriched) < 8:
-                    return None
-                row = enriched.iloc[-2]
-                return {
-                    "close": safe_float(row.get("close")),
-                    "bb_z": safe_float(row.get("bb_z")),
-                    "adx": safe_float(row.get("adx")),
-                    "rsi": safe_float(row.get("rsi")),
-                    "time": str(row.get("time")),
-                    "DF": enriched,
-                }
-            pool = ThreadPoolExecutor(max_workers=2)
-            try:
-                futures = {
-                    "M5": pool.submit(_micro_fetch, "MINUTE_5", 80),
-                    "M1": pool.submit(_micro_fetch, "MINUTE", 80),
-                }
-                for label, future in futures.items():
-                    try:
-                        micro_context[label] = future.result(timeout=1.20)
-                    except FutureTimeoutError:
-                        micro_context[label] = None
-                        log(f"{epic}: {label} extra-context timeout; entry path continues unchanged")
-                    except Exception as micro_exc:
-                        micro_context[label] = None
-                        log(f"{epic}: {label} extra-context unavailable | {micro_exc}")
-            finally:
-                # Never wait for a slow optional context request. This keeps the
-                # executable entry path free of M5/M1 latency.
-                pool.shutdown(wait=False, cancel_futures=True)
-            log(f"{epic}: EXTRA M5/M1 CONTEXT | M5={micro_context.get('M5')} | M1={micro_context.get('M1')} | M5_MODE=EARLY_TIMING | M1_MODE=OBSERVATION")
-        except Exception as micro_exc:
-            log(f"{epic}: M5/M1 observation unavailable | {micro_exc}")
-
-        # AI is SUPPORT-ONLY. Strategy remains the entry authority.
-        # M5 is now allowed to provide an early reversal timing trigger.
+        # AI is SUPPORT-ONLY. The legacy strategy remains the sole entry authority.
+        # AI output is retained for advisory analysis, logging and learning only.
         legacy_signal = generate_signal(df, epic, htf_df)
-        micro_frames = {
-            "M1_DF": (micro_context.get("M1") or {}).get("DF"),
-            "M5_DF": (micro_context.get("M5") or {}).get("DF"),
-        }
-        early_signal, early_strength = early_reversal_signal(df, epic, micro_frames)
-        if early_signal:
-            log(f"{epic}: EARLY REVERSAL CANDIDATE | signal={early_signal} | strength={early_strength:.2f} | trigger=M5_reversal_after_M15_extreme")
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
         # Advanced AI safety stack is shadow-only by default. It can add diagnostics
         # without changing the active AI execution path unless explicitly switched to enforce mode.
@@ -2672,9 +2435,17 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             f"SL_ATR={ai_decision.get('sl_atr')} | TP_ATR={ai_decision.get('tp_atr')} | "
             f"{ai_decision.get('reason')}"
         )
-        # Spread is checked again immediately before execution below, using the
-        # freshest executable quote. Do not make the earlier REST snapshot a
-        # final entry decision because spread can change between signal and order.
+        # Spread is an ENTRY-quality decision only. It must never prevent
+        # management/protection/exit of an already-open position.
+        if not epic_positions and not spread_allows_entry(
+            api, epic, market=market, ai_decision=None
+        ):
+            record_entry_rejection(
+                epic,
+                "AI_SPREAD_DECISION",
+                f"AI rejected current spread; legacy_cap={MAX_SPREAD_PCT:.4f}%",
+            )
+            return None
         # AI SUPPORT-ONLY: advisory analysis never manages or closes positions.
         # Broker-side SL/TP, trailing and profit protection remain authoritative.
         # Do not call AI position-management actions on the entry path.
@@ -2686,48 +2457,20 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if position_management_only:
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
-        # ENTRY AUTHORITY: COMPLETED M5.
-        # M15/H1 are context/support only. They may describe the broader trend,
-        # but they can never override a clear M5 direction.
-        m5_bias = m5_entry_direction(micro_frames, epic)
-        m15_context = legacy_signal
-        if m5_bias in {"BUY", "SELL"}:
-            signal = m5_bias
-            early_entry = early_signal == m5_bias
-            if early_signal and early_signal != m5_bias:
-                log(
-                    f"{epic}: M5 OVERRIDES M15 | M5={m5_bias} | "
-                    f"M15_CONTEXT={m15_context} | early_signal={early_signal}"
-                )
-            else:
-                log(
-                    f"{epic}: M5 ENTRY AUTHORITY | M5={m5_bias} | "
-                    f"M15_CONTEXT={m15_context or 'NONE'}"
-                )
-        else:
-            signal = None
-            early_entry = False
-            log(
-                f"{epic}: NO M5 DIRECTION | M15_CONTEXT={m15_context or 'NONE'} | "
-                f"entry=WAIT"
-            )
-
-        # M15 is supportive only: disagreement is recorded for diagnostics,
-        # never used to veto or reverse the M5 decision.
-        if signal in {"BUY", "SELL"} and m15_context in {"BUY", "SELL"}:
-            log(
-                f"{epic}: M15 SUPPORT | M15={m15_context} | M5={signal} | "
-                f"agreement={m15_context == signal}"
-            )
-
-        strategy_strength = (
-            early_strength if early_entry else m5_entry_strength(micro_frames, signal)
-        ) if signal in {"BUY", "SELL"} else 0.0
+        # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
+        strategy_signal = legacy_signal
+        signal = (
+            ("SELL" if strategy_signal == "BUY" else "BUY")
+            if REVERSE_ENTRY_DIRECTION and strategy_signal in {"BUY", "SELL"}
+            else strategy_signal
+        )
+        strategy_strength = market_entry_strength(df, htf_df, strategy_signal) if strategy_signal in {"BUY", "SELL"} else 0.0
+        if strategy_signal in {"BUY", "SELL"} and signal != strategy_signal:
+            log(f"{epic}: ENTRY DIRECTION REVERSED | strategy={strategy_signal} -> broker_order={signal}")
         ai_support_signal = ai_decision.get("signal") or ai_decision.get("raw_signal")
         ai_support_confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         log(
-            f"{epic}: ENTRY MODE | authority=M5 | M5={signal} | "
-            f"M15_SUPPORT={m15_context or 'NONE'} | "
+            f"{epic}: ENTRY MODE | authority=STRATEGY | strategy={strategy_signal} | broker_order={signal} | "
             f"AI_SUPPORT={ai_support_signal or 'NONE'} | AI_confidence={ai_support_confidence:.3f} | "
             f"AI_agrees={ai_support_signal == signal if signal in {'BUY','SELL'} else False} | "
             f"no_ai_entry_gate=True"
@@ -2754,28 +2497,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             elif signal != basket_direction:
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
-        # ENTRY DIRECTION REVERSAL TEST
-        # Keep the strategy signal intact for diagnostics, but reverse ONLY the
-        # broker entry direction. Existing-position management/closing is not
-        # reversed, so the bot cannot accidentally close a winner just because
-        # the entry experiment is enabled.
-        strategy_signal = signal
-        if not epic_positions and signal in {"BUY", "SELL"} and REVERSE_ENTRY_DIRECTION:
-            signal = "SELL" if signal == "BUY" else "BUY"
-            log(
-                f"{epic}: ENTRY DIRECTION REVERSED | "
-                f"strategy={strategy_signal} -> broker_order={signal}"
-            )
         log(f"{epic}: SIGNAL = {signal}")
         # Candle strategy freshness gate: never re-enter from the same completed
         # candle after a close. This is deliberately based on candle identity,
         # not an arbitrary number of trades or a timer.
         candle_fresh, entry_candle_key, candle_rejection = candle_entry_is_fresh(epic, signal, df)
-        # New entries on an empty market remain one-per-completed-candle.
-        # Existing profitable baskets may reuse the current candle for a
-        # confirmed add-on; risk budget and profitable same-direction checks
-        # remain mandatory.
-        if not epic_positions and not candle_fresh:
+        if not candle_fresh:
             record_entry_rejection(
                 epic,
                 candle_rejection,
@@ -2789,47 +2516,12 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: CANDLE ENTRY CONFIRMED | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
-        # Final micro-timing refresh: use the freshest executable quote available
-        # immediately before the order. This improves entry pricing without adding
-        # a wait, a new condition, or any trade-count restriction.
-        live_bid, live_offer = refresh_entry_execution_quote(
-            api, epic, market, current_bid=live_bid, current_offer=live_offer
-        )
-        # M5 can provide the early-reversal timing trigger selected above.
-        # M1 remains advisory and can never veto, postpone, reverse, or remove an entry.
-        timing_m1 = micro_context.get("M1") if isinstance(micro_context, dict) else None
-        timing_m5 = micro_context.get("M5") if isinstance(micro_context, dict) else None
-        log(
-            f"{epic}: ENTRY TIMING CONTEXT | direction={signal} | "
-            f"M1_close={timing_m1.get('close') if timing_m1 else None} | "
-            f"M1_BBz={timing_m1.get('bb_z') if timing_m1 else None} | "
-            f"M1_ADX={timing_m1.get('adx') if timing_m1 else None} | "
-            f"M5_close={timing_m5.get('close') if timing_m5 else None} | "
-            f"M5_BBz={timing_m5.get('bb_z') if timing_m5 else None} | "
-            f"M5_ADX={timing_m5.get('adx') if timing_m5 else None} | mode=NON_BLOCKING"
-        )
+        if CORRELATION_FILTER_ENABLED and not correlation_allows_entry(api, epic, df, positions, signal):
+            log(f"{epic}: correlation warning only; AI entry remains eligible.")
         # Execute at the current executable side of the spread:
         # BUY enters at offer/ask, SELL enters at bid.
         execution_price = live_offer if signal == "BUY" else live_bid
-        # Keep the market object synchronized with the exact quote used for the
-        # order so spread checks, sizing and diagnostics all reference the same
-        # executable prices.
-        market = dict(market)
-        market_snapshot = dict(market.get("snapshot", {}) or {})
-        market_snapshot["bid"] = live_bid
-        market_snapshot["offer"] = live_offer
-        market["snapshot"] = market_snapshot
         order_spread_pct = market_spread_pct(market)
-        if not epic_positions and not spread_allows_entry(
-            api, epic, market=market, ai_decision=None
-        ):
-            record_entry_rejection(
-                epic,
-                "ENTRY_SPREAD_TOO_WIDE",
-                f"final_executable_spread={order_spread_pct:.4f}%"
-                if order_spread_pct is not None else "final_executable_spread=UNKNOWN",
-            )
-            return None
         log(f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread={order_spread_pct:.4f}%" if order_spread_pct is not None else f"{epic}: EXECUTABLE QUOTE | {signal}={execution_price} | spread=N/A")
         # Strategy-only entry gate. AI confidence is informational and cannot delay,
         # block, reverse or modify the strategy entry.
@@ -2837,12 +2529,33 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         regime_now = "25SEP_CLASSIC"
         vol_ratio_now = 1.0
         strong_signal = True
-        log(f"{epic}: {'EARLY REVERSAL ENTRY' if early_entry else 'CLASSIC ENTRY'} | strategy=25SEP | strength={strength:.2f} | filters=MINIMAL")
-        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None, early_entry=early_entry)
+        log(f"{epic}: CLASSIC ENTRY | strategy=25SEP | strength={strength:.2f} | filters=MINIMAL")
+        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
             return None
         log(f"{epic}: DYNAMIC PRICE | strength={strength:.2f} | entry={trade['entry']} | SL={trade['stop_level']} | ATR={trade['atr']:.6f}")
+        if PRETRADE_COST_FILTER_ENABLED:
+            cost_ok, cost_diag = evaluate_pretrade_cost(
+                epic=epic,
+                market=market,
+                entry_price=execution_price,
+                risk_distance=trade["risk_distance"],
+                execution_quality_file=EXECUTION_QUALITY_FILE,
+                max_cost_to_risk=MAX_COST_TO_STOP_RATIO,
+                extra_slippage_buffer_pct=EXTRA_SLIPPAGE_BUFFER_PCT,
+            )
+            log(f"{epic}: PRE-TRADE COST | {cost_diag}")
+            if not cost_ok:
+                # Never override the configured cost-to-stop limit. This applies
+                # to both active AI bots, including strong signals.
+                record_entry_rejection(
+                    epic,
+                    "PRETRADE_COST",
+                    str(cost_diag),
+                )
+                log(f"{epic}: PRE-TRADE COST BLOCKED | {cost_diag}")
+                return None
         sizing_balance = min(float(balance), float(getattr(config, "BALANCE_CAP", balance)))
         existing_count = len(epic_positions)
         # No arbitrary position-count cap. Additional exposure is governed only
@@ -2855,7 +2568,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             last_entry = LAST_ENTRY_AT.get(epic)
             if (
                 last_entry is not None
-                and time.monotonic() - last_entry < min(PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS, 20)
+                and not strong_signal
+                and time.monotonic() - last_entry < PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS
             ):
                 remaining = PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS - (time.monotonic() - last_entry)
                 record_entry_rejection(epic, "PROFITABLE_ADD_COOLDOWN", f"remaining={remaining:.0f}s")
@@ -2867,7 +2581,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # against this bot's basket/portfolio allocation. Account-level safety
         # (daily loss/equity protection) still sees the full broker account.
         reserved_risk = basket_reserved_risk(api, owned_positions, epic, account_currency, market_cache=risk_market_cache)
-        portfolio_reserved = portfolio_reserved_risk(api, positions, account_currency, market_cache=risk_market_cache)
+        portfolio_reserved = portfolio_reserved_risk(api, owned_positions, account_currency, market_cache=risk_market_cache)
         max_basket_amount = sizing_balance * MAX_BASKET_RISK
         max_portfolio_amount = sizing_balance * MAX_PORTFOLIO_RISK
         # Unknown reserved risk is fail-closed for NEW entries only. Existing
@@ -2904,7 +2618,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             risk_amount = 0.0
         else:
             risk_positions = []
-            for p in positions:
+            for p in owned_positions:
                 rp = dict(p)
                 rp["risk_amount_account"] = estimated_position_risk_account(
                     p, api, account_currency, market_cache=risk_market_cache
@@ -3147,7 +2861,6 @@ def direct_transaction_pnl(tx):
 
     No nested-field guessing and no reconstruction from price/size is used.
     """
-    details = tx.get("details") if isinstance(tx.get("details"), dict) else {}
     return safe_float(_first_value(
         tx.get("profitAndLoss"),
         tx.get("profitLoss"),
@@ -3155,12 +2868,6 @@ def direct_transaction_pnl(tx):
         tx.get("realisedProfitLoss"),
         tx.get("realizedPnl"),
         tx.get("realisedPnl"),
-        details.get("profitAndLoss"),
-        details.get("profitLoss"),
-        details.get("realizedProfitLoss"),
-        details.get("realisedProfitLoss"),
-        details.get("realizedPnl"),
-        details.get("realisedPnl"),
     ))
 
 
@@ -3310,15 +3017,6 @@ def run_cycle():
     log("Logging in to Capital.com...")
     api.login()
 
-    # Refresh external market/news context in the background. It is advisory-only
-    # and never blocks the executable entry path or acts as an entry veto.
-    try:
-        news_thread = threading.Thread(target=capital_news.refresh, name="capital-news-refresh", daemon=True)
-        news_thread.start()
-        log("MARKET NEWS | Tavily/Capital.com refresh started | mode=NON_BLOCKING_ADVISORY")
-    except Exception as news_start_exc:
-        log(f"MARKET NEWS | refresh unavailable; trading continues: {news_start_exc}")
-
     # Start the authenticated Capital.com WebSocket once per bot run.
     # It streams live bid/offer prices while the normal AI/candle engine runs.
     global LIVE_PRICE_STREAM
@@ -3338,8 +3036,8 @@ def run_cycle():
         LIVE_PRICE_STREAM = None
         log(f"LIVE PRICE FEED | unavailable; REST fallback active: {live_start_exc}")
 
+    balance = api.get_balance()
     account_currency = api.get_account_currency()
-    balance = get_validated_balance(api)
     log(f"Account balance: {balance} {account_currency}")
 
     # A successful login/account read proves the API is healthy. Do not let
@@ -3366,7 +3064,7 @@ def run_cycle():
         cleanup_state(positions)
         # Refresh balance before EVERY epic so risk sizing reflects any
         # positions opened/closed earlier in this same cycle.
-        balance = get_validated_balance(api)
+        balance = api.get_balance()
         log(f"Refreshed balance before {cycle_epic}: {balance} {account_currency}")
         process_epic(
             api=api,
