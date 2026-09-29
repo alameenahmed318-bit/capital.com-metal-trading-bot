@@ -29,7 +29,7 @@ ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 # 25/9 entry inversion requested for demo testing: strategy direction is
 # intentionally flipped only at order execution. Position management is normal.
-REVERSE_ENTRY_DIRECTION = False
+REVERSE_ENTRY_DIRECTION = True
 
 STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
@@ -1728,18 +1728,13 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             trail["peak_profit"] = round(peak, 2)
             trail["peak_time"] = now_iso
 
-        # Smoothly increase the percentage of profit protected as the trade
-        # develops. There is no fixed +1.20/+2.00 activation threshold.
-        # At small profits the lock is intentionally loose; as the peak grows,
-        # more of it is retained.
-        protected_fraction = 0.30 + 0.50 * (1.0 - math.exp(-max(0.0, peak) / 5.0))
-        ai_profit_action = str(trail.get("ai_profit_action") or "RUNNER").upper()
-        if ai_profit_action == "PROTECT":
-            protected_fraction += 0.08
-        elif ai_profit_action == "HARVEST":
-            protected_fraction += 0.16
-        protected_fraction = max(0.30, min(0.88, protected_fraction))
-        floor = peak * protected_fraction if peak > 0 else None
+        # Ratcheting profit protection:
+        # the protected close level follows the highest broker-reported profit
+        # tick-for-tick. If profit rises, the protected floor rises with it.
+        # If profit falls from that peak, close immediately while P/L is still
+        # non-negative. This deliberately removes the old percentage giveback.
+        protected_fraction = 1.0 if peak > 0 else 0.0
+        floor = peak if peak > 0 else None
         giveback = max(0.0, peak - pnl)
 
         trail["peak_profit"] = round(peak, 2)
@@ -1778,7 +1773,7 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         # LOSS-PRESERVATION RULE: this discretionary profit manager may only
         # close while the broker still reports a non-negative P/L. Once P/L is
         # negative, only the hard loss guard or the broker SL may close it.
-        if trail.get("activated") and floor is not None and pnl >= 0.0 and pnl <= floor:
+        if trail.get("activated") and floor is not None and pnl >= 0.0 and pnl < floor:
             try:
                 log(
                     f"{epic}: PROFIT EXIT INTENT | reason=DYNAMIC_PROFIT_PROTECTION | "
