@@ -33,14 +33,14 @@ def _float_env(name, default):
 STRATEGY = os.environ.get("STRATEGY", "dynamic_momentum_hybrid_v7")
 
 # Strict automated-trading universe. Excluded FX markets cannot receive new entries.
-DISABLED_FX_EPICS = frozenset({
-    "AUDCAD", "GBPUSD", "AUDUSD", "CADJPY", "EURCHF", "EURGBP", "GBPJPY",
-    "USDCHF", "USDCAD", "NZDUSD",
-    "EURJPY", "AUDJPY", "GBPCHF",
-    "AUDCHF", "NZDJPY", "EURUSD_W",
-})
-FX_EPICS = ["EURUSD", "USDJPY"]
-METALS_ENERGY_EPICS = ["GOLD", "SILVER", "US100", "US500"]
+DISABLED_FX_EPICS = frozenset()
+# Major/liquid FX pairs. Live market availability is checked before orders.
+FX_EPICS = [
+    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD",
+    "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF",
+]
+# Popular metals plus the existing index markets handled by the metals bot.
+METALS_ENERGY_EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500"]
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
 FORWARD_TEST_EPICS = EPICS
 
