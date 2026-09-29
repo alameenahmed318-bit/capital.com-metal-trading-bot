@@ -35,11 +35,11 @@ STRATEGY = os.environ.get("STRATEGY", "baseline")
 # Strict automated-trading universe: US indices and EUR/USD only.
 # Other markets are excluded from new automated entries.
 DISABLED_FX_EPICS = frozenset({
-    "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
+    "USDCHF", "USDCAD", "NZDUSD",
     "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
     "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
 })
-FX_EPICS = ["EURUSD"]
+FX_EPICS = ["EURUSD", "GBPUSD", "AUDUSD", "USDJPY"]
 METALS_ENERGY_EPICS = ["GOLD", "SILVER", "US100", "US500"]
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
 FORWARD_TEST_EPICS = EPICS
