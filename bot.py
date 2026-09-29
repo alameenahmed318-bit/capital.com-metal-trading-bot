@@ -22,6 +22,8 @@ from capital_websocket import CapitalLivePriceStream
 
 DEMO_ONLY = True
 STRATEGY_ID = "CAPITAL_FX_AI"
+# Runner-specific market boundary; wrappers set this to their own universe.
+STRATEGY_ALLOWED_EPICS = None
 POSITION_OWNERSHIP_FILE = "fx_ai_strategy_positions.json"
 LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
 ALLOW_GRID = False
@@ -220,14 +222,29 @@ def _load_legacy_owned_deals():
         return set()
 
 def filter_owned_positions(positions):
-    # Each strategy has its own ownership registry. On first use, migrate only
-    # that strategy's entries from the old shared registry; never adopt every
-    # open account position.
+    # Defense in depth: a strategy may manage only positions that are both
+    # explicitly owned by its deal-ID registry AND inside its runner market
+    # universe. This prevents cross-strategy position management.
     if not os.path.exists(POSITION_OWNERSHIP_FILE):
         legacy_owned = _load_legacy_owned_deals()
         _save_owned_deals(legacy_owned)
     owned = _load_owned_deals()
-    return [p for p in positions if position_deal_id(p) and str(position_deal_id(p)) in owned]
+    allowed = STRATEGY_ALLOWED_EPICS
+    allowed_set = {str(x).upper() for x in allowed} if allowed is not None else None
+    result = []
+    for p in positions:
+        deal_id = position_deal_id(p)
+        epic = position_epic(p)
+        if not deal_id or str(deal_id) not in owned:
+            continue
+        if allowed_set is not None and str(epic or "").upper() not in allowed_set:
+            log(
+                f"OWNERSHIP ISOLATION | strategy={STRATEGY_ID} | "
+                f"IGNORED deal={deal_id} epic={epic} | allowed={sorted(allowed_set)}"
+            )
+            continue
+        result.append(p)
+    return result
 
 def _confirmed_position_direction(confirmation, confirmed_positions=None, deal_id=None):
     """Return the broker-confirmed direction for an opened deal."""
