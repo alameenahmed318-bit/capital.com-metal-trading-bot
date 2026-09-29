@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T06:46:35.036959+00:00",
+  "updated_at": "2026-09-29T07:02:16.017060+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -1677,6 +1677,51 @@
       "slippage_pct": 0.0,
       "deal_reference": "o_d4dab243-8925-4fa6-8b2e-d3611605f5ad",
       "deal_id": "00000000-6680-b37f-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 300.0
+    },
+    {
+      "timestamp": "2026-09-29T06:57:06.131907+00:00",
+      "epic": "EURCHF",
+      "direction": "BUY",
+      "requested_executable_price": 0.94689,
+      "actual_fill_price": 0.94692,
+      "spread_pct_at_order": 0.016898849822039163,
+      "slippage_price": 3e-05,
+      "slippage_pct": 0.003168,
+      "deal_reference": "o_9fe3fe46-a2cc-434d-ac05-f74521384a85",
+      "deal_id": "00000000-6680-bef1-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T07:00:26.834498+00:00",
+      "epic": "EURCHF",
+      "direction": "BUY",
+      "requested_executable_price": 0.94695,
+      "actual_fill_price": 0.94697,
+      "spread_pct_at_order": 0.016897778998166378,
+      "slippage_price": 2e-05,
+      "slippage_pct": 0.002112,
+      "deal_reference": "o_c51d0dbe-a43c-49bb-b44e-f86be7aaf0fc",
+      "deal_id": "00000000-6680-c3ed-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T07:02:16.017060+00:00",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "requested_executable_price": 1.13607,
+      "actual_fill_price": 1.13607,
+      "spread_pct_at_order": 0.006161402335172761,
+      "slippage_price": 0.0,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_4ae7619a-627d-4d97-978d-dac805ae366c",
+      "deal_id": "00000000-6680-c851-0493-972c0004511e",
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 300.0
