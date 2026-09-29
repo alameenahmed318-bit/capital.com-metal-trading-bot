@@ -2864,6 +2864,39 @@ def run_cycle():
     log("Logging in to Capital.com...")
     api.login()
 
+    # FX bot discovers the complete currency universe available to the
+    # authenticated Capital.com account on every run. Other strategies keep
+    # their explicit universes unchanged.
+    if DYNAMIC_FX_UNIVERSE:
+        global EPICS, STRATEGY_ALLOWED_EPICS
+        market_response = api.get_markets()
+        markets = market_response.get("markets", []) if isinstance(market_response, dict) else []
+        disabled = set(getattr(config, "DISABLED_FX_EPICS", ()))
+        discovered = []
+        for market in markets:
+            if not isinstance(market, dict):
+                continue
+            epic = str(market.get("epic") or "").strip().upper()
+            instrument_type = str(
+                market.get("instrumentType")
+                or market.get("type")
+                or market.get("marketType")
+                or ""
+            ).upper()
+            status = str(market.get("marketStatus") or "").upper()
+            if (
+                epic
+                and instrument_type in {"CURRENCIES", "CURRENCY", "FX"}
+                and status == "TRADEABLE"
+                and epic not in disabled
+            ):
+                discovered.append(epic)
+        EPICS = sorted(set(discovered))
+        STRATEGY_ALLOWED_EPICS = list(EPICS)
+        log(f"FX DYNAMIC UNIVERSE | discovered={len(EPICS)} | tradeable_currencies={EPICS}")
+        if not EPICS:
+            raise RuntimeError("FX dynamic universe discovery returned no tradeable currency markets.")
+
     # Start the authenticated Capital.com WebSocket once per bot run.
     # It streams live bid/offer prices while the normal AI/candle engine runs.
     global LIVE_PRICE_STREAM
