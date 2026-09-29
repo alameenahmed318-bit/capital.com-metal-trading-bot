@@ -3,7 +3,7 @@ name: Capital FX AI Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
 # Prevent overlapping runs so two bot instances cannot trade at the same time.
 concurrency:
   # Serialize account access without dropping pending runs.
