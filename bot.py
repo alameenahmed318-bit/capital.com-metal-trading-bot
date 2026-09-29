@@ -94,20 +94,20 @@ RANGE_RSI_BUY_MAX = 48
 RANGE_RSI_SELL_MIN = 52
 
 # Strategy v2 filters
-USE_SUPPORT_RESISTANCE = True
-USE_BREAKOUT_CONFIRMATION = True
+USE_SUPPORT_RESISTANCE = False
+USE_BREAKOUT_CONFIRMATION = False
 SR_LOOKBACK = 60
 SR_BUFFER_ATR = 0.25
 BREAKOUT_LOOKBACK = 20
 # When enabled, a profitable existing basket can add legs immediately
 # (without waiting for the normal grid distance) until the per-epic cap.
-ADD_TO_PROFITABLE_BASKET = False
+ADD_TO_PROFITABLE_BASKET = True
 # Smaller incremental risk for additional legs while the existing basket is profitable.
-PROFITABLE_ADD_RISK = 0.002
+PROFITABLE_ADD_RISK = 0.0015
 
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
-MAX_SPREAD_PCT = 0.15
+MAX_SPREAD_PCT = 0.25
 EXECUTION_QUALITY_ENABLED = True
 EXECUTION_QUALITY_FILE = "fx_ai_execution_quality.json"
 MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
@@ -115,9 +115,9 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # Entry-quality upgrades: allow a little more room for normal execution lag,
 # but block entries that are materially stretched or over-correlated with
 # existing exposure. All rejections are persisted with an exact reason.
-LATE_ENTRY_MAX_ATR = 0.25
+LATE_ENTRY_MAX_ATR = 0.50
 # Confirmed strong signals get slightly more room, but never chase far.
-LATE_ENTRY_STRONG_MAX_ATR = 0.30
+LATE_ENTRY_STRONG_MAX_ATR = 0.75
 LATE_ENTRY_DYNAMIC_ENABLED = True
 
 # User-requested entry experiment: reverse BUY/SELL only for NEW broker entries.
@@ -129,7 +129,7 @@ ENTRY_REJECTION_MAX_ROWS = 1000
 DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
 DAILY_LOSS_LIMIT_PCT = 0.03  # Fallback for non-AED accounts
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
-LOSS_COOLDOWN_MINUTES = 3
+LOSS_COOLDOWN_MINUTES = 0
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
