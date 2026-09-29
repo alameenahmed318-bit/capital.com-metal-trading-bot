@@ -1,7 +1,7 @@
 {
   "risk_distance": {
-    "00000000-6683-88c5-0493-972c0004511e": 0.0014555857951967788,
-    "00000000-6683-892d-0493-972c0004511e": 0.26738335001082686
+    "00000000-6683-9afc-0493-972c0004511e": 0.001208681011461395,
+    "00000000-6683-a6ef-0493-972c0004511e": 0.0010834180685250772
   },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
@@ -79,35 +79,35 @@
       "protected_fraction": 0.3782,
       "protected_floor": 0.32
     },
-    "00000000-6683-88c5-0493-972c0004511e": {
-      "peak_profit": -1.26,
-      "peak_time": "2026-09-29T13:06:32.164725+00:00",
-      "activated": false,
-      "last_pnl": -2.58,
-      "last_update_ts": 1790687246.036328,
-      "giveback": 0.99,
-      "giveback_ratio": 0.0,
+    "00000000-6683-9afc-0493-972c0004511e": {
+      "peak_profit": 0.88,
+      "peak_time": "2026-09-29T13:23:22.942099+00:00",
+      "activated": true,
+      "last_pnl": -0.06,
+      "last_update_ts": 1790688465.30872,
+      "giveback": 1.06,
+      "giveback_ratio": 1.0682,
+      "profit_velocity": 0.0,
+      "profit_acceleration": -0.0181,
+      "current_profit": -0.06,
+      "last_update": "2026-09-29T13:27:45.639374+00:00",
+      "protected_fraction": 0.3807,
+      "protected_floor": 0.34
+    },
+    "00000000-6683-a6ef-0493-972c0004511e": {
+      "peak_profit": 0.46,
+      "peak_time": "2026-09-29T13:20:38.875828+00:00",
+      "activated": true,
+      "last_pnl": -1.65,
+      "last_update_ts": 1790688452.4734564,
+      "giveback": 2.2,
+      "giveback_ratio": 4.587,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
-      "current_profit": -2.58,
-      "last_update": "2026-09-29T13:07:26.594839+00:00",
-      "protected_fraction": 0.3,
-      "protected_floor": null
-    },
-    "00000000-6683-892d-0493-972c0004511e": {
-      "peak_profit": -0.25,
-      "peak_time": "2026-09-29T13:05:24.730844+00:00",
-      "activated": false,
-      "last_pnl": -1.51,
-      "last_update_ts": 1790687239.6744175,
-      "giveback": 1.26,
-      "giveback_ratio": 0.0,
-      "profit_velocity": 0.0,
-      "profit_acceleration": 0.029066,
-      "current_profit": -1.51,
-      "last_update": "2026-09-29T13:07:20.224549+00:00",
-      "protected_fraction": 0.3,
-      "protected_floor": null
+      "current_profit": -1.65,
+      "last_update": "2026-09-29T13:27:32.794806+00:00",
+      "protected_fraction": 0.3439,
+      "protected_floor": 0.16
     }
   },
   "position_telemetry": {
@@ -166,27 +166,27 @@
       "peak_time": "2026-09-29T10:02:53.765912+00:00",
       "last_update": "2026-09-29T10:35:14.236135+00:00"
     },
-    "00000000-6683-88c5-0493-972c0004511e": {
-      "epic": "GBPUSD",
+    "00000000-6683-9afc-0493-972c0004511e": {
+      "epic": "AUDUSD",
       "direction": "SELL",
-      "current_profit": -2.25,
-      "peak_profit": -1.26,
-      "giveback": 0.99,
-      "protected_fraction": 0.3,
-      "protected_floor": null,
-      "peak_time": "2026-09-29T13:06:32.164725+00:00",
-      "last_update": "2026-09-29T13:07:26.594839+00:00"
+      "current_profit": -0.18,
+      "peak_profit": 0.88,
+      "giveback": 1.06,
+      "protected_fraction": 0.3807,
+      "protected_floor": 0.34,
+      "peak_time": "2026-09-29T13:23:22.942099+00:00",
+      "last_update": "2026-09-29T13:27:45.639374+00:00"
     },
-    "00000000-6683-892d-0493-972c0004511e": {
-      "epic": "USDJPY",
-      "direction": "BUY",
-      "current_profit": -1.51,
-      "peak_profit": -0.25,
-      "giveback": 1.26,
-      "protected_fraction": 0.3,
-      "protected_floor": null,
-      "peak_time": "2026-09-29T13:05:24.730844+00:00",
-      "last_update": "2026-09-29T13:07:20.224549+00:00"
+    "00000000-6683-a6ef-0493-972c0004511e": {
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "current_profit": -1.74,
+      "peak_profit": 0.46,
+      "giveback": 2.2,
+      "protected_fraction": 0.3439,
+      "protected_floor": 0.16,
+      "peak_time": "2026-09-29T13:20:38.875828+00:00",
+      "last_update": "2026-09-29T13:27:32.794806+00:00"
     }
   }
 }
