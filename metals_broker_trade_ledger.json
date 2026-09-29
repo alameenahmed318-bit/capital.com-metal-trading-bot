@@ -1,5 +1,29 @@
 [
   {
+    "date": "2026-09-30T01:45:51.852",
+    "dateUtc": "2026-09-29T21:45:51.852",
+    "instrumentName": "US500",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140272563642538",
+    "size": "-1.78",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d3-a6f2-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T01:45:51.799",
+    "dateUtc": "2026-09-29T21:45:51.799",
+    "instrumentName": "USDJPY",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140272563642537",
+    "size": "-2.91",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d5-123b-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-30T01:05:01.873",
     "dateUtc": "2026-09-29T21:05:01.873",
     "instrumentName": "EURUSD",
