@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T16:59:47.055820+00:00",
+  "updated_at": "2026-09-29T17:05:51.052159+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -2427,6 +2427,51 @@
       "slippage_pct": 0.00287,
       "deal_reference": "o_254e6324-9a64-4e14-a614-6cb9b2822896",
       "deal_id": "00000000-66d2-2580-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T17:05:34.193532+00:00",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "requested_executable_price": 1.13163,
+      "actual_fill_price": 1.13163,
+      "spread_pct_at_order": 0.006185576120142843,
+      "slippage_price": 0.0,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_94d2582f-7849-4a87-a86a-e9b76325e654",
+      "deal_id": "00000000-66d2-2f08-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T17:05:44.081919+00:00",
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "requested_executable_price": 0.69705,
+      "actual_fill_price": 0.69706,
+      "spread_pct_at_order": 0.008607333448106389,
+      "slippage_price": -1e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_6f8bb584-2cd3-4aa2-9272-59bb213f7284",
+      "deal_id": "00000000-66d2-2f31-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 200.0
+    },
+    {
+      "timestamp": "2026-09-29T17:05:51.052159+00:00",
+      "epic": "USDJPY",
+      "direction": "SELL",
+      "requested_executable_price": 157.447,
+      "actual_fill_price": 157.444,
+      "spread_pct_at_order": 0.007621321918287016,
+      "slippage_price": 0.003,
+      "slippage_pct": 0.001905,
+      "deal_reference": "o_f59de96e-a882-46ae-b752-e555444f8ac6",
+      "deal_id": "00000000-66d2-2f60-0493-972c0004511e",
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 100.0
