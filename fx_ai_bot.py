@@ -7,6 +7,7 @@ import bot as base
 
 STRATEGY_ID = "CAPITAL_FX_AI"
 base.STRATEGY_ID = STRATEGY_ID
+base.STRATEGY_ALLOWED_EPICS = ["EURUSD", "USDJPY"]
 base.POSITION_OWNERSHIP_FILE = "fx_ai_strategy_positions.json"
 base.STATE_FILE = "fx_ai_trades_state.json"
 base.OPEN_POSITIONS_FILE = "fx_ai_open_positions.json"
