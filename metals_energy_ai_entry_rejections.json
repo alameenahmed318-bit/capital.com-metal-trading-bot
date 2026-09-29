@@ -1,677 +1,5 @@
 [
   {
-    "timestamp": "2026-09-28T21:51:23.410804+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4883s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:23.426355+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4883s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:23.441824+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4883s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:34.366853+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4894s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:35.120820+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4895s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:35.136819+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4895s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:35.152224+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4895s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:45.532383+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4906s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:46.724235+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4907s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:46.740066+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4907s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:46.755595+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4907s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:57.476853+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4917s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:58.236238+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4918s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:58.251959+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4918s"
-  },
-  {
-    "timestamp": "2026-09-28T21:51:58.267531+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4918s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:08.617035+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4929s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:09.818328+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4930s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:09.834608+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4930s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:09.850322+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4930s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:20.556306+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4941s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:21.316785+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4941s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:21.332164+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4941s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:21.347291+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4941s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:31.786766+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4952s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:32.978263+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4953s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:32.993860+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4953s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:33.009203+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4953s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:43.789600+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4964s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:44.527687+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4965s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:44.543559+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4965s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:44.559615+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4965s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:54.879997+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4975s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:56.096628+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4976s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:56.112500+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4976s"
-  },
-  {
-    "timestamp": "2026-09-28T21:52:56.131790+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4976s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:06.975733+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4987s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:07.732922+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4988s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:07.748779+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4988s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:07.764842+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4988s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:18.134934+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4998s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:19.331494+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4999s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:19.347622+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4999s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:19.366233+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:4999s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:30.040265+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5010s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:30.784752+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5011s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:30.800574+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5011s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:30.816189+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5011s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:41.272753+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5021s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:42.467484+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5022s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:42.483418+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5022s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:42.498936+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5022s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:53.153209+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5033s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:53.905831+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5034s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:53.921473+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5034s"
-  },
-  {
-    "timestamp": "2026-09-28T21:53:53.936983+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5034s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:04.322797+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5044s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:05.533188+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5046s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:05.549049+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5046s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:05.564593+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5046s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:16.238115+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5056s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:16.973506+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5057s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:16.989098+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5057s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:17.004624+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5057s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:27.239329+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5067s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:28.447168+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5068s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:28.462695+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5068s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:28.477962+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5068s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:39.276513+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5079s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:40.042156+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5080s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:40.058444+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5080s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:40.077531+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5080s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:50.179200+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5090s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:51.386385+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5091s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:51.402367+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5091s"
-  },
-  {
-    "timestamp": "2026-09-28T21:54:51.418060+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5091s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:02.194254+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5102s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:02.926505+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5103s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:02.942445+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5103s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:02.957705+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5103s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:13.120389+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5113s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:14.341495+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5114s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:14.357742+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5114s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:14.373418+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5114s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:25.295735+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5125s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:26.028260+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5126s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:26.043728+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5126s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:26.058740+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5126s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:36.235539+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5136s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:37.524715+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5138s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:37.541597+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5138s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:37.556921+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5138s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:48.263338+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5148s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:48.992993+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5149s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:49.008843+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5149s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:49.024375+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5149s"
-  },
-  {
-    "timestamp": "2026-09-28T21:55:59.314958+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5159s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:00.501884+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5161s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:00.517878+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5161s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:00.533364+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5161s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:11.342815+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5171s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:12.085978+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5172s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:12.102181+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5172s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:12.118517+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5172s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:22.347035+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5182s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:23.585872+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5184s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:23.601555+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5184s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:23.617046+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5184s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:34.442802+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5194s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:35.184076+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5195s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:35.199893+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5195s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:35.215768+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5195s"
-  },
-  {
-    "timestamp": "2026-09-28T21:56:45.518282+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:5206s"
-  },
-  {
     "timestamp": "2026-09-28T21:56:46.719413+00:00",
     "epic": "SILVER",
     "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
@@ -5996,6 +5324,678 @@
   {
     "timestamp": "2026-09-29T00:40:52.519291+00:00",
     "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:10.792188+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:18.934037+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:24.603848+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30224.000000; completed_close=30268.600000; distance=1.17 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:30.288388+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7676.100000; completed_close=7680.900000; distance=0.80 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:45.027362+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:50.569923+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:54.179788+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30218.300000; completed_close=30268.600000; distance=1.32 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:51:57.700068+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.100000; completed_close=7680.900000; distance=0.97 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:13.452621+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:16.518509+00:00",
+    "epic": "SILVER",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=60.549000; completed_close=60.722000; distance=1.04 ATR; limit=1.00 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:20.022817+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30220.700000; completed_close=30268.600000; distance=1.26 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:23.535120+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.400000; completed_close=7680.900000; distance=0.92 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:39.219924+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:44.761377+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:48.371259+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30217.500000; completed_close=30268.600000; distance=1.34 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:52:51.878985+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.000000; completed_close=7680.900000; distance=0.98 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:07.573049+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:13.085803+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:16.740745+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30219.800000; completed_close=30268.600000; distance=1.28 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:20.257907+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.300000; completed_close=7680.900000; distance=0.93 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:35.924474+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:38.989797+00:00",
+    "epic": "SILVER",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=60.550000; completed_close=60.722000; distance=1.03 ATR; limit=1.00 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:42.516740+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30219.200000; completed_close=30268.600000; distance=1.30 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:53:46.037131+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.400000; completed_close=7680.900000; distance=0.92 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:01.705988+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:04.763223+00:00",
+    "epic": "SILVER",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=60.548000; completed_close=60.722000; distance=1.04 ATR; limit=1.00 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:08.286017+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30221.700000; completed_close=30268.600000; distance=1.23 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:11.805304+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.600000; completed_close=7680.900000; distance=0.88 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:27.515591+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:33.141933+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:36.713316+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30226.000000; completed_close=30268.600000; distance=1.12 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:40.273733+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7676.100000; completed_close=7680.900000; distance=0.80 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:54:55.956640+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:01.523659+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:05.111809+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30225.600000; completed_close=30268.600000; distance=1.13 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:08.615914+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7676.400000; completed_close=7680.900000; distance=0.75 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:24.331392+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:29.871203+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:33.481882+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30232.700000; completed_close=30268.600000; distance=0.94 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:39.924004+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:55:55.619695+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:01.114654+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:04.730295+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30229.700000; completed_close=30268.600000; distance=1.02 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:11.185005+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:26.895794+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:32.431791+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:36.076882+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30229.600000; completed_close=30268.600000; distance=1.03 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:42.490548+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:56:58.186136+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:03.721128+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:07.348327+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30230.600000; completed_close=30268.600000; distance=1.00 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:13.813945+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:29.503487+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:35.104946+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:38.607404+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30218.500000; completed_close=30268.600000; distance=1.32 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:42.193100+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.400000; completed_close=7680.900000; distance=0.92 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:57:57.659638+00:00",
+    "epic": "GOLD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T00:58:03.235465+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T00:58:06.852019+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30219.600000; completed_close=30268.600000; distance=1.29 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:58:10.371629+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7675.400000; completed_close=7680.900000; distance=0.92 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:58:26.515383+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:58:32.773696+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:58:36.428247+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30226.700000; completed_close=30268.600000; distance=1.10 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:58:39.933282+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7676.300000; completed_close=7680.900000; distance=0.77 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:58:56.112810+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:02.173678+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:05.791917+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30226.500000; completed_close=30268.600000; distance=1.11 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:09.275180+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7676.600000; completed_close=7680.900000; distance=0.72 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:25.443387+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:31.534806+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:35.135757+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30220.700000; completed_close=30268.600000; distance=1.26 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:38.640679+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7676.100000; completed_close=7680.900000; distance=0.80 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T00:59:54.818042+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:00.884194+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:04.496436+00:00",
+    "epic": "US100",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=30212.300000; completed_close=30268.600000; distance=1.48 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:08.133613+00:00",
+    "epic": "US500",
+    "reason": "LATE_ENTRY",
+    "details": "SELL quote=7674.400000; completed_close=7680.900000; distance=1.08 ATR; limit=0.69 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:24.260125+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:30.348703+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:37.408676+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:00:44.494317+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:00.648613+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:06.769566+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:13.867098+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:20.982274+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:37.120982+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:43.192944+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:50.275616+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:01:57.366360+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:02:13.540715+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:02:19.637465+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:02:26.744569+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:02:33.820413+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:02:50.074516+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:02:56.134039+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:03:03.247808+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:03:10.367920+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:03:26.511698+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:03:32.582616+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:03:39.692423+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:03:46.786778+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:02.912068+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:08.993068+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:16.109366+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:23.181781+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:39.297620+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:45.416592+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:52.547443+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:04:59.622897+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:05:15.767428+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:05:21.866601+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:05:28.951374+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T01:05:36.039387+00:00",
+    "epic": "US500",
     "reason": "PORTFOLIO_RISK_CAP",
     "details": "limit=3.0%"
   }
