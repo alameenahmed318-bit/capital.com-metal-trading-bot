@@ -1,16 +1,27 @@
 {
-  "updated_at": "2026-09-29T14:59:36.933911+00:00",
+  "updated_at": "2026-09-29T15:24:27.793022+00:00",
   "positions": [
     {
-      "dealId": "00000000-6684-bb31-0493-972c0004511e",
+      "dealId": "00000000-6684-cf23-0493-972c0004511e",
       "epic": "AUDUSD",
       "direction": "SELL",
-      "size": 2700.0,
-      "entry": 0.69859,
-      "current": 0.69859,
-      "stopLoss": 0.6995508254264147,
-      "takeProfit": 0.6974379717484281,
-      "profitLoss": 0.2
+      "size": 500.0,
+      "entry": 0.6984,
+      "current": 0.6984,
+      "stopLoss": 0.6981801884804895,
+      "takeProfit": null,
+      "profitLoss": 1.8
+    },
+    {
+      "dealId": "00000000-6684-cfa8-0493-972c0004511e",
+      "epic": "USDJPY",
+      "direction": "BUY",
+      "size": 1300.0,
+      "entry": 157.585,
+      "current": 157.585,
+      "stopLoss": 157.34771532299044,
+      "takeProfit": 157.85076075223287,
+      "profitLoss": 2.48
     }
   ]
 }

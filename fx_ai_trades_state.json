@@ -1,9 +1,11 @@
 {
   "risk_distance": {
-    "00000000-6684-bb31-0493-972c0004511e": 0.0010368254264147114,
     "00000000-6684-cf23-0493-972c0004511e": 0.0009743378960208492,
-    "00000000-6684-cec6-0493-972c0004511e": 0.0013805968797768518,
-    "00000000-6684-cfa8-0493-972c0004511e": 0.23918467700957818
+    "00000000-6684-cfa8-0493-972c0004511e": 0.23918467700957818,
+    "00000000-6685-17ce-0493-972c0004511e": 0.2384929143763287,
+    "00000000-6685-1913-0493-972c0004511e": 0.0010243143013442646,
+    "00000000-6685-195b-0493-972c0004511e": 0.0014015542456827345,
+    "00000000-66d1-7836-0493-972c0004511e": 0.0010449597165284928
   },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
@@ -82,34 +84,64 @@
       "protected_floor": 0.32
     },
     "00000000-6684-cf23-0493-972c0004511e": {
-      "peak_profit": 1.14,
-      "peak_time": "2026-09-29T15:13:19.455828+00:00",
+      "peak_profit": 1.98,
+      "peak_time": "2026-09-29T15:27:20.815885+00:00",
       "activated": true,
-      "last_pnl": 1.07,
-      "last_update_ts": 1790694819.9034662,
-      "giveback": 0.13,
-      "giveback_ratio": 0.0614,
+      "last_pnl": 0.97,
+      "last_update_ts": 1790696314.981339,
+      "giveback": 1.02,
+      "giveback_ratio": 0.5101,
       "profit_velocity": 0.0,
-      "profit_acceleration": 0.006185,
-      "current_profit": 1.07,
-      "last_update": "2026-09-29T15:13:40.209277+00:00",
-      "protected_fraction": 0.4019,
-      "protected_floor": 0.46
+      "profit_acceleration": 0.0,
+      "current_profit": 0.97,
+      "last_update": "2026-09-29T15:38:35.354260+00:00",
+      "protected_fraction": 0.4635,
+      "protected_floor": 0.92
     },
-    "00000000-6684-cfa8-0493-972c0004511e": {
-      "peak_profit": 1.45,
-      "peak_time": "2026-09-29T15:09:39.635926+00:00",
+    "00000000-6685-17ce-0493-972c0004511e": {
+      "peak_profit": 0.07,
+      "peak_time": "2026-09-29T15:29:23.802709+00:00",
       "activated": true,
-      "last_pnl": 0.3,
-      "last_update_ts": 1790694821.9501305,
-      "giveback": 1.03,
-      "giveback_ratio": 0.7931,
+      "last_pnl": -0.46,
+      "last_update_ts": 1790696299.8301702,
+      "giveback": 0.51,
+      "giveback_ratio": 7.5714,
       "profit_velocity": 0.0,
-      "profit_acceleration": 0.020688,
-      "current_profit": 0.3,
-      "last_update": "2026-09-29T15:13:42.834208+00:00",
-      "protected_fraction": 0.4259,
-      "protected_floor": 0.62
+      "profit_acceleration": -0.014732,
+      "current_profit": -0.46,
+      "last_update": "2026-09-29T15:38:20.719334+00:00",
+      "protected_fraction": 0.307,
+      "protected_floor": 0.02
+    },
+    "00000000-6685-195b-0493-972c0004511e": {
+      "peak_profit": 1.12,
+      "peak_time": "2026-09-29T15:27:03.691399+00:00",
+      "activated": true,
+      "last_pnl": -3.12,
+      "last_update_ts": 1790696311.9368358,
+      "giveback": 3.56,
+      "giveback_ratio": 3.7857,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": -3.12,
+      "last_update": "2026-09-29T15:38:32.297108+00:00",
+      "protected_fraction": 0.4003,
+      "protected_floor": 0.45
+    },
+    "00000000-66d1-7836-0493-972c0004511e": {
+      "peak_profit": -0.11,
+      "peak_time": "2026-09-29T15:32:46.873793+00:00",
+      "activated": false,
+      "last_pnl": -0.46,
+      "last_update_ts": 1790696314.981339,
+      "giveback": 0.37,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": -0.46,
+      "last_update": "2026-09-29T15:38:35.354302+00:00",
+      "protected_fraction": 0.3,
+      "protected_floor": null
     }
   },
   "position_telemetry": {
@@ -171,24 +203,46 @@
     "00000000-6684-cf23-0493-972c0004511e": {
       "epic": "AUDUSD",
       "direction": "SELL",
-      "current_profit": 1.01,
-      "peak_profit": 1.14,
-      "giveback": 0.13,
-      "protected_fraction": 0.4019,
-      "protected_floor": 0.46,
-      "peak_time": "2026-09-29T15:13:19.455828+00:00",
-      "last_update": "2026-09-29T15:13:40.209277+00:00"
+      "current_profit": 0.96,
+      "peak_profit": 1.98,
+      "giveback": 1.02,
+      "protected_fraction": 0.4635,
+      "protected_floor": 0.92,
+      "peak_time": "2026-09-29T15:27:20.815885+00:00",
+      "last_update": "2026-09-29T15:38:35.354260+00:00"
     },
-    "00000000-6684-cfa8-0493-972c0004511e": {
+    "00000000-6685-17ce-0493-972c0004511e": {
       "epic": "USDJPY",
       "direction": "BUY",
-      "current_profit": 0.42,
-      "peak_profit": 1.45,
-      "giveback": 1.03,
-      "protected_fraction": 0.4259,
-      "protected_floor": 0.62,
-      "peak_time": "2026-09-29T15:09:39.635926+00:00",
-      "last_update": "2026-09-29T15:13:42.834208+00:00"
+      "current_profit": -0.44,
+      "peak_profit": 0.07,
+      "giveback": 0.51,
+      "protected_fraction": 0.307,
+      "protected_floor": 0.02,
+      "peak_time": "2026-09-29T15:29:23.802709+00:00",
+      "last_update": "2026-09-29T15:38:20.719334+00:00"
+    },
+    "00000000-6685-195b-0493-972c0004511e": {
+      "epic": "GBPUSD",
+      "direction": "SELL",
+      "current_profit": -2.44,
+      "peak_profit": 1.12,
+      "giveback": 3.56,
+      "protected_fraction": 0.4003,
+      "protected_floor": 0.45,
+      "peak_time": "2026-09-29T15:27:03.691399+00:00",
+      "last_update": "2026-09-29T15:38:32.297108+00:00"
+    },
+    "00000000-66d1-7836-0493-972c0004511e": {
+      "epic": "AUDUSD",
+      "direction": "SELL",
+      "current_profit": -0.48,
+      "peak_profit": -0.11,
+      "giveback": 0.37,
+      "protected_fraction": 0.3,
+      "protected_floor": null,
+      "peak_time": "2026-09-29T15:32:46.873793+00:00",
+      "last_update": "2026-09-29T15:38:35.354302+00:00"
     }
   }
 }
