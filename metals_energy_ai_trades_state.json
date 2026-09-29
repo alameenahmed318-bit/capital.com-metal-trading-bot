@@ -1,5 +1,35 @@
 {
-  "risk_distance": {},
-  "profit_trail": {},
-  "position_telemetry": {}
+  "risk_distance": {
+    "00000000-66d5-4f01-0493-972c0004511e": 73.34382283077139
+  },
+  "profit_trail": {
+    "00000000-66d5-4f01-0493-972c0004511e": {
+      "peak_profit": -0.3,
+      "peak_time": "2026-09-29T22:15:58.929262+00:00",
+      "activated": false,
+      "last_pnl": -1.73,
+      "last_update_ts": 1790720733.7296927,
+      "giveback": 1.41,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": -1.73,
+      "last_update": "2026-09-29T22:25:34.305033+00:00",
+      "protected_fraction": 0.3,
+      "protected_floor": null
+    }
+  },
+  "position_telemetry": {
+    "00000000-66d5-4f01-0493-972c0004511e": {
+      "epic": "US100",
+      "direction": "SELL",
+      "current_profit": -1.71,
+      "peak_profit": -0.3,
+      "giveback": 1.41,
+      "protected_fraction": 0.3,
+      "protected_floor": null,
+      "peak_time": "2026-09-29T22:15:58.929262+00:00",
+      "last_update": "2026-09-29T22:25:34.305033+00:00"
+    }
+  }
 }
