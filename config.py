@@ -40,7 +40,7 @@ FX_EPICS = [
     "NZDUSD", "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF",
 ]
 # Popular metals plus the existing index markets handled by the metals bot.
-METALS_ENERGY_EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500"]
+METALS_ENERGY_EPICS = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "US100", "US500", "BTCUSD"]
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
 FORWARD_TEST_EPICS = EPICS
 
@@ -72,6 +72,7 @@ MARKET_RSI_SETTINGS = {
     "OIL_CRUDE": (40, 70, 30, 60),
     "US100": (40, 70, 30, 60),
     "US500": (40, 70, 30, 60),
+    "BTCUSD": (40, 70, 30, 60),
     "EURUSD_W": (40, 70, 30, 60),
     "USDJPY_W": (40, 70, 30, 60),
 }
@@ -92,6 +93,7 @@ INSTRUMENT_PRECISION = {
     "OIL_CRUDE": 2,
     "US100": 2,
     "US500": 2,
+    "BTCUSD": 2,
     "EURUSD_W": 2,
     "USDJPY_W": 2,
 }
@@ -103,6 +105,7 @@ MIN_TRADE_SIZE = {
     "OIL_CRUDE": 0.01,
     "US100": 0.01,
     "US500": 0.01,
+    "BTCUSD": 0.01,
     "EURUSD_W": 0.01,
     "USDJPY_W": 0.01,
 }
