@@ -1,6 +1,7 @@
 {
   "risk_distance": {
-    "00000000-66d3-1fdf-0493-972c0004511e": 0.20927631141759662
+    "00000000-66d3-1fdf-0493-972c0004511e": 0.20927631141759662,
+    "00000000-66d3-4f88-0493-972c0004511e": 0.0011730876710644988
   },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
@@ -77,21 +78,6 @@
       "last_update": "2026-09-29T10:35:14.236135+00:00",
       "protected_fraction": 0.3782,
       "protected_floor": 0.32
-    },
-    "00000000-66d3-1fdf-0493-972c0004511e": {
-      "peak_profit": -0.26,
-      "peak_time": "2026-09-29T19:24:11.708424+00:00",
-      "activated": false,
-      "last_pnl": -1.57,
-      "last_update_ts": 1790710631.7053783,
-      "giveback": 1.38,
-      "giveback_ratio": 0.0,
-      "profit_velocity": 0.0,
-      "profit_acceleration": 0.0,
-      "current_profit": -1.57,
-      "last_update": "2026-09-29T19:37:12.114051+00:00",
-      "protected_fraction": 0.3,
-      "protected_floor": null
     }
   },
   "position_telemetry": {
@@ -149,17 +135,6 @@
       "protected_floor": 0.32,
       "peak_time": "2026-09-29T10:02:53.765912+00:00",
       "last_update": "2026-09-29T10:35:14.236135+00:00"
-    },
-    "00000000-66d3-1fdf-0493-972c0004511e": {
-      "epic": "USDJPY",
-      "direction": "SELL",
-      "current_profit": -1.64,
-      "peak_profit": -0.26,
-      "giveback": 1.38,
-      "protected_fraction": 0.3,
-      "protected_floor": null,
-      "peak_time": "2026-09-29T19:24:11.708424+00:00",
-      "last_update": "2026-09-29T19:37:12.114051+00:00"
     }
   }
 }
