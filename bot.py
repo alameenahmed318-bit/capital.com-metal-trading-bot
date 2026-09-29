@@ -1088,7 +1088,7 @@ def market_regime(df, htf_df):
 def dynamic_entry_score_floor(regime, vol_ratio, news_buy=0.0, news_sell=0.0):
     """Adaptive score floor from market regime, volatility and cached news stress."""
     regime = str(regime or "RANGE").upper()
-    floor = {"TREND": 45.0, "BREAKOUT": 52.0, "RANGE": 62.0}.get(regime, 58.0)
+    floor = {"TREND": 40.0, "BREAKOUT": 45.0, "RANGE": 50.0}.get(regime, 45.0)
     vol = safe_float(vol_ratio)
     if vol is not None:
         if vol < 0.85:
@@ -1109,12 +1109,12 @@ def dynamic_entry_policy(df, htf_df, epic, direction, strength):
     news_buy, _ = capital_news.score(epic, "BUY")
     news_sell, _ = capital_news.score(epic, "SELL")
     score_floor = dynamic_entry_score_floor(regime, vol_ratio, news_buy, news_sell)
-    strength_floor = {"TREND": 0.50, "BREAKOUT": 0.55, "RANGE": 0.65}.get(regime, 0.60)
+    strength_floor = {"TREND": 0.40, "BREAKOUT": 0.45, "RANGE": 0.50}.get(regime, 0.45)
     if vol_ratio < 0.85:
         strength_floor += 0.05
     elif vol_ratio > 1.50:
         strength_floor += 0.08
-    strength_floor = float(np.clip(strength_floor, 0.50, 0.90))
+    strength_floor = float(np.clip(strength_floor, 0.40, 0.75))
     # Position count is NOT fixed here. The strategy decides whether another
     # leg is justified from the live basket state and its risk budget.
     # No arbitrary numeric trade-count ladder is imposed by this policy.
