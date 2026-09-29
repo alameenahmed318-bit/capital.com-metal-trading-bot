@@ -1,15 +1,15 @@
-"""Capital.com Metals + Energy + Digital Asset Bot using the shared 25/9 strategy.
+"""Capital.com Metals + Energy + Digital Asset Bot.
 
-Trades non-FX instruments from the configured universe. FX remains isolated
-in fx_ai_bot.py. Shared execution, reversed entry direction, SL/TP and
-progressive profit protection remain in bot.py.
+Strictly isolated from the FX bot: it uses its own ownership/state files and
+never falls back to the shared legacy FX ownership file.
 """
 import bot as base
 
 STRATEGY_ID = "CAPITAL_METALS_ENERGY_AI"
 base.STRATEGY_ID = STRATEGY_ID
 base.POSITION_OWNERSHIP_FILE = "metals_energy_ai_strategy_positions.json"
-base.LEGACY_POSITION_OWNERSHIP_FILE = "strategy_positions.json"
+# IMPORTANT: never inherit/scan the FX legacy ownership file.
+base.LEGACY_POSITION_OWNERSHIP_FILE = "metals_energy_ai_legacy_ownership_DISABLED.json"
 base.STATE_FILE = "metals_energy_ai_trades_state.json"
 base.OPEN_POSITIONS_FILE = "metals_energy_ai_open_positions.json"
 base.SAFETY_STATE_FILE = "metals_energy_ai_bot_safety_state.json"
@@ -34,7 +34,7 @@ base.reload_runtime_state()
 
 def run_cycle():
     base.log(
-        f"STARTING {STRATEGY_ID} | 25SEP CLASSIC | "
+        f"STARTING {STRATEGY_ID} | isolated=true | "
         f"markets={base.EPICS} | reversed_entries={base.REVERSE_ENTRY_DIRECTION} | "
         f"progressive_profit_protection=True"
     )
