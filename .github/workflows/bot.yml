@@ -4,12 +4,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
-# Prevent overlapping runs so two bot instances cannot trade at the same time.
+# FX has its own execution queue. Metals uses a separate queue, so neither workflow waits for the other.
 concurrency:
-  # Serialize account access without dropping pending runs.
-  # GitHub's default queue is single-slot and cancels older pending runs.
-  # queue:max keeps scheduled/manual AI bot runs in line.
-  group: capital-account-state
+  # Keep FX runs ordered without cancelling pending FX runs.
+  group: capital-fx-ai
   cancel-in-progress: false
   queue: max
 permissions:
@@ -140,12 +138,6 @@ jobs:
             ai_model_registry_NZDJPY.json
             ai_model_registry_CADJPY.json
             ai_model_registry_EURUSD_W.json
-            ai_model_registry_BTCUSD.json
-            ai_model_registry_GOLD.json
-            ai_model_registry_SILVER.json
-            ai_model_registry_OIL_CRUDE.json
-            ai_model_registry_US100.json
-            ai_model_registry_US500.json
             fx_ai_learning_report.json
             fx_broker_trade_ledger.json
             fx_broker_trade_ledger.csv
