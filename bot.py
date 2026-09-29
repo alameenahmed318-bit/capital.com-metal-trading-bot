@@ -1403,6 +1403,37 @@ def m5_entry_direction(micro_frames, epic=None):
     return None
 
 
+def m5_entry_strength(micro_frames, signal):
+    """Score the completed M5 entry direction without using M15 as a direction gate."""
+    if signal not in {"BUY", "SELL"} or not isinstance(micro_frames, dict):
+        return 0.0
+    m5 = micro_frames.get("M5_DF")
+    if m5 is None or len(m5) < 20:
+        return 0.0
+    try:
+        m5 = add_indicators(m5.copy())
+        cur = m5.iloc[-2]
+        prev = m5.iloc[-3]
+        close = safe_float(cur.get("close"))
+        open_ = safe_float(cur.get("open"))
+        prev_close = safe_float(prev.get("close"))
+        ema9 = safe_float(m5["close"].ewm(span=9, adjust=False).mean().iloc[-2])
+        ema21 = safe_float(m5["close"].ewm(span=21, adjust=False).mean().iloc[-2])
+        rsi = safe_float(cur.get("rsi"))
+        if None in (close, open_, prev_close, ema9, ema21, rsi):
+            return 0.0
+        score = 0.60
+        if (signal == "BUY" and close > open_ and close > prev_close and ema9 > ema21 and rsi >= 50) or            (signal == "SELL" and close < open_ and close < prev_close and ema9 < ema21 and rsi <= 50):
+            score += 0.20
+        if (signal == "BUY" and close >= ema9) or (signal == "SELL" and close <= ema9):
+            score += 0.10
+        if (signal == "BUY" and rsi >= 55) or (signal == "SELL" and rsi <= 45):
+            score += 0.05
+        return min(score, 0.95)
+    except Exception:
+        return 0.0
+
+
 def classic_25sep_signal(df, epic, htf_df):
     """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
     This is the sole entry authority. AI remains advisory only.
@@ -2651,38 +2682,48 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if position_management_only:
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
-        # STRATEGY IS THE ENTRY AUTHORITY. AI remains advisory only.
-        # M5 is now the entry-direction guard: a clearly bullish completed M5
-        # cannot be paired with a SELL entry, and vice versa. This prevents a
-        # stale M15/H1 context from opening against the actual move.
+        # ENTRY AUTHORITY: COMPLETED M5.
+        # M15/H1 are context/support only. They may describe the broader trend,
+        # but they can never override a clear M5 direction.
         m5_bias = m5_entry_direction(micro_frames, epic)
-        if early_signal in {"BUY", "SELL"} and (
-            legacy_signal is None or legacy_signal == early_signal
-        ):
-            signal = early_signal
-            early_entry = True
+        m15_context = legacy_signal
+        if m5_bias in {"BUY", "SELL"}:
+            signal = m5_bias
+            early_entry = early_signal == m5_bias
+            if early_signal and early_signal != m5_bias:
+                log(
+                    f"{epic}: M5 OVERRIDES M15 | M5={m5_bias} | "
+                    f"M15_CONTEXT={m15_context} | early_signal={early_signal}"
+                )
+            else:
+                log(
+                    f"{epic}: M5 ENTRY AUTHORITY | M5={m5_bias} | "
+                    f"M15_CONTEXT={m15_context or 'NONE'}"
+                )
         else:
-            signal = legacy_signal
-            early_entry = False
-
-        if signal in {"BUY", "SELL"} and m5_bias in {"BUY", "SELL"} and m5_bias != signal:
-            log(
-                f"{epic}: ENTRY BLOCKED | strategy={signal} | M5_BIAS={m5_bias} | "
-                f"reason=completed_M5_direction_conflict"
-            )
-            record_entry_rejection(epic, "M5_DIRECTION_CONFLICT",
-                                   f"strategy={signal};m5_bias={m5_bias}")
             signal = None
             early_entry = False
-        elif signal in {"BUY", "SELL"} and m5_bias == signal:
-            log(f"{epic}: ENTRY DIRECTION CONFIRMED | signal={signal} | M5_BIAS={m5_bias}")
+            log(
+                f"{epic}: NO M5 DIRECTION | M15_CONTEXT={m15_context or 'NONE'} | "
+                f"entry=WAIT"
+            )
+
+        # M15 is supportive only: disagreement is recorded for diagnostics,
+        # never used to veto or reverse the M5 decision.
+        if signal in {"BUY", "SELL"} and m15_context in {"BUY", "SELL"}:
+            log(
+                f"{epic}: M15 SUPPORT | M15={m15_context} | M5={signal} | "
+                f"agreement={m15_context == signal}"
+            )
+
         strategy_strength = (
-            early_strength if early_entry else market_entry_strength(df, htf_df, signal)
-        ) if signal in {"BUY","SELL"} else 0.0
+            early_strength if early_entry else m5_entry_strength(micro_frames, signal)
+        ) if signal in {"BUY", "SELL"} else 0.0
         ai_support_signal = ai_decision.get("signal") or ai_decision.get("raw_signal")
         ai_support_confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         log(
-            f"{epic}: ENTRY MODE | authority=STRATEGY | strategy={signal} | "
+            f"{epic}: ENTRY MODE | authority=M5 | M5={signal} | "
+            f"M15_SUPPORT={m15_context or 'NONE'} | "
             f"AI_SUPPORT={ai_support_signal or 'NONE'} | AI_confidence={ai_support_confidence:.3f} | "
             f"AI_agrees={ai_support_signal == signal if signal in {'BUY','SELL'} else False} | "
             f"no_ai_entry_gate=True"
