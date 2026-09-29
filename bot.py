@@ -1489,7 +1489,27 @@ def classic_25sep_signal(df, epic, htf_df):
 
 
 def generate_signal(df, epic, htf_df=None):
-    return classic_25sep_signal(df, epic, htf_df)
+    # Flexible entry mode: use the classic strategy when it has a signal.
+    # If the classic confirmation stack returns WAIT, do not let that WAIT
+    # become a hard entry blocker. Derive direction from current market
+    # structure so the market can still be traded.
+    signal = classic_25sep_signal(df, epic, htf_df)
+    if signal in {"BUY", "SELL"}:
+        return signal
+    try:
+        cur = df.iloc[-2]
+        close = float(cur["close"])
+        ema9 = float(df["close"].ewm(span=9, adjust=False).iloc[-2])
+        ema21 = float(df["close"].ewm(span=21, adjust=False).iloc[-2])
+        prev_close = float(df["close"].iloc[-3])
+        if ema9 > ema21 and close >= prev_close:
+            return "BUY"
+        if ema9 < ema21 and close <= prev_close:
+            return "SELL"
+        # No directional tie: use the latest completed candle direction.
+        return "BUY" if close >= prev_close else "SELL"
+    except Exception:
+        return None
 
 
 def market_entry_strength(df, htf_df, direction):
@@ -2250,9 +2270,8 @@ def monitor_open_positions(api, account_currency, duration_seconds=OPEN_POSITION
 def process_epic(api, epic, positions, balance, account_currency, allow_entry_without_signal=True, market=None, candle_cache=None, candle_cache_ttl=CANDLE_CACHE_DEFAULT_TTL_SECONDS, position_management_only=False):
     log("")
     owned_positions = filter_owned_positions(positions)
-    if not session_allows_entry(epic) and not get_positions_for_epic(owned_positions, epic):
-        log(f"{epic}: liquidity session filter active; no new entry now.")
-        return None
+    # Entry-session restrictions are disabled. Broker market status remains
+    # the only market-availability gate.
     log("=" * 60)
     log(f"PROCESSING {epic}")
     log("=" * 60)
@@ -2356,9 +2375,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if not epic_positions and not safety_allows_new_entry(balance, positions, epic=epic, account_currency=account_currency):
             record_entry_rejection(epic, "SAFETY_STOP")
             return None
-        if not epic_positions and cooldown_active(epic):
-            record_entry_rejection(epic, "LOSS_COOLDOWN")
-            return None
+        # Loss cooldown is disabled for entries. A fresh market signal may be
+        # evaluated on every fast scan.
         # AI must evaluate the live spread after seeing the market/candle context.
         # The old fixed spread filter is no longer an independent veto.
         
@@ -2539,18 +2557,16 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             return None
         if epic_positions:
             directions = {position_direction(p) for p in epic_positions if position_direction(p)}
-            if len(directions) != 1:
-                log(f"{epic}: mixed-direction basket detected; no new leg.")
-                return None
-            basket_direction = next(iter(directions))
+            basket_direction = next(iter(directions)) if len(directions) == 1 else None
             if signal is None:
                 if not allow_entry_without_signal:
-                    log(f"{epic}: STRATEGY WAIT; managing existing position only.")
+                    log(f"{epic}: no new signal during management-only pass.")
                     return None
                 signal = basket_direction
-            elif signal != basket_direction:
-                log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
-                return None
+            elif basket_direction and signal != basket_direction:
+                # Opposite-direction entries are allowed; the broker decides
+                # whether the account supports hedging/netting for this market.
+                log(f"{epic}: opposite-direction signal allowed | basket={basket_direction} new={signal}")
         log(f"{epic}: SIGNAL = {signal}")
         # Candle strategy freshness gate: never re-enter from the same completed
         # candle after a close. This is deliberately based on candle identity,
@@ -2687,24 +2703,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             record_entry_rejection(epic, "BASKET_RISK_CAP", f"limit={MAX_BASKET_RISK * 100:.1f}%")
             return None
         if epic_positions:
-            profitable_position = False
-            for position in epic_positions:
-                entry = position_open_level(position)
-                direction = position_direction(position)
-                if entry is None or direction != signal:
-                    continue
-                if (signal == "BUY" and current_price > entry) or (signal == "SELL" and current_price < entry):
-                    profitable_position = True
-                    break
-
-            if strong_signal and profitable_position:
-                log(f"{epic}: profitable basket + strong AI signal; add-on evaluated within remaining risk budget.")
-            else:
-                # Never add to a losing/flat basket. Grid, averaging, and
-                # martingale are disabled; extra legs are allowed only when
-                # an existing position in the same direction is profitable.
-                record_entry_rejection(epic, "BASKET_NOT_PROFITABLE")
-                return None
+            log(f"{epic}: additional entry allowed; no profitable-basket gate.")
         size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency, market=market)
         if size is None:
             record_entry_rejection(epic, "MIN_TRADE_SIZE_EXCEEDS_RISK")
