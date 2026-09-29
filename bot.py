@@ -119,6 +119,10 @@ LATE_ENTRY_MAX_ATR = 0.25
 # Confirmed strong signals get slightly more room, but never chase far.
 LATE_ENTRY_STRONG_MAX_ATR = 0.30
 LATE_ENTRY_DYNAMIC_ENABLED = True
+
+# User-requested entry experiment: reverse BUY/SELL only for NEW broker entries.
+# Keep False to restore normal execution direction.
+REVERSE_ENTRY_DIRECTION = True
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
 
@@ -2766,6 +2770,18 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             elif signal != basket_direction:
                 log(f"{epic}: signal {signal} conflicts with existing basket {basket_direction}; no new leg.")
                 return None
+        # ENTRY DIRECTION REVERSAL TEST
+        # Keep the strategy signal intact for diagnostics, but reverse ONLY the
+        # broker entry direction. Existing-position management/closing is not
+        # reversed, so the bot cannot accidentally close a winner just because
+        # the entry experiment is enabled.
+        strategy_signal = signal
+        if not epic_positions and signal in {"BUY", "SELL"} and REVERSE_ENTRY_DIRECTION:
+            signal = "SELL" if signal == "BUY" else "BUY"
+            log(
+                f"{epic}: ENTRY DIRECTION REVERSED | "
+                f"strategy={strategy_signal} -> broker_order={signal}"
+            )
         log(f"{epic}: SIGNAL = {signal}")
         # Candle strategy freshness gate: never re-enter from the same completed
         # candle after a close. This is deliberately based on candle identity,
