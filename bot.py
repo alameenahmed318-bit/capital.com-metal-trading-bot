@@ -34,7 +34,7 @@ STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
-MAX_BASKET_RISK = 0.02
+MAX_BASKET_RISK = 0.10
 
 EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
 
@@ -107,7 +107,7 @@ PROFITABLE_ADD_RISK = 0.0015
 
 # Free, local risk/execution protections (no external paid service).
 SPREAD_FILTER_ENABLED = True
-MAX_SPREAD_PCT = 0.25
+MAX_SPREAD_PCT = 0.40
 EXECUTION_QUALITY_ENABLED = True
 EXECUTION_QUALITY_FILE = "fx_ai_execution_quality.json"
 MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
@@ -115,9 +115,9 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # Entry-quality upgrades: allow a little more room for normal execution lag,
 # but block entries that are materially stretched or over-correlated with
 # existing exposure. All rejections are persisted with an exact reason.
-LATE_ENTRY_MAX_ATR = 0.50
+LATE_ENTRY_MAX_ATR = 1.00
 # Confirmed strong signals get slightly more room, but never chase far.
-LATE_ENTRY_STRONG_MAX_ATR = 0.75
+LATE_ENTRY_STRONG_MAX_ATR = 1.50
 LATE_ENTRY_DYNAMIC_ENABLED = True
 
 # User-requested entry experiment: reverse BUY/SELL only for NEW broker entries.
