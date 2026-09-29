@@ -36,8 +36,8 @@ STRATEGY = os.environ.get("STRATEGY", "dynamic_momentum_hybrid_v7")
 DISABLED_FX_EPICS = frozenset({
     "AUDCAD", "GBPUSD", "AUDUSD", "CADJPY", "EURCHF", "EURGBP", "GBPJPY",
     "USDCHF", "USDCAD", "NZDUSD",
-    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
-    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
+    "EURJPY", "AUDJPY", "GBPCHF",
+    "AUDCHF", "NZDJPY", "EURUSD_W",
 })
 FX_EPICS = ["EURUSD", "USDJPY"]
 METALS_ENERGY_EPICS = ["GOLD", "SILVER", "US100", "US500"]
