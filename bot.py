@@ -113,9 +113,9 @@ MAX_ACCEPTABLE_SLIPPAGE_PCT = 0.03
 # Entry-quality upgrades: allow a little more room for normal execution lag,
 # but block entries that are materially stretched or over-correlated with
 # existing exposure. All rejections are persisted with an exact reason.
-LATE_ENTRY_MAX_ATR = 0.35
-# Strong signals may enter later, but never beyond a hard 1.00 ATR chase.
-LATE_ENTRY_STRONG_MAX_ATR = 0.75
+LATE_ENTRY_MAX_ATR = 0.25
+# Confirmed strong signals get slightly more room, but never chase far.
+LATE_ENTRY_STRONG_MAX_ATR = 0.30
 LATE_ENTRY_DYNAMIC_ENABLED = True
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
@@ -1446,6 +1446,22 @@ def v7_signal(df, epic, htf_df=None):
         bull = c > o and c > pc and e9 > e21 and r >= 50.0
         bear = c < o and c < pc and e9 < e21 and r <= 50.0
 
+        # Reject completed candles that close away from the directional extreme:
+        # a long rejection wick often signals exhaustion rather than continuation.
+        candle_high = safe_float(cur["high"])
+        candle_low = safe_float(cur["low"])
+        if candle_high is None or candle_low is None or candle_high <= candle_low:
+            return None
+        candle_range = candle_high - candle_low
+        clean_buy_close = c >= candle_high - 0.33 * candle_range
+        clean_sell_close = c <= candle_low + 0.33 * candle_range
+        if bull and not clean_buy_close:
+            log(f"{epic}: ENTRY TIMING BLOCK | BUY upper-wick rejection")
+            return None
+        if bear and not clean_sell_close:
+            log(f"{epic}: ENTRY TIMING BLOCK | SELL lower-wick rejection")
+            return None
+
         # A nearby level is not a reason to enter. Only a real completed-candle
         # breakout can override the level guard.
         breakout_buffer = 0.05 * atr0
@@ -1456,7 +1472,7 @@ def v7_signal(df, epic, htf_df=None):
 
         # Live quote may confirm timing, but cannot create direction by itself.
         live_delta_atr = abs(price - c) / atr0
-        if live_delta_atr > 0.35:
+        if live_delta_atr > 0.30:
             log(f"{epic}: ENTRY TIMING BLOCK | live price {live_delta_atr:.2f} ATR from completed M5 close")
             return None
 
@@ -1517,10 +1533,9 @@ def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai
     # Dynamic late-entry protection: stronger/high-confidence signals get more room.
     max_chase_atr = LATE_ENTRY_MAX_ATR
     if LATE_ENTRY_DYNAMIC_ENABLED:
-        confidence = safe_float((ai_decision or {}).get("confidence"), 0.0) or 0.0
+        # Market-derived strength controls chase allowance; AI cannot loosen it.
         strength_factor = max(0.0, min(1.0, (float(strength) - 0.60) / 0.40))
-        confidence_factor = max(0.0, min(1.0, confidence))
-        max_chase_atr = LATE_ENTRY_MAX_ATR + (LATE_ENTRY_STRONG_MAX_ATR - LATE_ENTRY_MAX_ATR) * max(strength_factor, confidence_factor)
+        max_chase_atr = LATE_ENTRY_MAX_ATR + (LATE_ENTRY_STRONG_MAX_ATR - LATE_ENTRY_MAX_ATR) * strength_factor
         regime = str((ai_decision or {}).get("regime") or "").upper()
         if regime in {"TREND", "BREAKOUT"}:
             max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr + 0.10)
