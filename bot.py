@@ -133,8 +133,8 @@ LOSS_COOLDOWN_MINUTES = 3
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
-BREAKEVEN_START_R = 1.00
-BREAKEVEN_OFFSET_R = 0.05
+BREAKEVEN_START_R = 0.75
+BREAKEVEN_OFFSET_R = 0.10
 KILL_SWITCH_ENABLED = False
 MAX_CONSECUTIVE_ERRORS = 3
 # Error isolation: one broken/unavailable epic must never disable entries on
