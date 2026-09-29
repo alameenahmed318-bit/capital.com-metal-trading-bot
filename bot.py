@@ -2742,7 +2742,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         # candle after a close. This is deliberately based on candle identity,
         # not an arbitrary number of trades or a timer.
         candle_fresh, entry_candle_key, candle_rejection = candle_entry_is_fresh(epic, signal, df)
-        if not candle_fresh:
+        # New entries on an empty market remain one-per-completed-candle.
+        # Existing profitable baskets may reuse the current candle for a
+        # confirmed add-on; risk budget and profitable same-direction checks
+        # remain mandatory.
+        if not epic_positions and not candle_fresh:
             record_entry_rejection(
                 epic,
                 candle_rejection,
@@ -2822,8 +2826,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             last_entry = LAST_ENTRY_AT.get(epic)
             if (
                 last_entry is not None
-                and not strong_signal
-                and time.monotonic() - last_entry < PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS
+                and time.monotonic() - last_entry < min(PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS, 20)
             ):
                 remaining = PROFITABLE_ADD_ENTRY_COOLDOWN_SECONDS - (time.monotonic() - last_entry)
                 record_entry_rejection(epic, "PROFITABLE_ADD_COOLDOWN", f"remaining={remaining:.0f}s")
