@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-29T21:34:48.913667+00:00",
+  "generated_at": "2026-09-29T22:04:06.883962+00:00",
   "mode": "NON_TRADING_VALIDATION",
   "markets": [
     {
@@ -106,6 +106,18 @@
     },
     {
       "epic": "US500",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "BTCUSD",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "OIL_CRUDE",
       "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
