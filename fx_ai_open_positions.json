@@ -1,82 +1,115 @@
 {
-  "updated_at": "2026-09-29T23:05:43.592430+00:00",
+  "updated_at": "2026-09-29T23:27:00.545793+00:00",
   "positions": [
     {
-      "dealId": "00000000-66d5-71a1-0493-972c0004511e",
-      "epic": "US100",
-      "direction": "SELL",
-      "size": 0.016,
-      "entry": 30390.6,
-      "current": 30390.6,
-      "stopLoss": 30416.816650116158,
-      "takeProfit": 30353.02502482576,
-      "profitLoss": -0.37
-    },
-    {
-      "dealId": "00000000-66d5-71d7-0493-972c0004511e",
-      "epic": "GOLD",
-      "direction": "SELL",
-      "size": 0.32,
-      "entry": 4178.16,
-      "current": 4178.16,
-      "stopLoss": 4183.57112289773,
-      "takeProfit": 4170.043315653405,
-      "profitLoss": -2.53
-    },
-    {
-      "dealId": "00000000-66d5-71ea-0493-972c0004511e",
-      "epic": "SILVER",
-      "direction": "SELL",
-      "size": 11.6,
-      "entry": 61.461,
-      "current": 61.461,
-      "stopLoss": 61.614461014741266,
-      "takeProfit": 61.23330847788811,
-      "profitLoss": -3.84
-    },
-    {
-      "dealId": "00000000-66d5-7c21-0493-972c0004511e",
-      "epic": "US100",
-      "direction": "SELL",
-      "size": 0.013,
-      "entry": 30390.6,
-      "current": 30390.6,
-      "stopLoss": 30414.023029965807,
-      "takeProfit": 30354.965455051293,
-      "profitLoss": -0.3
-    },
-    {
-      "dealId": "00000000-66d5-7c53-0493-972c0004511e",
-      "epic": "BTCUSD",
-      "direction": "SELL",
-      "size": 0.0021,
-      "entry": 83650.65,
-      "current": 83650.65,
-      "stopLoss": 83803.92611836162,
-      "takeProfit": 83433.36082245756,
-      "profitLoss": -0.97
-    },
-    {
-      "dealId": "00000000-66d5-7b4d-0493-972c0004511e",
-      "epic": "GOLD",
+      "dealId": "00000000-66d5-95fd-0493-972c0004511e",
+      "epic": "US500",
       "direction": "SELL",
       "size": 0.1,
-      "entry": 4180.41,
-      "current": 4180.41,
-      "stopLoss": 4185.390100867063,
-      "takeProfit": 4172.664848699406,
-      "profitLoss": 0.04
+      "entry": 7683.4,
+      "current": 7683.4,
+      "stopLoss": 7687.200750381742,
+      "takeProfit": 7677.698874427386,
+      "profitLoss": -0.33
     },
     {
-      "dealId": "00000000-66d5-7b75-0493-972c0004511e",
+      "dealId": "00000000-66d5-9966-0493-972c0004511e",
       "epic": "SILVER",
       "direction": "SELL",
-      "size": 2.8,
-      "entry": 61.503,
-      "current": 61.503,
-      "stopLoss": 61.644458732109285,
-      "takeProfit": 61.29081190183607,
+      "size": 3.1,
+      "entry": 61.539,
+      "current": 61.539,
+      "stopLoss": 61.66869301455566,
+      "takeProfit": 61.346960478166515,
+      "profitLoss": -0.16
+    },
+    {
+      "dealId": "00000000-66d5-99d6-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "SELL",
+      "size": 0.11,
+      "entry": 7683.2,
+      "current": 7683.2,
+      "stopLoss": 7687.043553925428,
+      "takeProfit": 7677.934669111858,
+      "profitLoss": -0.44
+    },
+    {
+      "dealId": "00000000-66d5-9a30-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 3.1,
+      "entry": 61.515,
+      "current": 61.515,
+      "stopLoss": 61.64369301455566,
+      "takeProfit": 61.32196047816652,
+      "profitLoss": -0.43
+    },
+    {
+      "dealId": "00000000-66d5-9adf-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 3.1,
+      "entry": 61.51,
+      "current": 61.51,
+      "stopLoss": 61.638693014555656,
+      "takeProfit": 61.316960478166514,
       "profitLoss": -0.49
+    },
+    {
+      "dealId": "00000000-66d5-9b4a-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "SELL",
+      "size": 0.11,
+      "entry": 7682.9,
+      "current": 7682.9,
+      "stopLoss": 7686.543553925428,
+      "takeProfit": 7677.434669111858,
+      "profitLoss": -0.57
+    },
+    {
+      "dealId": "00000000-66d5-9b9b-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 3.1,
+      "entry": 61.534,
+      "current": 61.534,
+      "stopLoss": 61.65969301455566,
+      "takeProfit": 61.337960478166515,
+      "profitLoss": -0.22
+    },
+    {
+      "dealId": "00000000-66d5-9a84-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "SELL",
+      "size": 0.11,
+      "entry": 7682.9,
+      "current": 7682.9,
+      "stopLoss": 7686.543553925428,
+      "takeProfit": 7677.434669111858,
+      "profitLoss": -0.57
+    },
+    {
+      "dealId": "00000000-66d5-9bec-0493-972c0004511e",
+      "epic": "US500",
+      "direction": "SELL",
+      "size": 0.08,
+      "entry": 7683.2,
+      "current": 7683.2,
+      "stopLoss": 7686.943553925428,
+      "takeProfit": 7677.834669111859,
+      "profitLoss": -0.32
+    },
+    {
+      "dealId": "00000000-66d5-8b70-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 15.5,
+      "entry": 61.56,
+      "current": 61.56,
+      "stopLoss": 61.68466940029429,
+      "takeProfit": 61.355495899558555,
+      "profitLoss": 0.4
     }
   ]
 }
