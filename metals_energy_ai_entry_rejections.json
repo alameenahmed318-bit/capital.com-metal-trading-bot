@@ -1,479 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T00:55:05.111809+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30225.600000; completed_close=30268.600000; distance=1.13 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:55:08.615914+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7676.400000; completed_close=7680.900000; distance=0.75 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:55:24.331392+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:55:29.871203+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:55:33.481882+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30232.700000; completed_close=30268.600000; distance=0.94 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:55:39.924004+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:55:55.619695+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:01.114654+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:04.730295+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30229.700000; completed_close=30268.600000; distance=1.02 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:11.185005+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:26.895794+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:32.431791+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:36.076882+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30229.600000; completed_close=30268.600000; distance=1.03 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:42.490548+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:56:58.186136+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:03.721128+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:07.348327+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30230.600000; completed_close=30268.600000; distance=1.00 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:13.813945+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:29.503487+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:35.104946+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:38.607404+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30218.500000; completed_close=30268.600000; distance=1.32 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:42.193100+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7675.400000; completed_close=7680.900000; distance=0.92 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:57:57.659638+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T00:58:03.235465+00:00",
-    "epic": "SILVER",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T00:58:06.852019+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30219.600000; completed_close=30268.600000; distance=1.29 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:58:10.371629+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7675.400000; completed_close=7680.900000; distance=0.92 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:58:26.515383+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:58:32.773696+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:58:36.428247+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30226.700000; completed_close=30268.600000; distance=1.10 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:58:39.933282+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7676.300000; completed_close=7680.900000; distance=0.77 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:58:56.112810+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:02.173678+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:05.791917+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30226.500000; completed_close=30268.600000; distance=1.11 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:09.275180+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7676.600000; completed_close=7680.900000; distance=0.72 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:25.443387+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:31.534806+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:35.135757+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30220.700000; completed_close=30268.600000; distance=1.26 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:38.640679+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7676.100000; completed_close=7680.900000; distance=0.80 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T00:59:54.818042+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:00.884194+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:04.496436+00:00",
-    "epic": "US100",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=30212.300000; completed_close=30268.600000; distance=1.48 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:08.133613+00:00",
-    "epic": "US500",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=7674.400000; completed_close=7680.900000; distance=1.08 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:24.260125+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:30.348703+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:37.408676+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:00:44.494317+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:00.648613+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:06.769566+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:13.867098+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:20.982274+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:37.120982+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:43.192944+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:50.275616+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:01:57.366360+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:02:13.540715+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:02:19.637465+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:02:26.744569+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:02:33.820413+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:02:50.074516+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:02:56.134039+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:03:03.247808+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:03:10.367920+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:03:26.511698+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:03:32.582616+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:03:39.692423+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:03:46.786778+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:02.912068+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:08.993068+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:16.109366+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:23.181781+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:39.297620+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:45.416592+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:52.547443+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:04:59.622897+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:05:15.767428+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:05:21.866601+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:05:28.951374+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:05:36.039387+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T01:16:36.066487+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
     "timestamp": "2026-09-29T01:16:44.166212+00:00",
     "epic": "SILVER",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5524,479 @@
     "epic": "US100",
     "reason": "PORTFOLIO_RISK_CAP",
     "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:02:05.313900+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:02:15.971186+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:03:09.372473+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:03:16.856489+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:03:22.378018+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:03:27.444940+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:03:54.998320+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:02.514881+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:08.079554+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:13.116461+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:40.554177+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:48.153335+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:53.681666+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:04:58.679176+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:05:26.327677+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:05:33.823289+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:05:39.334084+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:05:44.394435+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:06:11.946946+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:06:19.589279+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:06:25.048936+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:06:30.088756+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:06:58.222357+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:07:05.742604+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=3.0%"
+  },
+  {
+    "timestamp": "2026-09-29T06:07:11.267938+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:07:15.698152+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:07:42.314673+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:07:49.422129+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:07:54.912644+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:07:59.426907+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:08:26.698345+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:08:34.240599+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:08:39.773524+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:08:44.253626+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:09:11.328417+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:09:18.811871+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:09:23.841009+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:09:28.330949+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:09:49.923453+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:10:04.622669+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:10:09.136066+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:10:34.980174+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:10:38.163752+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:10:43.088013+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:10:47.532539+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:11:13.135554+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:11:16.332145+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:11:21.212794+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:11:25.730443+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:11:51.350204+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:11:54.471665+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:11:59.361007+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:12:03.833057+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:12:29.399010+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:12:32.587811+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:12:37.506262+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:12:41.964668+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:13:07.684555+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:13:10.910062+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:13:15.813224+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:13:20.321552+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:13:45.984323+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:13:49.158870+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:13:54.037418+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:13:58.508535+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:14:24.284477+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:14:27.412532+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:14:32.353424+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:14:36.839912+00:00",
+    "epic": "US500",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:15:02.416678+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:15:05.539936+00:00",
+    "epic": "SILVER",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:15:10.545094+00:00",
+    "epic": "US100",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T05:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T06:15:19.051910+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:15:45.667650+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:15:52.749486+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:16:01.800872+00:00",
+    "epic": "US100",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:16:10.371823+00:00",
+    "epic": "US500",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:16:37.005490+00:00",
+    "epic": "GOLD",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-29T06:16:44.106211+00:00",
+    "epic": "SILVER",
+    "reason": "BASKET_NOT_PROFITABLE",
+    "details": ""
   }
 ]

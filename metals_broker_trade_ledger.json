@@ -1,5 +1,77 @@
 [
   {
+    "date": "2026-09-29T10:09:08.187",
+    "dateUtc": "2026-09-29T06:09:08.187",
+    "instrumentName": "US100",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140213630507269",
+    "size": "-1.74",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6680-536f-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T10:08:48.491",
+    "dateUtc": "2026-09-29T06:08:48.491",
+    "instrumentName": "SILVER",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140213609535490",
+    "size": "-1.77",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667c-d48d-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T10:06:57.389",
+    "dateUtc": "2026-09-29T06:06:57.389",
+    "instrumentName": "US500",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140213493142309",
+    "size": "-1.78",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6680-53c3-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T10:02:22.188",
+    "dateUtc": "2026-09-29T06:02:22.188",
+    "instrumentName": "USDCAD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140213204782131",
+    "size": "-2.02",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-6680-50f8-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T10:02:15.497",
+    "dateUtc": "2026-09-29T06:02:15.497",
+    "instrumentName": "EURUSD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140213197442039",
+    "size": "0.17",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667f-e5cb-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-29T10:02:15.497",
+    "dateUtc": "2026-09-29T06:02:15.497",
+    "instrumentName": "EURUSD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140213197442038",
+    "size": "2.2",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-667f-4393-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-29T10:00:15.328",
     "dateUtc": "2026-09-29T06:00:15.328",
     "instrumentName": "GBPUSD",
