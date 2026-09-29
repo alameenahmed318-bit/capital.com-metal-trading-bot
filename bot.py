@@ -1950,8 +1950,13 @@ def manage_profit_trailing(api, positions, epic, account_currency):
                     f"giveback={giveback:.2f} | protected={protected_fraction:.0%} | "
                     f"floor={floor:.2f} {account_currency} | response={response} | confirmed_closed={confirmed}"
                 )
-                trails.pop(deal_key, None)
-                telemetry.pop(deal_key, None)
+                if confirmed:
+                    trails.pop(deal_key, None)
+                    telemetry.pop(deal_key, None)
+                else:
+                    trail["pending_close_confirmation"] = True
+                    trail["last_close_attempt"] = now_iso
+                    log(f"{epic}: CLOSE UNCONFIRMED | deal={deal_id} | preserving profit trail and retrying reconciliation")
             except Exception as exc:
                 log(f"{epic}: dynamic profit-protection close failed | deal={deal_id} | {exc}")
         elif trail.get("activated") and floor is not None and pnl < 0.0:
@@ -2015,7 +2020,14 @@ def manage_trailing_stops(api, positions, epic, current_price, df=None):
                 continue
         try:
             api.modify_position(deal_id=deal_id, stop_level=candidate)
-            log(f"{epic}: ADAPTIVE SL | {direction} | old={current_sl} | new={candidate} | ATR={atr:.6f}")
+            # Broker acknowledgement alone does not guarantee the new SL was persisted.
+            refreshed = next((p for p in api.get_open_positions() if str(position_deal_id(p)) == str(deal_id)), None)
+            confirmed_sl = position_stop_level(refreshed) if refreshed is not None else None
+            sl_confirmed = confirmed_sl is not None and abs(confirmed_sl - candidate) <= max(1e-8, 0.05 * atr)
+            if sl_confirmed:
+                log(f"{epic}: ADAPTIVE SL CONFIRMED | {direction} | old={current_sl} | broker_sl={confirmed_sl} | ATR={atr:.6f}")
+            else:
+                log(f"{epic}: ADAPTIVE SL UNCONFIRMED | deal={deal_id} | requested={candidate} | broker_sl={confirmed_sl}; keep monitoring")
         except Exception as exc:
             log(f"{epic}: adaptive SL update rejected; previous broker SL retained | {exc}")
     save_state(STATE)
