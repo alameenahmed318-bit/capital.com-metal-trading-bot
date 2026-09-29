@@ -147,6 +147,15 @@ class CapitalAPI:
 
         return account["balance"]["balance"]
 
+    def get_markets(self, search_term=None, epics=None):
+        """Return Capital.com market details, optionally filtered by search term or epics."""
+        params = {}
+        if search_term:
+            params["searchTerm"] = search_term
+        elif epics:
+            params["epics"] = ",".join(str(epic) for epic in epics)
+        return self._request("GET", "/api/v1/markets", params=params)
+
     def get_market(self, epic):
         return self._request(
             "GET",
