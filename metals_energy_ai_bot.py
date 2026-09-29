@@ -39,6 +39,9 @@ base.CANDLE_COUNT = 300
 base.HTF_RESOLUTION = "MINUTE_15"
 base.HTF_CANDLE_COUNT = 300
 base.ENTRY_CANDLE_RESOLUTION = base.RESOLUTION
+# The shared candle validator defaults to M15 (900s); Iron trades M5 (300s).
+# Keep timestamp spacing validation strict instead of bypassing stale candles.
+base.STRATEGY_CANDLE_RESOLUTION_SECONDS = 300
 
 # Unified risk/execution profile.
 base.AGGRESSIVE_BASE_RISK = 0.01
