@@ -29,7 +29,7 @@ ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 # 25/9 entry inversion requested for demo testing: strategy direction is
 # intentionally flipped only at order execution. Position management is normal.
-REVERSE_ENTRY_DIRECTION = True
+REVERSE_ENTRY_DIRECTION = False
 # FX wrapper enables this to discover all tradeable currency markets returned
 # by Capital.com. Other bots leave it disabled.
 DYNAMIC_FX_UNIVERSE = False
