@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T01:47:19.441006+00:00",
+  "updated_at": "2026-09-29T02:02:03.546107+00:00",
   "orders": [
     {
       "timestamp": "2026-09-27T11:27:29.570350+00:00",
@@ -1170,6 +1170,66 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 100.0
+    },
+    {
+      "timestamp": "2026-09-29T02:00:15.922731+00:00",
+      "epic": "EURCHF",
+      "direction": "BUY",
+      "requested_executable_price": 0.94626,
+      "actual_fill_price": 0.94623,
+      "spread_pct_at_order": 0.017967077971834333,
+      "slippage_price": -3e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_8ab73dbc-1e23-4b78-84c3-352a1ecd259d",
+      "deal_id": "00000000-667f-428e-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 900.0
+    },
+    {
+      "timestamp": "2026-09-29T02:01:34.569971+00:00",
+      "epic": "EURUSD",
+      "direction": "SELL",
+      "requested_executable_price": 1.13667,
+      "actual_fill_price": 1.13668,
+      "spread_pct_at_order": 0.0061581500917137245,
+      "slippage_price": -1e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_3bc89a26-cd60-4b56-84c6-1a36ec56c23b",
+      "deal_id": "00000000-667f-4390-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 800.0
+    },
+    {
+      "timestamp": "2026-09-29T02:01:53.251306+00:00",
+      "epic": "USDJPY",
+      "direction": "BUY",
+      "requested_executable_price": 157.466,
+      "actual_fill_price": 157.46,
+      "spread_pct_at_order": 0.007620983106821068,
+      "slippage_price": -0.006,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_a109a4af-9b98-4b57-88e4-275b6cf44877",
+      "deal_id": "00000000-667f-43c3-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 200.0
+    },
+    {
+      "timestamp": "2026-09-29T02:02:03.546107+00:00",
+      "epic": "USDCHF",
+      "direction": "BUY",
+      "requested_executable_price": 0.83247,
+      "actual_fill_price": 0.83246,
+      "spread_pct_at_order": 0.016818837097552736,
+      "slippage_price": -1e-05,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_a9f1874f-c3f2-4682-9575-8875b4856e27",
+      "deal_id": "00000000-667f-43fa-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 500.0
     }
   ]
 }
