@@ -1,6 +1,7 @@
 {
   "risk_distance": {
-    "00000000-66d5-123b-0493-972c0004511e": 0.16369829891507948
+    "00000000-66d5-123b-0493-972c0004511e": 0.16369829891507948,
+    "00000000-66d5-2c11-0493-972c0004511e": 0.16158900019786415
   },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
@@ -63,18 +64,18 @@
       "protected_fraction": 0.306,
       "protected_floor": 0.02
     },
-    "00000000-66d5-123b-0493-972c0004511e": {
-      "peak_profit": -2.91,
-      "peak_time": "2026-09-29T21:21:14.400852+00:00",
+    "00000000-66d5-2c11-0493-972c0004511e": {
+      "peak_profit": -5.04,
+      "peak_time": "2026-09-29T21:47:25.687068+00:00",
       "activated": false,
-      "last_pnl": -3.04,
-      "last_update_ts": 1790717666.240437,
-      "giveback": 0.13,
+      "last_pnl": -5.09,
+      "last_update_ts": 1790718462.3661828,
+      "giveback": 0.05,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
-      "profit_acceleration": 0.0,
-      "current_profit": -3.04,
-      "last_update": "2026-09-29T21:34:26.613106+00:00",
+      "profit_acceleration": 0.006878,
+      "current_profit": -5.09,
+      "last_update": "2026-09-29T21:47:42.708352+00:00",
       "protected_fraction": 0.3,
       "protected_floor": null
     }
@@ -124,16 +125,16 @@
       "peak_time": "2026-09-29T09:38:05.452709+00:00",
       "last_update": "2026-09-29T10:35:11.053446+00:00"
     },
-    "00000000-66d5-123b-0493-972c0004511e": {
-      "epic": "USDJPY",
+    "00000000-66d5-2c11-0493-972c0004511e": {
+      "epic": "GBPJPY",
       "direction": "SELL",
-      "current_profit": -3.04,
-      "peak_profit": -2.91,
-      "giveback": 0.13,
+      "current_profit": -5.09,
+      "peak_profit": -5.04,
+      "giveback": 0.05,
       "protected_fraction": 0.3,
       "protected_floor": null,
-      "peak_time": "2026-09-29T21:21:14.400852+00:00",
-      "last_update": "2026-09-29T21:34:26.613106+00:00"
+      "peak_time": "2026-09-29T21:47:25.687068+00:00",
+      "last_update": "2026-09-29T21:47:42.708352+00:00"
     }
   }
 }
