@@ -1,233 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T06:42:59.868348+00:00",
-    "epic": "NZDUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T06:43:03.481245+00:00",
-    "epic": "EURGBP",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:43:49.966498+00:00",
-    "epic": "GBPJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T06:43:57.040887+00:00",
-    "epic": "EURCHF",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=0.946890; completed_close=0.946485; distance=1.54 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T06:44:34.751088+00:00",
-    "epic": "GBPCHF",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=1.103210; completed_close=1.102480; distance=2.02 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T06:44:41.286619+00:00",
-    "epic": "AUDCHF",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-29T06:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:44:44.368562+00:00",
-    "epic": "NZDJPY",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=SELL; candle=2026-09-29T06:15:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:45:26.257489+00:00",
-    "epic": "CADJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T06:45:38.994664+00:00",
-    "epic": "GBPUSD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T06:46:43.477448+00:00",
-    "epic": "USDCAD",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T06:48:50.057632+00:00",
-    "epic": "GBPUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:48:54.980680+00:00",
-    "epic": "USDJPY",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:48:59.910051+00:00",
-    "epic": "USDCHF",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:49:10.328624+00:00",
-    "epic": "USDCAD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:49:40.493579+00:00",
-    "epic": "GBPJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:49:55.847674+00:00",
-    "epic": "EURCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:50:06.279812+00:00",
-    "epic": "GBPCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:50:21.608855+00:00",
-    "epic": "AUDCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:50:32.011657+00:00",
-    "epic": "NZDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:50:42.418233+00:00",
-    "epic": "CADJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:51:21.141469+00:00",
-    "epic": "GBPUSD",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=1.323660; completed_close=1.324045; distance=0.75 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T06:51:23.664014+00:00",
-    "epic": "USDJPY",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:51:26.718126+00:00",
-    "epic": "USDCHF",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:52:03.949225+00:00",
-    "epic": "USDCAD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:52:56.765289+00:00",
-    "epic": "GBPJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:53:07.903882+00:00",
-    "epic": "EURCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:53:48.174601+00:00",
-    "epic": "GBPCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:53:59.895958+00:00",
-    "epic": "AUDCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:54:08.487791+00:00",
-    "epic": "NZDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:54:48.261214+00:00",
-    "epic": "CADJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:54:59.361053+00:00",
-    "epic": "GBPUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:55:31.165320+00:00",
-    "epic": "USDJPY",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:55:34.201116+00:00",
-    "epic": "USDCHF",
-    "reason": "SAME_COMPLETED_CANDLE",
-    "details": "direction=BUY; candle=2026-09-29T06:30:00+00:00"
-  },
-  {
-    "timestamp": "2026-09-29T06:55:37.232328+00:00",
-    "epic": "USDCAD",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=1.418730; completed_close=1.418520; distance=0.56 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T06:57:09.695444+00:00",
-    "epic": "GBPCHF",
-    "reason": "LATE_ENTRY",
-    "details": "BUY quote=1.103470; completed_close=1.103085; distance=0.99 ATR; limit=0.69 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T06:57:51.456169+00:00",
-    "epic": "AUDCHF",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
-    "timestamp": "2026-09-29T06:57:54.137515+00:00",
-    "epic": "NZDJPY",
-    "reason": "LATE_ENTRY",
-    "details": "SELL quote=88.996000; completed_close=89.048000; distance=0.54 ATR; limit=0.50 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T06:58:02.616901+00:00",
-    "epic": "CADJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=3.0%"
-  },
-  {
     "timestamp": "2026-09-29T06:58:45.448845+00:00",
     "epic": "GBPUSD",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5770,233 @@
     "epic": "GBPUSD",
     "reason": "LATE_ENTRY",
     "details": "SELL distance=1.55 ATR; limit=0.94 ATR"
+  },
+  {
+    "timestamp": "2026-09-29T12:55:23.860746+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:55:41.584871+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:56:00.360699+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:56:18.066875+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:56:36.684558+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:56:54.441698+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:57:13.107745+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:57:30.917942+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T12:57:49.983098+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:00:09.027806+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:00:13.959789+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:00:29.171621+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:00:34.115762+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:00:49.275502+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:00:54.192863+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:01:09.538873+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:01:14.489631+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:01:29.717202+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:01:34.653284+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:01:50.138675+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:01:55.185847+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:02:10.545513+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:02:15.594589+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:02:30.781097+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:02:35.692297+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:02:50.924392+00:00",
+    "epic": "AUDUSD",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:02:55.872628+00:00",
+    "epic": "USDJPY",
+    "reason": "RISK_DATA_UNAVAILABLE",
+    "details": "reserved risk could not be verified"
+  },
+  {
+    "timestamp": "2026-09-29T13:05:33.319600+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:05:40.225958+00:00",
+    "epic": "USDJPY",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:05:56.251613+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:06:03.189895+00:00",
+    "epic": "USDJPY",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:06:18.904358+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:06:25.785653+00:00",
+    "epic": "USDJPY",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:06:41.431405+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:06:48.293950+00:00",
+    "epic": "USDJPY",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:07:03.996086+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:07:10.963035+00:00",
+    "epic": "USDJPY",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=BUY; candle=2026-09-29T12:45:00+00:00"
+  },
+  {
+    "timestamp": "2026-09-29T13:07:26.604052+00:00",
+    "epic": "GBPUSD",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "direction=SELL; candle=2026-09-29T12:45:00+00:00"
   }
 ]
