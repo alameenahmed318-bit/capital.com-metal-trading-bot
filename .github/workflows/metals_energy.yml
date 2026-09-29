@@ -54,7 +54,7 @@ jobs:
           BALANCE_CAP: ${{ vars.BALANCE_CAP || '1000' }}
           STRATEGY: ${{ vars.STRATEGY || 'baseline' }}
           VOL_MANAGED_SIZING: "true"
-          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.03' }}
+          RISK_PER_TRADE: ${{ vars.RISK_PER_TRADE || '0.01' }}
           VOL_REGIME_MIN: ${{ vars.VOL_REGIME_MIN || '1.05' }}
           GITHUB_USERNAME: alameenahmed318-bit
           GITHUB_REPO: capital.com-metal-trading-bot
