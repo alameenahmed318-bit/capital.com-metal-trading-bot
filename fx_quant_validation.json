@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-29T19:19:13.944604+00:00",
+  "generated_at": "2026-09-29T19:37:26.778925+00:00",
   "mode": "NON_TRADING_VALIDATION",
   "markets": [
     {
@@ -9,7 +9,67 @@
       "candles": 0
     },
     {
+      "epic": "GBPUSD",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
       "epic": "USDJPY",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "USDCHF",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "USDCAD",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "AUDUSD",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "NZDUSD",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "EURGBP",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "EURJPY",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "GBPJPY",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "AUDJPY",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "EURCHF",
       "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
@@ -22,6 +82,18 @@
     },
     {
       "epic": "SILVER",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "PLATINUM",
+      "status": "INSUFFICIENT_DATA",
+      "error": "insufficient candles",
+      "candles": 0
+    },
+    {
+      "epic": "PALLADIUM",
       "status": "INSUFFICIENT_DATA",
       "error": "insufficient candles",
       "candles": 0
