@@ -155,6 +155,21 @@ OPEN_POSITIONS_FILE = "fx_ai_open_positions.json"
 def log(message):
     print(f"[BOT] {message}")
 
+def get_validated_balance(api, retries=3, delay_seconds=0.8):
+    """Return a usable broker balance; never size a trade from a transient zero/invalid read."""
+    last_error = None
+    for attempt in range(1, retries + 1):
+        try:
+            value = safe_float(api.get_balance())
+            if value is not None and value > 0:
+                return value
+            last_error = f"invalid balance={value!r}"
+        except Exception as exc:
+            last_error = str(exc)
+        if attempt < retries:
+            time.sleep(delay_seconds)
+    raise RuntimeError(f"Capital.com balance unavailable/invalid after {retries} attempts: {last_error}")
+
 def _load_owned_deals():
     if not os.path.exists(POSITION_OWNERSHIP_FILE):
         return set()
@@ -1324,14 +1339,15 @@ def early_reversal_signal(df, epic, micro_frames=None):
     low15, high15 = safe_float(recent15["low"].min()), safe_float(recent15["high"].max())
     if low15 is None or high15 is None: return None, 0.0
     cur, prev, prior = m5.iloc[-2], m5.iloc[-3], m5.iloc[-4]
-    # Never use stale completed M5 data for early timing. The trading
-    # workflows scan every 5 minutes; allow a small queue/execution cushion,
-    # otherwise fall back to the normal strategy.
+    # Never use genuinely stale completed M5 data for early timing.
+    # The workflow can run on a 15-minute schedule, so allow the latest
+    # completed M5 candle up to 12 minutes old; the normal V7 M5 path remains
+    # the entry authority.
     cur_time = pd.to_datetime(cur.get("time"), utc=True, errors="coerce")
     if pd.isna(cur_time):
         return None, 0.0
     m5_age_minutes = (datetime.now(timezone.utc) - cur_time.to_pydatetime()).total_seconds() / 60.0
-    if m5_age_minutes > 8.0:
+    if m5_age_minutes > 12.0:
         log(f"{epic}: EARLY REVERSAL SKIPPED | stale M5 age={m5_age_minutes:.1f}m")
         return None, 0.0
     c5,o5,lo,hi = [safe_float(cur.get(x)) for x in ("close","open","low","high")]
@@ -3070,6 +3086,7 @@ def direct_transaction_pnl(tx):
 
     No nested-field guessing and no reconstruction from price/size is used.
     """
+    details = tx.get("details") if isinstance(tx.get("details"), dict) else {}
     return safe_float(_first_value(
         tx.get("profitAndLoss"),
         tx.get("profitLoss"),
@@ -3077,6 +3094,12 @@ def direct_transaction_pnl(tx):
         tx.get("realisedProfitLoss"),
         tx.get("realizedPnl"),
         tx.get("realisedPnl"),
+        details.get("profitAndLoss"),
+        details.get("profitLoss"),
+        details.get("realizedProfitLoss"),
+        details.get("realisedProfitLoss"),
+        details.get("realizedPnl"),
+        details.get("realisedPnl"),
     ))
 
 
@@ -3254,8 +3277,8 @@ def run_cycle():
         LIVE_PRICE_STREAM = None
         log(f"LIVE PRICE FEED | unavailable; REST fallback active: {live_start_exc}")
 
-    balance = api.get_balance()
     account_currency = api.get_account_currency()
+    balance = get_validated_balance(api)
     log(f"Account balance: {balance} {account_currency}")
 
     # A successful login/account read proves the API is healthy. Do not let
@@ -3282,7 +3305,7 @@ def run_cycle():
         cleanup_state(positions)
         # Refresh balance before EVERY epic so risk sizing reflects any
         # positions opened/closed earlier in this same cycle.
-        balance = api.get_balance()
+        balance = get_validated_balance(api)
         log(f"Refreshed balance before {cycle_epic}: {balance} {account_currency}")
         process_epic(
             api=api,
