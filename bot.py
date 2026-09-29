@@ -1464,44 +1464,28 @@ def v7_signal(df, epic, htf_df=None):
             return None
 
         # Direction must be confirmed by the completed M5 candle.
-        bull = c > o and c > pc and e9 > e21 and r >= 50.0
-        bear = c < o and c < pc and e9 < e21 and r <= 50.0
-
-        # Reject completed candles that close away from the directional extreme:
-        # a long rejection wick often signals exhaustion rather than continuation.
-        candle_high = safe_float(cur["high"])
-        candle_low = safe_float(cur["low"])
-        if candle_high is None or candle_low is None or candle_high <= candle_low:
-            return None
-        candle_range = candle_high - candle_low
-        clean_buy_close = c >= candle_high - 0.33 * candle_range
-        clean_sell_close = c <= candle_low + 0.33 * candle_range
-        if bull and not clean_buy_close:
-            log(f"{epic}: ENTRY TIMING BLOCK | BUY upper-wick rejection")
-            return None
-        if bear and not clean_sell_close:
-            log(f"{epic}: ENTRY TIMING BLOCK | SELL lower-wick rejection")
-            return None
+        bull = c > o and (c > pc or e9 > e21) and r >= 45.0
+        bear = c < o and (c < pc or e9 < e21) and r <= 55.0
 
         # A nearby level is not a reason to enter. Only a real completed-candle
         # breakout can override the level guard.
-        breakout_buffer = 0.05 * atr0
+        breakout_buffer = 0.02 * atr0
         broke_resistance = c > resistance + breakout_buffer
         broke_support = c < support - breakout_buffer
-        near_resistance = (resistance - c) <= SR_BUFFER_ATR * atr0 and c <= resistance
-        near_support = (c - support) <= SR_BUFFER_ATR * atr0 and c >= support
+        near_resistance = False
+        near_support = False
 
         # Live quote may confirm timing, but cannot create direction by itself.
         live_delta_atr = abs(price - c) / atr0
-        if live_delta_atr > 0.30:
+        if live_delta_atr > 1.00:
             log(f"{epic}: ENTRY TIMING BLOCK | live price {live_delta_atr:.2f} ATR from completed M5 close")
             return None
 
-        if bull and (broke_resistance or not near_resistance):
+        if bull:
             log(f"{epic}: M5 CONFIRMED BUY | completed candle | RSI={r:.1f} | SR={'BREAKOUT' if broke_resistance else 'CLEAR'}")
             return "BUY"
 
-        if bear and (broke_support or not near_support):
+        if bear:
             log(f"{epic}: M5 CONFIRMED SELL | completed candle | RSI={r:.1f} | SR={'BREAKDOWN' if broke_support else 'CLEAR'}")
             return "SELL"
     except Exception as exc:
