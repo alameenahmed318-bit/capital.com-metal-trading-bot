@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29T08:47:56.588444+00:00",
+  "updated_at": "2026-09-29T10:00:43.367797+00:00",
   "orders": [
     {
       "timestamp": "2026-09-28T10:23:21.765862+00:00",
@@ -1200,6 +1200,51 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 0.001
+    },
+    {
+      "timestamp": "2026-09-29T09:59:11.576890+00:00",
+      "epic": "US100",
+      "direction": "BUY",
+      "requested_executable_price": 30290.8,
+      "actual_fill_price": 30289.6,
+      "spread_pct_at_order": 0.005942574917709442,
+      "slippage_price": -1.2,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_4e8e1717-33ef-4c7d-8270-9caf74e34c90",
+      "deal_id": "00000000-6682-036d-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.006
+    },
+    {
+      "timestamp": "2026-09-29T10:00:31.829849+00:00",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "requested_executable_price": 60.586,
+      "actual_fill_price": 60.613,
+      "spread_pct_at_order": 0.13195658628311005,
+      "slippage_price": -0.027,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_9066cd81-6ff0-42cb-a40f-47a56ea22686",
+      "deal_id": "00000000-6682-0656-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 1.5
+    },
+    {
+      "timestamp": "2026-09-29T10:00:43.367797+00:00",
+      "epic": "US100",
+      "direction": "BUY",
+      "requested_executable_price": 30294.4,
+      "actual_fill_price": 30293.6,
+      "spread_pct_at_order": 0.005941868717721328,
+      "slippage_price": -0.8,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_d70e230c-16f3-480c-8664-615963e2243e",
+      "deal_id": "00000000-6682-06d8-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.006
     }
   ]
 }
