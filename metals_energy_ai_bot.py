@@ -46,6 +46,8 @@ base.STRATEGY_CANDLE_RESOLUTION_SECONDS = 300
 
 base.AGGRESSIVE_BASE_RISK = 0.01
 base.MAX_BASKET_RISK = 0.02
+base.ADD_TO_PROFITABLE_BASKET = True
+base.PROFITABLE_ADD_RISK = 0.0015
 
 # There is deliberately no fixed trade-count gate here.
 # Extra legs remain constrained by profitable same-direction exposure,
@@ -69,8 +71,8 @@ base.PROFIT_TRAIL_ENABLED = True
 
 # Entry timing: normal <=0.25 ATR from the completed M5 close;
 # strong market-derived conditions may use <=0.30 ATR.
-MAX_ENTRY_DRIFT_ATR = 0.25
-STRONG_ENTRY_DRIFT_ATR = 0.30
+MAX_ENTRY_DRIFT_ATR = 0.50
+STRONG_ENTRY_DRIFT_ATR = 0.75
 base.LATE_ENTRY_MAX_ATR = MAX_ENTRY_DRIFT_ATR
 base.LATE_ENTRY_STRONG_MAX_ATR = STRONG_ENTRY_DRIFT_ATR
 base.LATE_ENTRY_DYNAMIC_ENABLED = True
