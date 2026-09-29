@@ -3,7 +3,7 @@ name: Capital Metals & Energy AI Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
 
 # Metals has its own queue and never blocks the FX workflow.
 concurrency:
