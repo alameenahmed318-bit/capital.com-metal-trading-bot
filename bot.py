@@ -1309,6 +1309,36 @@ def quant_signal_score(df, epic, htf_df):
 
 
 
+def early_reversal_signal(df, epic, micro_frames=None):
+    """Early M5 reversal trigger after a meaningful M15 local extreme."""
+    if df is None or len(df) < 30 or not isinstance(micro_frames, dict):
+        return None, 0.0
+    m5 = micro_frames.get("M5_DF")
+    if m5 is None or len(m5) < 8:
+        return None, 0.0
+    m5 = add_indicators(m5)
+    cur15 = df.iloc[-2]
+    atr15 = safe_float(cur15.get("atr")); close15 = safe_float(cur15.get("close"))
+    if atr15 is None or atr15 <= 0 or close15 is None: return None, 0.0
+    recent15 = df.iloc[-9:-1]
+    low15, high15 = safe_float(recent15["low"].min()), safe_float(recent15["high"].max())
+    if low15 is None or high15 is None: return None, 0.0
+    cur, prev, prior = m5.iloc[-2], m5.iloc[-3], m5.iloc[-4]
+    c5,o5,lo,hi = [safe_float(cur.get(x)) for x in ("close","open","low","high")]
+    pc,pp,rsi,m5atr = safe_float(prev.get("close")),safe_float(prior.get("close")),safe_float(cur.get("rsi")),safe_float(cur.get("atr"))
+    if None in (c5,o5,lo,hi,pc,pp,rsi,m5atr) or m5atr <= 0: return None, 0.0
+    m5low,m5high = safe_float(m5.iloc[-7:-2]["low"].min()),safe_float(m5.iloc[-7:-2]["high"].max())
+    if m5low is None or m5high is None: return None, 0.0
+    bull = c5>o5 and c5>pc and pc<=pp and lo<=m5low+0.15*m5atr and c5>=lo+0.60*max(hi-lo,0.25*m5atr)
+    bear = c5<o5 and c5<pc and pc>=pp and hi>=m5high-0.15*m5atr and c5<=hi-0.60*max(hi-lo,0.25*m5atr)
+    near_low,near_high=(close15-low15)<=0.55*atr15,(high15-close15)<=0.55*atr15
+    ema9=df["close"].ewm(span=9,adjust=False).mean().iloc[-2]; ema21=df["close"].ewm(span=21,adjust=False).mean().iloc[-2]
+    buy_context=float(ema9)>=float(ema21) or close15>float(ema21)-0.75*atr15
+    sell_context=float(ema9)<=float(ema21) or close15<float(ema21)+0.75*atr15
+    if bull and near_low and buy_context and rsi<=58: return "BUY",0.72
+    if bear and near_high and sell_context and rsi>=42: return "SELL",0.72
+    return None,0.0
+
 def classic_25sep_signal(df, epic, htf_df):
     """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
     This is the sole entry authority. AI remains advisory only.
@@ -1408,7 +1438,7 @@ def market_entry_strength(df, htf_df, direction):
     return votes / 4.0
 
 
-def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None):
+def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None, early_entry=False):
     # Use only the latest completed 15m candle for volatility.
     current = df.iloc[-2]
     atr = safe_float(current["atr"])
@@ -1428,22 +1458,24 @@ def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai
         if regime in {"TREND", "BREAKOUT"}:
             max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr + 0.10)
         max_chase_atr = min(LATE_ENTRY_STRONG_MAX_ATR, max_chase_atr)
-    if direction == "BUY" and price > reference + max_chase_atr * atr:
-        if epic:
-            record_entry_rejection(
-                epic,
-                "LATE_ENTRY",
-                f"BUY quote={price:.6f}; completed_close={reference:.6f}; distance={(price-reference)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
-            )
-        return None
-    if direction == "SELL" and price < reference - max_chase_atr * atr:
-        if epic:
-            record_entry_rejection(
-                epic,
-                "LATE_ENTRY",
-                f"SELL quote={price:.6f}; completed_close={reference:.6f}; distance={(reference-price)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR",
-            )
-        return None
+    if not early_entry:
+        if direction == "BUY" and price > reference + max_chase_atr * atr:
+            if epic:
+                record_entry_rejection(epic, "LATE_ENTRY", f"BUY distance={(price-reference)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR")
+            return None
+        if direction == "SELL" and price < reference - max_chase_atr * atr:
+            if epic:
+                record_entry_rejection(epic, "LATE_ENTRY", f"SELL distance={(reference-price)/atr:.2f} ATR; limit={max_chase_atr:.2f} ATR")
+            return None
+    else:
+        # Early timing is based on M5. Keep a hard cap so the fix cannot turn
+        # into unrestricted chasing.
+        if direction == "BUY" and price > reference + 0.60 * atr:
+            if epic: record_entry_rejection(epic, "EARLY_REVERSAL_STRETCHED", f"BUY distance={(price-reference)/atr:.2f} ATR")
+            return None
+        if direction == "SELL" and price < reference - 0.60 * atr:
+            if epic: record_entry_rejection(epic, "EARLY_REVERSAL_STRETCHED", f"SELL distance={(reference-price)/atr:.2f} ATR")
+            return None
 
     # 25/9 protection: fixed 2 ATR SL and 3 ATR TP. AI does not alter execution.
     sl_mult = 2.0
@@ -2435,15 +2467,20 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
             def _micro_fetch(resolution, count):
                 raw = api.get_candles(epic=epic, resolution=resolution, max_candles=count)
-                frame = add_indicators(candles_to_dataframe(raw))
-                if frame is None or len(frame) < 3:
+                frame = candles_to_dataframe(raw)
+                if frame is None or len(frame) < 8:
                     return None
-                row = frame.iloc[-2]
+                enriched = add_indicators(frame)
+                if enriched is None or len(enriched) < 8:
+                    return None
+                row = enriched.iloc[-2]
                 return {
                     "close": safe_float(row.get("close")),
                     "bb_z": safe_float(row.get("bb_z")),
                     "adx": safe_float(row.get("adx")),
+                    "rsi": safe_float(row.get("rsi")),
                     "time": str(row.get("time")),
+                    "DF": enriched,
                 }
             pool = ThreadPoolExecutor(max_workers=2)
             try:
@@ -2468,9 +2505,16 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         except Exception as micro_exc:
             log(f"{epic}: M5/M1 observation unavailable | {micro_exc}")
 
-        # AI is SUPPORT-ONLY. The legacy strategy remains the sole entry authority.
-        # AI output is retained for advisory analysis, logging and learning only.
+        # AI is SUPPORT-ONLY. Strategy remains the entry authority.
+        # M5 is now allowed to provide an early reversal timing trigger.
         legacy_signal = generate_signal(df, epic, htf_df)
+        micro_frames = {
+            "M1_DF": (micro_context.get("M1") or {}).get("DF"),
+            "M5_DF": (micro_context.get("M5") or {}).get("DF"),
+        }
+        early_signal, early_strength = early_reversal_signal(df, epic, micro_frames)
+        if early_signal:
+            log(f"{epic}: EARLY REVERSAL CANDIDATE | signal={early_signal} | strength={early_strength:.2f} | trigger=M5_reversal_after_M15_extreme")
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
         # Advanced AI safety stack is shadow-only by default. It can add diagnostics
         # without changing the active AI execution path unless explicitly switched to enforce mode.
@@ -2544,8 +2588,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
         # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
-        signal = legacy_signal
-        strategy_strength = market_entry_strength(df, htf_df, signal) if signal in {"BUY", "SELL"} else 0.0
+        signal = legacy_signal or early_signal
+        early_entry = legacy_signal is None and early_signal in {"BUY", "SELL"}
+        strategy_strength = (early_strength if early_entry else market_entry_strength(df, htf_df, signal)) if signal in {"BUY","SELL"} else 0.0
         ai_support_signal = ai_decision.get("signal") or ai_decision.get("raw_signal")
         ai_support_confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         log(
@@ -2643,8 +2688,8 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         regime_now = "25SEP_CLASSIC"
         vol_ratio_now = 1.0
         strong_signal = True
-        log(f"{epic}: CLASSIC ENTRY | strategy=25SEP | strength={strength:.2f} | filters=MINIMAL")
-        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None)
+        log(f"{epic}: {'EARLY REVERSAL ENTRY' if early_entry else 'CLASSIC ENTRY'} | strategy=25SEP | strength={strength:.2f} | filters=MINIMAL")
+        trade = calculate_trade(df, signal, entry_price=execution_price, strength=strength, epic=epic, ai_decision=None, early_entry=early_entry)
         if trade is None:
             log(f"{epic}: executable price is stretched versus completed candle; wait for next scan.")
             return None
