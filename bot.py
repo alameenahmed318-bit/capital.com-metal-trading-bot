@@ -129,7 +129,7 @@ BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
 BREAKEVEN_START_R = 1.00
 BREAKEVEN_OFFSET_R = 0.05
-KILL_SWITCH_ENABLED = True
+KILL_SWITCH_ENABLED = False
 MAX_CONSECUTIVE_ERRORS = 3
 # Error isolation: one broken/unavailable epic must never disable entries on
 # unrelated markets. Critical failures are tracked per epic for this run.
