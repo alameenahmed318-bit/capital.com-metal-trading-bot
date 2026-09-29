@@ -32,28 +32,16 @@ def _float_env(name, default):
 
 STRATEGY = os.environ.get("STRATEGY", "baseline")
 
-# Markets enabled for the bot.
-# These are Capital.com epic identifiers:
-# GOLD, EURUSD, SILVER, OIL_CRUDE, US100 (Nasdaq-100 / US Tech 100),
-# and US500 (S&P 500 / US 500).
-# EURUSD_W is enabled as a permanent FX instrument where the connected
-# account exposes the market.
-# BTCUSD is permanently excluded from automated trading.
-# USDJPY_W returned broker 404 in repeated runs; leave it disabled until
-# the exact epic is verified for this account.
-# Permanently excluded from new automated FX entries at the user's request.
+# Strict automated-trading universe: US indices and EUR/USD only.
+# Other markets are excluded from new automated entries.
 DISABLED_FX_EPICS = frozenset({
-    "NZDUSD", "EURJPY", "NZDJPY", "EURGBP", "USDCAD", "GBPJPY", "USDCHF",
+    "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
+    "EURGBP", "EURJPY", "GBPJPY", "AUDJPY", "EURCHF", "GBPCHF",
+    "AUDCAD", "AUDCHF", "NZDJPY", "CADJPY", "EURUSD_W",
 })
-FX_EPICS = [
-    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "AUDJPY", "EURCHF",
-    "GBPCHF", "AUDCAD", "AUDCHF", "CADJPY", "EURUSD_W",
-]
-# Metals + energy bot: metals, crude oil, and major indices.
-METALS_ENERGY_EPICS = ["GOLD", "SILVER", "US100", "US500"]
-# Compatibility universe used by shared validation/market configuration.
+FX_EPICS = ["EURUSD"]
+METALS_ENERGY_EPICS = ["US100", "US500"]
 EPICS = FX_EPICS + METALS_ENERGY_EPICS
-
 FORWARD_TEST_EPICS = EPICS
 
 VOL_REGIME_MIN = _float_env("VOL_REGIME_MIN", 1.05)
