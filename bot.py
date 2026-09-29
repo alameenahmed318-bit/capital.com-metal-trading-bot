@@ -66,12 +66,12 @@ MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 
 # Give losing trades more breathing room while keeping risk sizing tied to the wider stop.
 # The position size is reduced automatically as risk distance increases.
-SL_ATR_MULT = 2.0
-TP_ATR_MULT = 3.0
+SL_ATR_MULT = 1.8
+TP_ATR_MULT = 2.0
 TRAILING_ENABLED = True
 # Give winning trades more room before the protective stop starts following price.
-TRAILING_START_R = 2.00
-TRAILING_DISTANCE_R = 1.50
+TRAILING_START_R = 1.00
+TRAILING_DISTANCE_R = 1.00
 
 # Dynamic profit protection. Winning trades are allowed to run when the
 # AI still agrees with the position direction. Small gains are never a standalone
@@ -127,8 +127,8 @@ LOSS_COOLDOWN_MINUTES = 3
 SIDEWAYS_ATR_RATIO_MAX = 0.90
 BREAKEVEN_ENABLED = True
 # Do not move to break-even too early; allow normal market pullbacks first.
-BREAKEVEN_START_R = 1.25
-BREAKEVEN_OFFSET_R = 0.10
+BREAKEVEN_START_R = 1.00
+BREAKEVEN_OFFSET_R = 0.05
 KILL_SWITCH_ENABLED = True
 MAX_CONSECUTIVE_ERRORS = 3
 # Error isolation: one broken/unavailable epic must never disable entries on
@@ -1350,57 +1350,13 @@ def early_reversal_signal(df, epic, micro_frames=None):
     return None,0.0
 
 def m5_entry_direction(micro_frames, epic=None):
-    """Return the current completed-M5 directional bias for entry timing.
-    This is a direction guard, not a trade predictor. It blocks a stale/contrary
-    M15 decision when the completed M5 structure is clearly moving the other way.
-    """
+    """V7 live M5 entry authority. M15 never vetoes this direction."""
     if not isinstance(micro_frames, dict):
         return None
     m5 = micro_frames.get("M5_DF")
-    if m5 is None or len(m5) < 20:
+    if m5 is None or len(m5) < 60:
         return None
-    try:
-        m5 = add_indicators(m5.copy())
-        cur = m5.iloc[-2]
-        prev = m5.iloc[-3]
-        prev2 = m5.iloc[-4]
-        close = safe_float(cur.get("close"))
-        open_ = safe_float(cur.get("open"))
-        prev_close = safe_float(prev.get("close"))
-        prev2_close = safe_float(prev2.get("close"))
-        ema9 = safe_float(m5["close"].ewm(span=9, adjust=False).mean().iloc[-2])
-        ema21 = safe_float(m5["close"].ewm(span=21, adjust=False).mean().iloc[-2])
-        rsi = safe_float(cur.get("rsi"))
-        if None in (close, open_, prev_close, prev2_close, ema9, ema21, rsi):
-            return None
-
-        cur_time = pd.to_datetime(cur.get("time"), utc=True, errors="coerce")
-        if pd.isna(cur_time):
-            return None
-        age = (datetime.now(timezone.utc) - cur_time.to_pydatetime()).total_seconds() / 60.0
-        if age > 8.0:
-            if epic:
-                log(f"{epic}: M5 ENTRY GUARD SKIPPED | stale age={age:.1f}m")
-            return None
-
-        bullish = (
-            close > open_ and close > prev_close > prev2_close
-            and close >= ema9 and ema9 > ema21
-            and rsi >= 50
-        )
-        bearish = (
-            close < open_ and close < prev_close < prev2_close
-            and close <= ema9 and ema9 < ema21
-            and rsi <= 50
-        )
-        if bullish and not bearish:
-            return "BUY"
-        if bearish and not bullish:
-            return "SELL"
-    except Exception as exc:
-        if epic:
-            log(f"{epic}: M5 ENTRY GUARD unavailable | {exc}")
-    return None
+    return v7_signal(m5, epic, None)
 
 
 def m5_entry_strength(micro_frames, signal):
@@ -1434,74 +1390,60 @@ def m5_entry_strength(micro_frames, signal):
         return 0.0
 
 
-def classic_25sep_signal(df, epic, htf_df):
-    """Simplified 25/9 strategy: candle structure + M15 trend + H1 confirmation.
-    This is the sole entry authority. AI remains advisory only.
+def v7_signal(df, epic, htf_df=None):
+    """Dynamic Momentum Hybrid V7.
+    M5 is the sole entry timeframe. M15 is context only and never vetoes.
+    Uses live/current M5 candle, EMA9/21, RSI14 and EMA20 Keltner.
     """
-    if df is None or htf_df is None or len(df) < 205 or len(htf_df) < 205:
+    if df is None or len(df) < 60:
         return None
-    cur = df.iloc[-2]
-    prev = df.iloc[-3]
-    close = safe_float(cur["close"])
-    prev_close = safe_float(prev["close"])
-    atr = safe_float(cur["atr"])
-    rsi = safe_float(cur["rsi"])
-    if None in (close, prev_close, atr, rsi) or atr <= 0:
-        return None
+    try:
+        d = df.copy()
+        close = d["close"].astype(float)
+        ema9 = close.ewm(span=9, adjust=False).mean()
+        ema21 = close.ewm(span=21, adjust=False).mean()
+        keltner_mid = close.ewm(span=20, adjust=False).mean()
+        atr = d["atr"].astype(float)
+        upper = keltner_mid + 1.5 * atr
+        lower = keltner_mid - 1.5 * atr
+        rsi = d["rsi"].astype(float)
 
-    m15 = df["close"].astype(float)
-    h1 = htf_df["close"].astype(float)
-    ema9 = m15.ewm(span=9, adjust=False).mean().iloc[-2]
-    ema21 = m15.ewm(span=21, adjust=False).mean().iloc[-2]
-    h50 = h1.ewm(span=50, adjust=False).mean().iloc[-2]
-    h200 = h1.ewm(span=200, adjust=False).mean().iloc[-2]
+        # Use the current forming M5 candle for live entry timing.
+        cur = d.iloc[-1]
+        price = safe_float(cur["close"])
+        atr0 = safe_float(atr.iloc[-1])
+        if price is None or atr0 is None or atr0 <= 0:
+            return None
+        e9, e21 = float(ema9.iloc[-1]), float(ema21.iloc[-1])
+        r = float(rsi.iloc[-1])
+        up = float(upper.iloc[-1])
+        lo = float(lower.iloc[-1])
 
-    # Read the completed candle, not the still-forming candle.
-    body = abs(float(cur["close"]) - float(cur["open"]))
-    candle_range = max(float(cur["high"]) - float(cur["low"]), 1e-12)
-    body_ratio = body / candle_range
-    close_pos_buy = (float(cur["close"]) - float(cur["low"])) / candle_range
-    close_pos_sell = (float(cur["high"]) - float(cur["close"])) / candle_range
+        # Require a real breakout beyond the Keltner envelope, but do not
+        # chase an already overextended move.
+        buy_break = price > up + 0.15 * atr0
+        sell_break = price < lo - 0.15 * atr0
+        buy = buy_break and e9 > e21 and r >= 51.0
+        sell = sell_break and e9 < e21 and r <= 49.0
 
-    recent20 = df.iloc[-21:-1]
-    prior_high = float(recent20["high"].max())
-    prior_low = float(recent20["low"].min())
-
-    buy_trend = ema9 > ema21 and h50 > h200
-    sell_trend = ema9 < ema21 and h50 < h200
-    buy_momentum = close > prev_close and 45 <= rsi <= 70
-    sell_momentum = close < prev_close and 30 <= rsi <= 55
-    buy_breakout = close > prior_high
-    sell_breakout = close < prior_low
-
-    buy_candle = float(cur["close"]) > float(cur["open"]) and close_pos_buy >= 0.55
-    sell_candle = float(cur["close"]) < float(cur["open"]) and close_pos_sell >= 0.55
-    buy = (buy_trend and buy_momentum and buy_candle) or (buy_breakout and buy_candle and rsi < 75)
-    sell = (sell_trend and sell_momentum and sell_candle) or (sell_breakout and sell_candle and rsi > 25)
-
-    if buy and not sell:
-        log(f"{epic}: 25SEP CLASSIC BUY | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
-        return "BUY"
-    if sell and not buy:
-        log(f"{epic}: 25SEP CLASSIC SELL | candle={completed_candle_key(df)} | RSI={rsi:.1f} | body={body_ratio:.2f}")
-        return "SELL"
+        if buy and not sell:
+            distance = max(0.0, price - up) / atr0
+            if distance <= 1.0:
+                log(f"{epic}: V7 BUY | M5 live | EMA9>EMA21 | RSI={r:.1f} | Keltner breakout={distance:.2f}ATR")
+                return "BUY"
+        if sell and not buy:
+            distance = max(0.0, lo - price) / atr0
+            if distance <= 1.0:
+                log(f"{epic}: V7 SELL | M5 live | EMA9<EMA21 | RSI={r:.1f} | Keltner breakout={distance:.2f}ATR")
+                return "SELL"
+    except Exception as exc:
+        log(f"{epic}: V7 signal unavailable | {exc}")
     return None
 
 
 def generate_signal(df, epic, htf_df=None):
-    # Metals/Energy: keep the strict 25SEP candle setup as first choice,
-    # but use the existing multi-factor quant engine as a fallback when the
-    # strict setup is absent. This prevents a valid trend/breakout from being
-    # ignored simply because one candle condition did not align.
-    signal = classic_25sep_signal(df, epic, htf_df)
-    if signal is not None:
-        return signal
-    if STRATEGY_ID == "CAPITAL_METALS_ENERGY_AI":
-        quant_signal = quant_signal_score(df, epic, htf_df)
-        if quant_signal in {"BUY", "SELL"}:
-            log(f"{epic}: METALS QUANT FALLBACK {quant_signal} | strict_25sep=None")
-            return quant_signal
-    return None
+    # V7 is the only strategy authority. AI and M15 are support/diagnostic only.
+    return v7_signal(df, epic, htf_df)
 
 
 def market_entry_strength(df, htf_df, direction):
@@ -1534,7 +1476,7 @@ def market_entry_strength(df, htf_df, direction):
 
 
 def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None, early_entry=False):
-    # Use only the latest completed 15m candle for volatility.
+    # V7 uses M5 volatility as the primary risk/target engine.
     current = df.iloc[-2]
     atr = safe_float(current["atr"])
     price = safe_float(entry_price) if entry_price is not None else safe_float(current["close"])
@@ -1572,9 +1514,9 @@ def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai
             if epic: record_entry_rejection(epic, "EARLY_REVERSAL_STRETCHED", f"SELL distance={(reference-price)/atr:.2f} ATR")
             return None
 
-    # 25/9 protection: fixed 2 ATR SL and 3 ATR TP. AI does not alter execution.
-    sl_mult = 2.0
-    tp_mult = 3.0
+    # V7: adaptive M5 ATR protection. AI does not alter execution.
+    sl_mult = SL_ATR_MULT
+    tp_mult = TP_ATR_MULT
     sl_distance = atr * sl_mult
     profit_level = None
     if tp_mult > 0:
