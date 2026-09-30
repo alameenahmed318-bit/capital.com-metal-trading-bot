@@ -12,6 +12,8 @@ DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 SCAN_SECONDS = 2
 MARKET_REFRESH_SECONDS = 10
 POSITION_REFRESH_SECONDS = 5
+PRICE_RESOLUTION = "MINUTE_5"
+TREND_RESOLUTION = "MINUTE_15"
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "720"))
 HISTORY_REFRESH_SECONDS = int(os.getenv("HISTORY_REFRESH_SECONDS", "60"))
 MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
@@ -75,8 +77,8 @@ class Capital:
     def market_details(self, epic):
         return self.get(f"/api/v1/markets/{epic}")
 
-    def prices(self, epic, n=100):
-        return self.get(f"/api/v1/prices/{epic}", resolution="MINUTE", max=n)
+    def prices(self, epic, n=100, resolution=PRICE_RESOLUTION):
+        return self.get(f"/api/v1/prices/{epic}", resolution=resolution, max=n)
 
     def confirm(self, deal_reference):
         return self.get(f"/api/v1/confirms/{deal_reference}")
@@ -159,32 +161,33 @@ def atr_like(xs, n=14):
     return sum(abs(xs[i] - xs[i - 1]) for i in range(len(xs) - n, len(xs))) / n
 
 
-def signal(xs):
-    # Entry from current short-term price action (M5/M15 style).
-    # No 40-candle gate and no fixed score threshold.
-    if len(xs) < 16:
+def signal(m5, m15):
+    # Entry uses current M5 price action with M15 directional context.
+    # No fixed score threshold.
+    if len(m5) < 16 or len(m15) < 16:
         return None
 
-    e5, e13 = ema(xs, 5), ema(xs, 13)
-    p5, p13 = ema(xs[:-1], 5), ema(xs[:-1], 13)
-    if not all(v is not None for v in (e5, e13, p5, p13)):
+    m5_fast, m5_slow = ema(m5, 5), ema(m5, 13)
+    p5_fast, p5_slow = ema(m5[:-1], 5), ema(m5[:-1], 13)
+    m15_fast, m15_slow = ema(m15, 5), ema(m15, 13)
+    if not all(v is not None for v in (m5_fast, m5_slow, p5_fast, p5_slow, m15_fast, m15_slow)):
         return None
 
-    recent = xs[-4:]
+    recent = m5[-4:]
     move = recent[-1] - recent[0]
     range_ref = max(max(recent) - min(recent), abs(move), 1e-12)
-
-    cross_up = p5 <= p13 and e5 > e13
-    cross_dn = p5 >= p13 and e5 < e13
+    cross_up = p5_fast <= p5_slow and m5_fast > m5_slow
+    cross_dn = p5_fast >= p5_slow and m5_fast < m5_slow
     momentum_up = move > 0 and move / range_ref >= 0.20
     momentum_dn = move < 0 and abs(move) / range_ref >= 0.20
+    trend_up = m15_fast >= m15_slow
+    trend_dn = m15_fast <= m15_slow
 
-    if cross_up or momentum_up:
+    if trend_up and (cross_up or momentum_up):
         return "BUY"
-    if cross_dn or momentum_dn:
+    if trend_dn and (cross_dn or momentum_dn):
         return "SELL"
     return None
-
 
 def forex_markets(all_markets):
     out = []
@@ -353,34 +356,39 @@ def open_bot_position(api, epic, direction, size, state, market):
             log.info("OWNED POSITION | %s | %s", deal_id, epic)
 
 
-def refresh_history(api, epic, cache):
+def refresh_history(api, epic, cache, resolution):
     now = time.time()
-    row = cache.get(epic)
+    key = f"{epic}:{resolution}"
+    row = cache.get(key)
     if row and now - row.get("ts", 0) < HISTORY_REFRESH_SECONDS:
         return row.get("xs", [])
-    raw = api.prices(epic, 100)
+    raw = api.prices(epic, 100, resolution=resolution)
     xs = candles(raw)
     if xs:
-        cache[epic] = {"ts": now, "xs": xs[-120:]}
-    return cache.get(epic, {}).get("xs", [])
+        cache[key] = {"ts": now, "xs": xs[-120:]}
+    return cache.get(key, {}).get("xs", [])
 
 
-def refresh_history_budget(api, epics, cache, budget=2):
+def refresh_history_budget(api, epics, cache, budget=4):
     refreshed = 0
     for epic in epics:
         if refreshed >= budget:
             break
-        row = cache.get(epic)
-        if row and time.time() - row.get("ts", 0) < HISTORY_REFRESH_SECONDS:
-            continue
         try:
-            refresh_history(api, epic, cache)
+            m5_key = f"{epic}:{PRICE_RESOLUTION}"
+            m15_key = f"{epic}:{TREND_RESOLUTION}"
+            now = time.time()
+            m5_fresh = m5_key in cache and now - cache[m5_key].get("ts", 0) < HISTORY_REFRESH_SECONDS
+            m15_fresh = m15_key in cache and now - cache[m15_key].get("ts", 0) < HISTORY_REFRESH_SECONDS
+            if m5_fresh and m15_fresh:
+                continue
+            refresh_history(api, epic, cache, PRICE_RESOLUTION)
+            refresh_history(api, epic, cache, TREND_RESOLUTION)
             refreshed += 1
             time.sleep(0.12)
         except Exception as e:
             log.warning("%s history refresh failed: %s", epic, e)
     return refreshed
-
 
 def run():
     api = Capital()
@@ -394,7 +402,7 @@ def run():
     order_cooldown = {}
 
     log.info(
-        "HYBRID FX BOT | DRY_RUN=%s | SCAN=2s | ALL TRADEABLE CURRENCIES ONLY",
+        "HYBRID FX BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | ALL TRADEABLE CURRENCIES ONLY",
         DRY_RUN,
     )
 
@@ -421,7 +429,7 @@ def run():
             positions = position_cache["positions"]
 
             owned = owned_open_positions(positions, state)
-            refresh_history_budget(api, list(market_by_epic), history, budget=2)
+            refresh_history_budget(api, list(market_by_epic), history, budget=4)
 
             # Profit protection runs first, every 2 seconds.
             for deal_id, item in owned.items():
@@ -433,8 +441,9 @@ def run():
             # same epic block a new entry, including manual/other-bot positions.
             for epic, market in market_by_epic.items():
                 try:
-                    xs = history.get(epic, {}).get("xs", [])
-                    if len(xs) < 16:
+                    m5 = history.get(f"{epic}:{PRICE_RESOLUTION}", {}).get("xs", [])
+                    m15 = history.get(f"{epic}:{TREND_RESOLUTION}", {}).get("xs", [])
+                    if len(m5) < 16 or len(m15) < 16:
                         continue
 
                     px = current_price(market)
@@ -443,8 +452,8 @@ def run():
 
                     # Inject the current quote into the minute history for a
                     # fresh decision without requesting history every 2 sec.
-                    working = (xs + [px])[-120:]
-                    sig = signal(working)
+                    working_m5 = (m5 + [px])[-120:]
+                    sig = signal(working_m5, m15)
 
                     existing_any = any(
                         x.get("market", {}).get("epic") == epic
@@ -455,12 +464,12 @@ def run():
                         last_order = order_cooldown.get(epic, 0.0)
                         if time.time() - last_order < ORDER_COOLDOWN_SECONDS:
                             continue
-                        order_cooldown[epic] = time.time()
                         try:
                             order_size = normalize_size(api, epic, SIZE, market_rules)
                             if order_size != SIZE:
                                 log.info("SIZE NORMALIZED | %s | configured=%.4f -> broker_min=%.4f", epic, SIZE, order_size)
                             open_bot_position(api, epic, sig, order_size, state, market)
+                            order_cooldown[epic] = time.time()
                             log.info("ENTRY | %s -> %s | size=%.4f", epic, sig, order_size)
                         except Exception as e:
                             log.warning("%s ENTRY FAILED | %s", epic, e)
