@@ -1,11 +1,13 @@
 {
   "risk_distance": {
-    "00000000-66d9-ac0f-0493-972c0004511e": 4.615153857691731,
     "00000000-66d9-ac4f-0493-972c0004511e": 0.3490949712869386,
-    "00000000-66d9-b806-0493-972c0004511e": 0.24530997982325417,
     "00000000-66d9-b809-0493-972c0004511e": 0.24530997982325417,
-    "00000000-66d9-b83f-0493-972c0004511e": 5.4458815520762425,
-    "00000000-66d9-b842-0493-972c0004511e": 5.4458815520762425
+    "00000000-66d9-e2f1-0493-972c0004511e": 4.538234626730202,
+    "00000000-66d9-e2f4-0493-972c0004511e": 4.538234626730202,
+    "00000000-66d9-e341-0493-972c0004511e": 0.12265498991162709,
+    "00000000-66d9-e344-0493-972c0004511e": 0.12265498991162709,
+    "00000000-66d9-fc18-0493-972c0004511e": 292.78933075678725,
+    "00000000-66d9-fc1b-0493-972c0004511e": 292.78933075678725
   },
   "profit_trail": {
     "00000000-66d6-0c28-0493-972c0004511e": {
@@ -426,26 +428,6 @@
       "current_profit": 3.64,
       "last_update": "2026-09-30T07:33:17.074138+00:00"
     },
-    "00000000-66d9-ac4f-0493-972c0004511e": {
-      "epic": "SILVER",
-      "risk": 0.34909497,
-      "entry": 60.921,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T09:41:48.344454+00:00"
-    },
-    "00000000-66d9-b809-0493-972c0004511e": {
-      "epic": "SILVER",
-      "risk": 0.24530998,
-      "entry": 61.006,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T09:41:48.344433+00:00"
-    },
     "00000000-66d9-b842-0493-972c0004511e": {
       "peak_profit": -10.28,
       "peak_time": "2026-09-30T09:36:59.025376+00:00",
@@ -458,6 +440,26 @@
       "profit_acceleration": 0.0,
       "current_profit": -10.28,
       "last_update": "2026-09-30T09:36:59.030407+00:00"
+    },
+    "00000000-66d9-e344-0493-972c0004511e": {
+      "epic": "SILVER",
+      "risk": 0.12265499,
+      "entry": 60.85,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T10:04:21.075430+00:00"
+    },
+    "00000000-66d9-fc1b-0493-972c0004511e": {
+      "epic": "BTCUSD",
+      "risk": 292.78933076,
+      "entry": 83660.85,
+      "direction": "SELL",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T10:04:16.260706+00:00"
     }
   },
   "position_telemetry": {
@@ -3349,27 +3351,27 @@
       "epic": "SILVER",
       "deal_id": "00000000-66d9-ac4f-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -0.86,
-      "peak_profit": -0.86,
+      "current_profit": -3.52,
+      "peak_profit": -3.52,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T09:41:47.872314+00:00"
+      "last_update": "2026-09-30T09:53:40.786828+00:00"
     },
     "00000000-66d9-b809-0493-972c0004511e": {
       "epic": "SILVER",
       "deal_id": "00000000-66d9-b809-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -4.69,
-      "peak_profit": -4.69,
+      "current_profit": -8.48,
+      "peak_profit": -8.48,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T09:41:47.872290+00:00"
+      "last_update": "2026-09-30T09:53:40.786803+00:00"
     },
     "00000000-66d9-b842-0493-972c0004511e": {
       "epic": "PALLADIUM",
@@ -3383,6 +3385,45 @@
       "profit_acceleration": 0.0,
       "peak_time": "2026-09-30T09:36:59.025376+00:00",
       "last_update": "2026-09-30T09:36:59.030407+00:00"
+    },
+    "00000000-66d9-e2f4-0493-972c0004511e": {
+      "epic": "GOLD",
+      "deal_id": "00000000-66d9-e2f4-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": 5.79,
+      "peak_profit": 5.79,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:03:42.913055+00:00"
+    },
+    "00000000-66d9-e344-0493-972c0004511e": {
+      "epic": "SILVER",
+      "deal_id": "00000000-66d9-e344-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": 4.4,
+      "peak_profit": 4.4,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:04:20.690284+00:00"
+    },
+    "00000000-66d9-fc1b-0493-972c0004511e": {
+      "epic": "BTCUSD",
+      "deal_id": "00000000-66d9-fc1b-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": -1.71,
+      "peak_profit": -1.71,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:04:15.849810+00:00"
     }
   }
 }
