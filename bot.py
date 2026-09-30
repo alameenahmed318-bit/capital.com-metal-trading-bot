@@ -77,7 +77,7 @@ MARKET_BIAS = {epic: "BOTH" for epic in EPICS}
 # The position size is reduced automatically as risk distance increases.
 SL_ATR_MULT = 2.0
 TP_ATR_MULT = 3.0
-TRAILING_ENABLED = True
+TRAILING_ENABLED = False
 # Give winning trades more room before the protective stop starts following price.
 TRAILING_START_R = 2.00
 TRAILING_DISTANCE_R = 1.50
@@ -135,7 +135,7 @@ EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
 LOSS_COOLDOWN_MINUTES = 3
 SIDEWAYS_FILTER_ENABLED = False
 SIDEWAYS_ATR_RATIO_MAX = 0.90
-BREAKEVEN_ENABLED = True
+BREAKEVEN_ENABLED = False
 # Do not move to break-even too early; allow normal market pullbacks first.
 BREAKEVEN_START_R = 1.25
 BREAKEVEN_OFFSET_R = 0.10
@@ -1465,6 +1465,12 @@ def position_size_value(position):
 
 def estimated_position_risk_account(position, api, account_currency, market_cache=None):
     entry, stop, size = position_open_level(position), position_stop_level(position), position_size_value(position)
+    # New positions use a synthetic risk distance for sizing, without a broker SL.
+    if stop is None and entry is not None:
+        risk_distance = safe_float(STATE.get('risk_distance', {}).get(str(position_deal_id(position))))
+        direction = position_direction(position)
+        if risk_distance is not None and risk_distance > 0 and direction in ('BUY', 'SELL'):
+            stop = entry - risk_distance if direction == 'BUY' else entry + risk_distance
     # Unknown risk must never be interpreted as zero risk.
     if entry is None or stop is None or size <= 0:
         return None
@@ -2524,7 +2530,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if fresh_status != "TRADEABLE":
             record_entry_rejection(epic, "MARKET_NOT_TRADEABLE", f"broker_status={fresh_status or 'UNKNOWN'}")
             return None
-        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
+        response = api.place_order(direction=signal, size=size, stop_level=None, profit_level=trade["profit_level"], epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
 
@@ -2629,7 +2635,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     epic=epic,
                     direction=signal,
                     entry_price=actual_fill_price if actual_fill_price is not None else execution_price,
-                    stop_loss=trade.get("stop_level"),
+                    stop_loss=None,
                     take_profit=trade.get("profit_level"),
                     size=size,
                     spread_pct=order_spread_pct,
