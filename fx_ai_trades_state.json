@@ -1,8 +1,5 @@
 {
-  "risk_distance": {
-    "00000000-66d9-c4fb-0493-972c0004511e": 0.0001904154388837847,
-    "00000000-66d9-c4fe-0493-972c0004511e": 0.0001904154388837847
-  },
+  "risk_distance": {},
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
       "peak_profit": 1.25,
@@ -63,16 +60,6 @@
       "last_update": "2026-09-29T10:35:11.053446+00:00",
       "protected_fraction": 0.306,
       "protected_floor": 0.02
-    },
-    "00000000-66d9-c4fe-0493-972c0004511e": {
-      "epic": "EURUSD",
-      "risk": 0.00019042,
-      "entry": 1.13541,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T09:42:42.524423+00:00"
     }
   },
   "position_telemetry": {

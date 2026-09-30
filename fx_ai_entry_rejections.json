@@ -1,89 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T20:15:57.863632+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:02.275527+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:11.998452+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:16.953139+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:26.082715+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:30.505545+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:40.094570+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:45.054338+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:54.188003+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:16:58.600498+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:17:07.255399+00:00",
-    "epic": "EURUSD",
-    "reason": "LATE_ENTRY",
-    "details": "SELL distance=0.25 ATR; limit=0.25 ATR"
-  },
-  {
-    "timestamp": "2026-09-29T20:17:12.224160+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:17:21.355239+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:17:33.865689+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
     "timestamp": "2026-09-29T20:17:46.511738+00:00",
     "epic": "EURUSD",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5914,89 @@
     "epic": "USDCZK",
     "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
     "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T09:45:23.409627+00:00",
+    "epic": "CHFCZK",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 25.8049\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:45:37.928882+00:00",
+    "epic": "CHFHUF",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 386.674\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:45:56.591621+00:00",
+    "epic": "CHFPLN",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 4.6138\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:48:19.966161+00:00",
+    "epic": "GBPHUF",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 429\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:49:58.167300+00:00",
+    "epic": "NZDPLN",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 2.17298\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:50:09.088147+00:00",
+    "epic": "NZDSGD",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 0.72135\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:58:19.952008+00:00",
+    "epic": "AUDCAD",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 0.9883\"}"
+  },
+  {
+    "timestamp": "2026-09-30T09:59:58.952804+00:00",
+    "epic": "CHFNOK",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 11.52188\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:00:14.693843+00:00",
+    "epic": "CHFTRY",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 58.74913\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:00:30.273467+00:00",
+    "epic": "DKKSEK",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 1.51606\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:00:36.896879+00:00",
+    "epic": "EURAUD",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 1.63023\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:01:22.492319+00:00",
+    "epic": "EURPLN",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 4.37132\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:02:23.091726+00:00",
+    "epic": "GBPPLN",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 5.10974\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:02:30.318656+00:00",
+    "epic": "GBPSEK",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 13.2494\"}"
   }
 ]
