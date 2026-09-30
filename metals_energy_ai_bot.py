@@ -53,7 +53,7 @@ base.SPREAD_FILTER_ENABLED = False
 # عكس اتجاه التنفيذ:
 # استراتيجية BUY  -> أمر SELL
 # استراتيجية SELL -> أمر BUY
-base.REVERSE_ENTRY_DIRECTION = True
+base.REVERSE_ENTRY_DIRECTION = False
 
 # الاستراتيجية تعمل على شموع M5 المكتملة.
 base.RESOLUTION = "MINUTE_5"
