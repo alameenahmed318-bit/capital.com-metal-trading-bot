@@ -1,5 +1,77 @@
 [
   {
+    "date": "2026-09-30T16:00:06.368",
+    "dateUtc": "2026-09-30T12:00:06.368",
+    "instrumentName": "SILVER",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140326308314208",
+    "size": "-10.06",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66db-0ce2-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:59:07.743",
+    "dateUtc": "2026-09-30T11:59:07.743",
+    "instrumentName": "EURUSD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140326246447419",
+    "size": "-11.57",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66db-0b85-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:56:57.467",
+    "dateUtc": "2026-09-30T11:56:57.467",
+    "instrumentName": "CHFHKD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140326110131970",
+    "size": "-6.02",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-ee89-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:56:57.405",
+    "dateUtc": "2026-09-30T11:56:57.405",
+    "instrumentName": "OIL_CRUDE",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140326110131968",
+    "size": "-1.37",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-d9be-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:56:57.405",
+    "dateUtc": "2026-09-30T11:56:57.405",
+    "instrumentName": "OIL_CRUDE",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140326110131969",
+    "size": "-0.23",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-e79d-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:56:57.335",
+    "dateUtc": "2026-09-30T11:56:57.335",
+    "instrumentName": "EURHKD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140326110131966",
+    "size": "-9.22",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-e33b-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-30T15:44:49.268",
     "dateUtc": "2026-09-30T11:44:49.268",
     "instrumentName": "MXNJPY",
