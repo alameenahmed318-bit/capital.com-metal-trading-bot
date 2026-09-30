@@ -1,36 +1,6 @@
 {
-  "updated_at": "2026-09-30T10:03:56.413455+00:00",
+  "updated_at": "2026-09-30T10:53:06.130263+00:00",
   "orders": [
-    {
-      "timestamp": "2026-09-28T13:30:57.080291+00:00",
-      "epic": "US100",
-      "direction": "BUY",
-      "requested_executable_price": 30430.5,
-      "actual_fill_price": 30419.7,
-      "spread_pct_at_order": 0.00591529300417775,
-      "slippage_price": -10.8,
-      "slippage_pct": 0.0,
-      "deal_reference": "o_9796ce44-db9c-415a-9a0d-b662ab5bb5ca",
-      "deal_id": "00000000-6679-142a-0493-972c0004511e",
-      "deal_status": "ACCEPTED",
-      "quality_grade": "A",
-      "size": 0.006
-    },
-    {
-      "timestamp": "2026-09-28T13:32:36.605580+00:00",
-      "epic": "US500",
-      "direction": "SELL",
-      "requested_executable_price": 7710.7,
-      "actual_fill_price": 7710.3,
-      "spread_pct_at_order": 0.005187461904583715,
-      "slippage_price": 0.4,
-      "slippage_pct": 0.005188,
-      "deal_reference": "o_39f81808-8f36-488b-9ca1-753f7e2a8f41",
-      "deal_id": "00000000-6679-1d7a-0493-972c0004511e",
-      "deal_status": "ACCEPTED",
-      "quality_grade": "B",
-      "size": 0.19
-    },
     {
       "timestamp": "2026-09-28T13:48:31.234505+00:00",
       "epic": "SILVER",
@@ -7500,6 +7470,36 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 0.0093
+    },
+    {
+      "timestamp": "2026-09-30T10:53:02.076895+00:00",
+      "epic": "BTCUSD",
+      "direction": "SELL",
+      "requested_executable_price": 83878.15,
+      "actual_fill_price": 83878.25,
+      "spread_pct_at_order": 0.05959251827851518,
+      "slippage_price": -0.1,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_4c392fd4-368d-4597-a58d-f37eaf2ed491",
+      "deal_id": "00000000-66da-6991-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.0084
+    },
+    {
+      "timestamp": "2026-09-30T10:53:06.130263+00:00",
+      "epic": "OIL_CRUDE",
+      "direction": "SELL",
+      "requested_executable_price": 89.559,
+      "actual_fill_price": 89.579,
+      "spread_pct_at_order": 0.044653322765387256,
+      "slippage_price": -0.02,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_a61bba37-1a8a-423f-bbc2-cd077eed0160",
+      "deal_id": "00000000-66da-69d9-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 3.2
     }
   ]
 }
