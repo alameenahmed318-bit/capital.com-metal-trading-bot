@@ -1,27 +1,49 @@
 {
-  "updated_at": "2026-09-30T11:31:40.315332+00:00",
+  "updated_at": "2026-09-30T11:41:33.707291+00:00",
   "positions": [
     {
-      "dealId": "00000000-66da-b5de-0493-972c0004511e",
-      "epic": "AUDNOK",
+      "dealId": "00000000-66da-d9be-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
       "direction": "BUY",
-      "size": 3800.0,
-      "entry": 6.6894,
-      "current": 6.6894,
-      "stopLoss": 6.682302285120562,
+      "size": 8.3,
+      "entry": 89.924,
+      "current": 89.924,
+      "stopLoss": 89.60093484626047,
       "takeProfit": null,
-      "profitLoss": -3.52
+      "profitLoss": -0.61
     },
     {
-      "dealId": "00000000-66da-b8e9-0493-972c0004511e",
-      "epic": "CADJPY",
-      "direction": "SELL",
-      "size": 2800.0,
-      "entry": 110.761,
-      "current": 110.761,
-      "stopLoss": 110.9137462802684,
+      "dealId": "00000000-66da-e33b-0493-972c0004511e",
+      "epic": "EURHKD",
+      "direction": "BUY",
+      "size": 3300.0,
+      "entry": 8.91243,
+      "current": 8.91243,
+      "stopLoss": 8.905955820492192,
       "takeProfit": null,
-      "profitLoss": 2.29
+      "profitLoss": -1.87
+    },
+    {
+      "dealId": "00000000-66da-e69d-0493-972c0004511e",
+      "epic": "MXNJPY",
+      "direction": "SELL",
+      "size": 21000.0,
+      "entry": 8.668,
+      "current": 8.668,
+      "stopLoss": 8.688360335829362,
+      "takeProfit": null,
+      "profitLoss": -1.97
+    },
+    {
+      "dealId": "00000000-66da-e79d-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "BUY",
+      "size": 1.6,
+      "entry": 89.919,
+      "current": 89.919,
+      "stopLoss": 88.21216201497617,
+      "takeProfit": null,
+      "profitLoss": -0.09
     }
   ]
 }
