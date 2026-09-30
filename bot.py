@@ -130,7 +130,7 @@ CORRELATION_CACHE_SECONDS = 60
 ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 ENTRY_REJECTION_MAX_ROWS = 1000
 
-DAILY_LOSS_LIMIT_AED = 300.0  # Daily entry-stop threshold for AED demo accounts
+DAILY_LOSS_LIMIT_AED = 1000.0  # Daily entry-stop threshold for AED demo accounts
 DAILY_LOSS_LIMIT_PCT = 0.03  # Fallback for non-AED accounts
 EQUITY_DRAWDOWN_LIMIT_PCT = 0.05
 LOSS_COOLDOWN_MINUTES = 3
