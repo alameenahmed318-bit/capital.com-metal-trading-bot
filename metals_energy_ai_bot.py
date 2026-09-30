@@ -44,6 +44,9 @@ base.SPREAD_FILTER_ENABLED = False
 # strategy BUY -> broker BUY
 # strategy SELL -> broker SELL
 base.REVERSE_ENTRY_DIRECTION = False
+# Do not let the persisted candle marker block a continuing strong signal.
+# The fast scanner still uses the short entry cooldown as an anti-duplicate throttle.
+base.ENTRY_CANDLE_FRESHNESS_ENABLED = False
 
 # One shared strategy engine; no legacy iron_signal wrapper.
 base.generate_signal = fast_strategy.fast_signal
