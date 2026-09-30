@@ -18,7 +18,7 @@ base.ENTRY_REJECTION_FILE = "fx_ai_entry_rejections.json"
 base.ENTRY_CANDLE_STATE_FILE = "fx_ai_entry_candle_state.json"
 
 # FX universe is discovered automatically from Capital.com after authentication.
-base.EPICS = []
+base.EPICS = []  # Populated dynamically; JPY pairs are excluded in bot.py
 base.STRATEGY_ALLOWED_EPICS = []
 
 base.ALLOW_GRID = False
