@@ -1754,8 +1754,8 @@ def manage_profit_trailing(api, positions, epic, account_currency):
     # Keep only a small amount of the current favorable move unprotected.
     # This is deliberately tight: the user's requested behavior is to exit
     # promptly on the first meaningful retracement after a trade turns green.
-    LOCK_BUFFER_R = 0.10
-    MIN_PROFIT_R_TO_ARM = 0.02
+    LOCK_BUFFER_R = 0.08
+    MIN_PROFIT_R_TO_ARM = 0.01
 
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
@@ -1779,7 +1779,7 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         previous_peak_r = float(safe_float(trail.get("peak_r"), -999.0) or -999.0)
         peak_r = max(previous_peak_r, favorable_r)
 
-        # Do not arm while the trade is effectively flat/negative.
+        # Arm on the first meaningful positive move; keep a small positive floor.
         if peak_r < MIN_PROFIT_R_TO_ARM:
             trails[key] = {
                 "epic": epic,
@@ -1793,8 +1793,8 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             }
             continue
 
-        # Once green, lock a positive amount. The stop must never move
-        # back to break-even or into a loss after the trade has been profitable.
+        # Once green, lock a positive amount. The stop never moves back to
+        # break-even or into a loss after the trade has become profitable.
         locked_r = max(MIN_PROFIT_R_TO_ARM, peak_r - LOCK_BUFFER_R)
 
         current_sl = position_stop_level(position)
