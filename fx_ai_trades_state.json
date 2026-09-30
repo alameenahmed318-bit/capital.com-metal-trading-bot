@@ -1,8 +1,5 @@
 {
-  "risk_distance": {
-    "00000000-66d6-dfc5-0493-972c0004511e": 0.0001534659716082266,
-    "00000000-66d6-dfc8-0493-972c0004511e": 0.0001534659716082266
-  },
+  "risk_distance": {},
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
       "peak_profit": 1.25,
@@ -63,16 +60,6 @@
       "last_update": "2026-09-29T10:35:11.053446+00:00",
       "protected_fraction": 0.306,
       "protected_floor": 0.02
-    },
-    "00000000-66d6-dfc8-0493-972c0004511e": {
-      "epic": "AUDUSD",
-      "risk": 0.00015347,
-      "entry": 0.69751,
-      "direction": "SELL",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T03:02:55.957378+00:00"
     }
   },
   "position_telemetry": {
