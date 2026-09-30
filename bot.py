@@ -1824,6 +1824,11 @@ def manage_trailing_stops(api, positions, epic, current_price, df=None):
     swing_low = safe_float(recent["low"].min())
     swing_high = safe_float(recent["high"].max())
     for position in get_positions_for_epic(positions, epic):
+        # Never tighten a losing position's stop. Only the original broker SL
+        # and the -10 AED hard loss guard may close a negative-P/L position.
+        position_pnl = position_unrealized_pnl(position)
+        if position_pnl is None or position_pnl < 0:
+            continue
         deal_id = position_deal_id(position)
         direction = position_direction(position)
         entry = position_open_level(position)
