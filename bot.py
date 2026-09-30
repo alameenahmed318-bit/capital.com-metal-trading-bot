@@ -2554,7 +2554,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if fresh_status != "TRADEABLE":
             record_entry_rejection(epic, "MARKET_NOT_TRADEABLE", f"broker_status={fresh_status or 'UNKNOWN'}")
             return None
-        response = api.place_order(direction=signal, size=size, stop_level=None, profit_level=trade["profit_level"], epic=epic)
+        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
 
