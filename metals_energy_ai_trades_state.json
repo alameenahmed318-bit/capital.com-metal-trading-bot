@@ -1,11 +1,10 @@
 {
   "risk_distance": {
-    "00000000-66d8-5cc0-0493-972c0004511e": 37.81862188941835,
-    "00000000-66d8-5d3a-0493-972c0004511e": 8.509189925119129,
-    "00000000-66d8-7e33-0493-972c0004511e": 5.4458815520762425,
-    "00000000-66d8-7e36-0493-972c0004511e": 5.4458815520762425,
-    "00000000-66d8-7e89-0493-972c0004511e": 0.1254811417529088,
-    "00000000-66d8-7e8c-0493-972c0004511e": 0.1254811417529088
+    "00000000-66d8-9b29-0493-972c0004511e": 10.891763104152485,
+    "00000000-66d8-9ca1-0493-972c0004511e": 0.6050979502306936,
+    "00000000-66d8-9ca4-0493-972c0004511e": 0.6050979502306936,
+    "00000000-66d8-a7ba-0493-972c0004511e": 5.4458815520762425,
+    "00000000-66d8-a7bd-0493-972c0004511e": 5.4458815520762425
   },
   "profit_trail": {
     "00000000-66d6-0c28-0493-972c0004511e": {
@@ -413,25 +412,38 @@
       "current_profit": -10.11,
       "last_update": "2026-09-30T07:16:20.630538+00:00"
     },
-    "00000000-66d8-7e36-0493-972c0004511e": {
+    "00000000-66d8-9b29-0493-972c0004511e": {
       "epic": "GOLD",
-      "risk": 5.44588155,
-      "entry": 4197.29,
+      "risk": 10.8917631,
+      "entry": 4195.72,
       "direction": "BUY",
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T07:18:42.936585+00:00"
+      "last_update": "2026-09-30T07:42:29.364118+00:00"
     },
-    "00000000-66d8-7e8c-0493-972c0004511e": {
-      "epic": "SILVER",
-      "risk": 0.12548114,
-      "entry": 61.461,
+    "00000000-66d8-9ca4-0493-972c0004511e": {
+      "peak_profit": 3.64,
+      "peak_time": "2026-09-30T07:33:17.070707+00:00",
+      "activated": true,
+      "last_pnl": 3.64,
+      "last_update_ts": 1790753597.0741146,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "current_profit": 3.64,
+      "last_update": "2026-09-30T07:33:17.074138+00:00"
+    },
+    "00000000-66d8-a7bd-0493-972c0004511e": {
+      "epic": "PALLADIUM",
+      "risk": 5.44588155,
+      "entry": 1239.7,
       "direction": "BUY",
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T07:18:43.948790+00:00"
+      "last_update": "2026-09-30T07:42:31.020760+00:00"
     }
   },
   "position_telemetry": {
@@ -3154,14 +3166,53 @@
       "epic": "SILVER",
       "deal_id": "00000000-66d8-7e8c-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -9.32,
-      "peak_profit": -9.32,
+      "current_profit": -7.01,
+      "peak_profit": -7.01,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T07:18:43.460892+00:00"
+      "last_update": "2026-09-30T07:28:03.722098+00:00"
+    },
+    "00000000-66d8-9b29-0493-972c0004511e": {
+      "epic": "GOLD",
+      "deal_id": "00000000-66d8-9b29-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -1.18,
+      "peak_profit": -1.18,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T07:42:28.937512+00:00"
+    },
+    "00000000-66d8-9ca4-0493-972c0004511e": {
+      "epic": "OIL_CRUDE",
+      "deal_id": "00000000-66d8-9ca4-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": 3.64,
+      "peak_profit": 3.64,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": "2026-09-30T07:33:17.070707+00:00",
+      "last_update": "2026-09-30T07:33:17.074138+00:00"
+    },
+    "00000000-66d8-a7bd-0493-972c0004511e": {
+      "epic": "PALLADIUM",
+      "deal_id": "00000000-66d8-a7bd-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -6.98,
+      "peak_profit": -6.98,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T07:42:30.600177+00:00"
     }
   }
 }
