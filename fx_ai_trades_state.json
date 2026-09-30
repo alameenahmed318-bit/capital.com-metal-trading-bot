@@ -1,9 +1,11 @@
 {
   "risk_distance": {
-    "00000000-66da-e33b-0493-972c0004511e": 0.006474179507807827,
-    "00000000-66da-e69d-0493-972c0004511e": 0.020360335829362378,
-    "00000000-66da-ee86-0493-972c0004511e": 0.01068206262763785,
-    "00000000-66da-ee89-0493-972c0004511e": 0.01068206262763785
+    "00000000-66db-0cfe-0493-972c0004511e": 0.2614300884955752,
+    "00000000-66db-0ed5-0493-972c0004511e": 0.044909350826164984,
+    "00000000-66db-1cf9-0493-972c0004511e": 0.00044405948276596226,
+    "00000000-66db-1cfc-0493-972c0004511e": 0.00044405948276596226,
+    "00000000-66db-1d1c-0493-972c0004511e": 0.0004244795368008439,
+    "00000000-66db-1d1f-0493-972c0004511e": 0.0004244795368008439
   },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
@@ -66,17 +68,6 @@
       "protected_fraction": 0.306,
       "protected_floor": 0.02
     },
-    "00000000-66da-e33b-0493-972c0004511e": {
-      "epic": "EURHKD",
-      "risk": 0.00647418,
-      "entry": 8.91243,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": 0.0,
-      "favorable_r": 0.0,
-      "armed": false,
-      "last_update": "2026-09-30T11:47:56.363639+00:00"
-    },
     "00000000-66da-e69d-0493-972c0004511e": {
       "epic": "MXNJPY",
       "risk": 0.02036034,
@@ -88,16 +79,49 @@
       "armed": true,
       "last_update": "2026-09-30T11:44:47.388953+00:00"
     },
-    "00000000-66da-ee89-0493-972c0004511e": {
-      "epic": "CHFHKD",
-      "risk": 0.01068206,
-      "entry": 9.40569,
+    "00000000-66db-0cfe-0493-972c0004511e": {
+      "epic": "GBPNOK",
+      "risk": 0.26143009,
+      "entry": 12.75684,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": 0.0,
+      "favorable_r": 0.0,
+      "armed": true,
+      "last_update": "2026-09-30T12:05:43.334666+00:00"
+    },
+    "00000000-66db-0ed5-0493-972c0004511e": {
+      "epic": "NZDMXN",
+      "risk": 0.04490935,
+      "entry": 10.2463,
       "direction": "BUY",
       "peak_r": 0.0,
       "locked_r": 0.0,
       "favorable_r": 0.0,
       "armed": false,
-      "last_update": "2026-09-30T11:47:54.344192+00:00"
+      "last_update": "2026-09-30T12:04:23.392407+00:00"
+    },
+    "00000000-66db-1cfc-0493-972c0004511e": {
+      "epic": "GBPAUD",
+      "risk": 0.00044406,
+      "entry": 1.90679,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": 0.0,
+      "favorable_r": 0.0,
+      "armed": false,
+      "last_update": "2026-09-30T12:05:35.865856+00:00"
+    },
+    "00000000-66db-1d1f-0493-972c0004511e": {
+      "epic": "GBPCAD",
+      "risk": 0.00042448,
+      "entry": 1.88466,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": 0.0,
+      "favorable_r": 0.0,
+      "armed": false,
+      "last_update": "2026-09-30T12:05:37.804241+00:00"
     }
   },
   "position_telemetry": {
@@ -370,14 +394,14 @@
       "epic": "EURHKD",
       "deal_id": "00000000-66da-e33b-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -2.12,
-      "peak_profit": -2.12,
+      "current_profit": -8.96,
+      "peak_profit": -8.96,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T11:47:55.915757+00:00"
+      "last_update": "2026-09-30T11:56:54.146898+00:00"
     },
     "00000000-66da-e69d-0493-972c0004511e": {
       "epic": "MXNJPY",
@@ -396,14 +420,66 @@
       "epic": "CHFHKD",
       "deal_id": "00000000-66da-ee89-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -3.59,
-      "peak_profit": -3.59,
+      "current_profit": -5.04,
+      "peak_profit": -5.04,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T11:47:53.890996+00:00"
+      "last_update": "2026-09-30T11:55:40.067424+00:00"
+    },
+    "00000000-66db-0cfe-0493-972c0004511e": {
+      "epic": "GBPNOK",
+      "deal_id": "00000000-66db-0cfe-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": 0.0,
+      "peak_profit": 0.0,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T12:05:42.321030+00:00"
+    },
+    "00000000-66db-0ed5-0493-972c0004511e": {
+      "epic": "NZDMXN",
+      "deal_id": "00000000-66db-0ed5-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -2.02,
+      "peak_profit": -2.02,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T12:04:23.011846+00:00"
+    },
+    "00000000-66db-1cfc-0493-972c0004511e": {
+      "epic": "GBPAUD",
+      "deal_id": "00000000-66db-1cfc-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -2.7,
+      "peak_profit": -2.7,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T12:05:35.391989+00:00"
+    },
+    "00000000-66db-1d1f-0493-972c0004511e": {
+      "epic": "GBPCAD",
+      "deal_id": "00000000-66db-1d1f-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -3.77,
+      "peak_profit": -3.77,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T12:05:37.411162+00:00"
     }
   }
 }
