@@ -78,7 +78,7 @@ def main() -> int:
         source = fx_path.read_text(encoding="utf-8")
         try:
             ast.parse(source, filename="fx_ai_bot.py")
-            if "base.REVERSE_ENTRY_DIRECTION = True" not in source:
+            if "base.REVERSE_ENTRY_DIRECTION = False" not in source:
                 failures.append("FX: normal execution direction is not enabled.")
         except Exception as exc:
             failures.append(f"FX CHECK ERROR: {exc}")
@@ -90,10 +90,10 @@ def main() -> int:
             ast.parse(source, filename="metals_energy_ai_bot.py")
             if "base.MAX_POSITIONS_PER_EPIC = None" not in source:
                 failures.append("METALS: artificial per-epic position cap is enabled.")
-            if "base.REVERSE_ENTRY_DIRECTION = True" not in source:
+            if "base.REVERSE_ENTRY_DIRECTION = False" not in source:
                 failures.append("METALS: normal execution direction is not enabled.")
-            if "def iron_signal(" not in source:
-                failures.append("METALS: METAL IMPERIUM IRON strategy is missing.")
+            if "fast_strategy.fast_signal" not in source or "fast_strategy.calculate_trade" not in source:
+                failures.append("METALS: active shared fast market strategy is missing.")
         except Exception as exc:
             failures.append(f"METALS CHECK ERROR: {exc}")
 
@@ -104,7 +104,7 @@ def main() -> int:
     print(
         "AI architecture self-check passed: "
         "single strategy entry authority; AI support-only; "
-        "FX and metals normal execution direction; syntax valid."
+        "FX and metals normal execution direction; shared strategy valid; syntax valid."
     )
     return 0
 
