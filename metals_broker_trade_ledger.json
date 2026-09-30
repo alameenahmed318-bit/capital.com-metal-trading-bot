@@ -1,5 +1,77 @@
 [
   {
+    "date": "2026-09-30T15:15:01.389",
+    "dateUtc": "2026-09-30T11:15:01.389",
+    "instrumentName": "BTCUSD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140323471890074",
+    "size": "-6.04",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d9-fc1b-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:15:01.321",
+    "dateUtc": "2026-09-30T11:15:01.321",
+    "instrumentName": "OIL_CRUDE",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140323471890073",
+    "size": "-3.53",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-69dc-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:12:34.393",
+    "dateUtc": "2026-09-30T11:12:34.393",
+    "instrumentName": "NZDCHF",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140323317748536",
+    "size": "-10.91",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-96fe-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:12:23.182",
+    "dateUtc": "2026-09-30T11:12:23.182",
+    "instrumentName": "EURGBP",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140323306214117",
+    "size": "-9.13",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-8de8-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:10:02.453",
+    "dateUtc": "2026-09-30T11:10:02.453",
+    "instrumentName": "GBPAUD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140323158362675",
+    "size": "-10.28",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-81a8-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T15:07:38.646",
+    "dateUtc": "2026-09-30T11:07:38.646",
+    "instrumentName": "GBPCAD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140323007365981",
+    "size": "2.1",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-81e8-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-30T15:01:15.705",
     "dateUtc": "2026-09-30T11:01:15.705",
     "instrumentName": "BTCUSD",
