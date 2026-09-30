@@ -1,22 +1,23 @@
 # Capital Hybrid Cloud Bot
 
-بوت Python سحابي لـ Capital.com عبر GitHub Actions وCapital Public API.
+تم استبدال ملفات EA القديمة بـPython Bot يعمل مع Capital.com Public API عبر GitHub Actions.
 
-## التشغيل
-- الحساب والـAPI credentials محفوظة في GitHub Secrets فقط.
-- ابدأ على Demo مع `DRY_RUN=true`.
-- شغّل Workflow: **Capital Hybrid Bot**.
+## الحالة الحالية
+- التشغيل: GitHub Actions.
+- الفحص داخل الدورة: كل 10 ثوانٍ.
+- دورة GitHub: 13 دقيقة كل 15 دقيقة.
+- الوضع الافتراضي: `DRY_RUN=true`.
+- لا MT5 Desktop.
+- لا Grid / Martingale / Averaging.
+- لا يتم تعديل صفقات مجهولة من هذا البوت.
 
-## الاستراتيجية الهجينة
-- قراءة أسعار حديثة كل 10 ثوانٍ أثناء تشغيل الدورة.
-- EMA 9/21 + زخم + ATR-like volatility.
-- دخول مرن بدل فلتر ثابت واحد.
-- لا Grid ولا Martingale ولا Averaging.
-- يسمح بصفقات مستقلة على أدوات مختلفة.
-- حماية ربح تدريجية للصفقات التي فتحها هذا البوت فقط.
-- لا يلمس الصفقات اليدوية أو الصفقات التي لا يملك معرفها.
+## قبل التشغيل
+ضع Secrets:
+`CAPITAL_BASE_URL`, `CAPITAL_API_KEY`, `CAPITAL_IDENTIFIER`, `CAPITAL_PASSWORD`, `TRADE_SIZE`, `DRY_RUN`.
 
-## التشغيل السحابي
-GitHub Actions يشغّل دورة متكررة ويعيد تشغيل البوت دوريًا. لا يحتاج MT5 Desktop.
+ابدأ على Demo فقط.
 
-> ابدأ Demo أولًا. لا توجد استراتيجية تضمن الربح، وتنفيذ الأوامر والأسعار قد تختلف عن الإشارات.
+## ملاحظة
+طبقة حماية الأرباح المتقدمة قيد الإضافة ولم تُفعّل في النسخة الحالية؛ لا تشغّل Live قبل اكتمال اختبارها.
+
+Capital.com توثق REST/WebSocket API وإمكانية فتح وتعديل وإغلاق المراكز عبر API. 
