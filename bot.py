@@ -2714,10 +2714,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if price_recheck_atr > 0.75:
             record_entry_rejection(epic, "ENTRY_PRICE_MOVED", f"move={price_recheck_atr:.2f}ATR; max=0.75ATR")
             return None
-        trade["entry"] = fresh_execution_price
+        # Use the newest executable broker quote consistently from the final
+        # recheck through order confirmation; never report slippage against the
+        # older pre-recheck chart/snapshot price.
+        execution_price = fresh_execution_price
+        trade["entry"] = execution_price
         risk_distance = float(trade.get("risk_distance") or 0.0)
-        trade["stop_level"] = fresh_execution_price - risk_distance if signal == "BUY" else fresh_execution_price + risk_distance
-        log(f"{epic}: FINAL ENTRY RECHECK | executable={fresh_execution_price} | move={price_recheck_atr:.2f}ATR | SL={trade['stop_level']}")
+        trade["stop_level"] = execution_price - risk_distance if signal == "BUY" else execution_price + risk_distance
+        log(f"{epic}: FINAL ENTRY RECHECK | executable={execution_price} | move={price_recheck_atr:.2f}ATR | SL={trade['stop_level']}")
         try:
             response = api.place_order(
                 direction=signal,
@@ -2827,6 +2831,20 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     if str(position_deal_id(opened)) == str(deal_id):
                         actual_fill_price = position_open_level(opened)
                         break
+            # Broker-confirmed fill is the authoritative entry price. Capital.com
+            # draws the position line from this fill; the bot must persist the
+            # same value instead of a stale chart/signal price.
+            if actual_fill_price is not None:
+                trade["entry"] = float(actual_fill_price)
+                log(
+                    f"{epic}: ENTRY PRICE CONFIRMED | requested_executable={execution_price} | "
+                    f"actual_fill={actual_fill_price} | line_price_source=broker_fill"
+                )
+            else:
+                log(
+                    f"{epic}: ENTRY PRICE CONFIRMED | actual_fill=UNAVAILABLE | "
+                    f"requested_executable={execution_price}"
+                )
             record_execution_quality(epic, signal, execution_price, actual_fill_price, order_spread_pct, deal_reference=deal_reference, deal_id=deal_id, deal_status=deal_status or "ACCEPTED", size=size)
             # Persist an outcome-training row only after the broker confirms
             # the position. P/L is filled later from broker transaction history.
