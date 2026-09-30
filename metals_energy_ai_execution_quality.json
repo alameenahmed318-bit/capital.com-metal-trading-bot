@@ -1,36 +1,6 @@
 {
-  "updated_at": "2026-09-30T08:28:31.672230+00:00",
+  "updated_at": "2026-09-30T08:55:03.581516+00:00",
   "orders": [
-    {
-      "timestamp": "2026-09-28T12:51:22.378241+00:00",
-      "epic": "SILVER",
-      "direction": "SELL",
-      "requested_executable_price": 61.231,
-      "actual_fill_price": 61.238,
-      "spread_pct_at_order": 0.08162465717643522,
-      "slippage_price": -0.007,
-      "slippage_pct": 0.0,
-      "deal_reference": "o_4a5bd8db-de52-42a3-8568-fc916fd34514",
-      "deal_id": "00000000-6678-c035-0493-972c0004511e",
-      "deal_status": "ACCEPTED",
-      "quality_grade": "A",
-      "size": 1.2
-    },
-    {
-      "timestamp": "2026-09-28T12:51:33.841864+00:00",
-      "epic": "US100",
-      "direction": "BUY",
-      "requested_executable_price": 30448.0,
-      "actual_fill_price": 30447.0,
-      "spread_pct_at_order": 0.005911893086695523,
-      "slippage_price": -1.0,
-      "slippage_pct": 0.0,
-      "deal_reference": "o_0cd89579-192d-4b28-98e8-76758eed94eb",
-      "deal_id": "00000000-6678-c071-0493-972c0004511e",
-      "deal_status": "ACCEPTED",
-      "quality_grade": "A",
-      "size": 0.006
-    },
     {
       "timestamp": "2026-09-28T12:51:46.537533+00:00",
       "epic": "US500",
@@ -7500,6 +7470,36 @@
       "deal_status": "ACCEPTED",
       "quality_grade": "A",
       "size": 9.3
+    },
+    {
+      "timestamp": "2026-09-30T08:53:52.426931+00:00",
+      "epic": "US500",
+      "direction": "BUY",
+      "requested_executable_price": 7687.3,
+      "actual_fill_price": 7687.3,
+      "spread_pct_at_order": 0.007805385716148873,
+      "slippage_price": 0.0,
+      "slippage_pct": 0.0,
+      "deal_reference": "o_944109e2-bdb8-4968-ae94-26109e2ec963",
+      "deal_id": "00000000-66d9-56f7-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "A",
+      "size": 0.32
+    },
+    {
+      "timestamp": "2026-09-30T08:55:03.581516+00:00",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "requested_executable_price": 61.051,
+      "actual_fill_price": 61.046,
+      "spread_pct_at_order": 0.08186521710655112,
+      "slippage_price": 0.005,
+      "slippage_pct": 0.00819,
+      "deal_reference": "o_ba957233-a062-406c-955e-9e8e531ec238",
+      "deal_id": "00000000-66d9-59f9-0493-972c0004511e",
+      "deal_status": "ACCEPTED",
+      "quality_grade": "B",
+      "size": 11.5
     }
   ]
 }
