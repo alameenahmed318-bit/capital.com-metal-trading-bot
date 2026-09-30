@@ -1,5 +1,53 @@
 [
   {
+    "date": "2026-09-30T11:16:27.312",
+    "dateUtc": "2026-09-30T07:16:27.312",
+    "instrumentName": "US100",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140308462594794",
+    "size": "-10.57",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d8-5cc0-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T11:16:18.117",
+    "dateUtc": "2026-09-30T07:16:18.117",
+    "instrumentName": "US500",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140308453157274",
+    "size": "-10.1",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d8-5d3a-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T11:02:33.341",
+    "dateUtc": "2026-09-30T07:02:33.341",
+    "instrumentName": "OIL_CRUDE",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140307588072712",
+    "size": "-10.04",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d8-3abb-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T11:02:31.434",
+    "dateUtc": "2026-09-30T07:02:31.434",
+    "instrumentName": "US100",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140307585975481",
+    "size": "-9.65",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d8-3a0a-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-30T10:55:47.449",
     "dateUtc": "2026-09-30T06:55:47.449",
     "instrumentName": "US500",
