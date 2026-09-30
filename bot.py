@@ -4,7 +4,7 @@ import requests
 
 BASE = os.getenv("CAPITAL_BASE_URL", "https://demo-api-capital.backend-capital.com")
 API_KEY = os.environ["CAPITAL_API_KEY"]
-IDENTIFIER = os.environ["CAPITAL_IDENTIFIER"]
+IDENTIFIER = os.environ.get("CAPITAL_IDENTIFIER") or os.environ["CAPITAL_EMAIL"]
 PASSWORD = os.environ["CAPITAL_PASSWORD"]
 
 SIZE = float(os.getenv("TRADE_SIZE", "0.01"))
