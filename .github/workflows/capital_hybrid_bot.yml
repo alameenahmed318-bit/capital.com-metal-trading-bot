@@ -9,24 +9,46 @@ concurrency:
   group: capital-hybrid-bot
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   bot:
     runs-on: ubuntu-latest
     timeout-minutes: 13
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+
       - run: pip install -r requirements.txt
-      - name: Run hybrid bot
+
+      - name: Run hybrid FX bot
         env:
           CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           TRADE_SIZE: ${{ secrets.TRADE_SIZE }}
-          SCAN_SECONDS: "10"
           DRY_RUN: ${{ secrets.DRY_RUN }}
-          EPICS: "EURUSD,GBPUSD,USDJPY,AUDUSD,USDCHF,USDCAD,NZDUSD,EURJPY,GBPJPY"
+          MAX_INITIAL_LOSS_AED: "10"
+          PROFIT_ARM_AED: "1"
+          PROFIT_LOCK_AED: "0.25"
+          TRAIL_GIVEBACK_AED: "1"
+          HISTORY_REFRESH_SECONDS: "60"
         run: python bot.py
+
+      - name: Save bot ownership state
+        if: always()
+        run: |
+          git config user.name "capital-hybrid-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bot_state.json
+          if git diff --cached --quiet; then
+            echo "No state changes."
+          else
+            git commit -m "Update FX bot ownership state"
+            git push
+          fi
