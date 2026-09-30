@@ -1,11 +1,11 @@
 {
   "risk_distance": {
-    "00000000-66d9-2068-0493-972c0004511e": 5.236424569304079,
-    "00000000-66d9-20e4-0493-972c0004511e": 0.2927893307567872,
-    "00000000-66d9-56f7-0493-972c0004511e": 8.509189925119129,
     "00000000-66d9-56fa-0493-972c0004511e": 8.509189925119129,
-    "00000000-66d9-59f9-0493-972c0004511e": 0.23677745878592357,
-    "00000000-66d9-59fc-0493-972c0004511e": 0.23677745878592357
+    "00000000-66d9-59fc-0493-972c0004511e": 0.23677745878592357,
+    "00000000-66d9-7ee8-0493-972c0004511e": 10.891763104152485,
+    "00000000-66d9-7eeb-0493-972c0004511e": 10.891763104152485,
+    "00000000-66d9-7f0f-0493-972c0004511e": 0.2643631821396234,
+    "00000000-66d9-7f12-0493-972c0004511e": 0.2643631821396234
   },
   "profit_trail": {
     "00000000-66d6-0c28-0493-972c0004511e": {
@@ -426,16 +426,6 @@
       "current_profit": 3.64,
       "last_update": "2026-09-30T07:33:17.074138+00:00"
     },
-    "00000000-66d9-56fa-0493-972c0004511e": {
-      "epic": "US500",
-      "risk": 8.50918993,
-      "entry": 7687.3,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T09:04:38.938159+00:00"
-    },
     "00000000-66d9-59fc-0493-972c0004511e": {
       "epic": "SILVER",
       "risk": 0.23677746,
@@ -444,7 +434,27 @@
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T09:04:44.104534+00:00"
+      "last_update": "2026-09-30T09:20:15.128481+00:00"
+    },
+    "00000000-66d9-7eeb-0493-972c0004511e": {
+      "epic": "GOLD",
+      "risk": 10.8917631,
+      "entry": 4192.33,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T09:20:13.443568+00:00"
+    },
+    "00000000-66d9-7f12-0493-972c0004511e": {
+      "epic": "SILVER",
+      "risk": 0.26436318,
+      "entry": 61.069,
+      "direction": "SELL",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T09:20:15.128460+00:00"
     }
   },
   "position_telemetry": {
@@ -3271,27 +3281,53 @@
       "epic": "US500",
       "deal_id": "00000000-66d9-56fa-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -4.58,
-      "peak_profit": -4.58,
+      "current_profit": -9.52,
+      "peak_profit": -9.52,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T09:04:38.550956+00:00"
+      "last_update": "2026-09-30T09:09:10.069743+00:00"
     },
     "00000000-66d9-59fc-0493-972c0004511e": {
       "epic": "SILVER",
       "deal_id": "00000000-66d9-59fc-0493-972c0004511e",
       "direction": "SELL",
-      "current_profit": -5.07,
-      "peak_profit": -5.07,
+      "current_profit": 0.97,
+      "peak_profit": 0.97,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T09:04:43.747464+00:00"
+      "last_update": "2026-09-30T09:20:14.689459+00:00"
+    },
+    "00000000-66d9-7eeb-0493-972c0004511e": {
+      "epic": "GOLD",
+      "deal_id": "00000000-66d9-7eeb-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -3.53,
+      "peak_profit": -3.53,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T09:20:12.997134+00:00"
+    },
+    "00000000-66d9-7f12-0493-972c0004511e": {
+      "epic": "SILVER",
+      "deal_id": "00000000-66d9-7f12-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": 1.74,
+      "peak_profit": 1.74,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T09:20:14.689434+00:00"
     }
   }
 }
