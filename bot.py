@@ -2435,12 +2435,16 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         log(f"{epic}: AI ASSISTANT | risk remains strategy-owned | multiplier={risk_multiplier:.3f} | requested={requested_risk:.2f} | legacy_vol_mult={legacy_risk_multiplier:.2f}")
         # Hard cap: every new position may risk at most MAX_LOSS_PER_POSITION
         # in account currency. This also caps the secondary loss guard below.
-        base_risk_amount = min(
+        # MAX_LOSS_PER_POSITION is optional. Do not pass None into min(),
+        # because Python cannot compare None with floats.
+        risk_limits = [
             requested_risk,
             max(0.0, remaining_basket_risk),
             max(0.0, remaining_portfolio_risk),
-            MAX_LOSS_PER_POSITION,
-        )
+        ]
+        if MAX_LOSS_PER_POSITION is not None:
+            risk_limits.append(max(0.0, float(MAX_LOSS_PER_POSITION)))
+        base_risk_amount = min(risk_limits)
         if base_risk_amount <= 0:
             risk_amount = 0.0
         else:
@@ -2946,3 +2950,5 @@ if __name__ == "__main__":
     except Exception as exc:
         log(f"MAIN ERROR: {exc}")
         traceback.print_exc()
+
+
