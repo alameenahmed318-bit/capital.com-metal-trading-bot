@@ -1793,9 +1793,9 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             }
             continue
 
-        # Once green, protect the current/peak profit immediately. The stop
-        # is always behind the best favorable price seen for this position.
-        locked_r = max(0.0, peak_r - LOCK_BUFFER_R)
+        # Once green, lock a positive amount. The stop must never move
+        # back to break-even or into a loss after the trade has been profitable.
+        locked_r = max(MIN_PROFIT_R_TO_ARM, peak_r - LOCK_BUFFER_R)
 
         current_sl = position_stop_level(position)
         if direction == "BUY":
