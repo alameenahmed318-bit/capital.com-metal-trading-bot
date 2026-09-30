@@ -1,0 +1,32 @@
+name: Capital Hybrid Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: capital-hybrid-bot
+  cancel-in-progress: true
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+      - name: Run hybrid bot
+        env:
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          TRADE_SIZE: ${{ secrets.TRADE_SIZE }}
+          SCAN_SECONDS: "10"
+          DRY_RUN: ${{ secrets.DRY_RUN }}
+          EPICS: "EURUSD,GBPUSD,USDJPY,AUDUSD,USDCHF,USDCAD,NZDUSD,EURJPY,GBPJPY"
+        run: python bot.py
