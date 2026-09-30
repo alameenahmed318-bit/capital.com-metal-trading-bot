@@ -12,6 +12,7 @@
 
 import pandas as pd
 import bot as base
+import fast_market_strategy as fast_strategy
 
 STRATEGY_ID = "METAL_IMPERIUM_IRON_V1"
 base.STRATEGY_ID = STRATEGY_ID
@@ -27,10 +28,7 @@ base.ENTRY_REJECTION_FILE = "metals_energy_ai_entry_rejections.json"
 base.ENTRY_CANDLE_STATE_FILE = "metals_energy_ai_entry_candle_state.json"
 
 # قائمة المعادن/الأسواق الحالية تبقى كما هي.
-base.EPICS = [
-    "GOLD", "SILVER", "PALLADIUM",
-    "US100", "US500", "BTCUSD", "OIL_CRUDE",
-]
+base.EPICS = ["GOLD", "US100", "US500"]
 base.STRATEGY_ALLOWED_EPICS = list(base.EPICS)
 # Metals/energy bot must never inherit the FX discovery universe.
 base.DYNAMIC_FX_UNIVERSE = False
@@ -54,6 +52,9 @@ base.SPREAD_FILTER_ENABLED = False
 # استراتيجية BUY  -> أمر SELL
 # استراتيجية SELL -> أمر BUY
 base.REVERSE_ENTRY_DIRECTION = True
+# Shared fast strategy: M5 local context + H1 confirmation.
+base.generate_signal = fast_strategy.fast_signal
+base.calculate_trade = fast_strategy.calculate_trade
 
 # الاستراتيجية تعمل على شموع M5 المكتملة.
 base.RESOLUTION = "MINUTE_5"
