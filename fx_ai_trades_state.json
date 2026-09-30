@@ -1,7 +1,7 @@
 {
   "risk_distance": {
-    "00000000-66da-aba2-0493-972c0004511e": 0.0008313294923950234,
-    "00000000-66da-b0da-0493-972c0004511e": 0.001181999585639447
+    "00000000-66da-b5de-0493-972c0004511e": 0.006877714879438215,
+    "00000000-66da-b8e9-0493-972c0004511e": 0.15274628026840414
   },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
@@ -64,15 +64,25 @@
       "protected_fraction": 0.306,
       "protected_floor": 0.02
     },
-    "00000000-66da-81a8-0493-972c0004511e": {
-      "epic": "GBPAUD",
-      "risk": 0.00037921,
-      "entry": 1.90592,
+    "00000000-66da-b5de-0493-972c0004511e": {
+      "epic": "AUDNOK",
+      "risk": 0.00687771,
+      "entry": 6.6894,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T11:32:48.971879+00:00"
+    },
+    "00000000-66da-b8e9-0493-972c0004511e": {
+      "epic": "CADJPY",
+      "risk": 0.15274628,
+      "entry": 110.761,
       "direction": "SELL",
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T11:08:59.613783+00:00"
+      "last_update": "2026-09-30T11:32:51.184306+00:00"
     }
   },
   "position_telemetry": {
@@ -314,6 +324,32 @@
       "profit_acceleration": 0.0,
       "peak_time": null,
       "last_update": "2026-09-30T11:08:59.296295+00:00"
+    },
+    "00000000-66da-b5de-0493-972c0004511e": {
+      "epic": "AUDNOK",
+      "deal_id": "00000000-66da-b5de-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -4.01,
+      "peak_profit": -4.01,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T11:32:48.582356+00:00"
+    },
+    "00000000-66da-b8e9-0493-972c0004511e": {
+      "epic": "CADJPY",
+      "deal_id": "00000000-66da-b8e9-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": 0.39,
+      "peak_profit": 0.39,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T11:32:50.800519+00:00"
     }
   }
 }
