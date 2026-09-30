@@ -151,23 +151,28 @@ def atr_like(xs, n=14):
 
 
 def signal(xs):
-    if len(xs) < 40:
-        return None
-    e9, e21 = ema(xs, 9), ema(xs, 21)
-    p9, p21 = ema(xs[:-1], 9), ema(xs[:-1], 21)
-    vol = atr_like(xs)
-    if not all(v is not None for v in (e9, e21, p9, p21, vol)) or vol <= 0:
+    # Entry from current short-term price action (M5/M15 style).
+    # No 40-candle gate and no fixed score threshold.
+    if len(xs) < 16:
         return None
 
-    momentum = (xs[-1] - xs[-6]) / vol
-    cross_up = p9 <= p21 and e9 > e21
-    cross_dn = p9 >= p21 and e9 < e21
-    trend_up = e9 > e21 and momentum > 0.25
-    trend_dn = e9 < e21 and momentum < -0.25
+    e5, e13 = ema(xs, 5), ema(xs, 13)
+    p5, p13 = ema(xs[:-1], 5), ema(xs[:-1], 13)
+    if not all(v is not None for v in (e5, e13, p5, p13)):
+        return None
 
-    if cross_up or (trend_up and momentum > 0.6):
+    recent = xs[-4:]
+    move = recent[-1] - recent[0]
+    range_ref = max(max(recent) - min(recent), abs(move), 1e-12)
+
+    cross_up = p5 <= p13 and e5 > e13
+    cross_dn = p5 >= p13 and e5 < e13
+    momentum_up = move > 0 and move / range_ref >= 0.20
+    momentum_dn = move < 0 and abs(move) / range_ref >= 0.20
+
+    if cross_up or momentum_up:
         return "BUY"
-    if cross_dn or (trend_dn and momentum < -0.6):
+    if cross_dn or momentum_dn:
         return "SELL"
     return None
 
@@ -383,7 +388,7 @@ def run():
             for epic, market in market_by_epic.items():
                 try:
                     xs = history.get(epic, {}).get("xs", [])
-                    if len(xs) < 40:
+                    if len(xs) < 16:
                         continue
 
                     px = current_price(market)
