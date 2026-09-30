@@ -1,4 +1,71 @@
 {
-  "updated_at": "2026-09-30T00:02:48.214486+00:00",
-  "positions": []
+  "updated_at": "2026-09-30T00:25:52.139864+00:00",
+  "positions": [
+    {
+      "dealId": "00000000-66d5-f2ec-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 14.6,
+      "entry": 61.317,
+      "current": 61.317,
+      "stopLoss": null,
+      "takeProfit": 61.11404761258164,
+      "profitLoss": -2.95
+    },
+    {
+      "dealId": "00000000-66d5-f38b-0493-972c0004511e",
+      "epic": "US100",
+      "direction": "BUY",
+      "size": 0.057,
+      "entry": 30425.0,
+      "current": 30425.0,
+      "stopLoss": null,
+      "takeProfit": 30471.038149909404,
+      "profitLoss": 0.02
+    },
+    {
+      "dealId": "00000000-66d5-dc38-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "BUY",
+      "size": 1.1,
+      "entry": 88.584,
+      "current": 88.584,
+      "stopLoss": 88.23227117979964,
+      "takeProfit": 89.11159323030054,
+      "profitLoss": -1.05
+    },
+    {
+      "dealId": "00000000-66d5-e08e-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "BUY",
+      "size": 1.1,
+      "entry": 88.491,
+      "current": 88.491,
+      "stopLoss": 88.13718038130607,
+      "takeProfit": 89.00422942804087,
+      "profitLoss": -0.67
+    },
+    {
+      "dealId": "00000000-66d5-e2f7-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "BUY",
+      "size": 1.1,
+      "entry": 88.454,
+      "current": 88.454,
+      "stopLoss": 88.11218038130608,
+      "takeProfit": 88.97922942804088,
+      "profitLoss": -0.53
+    },
+    {
+      "dealId": "00000000-66d5-e3e6-0493-972c0004511e",
+      "epic": "BTCUSD",
+      "direction": "SELL",
+      "size": 0.0025,
+      "entry": 83486.4,
+      "current": 83486.4,
+      "stopLoss": 83637.01844720393,
+      "takeProfit": 83257.72232919412,
+      "profitLoss": -0.45
+    }
+  ]
 }
