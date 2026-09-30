@@ -30,6 +30,7 @@ jobs:
           CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           TRADE_SIZE: ${{ secrets.TRADE_SIZE || '0.01' }}
           DRY_RUN: ${{ secrets.DRY_RUN }}
