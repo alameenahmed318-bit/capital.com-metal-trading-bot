@@ -911,10 +911,35 @@ def _strategy_candle_feed_is_stale(df, resolution):
     return age > 32 * 60, age
 
 
+def _safe_candles_fetch(api, epic, resolution, max_candles):
+    """Fetch candles without letting one invalid/unavailable epic break the scan.
+
+    A Capital.com 400 on /prices/{epic} is treated as an unavailable candle
+    feed for this scan. Other markets continue normally. This does not change
+    entry filters, position limits, or trade frequency for healthy epics.
+    """
+    try:
+        return candles_to_dataframe(
+            api.get_candles(
+                epic=epic,
+                resolution=resolution,
+                max_candles=max_candles,
+            )
+        )
+    except Exception as exc:
+        message = str(exc)
+        status = "400" if "400 Client Error" in message else "ERROR"
+        log(
+            f"{epic}: CANDLE FEED {status}; skipping this epic for this scan "
+            f"without affecting other markets: {message}"
+        )
+        return pd.DataFrame()
+
+
 def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_seconds=CANDLE_CACHE_DEFAULT_TTL_SECONDS):
-    """Short-lived candles with M5/M1 recovery when native M15 data lags."""
+    """Short-lived candles with per-epic error isolation."""
     if cache is None:
-        df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
+        df = _safe_candles_fetch(api, epic, resolution, max_candles)
     else:
         now = time.monotonic()
         key = (epic, resolution, int(max_candles))
@@ -922,7 +947,7 @@ def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_secon
         if item is not None and now - item[0] < max(0.0, float(ttl_seconds)):
             df = item[1].copy()
         else:
-            df = candles_to_dataframe(api.get_candles(epic=epic, resolution=resolution, max_candles=max_candles))
+            df = _safe_candles_fetch(api, epic, resolution, max_candles)
             cache[key] = (now, df.copy())
 
     stale, age = _strategy_candle_feed_is_stale(df, resolution)
