@@ -1,60 +1,60 @@
 {
-  "updated_at": "2026-09-30T03:16:11.462439+00:00",
+  "updated_at": "2026-09-30T03:31:42.343088+00:00",
   "positions": [
     {
-      "dealId": "00000000-66d6-e9ce-0493-972c0004511e",
+      "dealId": "00000000-66d6-f4c9-0493-972c0004511e",
       "epic": "OIL_CRUDE",
       "direction": "BUY",
-      "size": 2.0,
-      "entry": 88.821,
-      "current": 88.821,
-      "stopLoss": 88.63004273565855,
-      "takeProfit": 88.93663817622763,
-      "profitLoss": 0.06
+      "size": 11.3,
+      "entry": 88.894,
+      "current": 88.894,
+      "stopLoss": 88.7137539687858,
+      "takeProfit": 89.01416402080947,
+      "profitLoss": -2.7
     },
     {
-      "dealId": "00000000-66d6-ea3d-0493-972c0004511e",
-      "epic": "GOLD",
-      "direction": "BUY",
-      "size": 0.08,
-      "entry": 4179.41,
-      "current": 4179.41,
-      "stopLoss": 4174.774203267313,
-      "takeProfit": 4182.150531155124,
-      "profitLoss": -0.36
-    },
-    {
-      "dealId": "00000000-66d6-ea52-0493-972c0004511e",
-      "epic": "SILVER",
-      "direction": "SELL",
-      "size": 3.2,
-      "entry": 61.089,
-      "current": 61.089,
-      "stopLoss": 61.1961232622864,
-      "takeProfit": 61.00425115847574,
-      "profitLoss": 0.15
-    },
-    {
-      "dealId": "00000000-66d6-eaa8-0493-972c0004511e",
+      "dealId": "00000000-66d6-f500-0493-972c0004511e",
       "epic": "US100",
       "direction": "SELL",
-      "size": 0.078,
-      "entry": 30331.2,
-      "current": 30331.2,
-      "stopLoss": 30355.022028035168,
-      "takeProfit": 30315.65198130989,
-      "profitLoss": -1.2
+      "size": 0.037,
+      "entry": 30320.7,
+      "current": 30320.7,
+      "stopLoss": 30343.1033117462,
+      "takeProfit": 30304.931125502535,
+      "profitLoss": -2.27
     },
     {
-      "dealId": "00000000-66d6-eac4-0493-972c0004511e",
-      "epic": "US500",
+      "dealId": "00000000-66d6-f528-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "BUY",
+      "size": 4.8,
+      "entry": 88.874,
+      "current": 88.874,
+      "stopLoss": 88.69375396878578,
+      "takeProfit": 88.99416402080946,
+      "profitLoss": -0.79
+    },
+    {
+      "dealId": "00000000-66d6-feb5-0493-972c0004511e",
+      "epic": "OIL_CRUDE",
+      "direction": "BUY",
+      "size": 6.5,
+      "entry": 88.794,
+      "current": 88.794,
+      "stopLoss": 88.62643071803326,
+      "takeProfit": 88.90571285464449,
+      "profitLoss": 0.84
+    },
+    {
+      "dealId": "00000000-66d6-fe67-0493-972c0004511e",
+      "epic": "US100",
       "direction": "SELL",
-      "size": 0.58,
-      "entry": 7683.7,
-      "current": 7683.7,
-      "stopLoss": 7686.895622887402,
-      "takeProfit": 7681.569584741732,
-      "profitLoss": -2.77
+      "size": 0.048,
+      "entry": 30332.6,
+      "current": 30332.6,
+      "stopLoss": 30356.10030451071,
+      "takeProfit": 30318.099796992858,
+      "profitLoss": -0.85
     }
   ]
 }

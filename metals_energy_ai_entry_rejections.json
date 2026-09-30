@@ -1,1037 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T23:26:49.541439+00:00",
-    "epic": "PLATINUM",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:26:58.836943+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:27:02.879797+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:27:11.698610+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:27:14.260158+00:00",
-    "epic": "PLATINUM",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:27:41.028301+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:27:44.055262+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:27:55.463976+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:27:59.010501+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:08.388793+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:11.396422+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:22.802914+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:26.302650+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:35.653859+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:38.684454+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:50.019739+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:28:53.615246+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:29:02.974284+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:29:05.999601+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:29:18.887625+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:29:22.396085+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:30:58.398574+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:31:11.339500+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:31:16.137981+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:31:25.713642+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:32:02.000669+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:33:27.672207+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:33:38.555773+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:33:40.213529+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:33:53.567626+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:04.477537+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:06.024364+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:19.482218+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:30.361872+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:31.935699+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:45.382556+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:56.272249+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:34:57.831467+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:35:11.282875+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:35:14.310635+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:35:42.593056+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:36:15.036794+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:36:18.069517+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:36:45.963740+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:36:49.016212+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:36:59.044521+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:00.625694+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:13.113040+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:16.150476+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:26.082811+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:27.535218+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:39.992200+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:43.022132+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:52.900059+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:37:54.396478+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:38:06.848897+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:38:09.883643+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:39:40.425510+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:39:51.871596+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:39:53.356593+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:40:05.810735+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:40:17.250957+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:40:18.714482+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:40:21.747204+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:40:36.228482+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:40:40.821106+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:15.761137+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:20.811202+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:30.627971+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:33.655871+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:36.213352+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:49.136441+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:41:54.168595+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:04.528895+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:06.546817+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:09.025446+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:22.017844+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:27.068442+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:37.420270+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:40.450002+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:42:42.946238+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:43:14.374432+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:43:16.398274+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:43:18.876634+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:43:31.867279+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:43:36.921967+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:43:49.759215+00:00",
-    "epic": "US100",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:43:52.335136+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:43:54.832557+00:00",
-    "epic": "BTCUSD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:44:41.192148+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:45:13.701949+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:45:24.590816+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:45:26.152342+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:47:32.720400+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:47:50.227998+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:48:04.156262+00:00",
-    "epic": "US500",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:48:30.536875+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:48:32.003956+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:48:45.930329+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:48:56.360409+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:48:57.840325+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:49:11.762558+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:49:41.719792+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:49:52.163362+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:49:53.628416+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:50:07.587630+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:50:19.034612+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:50:20.499177+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:50:23.529984+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:50:36.541993+00:00",
-    "epic": "GOLD",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:50:38.582696+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T23:51:37.609405+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:51:40.635591+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:51:43.666326+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:51:58.601301+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:01.631778+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:15.548445+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:19.136871+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:22.621617+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:36.093781+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:39.126909+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:54.066595+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:52:57.092116+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:00.128192+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:15.145165+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:18.176782+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:32.134798+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:35.682926+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:39.194204+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:52.660339+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:55.666730+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:53:59.707764+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:03.746183+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:16.587046+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:19.616565+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:22.651084+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:37.666180+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:40.698072+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:44.737411+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:54:48.778509+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:03.177046+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:06.218356+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:09.242627+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:22.159123+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:24.624725+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:28.244098+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:55:59.100956+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:56:01.669704+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:56:05.197807+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:57:22.265581+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:57:24.734416+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:57:37.664664+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:57:39.679998+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T23:57:58.696133+00:00",
-    "epic": "SILVER",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-30T00:05:00.810364+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:05:02.392317+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:05:03.828977+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:05:27.970374+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:05:29.524979+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:05:30.991329+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:05:34.092441+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:06:17.785493+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-30T00:09:47.589562+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:09:50.896845+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:09:53.634409+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:09:56.298566+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:10:38.714352+00:00",
-    "epic": "OIL_CRUDE",
-    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-30T00:10:51.177378+00:00",
-    "epic": "GOLD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:10:56.594934+00:00",
-    "epic": "PLATINUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:11:00.298301+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:11:12.764781+00:00",
-    "epic": "US100",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T00:11:15.482189+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
     "timestamp": "2026-09-30T00:11:18.181780+00:00",
     "epic": "BTCUSD",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5996,6 +4964,1038 @@
   {
     "timestamp": "2026-09-30T03:30:17.037451+00:00",
     "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:20.582051+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:25.368871+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:33.540749+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:45.357420+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:52.692208+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:55.183636+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:57.746076+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:31:59.220538+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:07.562277+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:09.584648+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:17.920920+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:20.401351+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:21.959554+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:30.306516+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:32.786681+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:34.800546+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:43.140333+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:44.610210+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:52.997179+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:55.522576+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:32:58.022044+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:00.031768+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:06.789754+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:11.396929+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:18.721650+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:21.209463+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:23.764316+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:25.796220+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:50.563434+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:53.597389+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:33:55.608549+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:05.513207+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:06.935372+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:08.957570+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:16.339685+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:27.261953+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:28.274169+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:30.855977+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:32.869031+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:43.690815+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:50.459669+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:53.086782+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:34:55.527131+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:05.318950+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:06.890573+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:14.714972+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:26.099503+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:27.102634+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:28.569300+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:30.596936+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:41.959807+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:43.990083+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:49.738010+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:50.753798+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:35:53.338047+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:04.144942+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:06.727291+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:08.188839+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:13.962134+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:16.521166+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:27.349606+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:29.833643+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:31.398609+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:32.860652+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:39.629393+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:44.677984+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:53.016213+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:54.024667+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:55.490879+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:36:57.515083+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:07.869617+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:09.885992+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:16.656726+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:17.665609+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:20.244080+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:30.050866+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:32.619218+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:34.110672+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:40.899406+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:43.446395+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:53.266637+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:55.745728+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:57.315219+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:37:59.333095+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:06.804144+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:11.812608+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:19.134542+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:20.145056+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:22.164589+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:24.184602+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:35.072700+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:37.080510+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:42.846633+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:44.404385+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:46.879902+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:57.256388+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:38:59.794951+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:01.290847+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:07.611644+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:10.095169+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:20.443478+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:23.020640+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:24.485301+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:26.503307+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:33.281033+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:38.327718+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:46.114288+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:47.119316+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:49.142550+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:39:51.161779+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:01.513152+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:08.846793+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:10.379865+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:12.893992+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:22.693153+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:25.735718+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:32.485350+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:36.555438+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:44.891817+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:47.927209+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:49.390369+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:40:58.740147+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:02.219758+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:09.546970+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:10.558042+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:19.905064+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:23.942218+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:30.735259+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:31.751480+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:35.316566+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:45.115627+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:48.145763+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:53.915062+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:41:57.944518+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:07.278299+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:10.336452+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:11.939835+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:20.351529+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:23.834837+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:32.174707+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:33.624540+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:41.978733+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:46.007782+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:53.814878+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:54.824913+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:42:58.392179+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:07.231006+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:10.260937+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:17.021462+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:21.079837+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:29.437573+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:32.466434+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:33.921720+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:43.271275+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:46.763316+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:54.083167+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:43:55.090348+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:04.453288+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:08.489643+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:15.274785+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:16.290459+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:19.868911+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:29.680807+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:32.710081+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:38.478849+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:42.525666+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:51.902999+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:54.926271+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:44:56.399451+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:45:04.734045+00:00",
+    "epic": "PALLADIUM",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:45:08.233817+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T03:45:45.581641+00:00",
+    "epic": "BTCUSD",
     "reason": "PORTFOLIO_RISK_CAP",
     "details": "limit=2.0%"
   }
