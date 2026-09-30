@@ -1825,9 +1825,11 @@ def manage_profit_trailing(api, positions, epic, account_currency):
     # This is deliberately tight: the user's requested behavior is to exit
     # promptly on the first meaningful retracement after a trade turns green.
     # Dynamic lock: small protection early, progressively more room as profit grows.
-    MIN_PROFIT_R_TO_ARM = 0.25
-    MIN_LOCK_R = 0.15
-    LOCK_FRACTION = 0.55
+    # Aggressive profit protection: once a trade has a meaningful positive move,
+    # lock profit quickly and tighten the lock as the peak grows.
+    MIN_PROFIT_R_TO_ARM = 0.05
+    MIN_LOCK_R = 0.02
+    LOCK_FRACTION = 0.15
 
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
