@@ -2023,6 +2023,7 @@ LAST_ENTRY_AT = {}
 # during the fast scanner and across overlapping scheduler runs.
 ENTRY_CANDLE_STATE_FILE = "fx_hyper_scalper_entry_candle_state.json"
 ENTRY_CANDLE_RESOLUTION = "MINUTE"
+ENTRY_CANDLE_FRESHNESS_ENABLED = True
 
 def _load_entry_candle_state():
     try:
@@ -2498,13 +2499,20 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 # whether the account supports hedging/netting for this market.
                 log(f"{epic}: opposite-direction signal allowed | basket={basket_direction} new={signal}")
         log(f"{epic}: SIGNAL = {signal}")
-        # Candle freshness: a completed candle may authorize one new leg. Fast
-        # scans can therefore react quickly without firing the same signal every
-        # few seconds. This is not a fixed trade-count limit.
-        candle_fresh, entry_candle_key, candle_reason = candle_entry_is_fresh(epic, signal, df)
-        if not candle_fresh:
-            record_entry_rejection(epic, candle_reason or "STALE_SIGNAL_CANDLE", f"completed_candle={entry_candle_key}; direction={signal}")
+        # Candle freshness is optional per strategy profile. Metals can allow
+        # additional entries on the same completed candle; LAST_ENTRY_AT remains
+        # the short anti-duplicate throttle.
+        entry_candle_key = completed_candle_key(df)
+        if ENTRY_CANDLE_FRESHNESS_ENABLED:
+            candle_fresh, entry_candle_key, candle_reason = candle_entry_is_fresh(epic, signal, df)
+            if not candle_fresh:
+                record_entry_rejection(epic, candle_reason or "STALE_SIGNAL_CANDLE", f"completed_candle={entry_candle_key}; direction={signal}")
+                return None
+        elif entry_candle_key is None:
+            record_entry_rejection(epic, "COMPLETED_CANDLE_UNAVAILABLE", f"direction={signal}")
             return None
+        else:
+            log(f"{epic}: CANDLE FRESHNESS GATE OFF | completed_candle={entry_candle_key} | direction={signal}")
         log(f"{epic}: CANDLE ENTRY READY | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
