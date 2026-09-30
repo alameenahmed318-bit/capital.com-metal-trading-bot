@@ -33,12 +33,13 @@ jobs:
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           TRADE_SIZE: ${{ secrets.TRADE_SIZE || '0.01' }}
-          DRY_RUN: ${{ secrets.DRY_RUN }}
+          DRY_RUN: "true"
           MAX_INITIAL_LOSS_AED: "10"
           PROFIT_ARM_AED: "1"
           PROFIT_LOCK_AED: "0.25"
           TRAIL_GIVEBACK_AED: "1"
           HISTORY_REFRESH_SECONDS: "60"
+          RUN_SECONDS: "720"
         run: python bot.py
 
       - name: Save bot ownership state
