@@ -928,11 +928,36 @@ def _safe_candles_fetch(api, epic, resolution, max_candles):
         )
     except Exception as exc:
         message = str(exc)
-        status = "400" if "400 Client Error" in message else "ERROR"
-        log(
-            f"{epic}: CANDLE FEED {status}; skipping this epic for this scan "
-            f"without affecting other markets: {message}"
-        )
+        if "400 Client Error" in message:
+            # Some Capital markets reject a large history request even though
+            # the epic itself is valid. Retry with smaller M1 history before
+            # declaring the candle feed unavailable for this scan.
+            for retry_max in (100, 50):
+                try:
+                    df = candles_to_dataframe(
+                        api.get_candles(
+                            epic=epic,
+                            resolution=resolution,
+                            max_candles=retry_max,
+                        )
+                    )
+                    if not df.empty:
+                        log(
+                            f"{epic}: CANDLE FEED recovered with max={retry_max} "
+                            f"after initial 400."
+                        )
+                        return df
+                except Exception:
+                    continue
+            log(
+                f"{epic}: CANDLE FEED 400 after retries; "
+                f"skipping this epic for this scan without affecting other markets."
+            )
+        else:
+            log(
+                f"{epic}: CANDLE FEED ERROR; skipping this epic for this scan "
+                f"without affecting other markets: {message}"
+            )
         return pd.DataFrame()
 
 
