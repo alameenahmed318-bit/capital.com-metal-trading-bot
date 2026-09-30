@@ -798,24 +798,92 @@ def original_risk_distance(position):
         return inferred if inferred > 0 else None
     return None
 
-def quote_to_account_rate(market, account_currency):
-    """Convert P/L quoted in the instrument currency into account currency.
+_FX_CONVERSION_CACHE = {}
+_FX_CONVERSION_CACHE_TTL = 120.0
 
-    The enabled portfolio instruments are normally USD-quoted. We only use a
-    fixed USD/AED conversion for the AED account case; unknown currency pairs
-    return None instead of silently using an incorrect conversion.
-    """
-    instrument = market.get("instrument", {})
-    quote_currency = (
+def _market_mid_rate(market):
+    snap = market.get("snapshot", {}) or {}
+    bid = safe_float(snap.get("bid") if snap.get("bid") is not None else market.get("bid"))
+    offer = safe_float(
+        snap.get("offer") if snap.get("offer") is not None
+        else snap.get("ask") if snap.get("ask") is not None
+        else market.get("offer") if market.get("offer") is not None
+        else market.get("ask")
+    )
+    if bid is not None and offer is not None and bid > 0 and offer > 0:
+        return (bid + offer) / 2.0
+    level = safe_float(snap.get("mid") if snap.get("mid") is not None else market.get("mid"))
+    return level if level is not None and level > 0 else None
+
+def _quote_currency_from_market(market):
+    instrument = market.get("instrument", {}) or {}
+    value = (
         instrument.get("currency")
         or instrument.get("currencyCode")
         or instrument.get("quoteCurrency")
         or market.get("currency")
         or "USD"
     )
-    if isinstance(quote_currency, dict):
-        quote_currency = quote_currency.get("code") or quote_currency.get("currencyCode")
+    if isinstance(value, dict):
+        value = value.get("code") or value.get("currencyCode")
+    return str(value or "USD").upper()
+
+def _conversion_pair_rate(api, quote_currency):
+    """Return quote-currency -> USD using a live Capital FX pair when needed."""
     quote_currency = str(quote_currency).upper()
+    if quote_currency == "USD":
+        return 1.0
+    now = time.monotonic()
+    cached = _FX_CONVERSION_CACHE.get(quote_currency)
+    if cached and now - cached[0] < _FX_CONVERSION_CACHE_TTL:
+        return cached[1]
+
+    candidates = (f"{quote_currency}USD", f"USD{quote_currency}")
+    rate = None
+    for pair in candidates:
+        try:
+            pair_market = api.get_market(pair)
+            status = str(
+                (pair_market.get("snapshot", {}) or {}).get("marketStatus")
+                or pair_market.get("marketStatus") or ""
+            ).upper()
+            mid = _market_mid_rate(pair_market)
+            if mid is None or mid <= 0:
+                continue
+            if status and status not in {"TRADEABLE", "OPEN"}:
+                continue
+            rate = mid if pair == f"{quote_currency}USD" else 1.0 / mid
+            break
+        except Exception:
+            continue
+
+    if rate is not None and rate > 0:
+        _FX_CONVERSION_CACHE[quote_currency] = (now, rate)
+    return rate
+
+def resolve_quote_to_account_rate(api, market, account_currency):
+    """Resolve quote-currency P/L into the selected Capital account currency."""
+    quote_currency = _quote_currency_from_market(market)
+    account_currency = str(account_currency).upper()
+    if quote_currency == account_currency:
+        return 1.0
+    if account_currency == "AED":
+        quote_to_usd = _conversion_pair_rate(api, quote_currency)
+        return quote_to_usd * 3.6725 if quote_to_usd else None
+    if account_currency == "USD":
+        return _conversion_pair_rate(api, quote_currency)
+    quote_to_usd = _conversion_pair_rate(api, quote_currency)
+    usd_to_account = _conversion_pair_rate(api, account_currency)
+    if quote_to_usd is None or usd_to_account is None or usd_to_account <= 0:
+        return None
+    return quote_to_usd / usd_to_account
+
+def quote_to_account_rate(market, account_currency):
+    """Read a previously resolved conversion from the market snapshot."""
+    cached_rate = safe_float(market.get("_quote_to_account_rate"))
+    if cached_rate is not None and cached_rate > 0:
+        return cached_rate
+    quote_currency = _quote_currency_from_market(market)
     account_currency = str(account_currency).upper()
     if quote_currency == account_currency:
         return 1.0
@@ -841,10 +909,11 @@ def get_position_size(api, epic, risk_amount_account, risk_distance, account_cur
     step = safe_float(dealing.get("minSizeIncrement", {}).get("value"), min_size)
     if min_size <= 0 or step <= 0 or lot_size <= 0:
         return None
-    account_to_quote = quote_to_account_rate(market, account_currency)
+    account_to_quote = resolve_quote_to_account_rate(api, market, account_currency)
     if account_to_quote is None or account_to_quote <= 0:
-        log(f"{epic}: unsupported currency conversion for account {account_currency}; trade skipped.")
+        log(f"{epic}: currency conversion unavailable for {account_currency}; conversion pair not found; trade skipped.")
         return None
+    market["_quote_to_account_rate"] = account_to_quote
     raw_size = (risk_amount_account / account_to_quote) / (risk_distance * lot_size)
     if raw_size < min_size:
         return None
@@ -1526,9 +1595,10 @@ def estimated_position_risk_account(position, api, account_currency, market_cach
             if market_cache is not None:
                 market_cache[epic] = market
         lot_size = safe_float(market.get("instrument", {}).get("lotSize"), 1.0) or 1.0
-        quote_to_account = quote_to_account_rate(market, account_currency)
+        quote_to_account = resolve_quote_to_account_rate(api, market, account_currency)
         if quote_to_account is None:
             return None
+        market["_quote_to_account_rate"] = quote_to_account
         return abs(entry - stop) * size * lot_size * quote_to_account
     except Exception:
         return None
@@ -2495,9 +2565,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK
 
         legacy_risk_multiplier = adaptive_risk_multiplier(df)
-        # AI is advisory only: it cannot change entry direction or risk sizing.
-        risk_multiplier = float(np.clip(legacy_risk_multiplier, PORTFOLIO_RISK_MIN_MULTIPLIER, PORTFOLIO_RISK_MAX_MULTIPLIER))
-        requested_risk *= risk_multiplier
+        # With an explicit account-currency loss cap, keep the requested risk
+        # at that cap. AI remains advisory and must not silently shrink a
+        # minimum-sized order below the configured budget.
+        if MAX_LOSS_PER_POSITION is None or MAX_LOSS_PER_POSITION <= 0:
+            risk_multiplier = float(np.clip(legacy_risk_multiplier, PORTFOLIO_RISK_MIN_MULTIPLIER, PORTFOLIO_RISK_MAX_MULTIPLIER))
+            requested_risk *= risk_multiplier
+        else:
+            risk_multiplier = 1.0
         log(f"{epic}: AI ASSISTANT | risk remains strategy-owned | multiplier={risk_multiplier:.3f} | requested={requested_risk:.2f} | legacy_vol_mult={legacy_risk_multiplier:.2f}")
         # Hard cap: every new position may risk at most MAX_LOSS_PER_POSITION
         # in account currency. This also caps the secondary loss guard below.
@@ -2553,7 +2628,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if MAX_LOSS_PER_POSITION is not None and MAX_LOSS_PER_POSITION > 0:
             instrument = market.get("instrument", {}) or {}
             lot_size = safe_float(instrument.get("lotSize"), 1.0) or 1.0
-            account_to_quote = quote_to_account_rate(market, account_currency)
+            account_to_quote = safe_float(market.get("_quote_to_account_rate"))
+            if account_to_quote is None or account_to_quote <= 0:
+                account_to_quote = resolve_quote_to_account_rate(api, market, account_currency)
             if account_to_quote is not None and account_to_quote > 0 and lot_size > 0 and size > 0:
                 cash_risk_distance = float(MAX_LOSS_PER_POSITION) / (
                     float(size) * float(lot_size) * float(account_to_quote)
@@ -2578,7 +2655,23 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if fresh_status != "TRADEABLE":
             record_entry_rejection(epic, "MARKET_NOT_TRADEABLE", f"broker_status={fresh_status or 'UNKNOWN'}")
             return None
-        response = api.place_order(direction=signal, size=size, stop_level=trade["stop_level"], profit_level=trade["profit_level"], epic=epic)
+        try:
+            response = api.place_order(
+                direction=signal,
+                size=size,
+                stop_level=trade["stop_level"],
+                profit_level=trade["profit_level"],
+                epic=epic,
+            )
+        except Exception as order_exc:
+            # One broker rejection must never abort the whole FX universe scan.
+            message = str(order_exc)
+            reason = "HTTP_400" if "HTTP 400" in message or "400 Client Error" in message else "BROKER_ORDER_ERROR"
+            record_entry_rejection(epic, reason, message)
+            log(f"{epic}: ORDER REJECTED BY BROKER | {message}")
+            ERROR_STREAKS[epic] = int(ERROR_STREAKS.get(epic, 0)) + 1
+            return None
+        ERROR_STREAKS[epic] = 0
         log(f"{epic}: ORDER SENT")
         log(f"{epic}: {response}")
 
