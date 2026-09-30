@@ -1730,50 +1730,103 @@ def update_profit_telemetry(positions, epic):
     return result
 
 def manage_profit_trailing(api, positions, epic, account_currency):
-    """Hyper-Scalper protection: BE +0.4 ATR, TP +0.8 ATR, SL -1.2 ATR."""
+    """Dynamic profit-lock protection.
+
+    The old Hyper-Scalper path forcibly closed winners at +0.8 ATR.
+    That made profitable trades exit too early. The new path only moves
+    the broker stop forward as profit grows; it never forces a profitable
+    position closed merely because an ATR milestone was reached.
+
+    Profit lock ladder (measured from the original risk distance):
+      +0.40R -> lock at entry
+      +0.80R -> lock +0.30R
+      +1.20R -> lock +0.60R
+      +1.80R -> lock +1.00R
+      +2.50R -> lock +1.50R
+      +3.50R -> lock +2.25R
+
+    The stop is monotonic: it can only move in the profitable direction.
+    The broker's existing TP remains the final hard target/safety net.
+    """
     active = set()
     trails = STATE.setdefault("profit_trail", {})
+
+    # (profit R threshold, locked R)
+    profit_ladder = (
+        (0.40, 0.00),
+        (0.80, 0.30),
+        (1.20, 0.60),
+        (1.80, 1.00),
+        (2.50, 1.50),
+        (3.50, 2.25),
+    )
+
     for position in get_positions_for_epic(positions, epic):
-        deal_id, direction = position_deal_id(position), position_direction(position)
-        entry, current = position_open_level(position), position_current_level(position)
-        if not deal_id or direction not in {"BUY","SELL"} or entry is None or current is None:
+        deal_id = position_deal_id(position)
+        direction = position_direction(position)
+        entry = position_open_level(position)
+        current = position_current_level(position)
+
+        if not deal_id or direction not in {"BUY", "SELL"} or entry is None or current is None:
             continue
+
         risk = original_risk_distance(position)
         if risk is None or risk <= 0:
             continue
-        atr = risk / 1.2
+
         favorable = current - entry if direction == "BUY" else entry - current
-        adverse = entry - current if direction == "BUY" else current - entry
-        key = str(deal_id); active.add(key)
-        trail = trails.get(key) or {"be_activated": False}
-        if favorable >= 0.4 * atr and not trail.get("be_activated"):
-            current_sl = position_stop_level(position)
-            should_move = current_sl is None or (direction == "BUY" and entry > current_sl) or (direction == "SELL" and entry < current_sl)
-            if should_move:
-                try:
-                    api.modify_position(deal_id=deal_id, stop_level=entry)
-                    log(f"{epic}: HYPER BE | deal={deal_id} | +{favorable/atr:.2f} ATR | SL={entry}")
-                except Exception as exc:
-                    log(f"{epic}: HYPER BE failed | deal={deal_id} | {exc}")
-            trail["be_activated"] = True
-        if favorable >= 0.8 * atr:
+        favorable_r = favorable / risk
+        key = str(deal_id)
+        active.add(key)
+
+        trail = trails.get(key) or {}
+        previous_locked_r = float(safe_float(trail.get("locked_r"), -999.0) or -999.0)
+        target_locked_r = previous_locked_r
+
+        for threshold_r, locked_r in profit_ladder:
+            if favorable_r >= threshold_r:
+                target_locked_r = max(target_locked_r, locked_r)
+
+        # Never move a protection stop backwards.
+        current_sl = position_stop_level(position)
+        if direction == "BUY":
+            desired_sl = entry + target_locked_r * risk
+            should_move = (
+                target_locked_r >= 0.0
+                and (current_sl is None or desired_sl > current_sl)
+            )
+        else:
+            desired_sl = entry - target_locked_r * risk
+            should_move = (
+                target_locked_r >= 0.0
+                and (current_sl is None or desired_sl < current_sl)
+            )
+
+        if should_move:
             try:
-                api.close_position(deal_id)
-                log(f"{epic}: HYPER TP | deal={deal_id} | +{favorable/atr:.2f} ATR")
+                api.modify_position(deal_id=deal_id, stop_level=desired_sl)
+                log(
+                    f"{epic}: PROFIT LOCK | deal={deal_id} | "
+                    f"+{favorable_r:.2f}R | locked=+{target_locked_r:.2f}R | "
+                    f"SL={desired_sl}"
+                )
             except Exception as exc:
-                log(f"{epic}: HYPER TP failed | deal={deal_id} | {exc}")
-        elif adverse >= 1.2 * atr:
-            try:
-                api.close_position(deal_id)
-                log(f"{epic}: HYPER SL | deal={deal_id} | -{adverse/atr:.2f} ATR")
-            except Exception as exc:
-                log(f"{epic}: HYPER SL failed | deal={deal_id} | {exc}")
-        trails[key] = {"epic": epic, "atr": round(atr,8), "entry": entry, "direction": direction,
-                       "be_activated": bool(trail.get("be_activated")),
-                       "last_update": datetime.now(timezone.utc).isoformat()}
+                log(f"{epic}: PROFIT LOCK failed | deal={deal_id} | {exc}")
+
+        trails[key] = {
+            "epic": epic,
+            "risk": round(risk, 8),
+            "entry": entry,
+            "direction": direction,
+            "locked_r": round(max(0.0, target_locked_r), 4),
+            "favorable_r": round(favorable_r, 4),
+            "last_update": datetime.now(timezone.utc).isoformat(),
+        }
+
     for key in list(trails.keys()):
         if key not in active and (trails.get(key) or {}).get("epic") == epic:
             trails.pop(key, None)
+
     save_state(STATE)
 
 def manage_trailing_stops(api, positions, epic, current_price, df=None):
