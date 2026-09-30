@@ -87,6 +87,10 @@ TRAILING_DISTANCE_R = 1.50
 # live peak. No fixed +profit activation/close amount is used.
 PROFIT_TRAIL_ENABLED = True
 
+# User-requested fixed order size. Every new bot entry uses exactly 0.01
+# (subject to the broker's own minimum/step validation).
+FIXED_POSITION_SIZE = 0.01
+
 # Fixed per-position loss limit in account currency (AED for an AED account).
 # Position sizing targets this amount, while the broker-side SL is placed from
 # the strategy's volatility distance. The hard guard is a secondary backstop.
@@ -1820,9 +1824,13 @@ def manage_profit_trailing(api, positions, epic, account_currency):
     active = set()
     trails = STATE.setdefault("profit_trail", {})
 
+    # Arm on the first genuinely profitable broker quote. Once armed,
+    # immediately protect at/above entry; after the trade builds a larger peak,
+    # trail a portion of that peak. This is deliberately independent of the
+    # disabled legacy trailing-stop settings.
     MIN_PROFIT_R_TO_ARM = 0.0
-    MIN_LOCK_R = 0.02
-    LOCK_FRACTION = 0.15
+    MIN_LOCK_R = 0.0
+    LOCK_FRACTION = 0.20
 
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
@@ -1869,12 +1877,14 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         # direction.
         allowed_pullback_r = max(MIN_LOCK_R, peak_r * LOCK_FRACTION)
         locked_r = max(
-            MIN_LOCK_R,
+            0.0,
             peak_r - allowed_pullback_r,
             previous_locked_r,
         )
-        locked_r = min(locked_r, max(0.0, peak_r - 0.001))
-        locked_r = max(0.0, locked_r)
+        # Never allow the protected floor to move backward. When the trade
+        # first turns profitable, entry itself is the minimum protected floor.
+        if favorable_r > 0.0:
+            locked_r = max(0.0, locked_r)
 
         current_sl = position_stop_level(position)
         if direction == "BUY":
@@ -1912,6 +1922,10 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             and current_pnl <= 0.0
         ):
             try:
+                # Broker-side SL protection was rejected or unavailable.
+                # Once this trade has been profitable, close it as soon as it
+                # reaches the protected floor instead of allowing a negative
+                # reversal to persist.
                 api.close_position(deal_id)
                 log(
                     f"{epic}: PROFIT FALLBACK CLOSE | deal={deal_id} | "
@@ -2656,10 +2670,37 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             return None
         if epic_positions:
             log(f"{epic}: additional entry allowed; no profitable-basket gate.")
-        size = get_position_size(api, epic, risk_amount, trade["risk_distance"], account_currency, market=market)
-        if size is None:
-            record_entry_rejection(epic, "MIN_TRADE_SIZE_EXCEEDS_RISK")
+        # Fixed order size: do not let dynamic risk sizing change the user's
+        # requested 0.01 trade size. Broker min-size/step rules are still
+        # respected by a hard validation immediately below.
+        size = float(FIXED_POSITION_SIZE)
+        dealing_rules = market.get("dealingRules", {}) or {}
+        broker_min_size = safe_float(
+            (dealing_rules.get("minDealSize", {}) or {}).get("value"),
+            MIN_TRADE_SIZE.get(epic, 0.01),
+        )
+        broker_size_step = safe_float(
+            (dealing_rules.get("minSizeIncrement", {}) or {}).get("value"),
+            broker_min_size,
+        )
+        if broker_min_size is not None and size < broker_min_size:
+            record_entry_rejection(
+                epic,
+                "FIXED_SIZE_BELOW_BROKER_MIN",
+                f"requested={size:.2f}; broker_min={broker_min_size}",
+            )
             return None
+        if broker_size_step is not None and broker_size_step > 0:
+            # 0.01 must be an exact broker-supported increment.
+            steps_from_min = (size - float(broker_min_size or 0.0)) / broker_size_step
+            if abs(steps_from_min - round(steps_from_min)) > 1e-9:
+                record_entry_rejection(
+                    epic,
+                    "FIXED_SIZE_NOT_BROKER_INCREMENT",
+                    f"requested={size:.2f}; min={broker_min_size}; step={broker_size_step}",
+                )
+                return None
+        log(f"{epic}: FIXED ORDER SIZE | size={size:.2f}")
 
         # Enforce the user's requested loss threshold at the broker-side SL:
         # before the trade has been profitable, do not place the normal ATR SL
