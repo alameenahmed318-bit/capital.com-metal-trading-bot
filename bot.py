@@ -10,6 +10,8 @@ PASSWORD = os.environ["CAPITAL_PASSWORD"]
 SIZE = float(os.getenv("TRADE_SIZE", "0.01"))
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 SCAN_SECONDS = 2
+MARKET_REFRESH_SECONDS = 10
+POSITION_REFRESH_SECONDS = 5
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "720"))
 HISTORY_REFRESH_SECONDS = int(os.getenv("HISTORY_REFRESH_SECONDS", "60"))
 MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
@@ -354,6 +356,8 @@ def run():
     state = load_state()
     history = {}
     cycle_started = time.time()
+    market_cache = {"ts": 0.0, "markets": []}
+    position_cache = {"ts": 0.0, "positions": []}
 
     log.info(
         "HYBRID FX BOT | DRY_RUN=%s | SCAN=2s | ALL TRADEABLE CURRENCIES ONLY",
@@ -364,15 +368,23 @@ def run():
         try:
             # One market snapshot covers all currency instruments and avoids
             # hammering the REST API once per pair every 2 seconds.
-            markets = forex_markets(api.markets())
+            now = time.time()
+            if now - market_cache["ts"] >= MARKET_REFRESH_SECONDS or not market_cache["markets"]:
+                try:
+                    market_cache["markets"] = forex_markets(api.markets())
+                    market_cache["ts"] = now
+                except Exception as e:
+                    log.warning("MARKETS SNAPSHOT FAILED | %s | using cached markets", e)
+            markets = market_cache["markets"]
             market_by_epic = {m["epic"]: m for m in markets}
 
-            try:
-                positions = api.positions()
-            except Exception as e:
-                log.error("POSITIONS SNAPSHOT FAILED | %s | NO ENTRIES / NO POSITION ACTIONS THIS CYCLE", e)
-                time.sleep(SCAN_SECONDS)
-                continue
+            if now - position_cache["ts"] >= POSITION_REFRESH_SECONDS:
+                try:
+                    position_cache["positions"] = api.positions()
+                    position_cache["ts"] = now
+                except Exception as e:
+                    log.error("POSITIONS SNAPSHOT FAILED | %s | keeping last snapshot", e)
+            positions = position_cache["positions"]
 
             owned = owned_open_positions(positions, state)
             refresh_history_budget(api, list(market_by_epic), history, budget=2)
