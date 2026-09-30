@@ -87,9 +87,10 @@ TRAILING_DISTANCE_R = 1.50
 # live peak. No fixed +profit activation/close amount is used.
 PROFIT_TRAIL_ENABLED = True
 
-# Hard per-position loss guard in account currency (AED for an AED account).
-# This is a secondary protection; the broker-side ATR stop remains the primary stop.
-MAX_LOSS_PER_POSITION = None  # Hyper-Scalper uses broker SL=1.2 ATR
+# Fixed per-position loss limit in account currency (AED for an AED account).
+# Position sizing targets this amount, while the broker-side SL is placed from
+# the strategy's volatility distance. The hard guard is a secondary backstop.
+MAX_LOSS_PER_POSITION = 10.0
 
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
@@ -2484,7 +2485,11 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             record_entry_rejection(epic, "PORTFOLIO_RISK_CAP", f"limit={MAX_PORTFOLIO_RISK * 100:.1f}%")
             return None
         leg_multiplier = MARTINGALE_MULTIPLIER ** existing_count if ALLOW_MARTINGALE else 1.0
-        if epic_positions:
+        if MAX_LOSS_PER_POSITION is not None and MAX_LOSS_PER_POSITION > 0:
+            # Fixed 10 AED risk target per position. Portfolio/basket limits
+            # may still reduce this amount when existing exposure requires it.
+            requested_risk = float(MAX_LOSS_PER_POSITION)
+        elif epic_positions:
             requested_risk = sizing_balance * PROFITABLE_ADD_RISK
         else:
             requested_risk = sizing_balance * AGGRESSIVE_BASE_RISK
