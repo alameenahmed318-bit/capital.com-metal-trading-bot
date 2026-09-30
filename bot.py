@@ -2880,7 +2880,7 @@ def log_trade_report(api, account_currency):
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
-    log("Strategy: HYPER-SCALPER M1 | EMA200 + Stochastic(5,3) | TP=0.8 ATR | BE=0.4 ATR | SL=1.2 ATR | direction=direct.")
+    log(f"Strategy: adaptive EMA/strategy-selector | SL={SL_ATR_MULT:.2f} ATR | TP={TP_ATR_MULT:.2f} ATR | dynamic profit-lock=True | reverse_entries={REVERSE_ENTRY_DIRECTION}.")
     log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
     log(f"Risk-budgeted entries: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; no fixed position-count cap; max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
