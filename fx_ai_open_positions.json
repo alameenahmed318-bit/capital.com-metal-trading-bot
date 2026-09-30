@@ -1,17 +1,6 @@
 {
-  "updated_at": "2026-09-30T10:53:13.948704+00:00",
+  "updated_at": "2026-09-30T11:12:36.092605+00:00",
   "positions": [
-    {
-      "dealId": "00000000-66da-4e48-0493-972c0004511e",
-      "epic": "EURMXN",
-      "direction": "SELL",
-      "size": 2800.0,
-      "entry": 20.52766,
-      "current": 20.52766,
-      "stopLoss": 20.5452388874842,
-      "takeProfit": 20.524089586255798,
-      "profitLoss": -3.4
-    },
     {
       "dealId": "00000000-66d9-fc1b-0493-972c0004511e",
       "epic": "BTCUSD",
@@ -21,29 +10,7 @@
       "current": 83660.85,
       "stopLoss": 83955.68933075678,
       "takeProfit": 83577.23632049919,
-      "profitLoss": -9.11
-    },
-    {
-      "dealId": "00000000-66da-60ef-0493-972c0004511e",
-      "epic": "EURMXN",
-      "direction": "SELL",
-      "size": 2600.0,
-      "entry": 20.53096,
-      "current": 20.53096,
-      "stopLoss": 20.550597162905166,
-      "takeProfit": 20.527207467400842,
-      "profitLoss": -1.42
-    },
-    {
-      "dealId": "00000000-66da-6994-0493-972c0004511e",
-      "epic": "BTCUSD",
-      "direction": "SELL",
-      "size": 0.0084,
-      "entry": 83878.25,
-      "current": 83878.25,
-      "stopLoss": 84202.30961619501,
-      "takeProfit": 83803.15490641654,
-      "profitLoss": -1.52
+      "profitLoss": -3.13
     },
     {
       "dealId": "00000000-66da-69dc-0493-972c0004511e",
@@ -54,7 +21,7 @@
       "current": 89.579,
       "stopLoss": 90.4099189925119,
       "takeProfit": 89.3642603023058,
-      "profitLoss": -0.47
+      "profitLoss": -4.0
     }
   ]
 }

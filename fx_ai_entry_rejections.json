@@ -1,41 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T20:26:11.526192+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:26:24.726458+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:26:29.844067+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:26:42.515613+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:26:47.159981+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:27:00.786357+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
     "timestamp": "2026-09-29T20:27:05.369320+00:00",
     "epic": "USDJPY",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5962,41 @@
     "epic": "CHFZAR",
     "reason": "HTTP_400",
     "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 19.63413\"}"
+  },
+  {
+    "timestamp": "2026-09-30T11:05:29.474056+00:00",
+    "epic": "AUDJPY",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T11:06:27.631387+00:00",
+    "epic": "CADSGD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T11:06:32.444951+00:00",
+    "epic": "CADTRY",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T11:08:03.376128+00:00",
+    "epic": "EURDKK",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 7.47457\"}"
+  },
+  {
+    "timestamp": "2026-09-30T11:09:00.144245+00:00",
+    "epic": "GBPAUD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T11:11:45.232126+00:00",
+    "epic": "USDCAD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
   }
 ]
