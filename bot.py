@@ -2572,6 +2572,9 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             deal_id = opened_deal_ids[0]
             for opened_deal_id in opened_deal_ids:
                 register_owned_position(opened_deal_id)
+                # Retain synthetic stop distance for risk accounting without a broker SL.
+                STATE.setdefault("risk_distance", {})[str(opened_deal_id)] = trade["risk_distance"]
+            save_state(STATE)
             # HARD POST-FILL DIRECTION CHECK: the requested direction is not
             # trusted until the broker confirms the opened position itself.
             confirmed_positions = []
