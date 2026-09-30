@@ -6,7 +6,7 @@
 - لا يوجد حد اصطناعي لعدد الصفقات.
 - منع Grid / Martingale / Averaging.
 - عكس اتجاه التنفيذ اختياري ومفعّل هنا: SELL من الاستراتيجية -> BUY للتنفيذ،
-  وBUY من الاستراتيجية -> SELL للتنفيذ.
+  وBUY من الاستراتيجية -> BUY للتنفيذ.
 - حماية الأرباح ومراقبة المراكز تبقى في bot.py.
 """
 
@@ -49,9 +49,9 @@ base.SIDEWAYS_FILTER_ENABLED = False
 base.SPREAD_FILTER_ENABLED = False
 
 # عكس اتجاه التنفيذ:
-# استراتيجية BUY  -> أمر SELL
-# استراتيجية SELL -> أمر BUY
-base.REVERSE_ENTRY_DIRECTION = True
+# استراتيجية BUY  -> أمر BUY
+# استراتيجية SELL -> أمر SELL
+base.REVERSE_ENTRY_DIRECTION = False
 # Shared fast strategy: M5 local context + H1 confirmation.
 base.generate_signal = fast_strategy.fast_signal
 base.calculate_trade = fast_strategy.calculate_trade
