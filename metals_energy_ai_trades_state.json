@@ -1,6 +1,5 @@
 {
   "risk_distance": {
-    "00000000-66d7-16c5-0493-972c0004511e": 373.00558575864676,
     "00000000-66d7-171f-0493-972c0004511e": 0.5445881552076242,
     "00000000-66d7-17cd-0493-972c0004511e": 0.34467604759976217
   },
@@ -405,7 +404,7 @@
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T04:55:47.479157+00:00"
+      "last_update": "2026-09-30T05:12:36.430486+00:00"
     },
     "00000000-66d7-171f-0493-972c0004511e": {
       "epic": "OIL_CRUDE",
@@ -415,7 +414,7 @@
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T04:55:48.676404+00:00"
+      "last_update": "2026-09-30T05:12:37.443793+00:00"
     }
   },
   "position_telemetry": {
@@ -2878,14 +2877,14 @@
       "epic": "SILVER",
       "deal_id": "00000000-66d7-17cd-0493-972c0004511e",
       "direction": "SELL",
-      "current_profit": -3.13,
-      "peak_profit": -3.13,
+      "current_profit": -0.52,
+      "peak_profit": -0.52,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T04:55:46.988560+00:00"
+      "last_update": "2026-09-30T05:12:35.850252+00:00"
     },
     "00000000-66d7-16c5-0493-972c0004511e": {
       "epic": "BTCUSD",
@@ -2904,14 +2903,14 @@
       "epic": "OIL_CRUDE",
       "deal_id": "00000000-66d7-171f-0493-972c0004511e",
       "direction": "BUY",
-      "current_profit": -5.88,
-      "peak_profit": -5.88,
+      "current_profit": -2.94,
+      "peak_profit": -2.94,
       "giveback": 0.0,
       "giveback_ratio": 0.0,
       "profit_velocity": 0.0,
       "profit_acceleration": 0.0,
       "peak_time": null,
-      "last_update": "2026-09-30T04:55:48.192803+00:00"
+      "last_update": "2026-09-30T05:12:36.874561+00:00"
     }
   }
 }
