@@ -1,49 +1,27 @@
 {
-  "updated_at": "2026-09-30T11:04:52.213877+00:00",
+  "updated_at": "2026-09-30T11:25:23.786678+00:00",
   "positions": [
     {
-      "dealId": "00000000-66da-81a8-0493-972c0004511e",
-      "epic": "GBPAUD",
-      "direction": "SELL",
-      "size": 10300.0,
-      "entry": 1.90592,
-      "current": 1.90592,
-      "stopLoss": 1.906309205597274,
-      "takeProfit": 1.9056776982452732,
-      "profitLoss": -6.07
+      "dealId": "00000000-66da-b5de-0493-972c0004511e",
+      "epic": "AUDNOK",
+      "direction": "BUY",
+      "size": 3800.0,
+      "entry": 6.6894,
+      "current": 6.6894,
+      "stopLoss": 6.682302285120562,
+      "takeProfit": null,
+      "profitLoss": -3.81
     },
     {
-      "dealId": "00000000-66da-81e8-0493-972c0004511e",
-      "epic": "GBPCAD",
+      "dealId": "00000000-66da-b8e9-0493-972c0004511e",
+      "epic": "CADJPY",
       "direction": "SELL",
-      "size": 2900.0,
-      "entry": 1.88384,
-      "current": 1.88384,
-      "stopLoss": 1.8851813114715616,
-      "takeProfit": 1.8835659223203143,
-      "profitLoss": -1.28
-    },
-    {
-      "dealId": "00000000-66d9-fc1b-0493-972c0004511e",
-      "epic": "BTCUSD",
-      "direction": "SELL",
-      "size": 0.0093,
-      "entry": 83660.85,
-      "current": 83660.85,
-      "stopLoss": 83955.68933075678,
-      "takeProfit": 83577.23632049919,
-      "profitLoss": -3.84
-    },
-    {
-      "dealId": "00000000-66da-69dc-0493-972c0004511e",
-      "epic": "OIL_CRUDE",
-      "direction": "SELL",
-      "size": 3.2,
-      "entry": 89.579,
-      "current": 89.579,
-      "stopLoss": 90.4099189925119,
-      "takeProfit": 89.3642603023058,
-      "profitLoss": -2.76
+      "size": 2800.0,
+      "entry": 110.761,
+      "current": 110.761,
+      "stopLoss": 110.9137462802684,
+      "takeProfit": null,
+      "profitLoss": -0.33
     }
   ]
 }
