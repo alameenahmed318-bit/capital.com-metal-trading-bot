@@ -1918,8 +1918,6 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             and bool(trail.get("armed"))
             and peak_r > 0
             and favorable_r <= locked_r
-            and current_pnl is not None
-            and current_pnl <= 0.0
         ):
             try:
                 # Broker-side SL protection was rejected or unavailable.
