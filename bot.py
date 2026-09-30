@@ -38,7 +38,7 @@ STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
 MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
-MAX_BASKET_RISK = 0.04
+MAX_BASKET_RISK = 0.06
 
 EPICS = list(dict.fromkeys(getattr(config, "FX_EPICS", ["EURUSD","GBPUSD","USDJPY","USDCHF","USDCAD","AUDUSD","NZDUSD","EURGBP","EURJPY","GBPJPY","AUDJPY","EURCHF"])))
 
@@ -55,7 +55,7 @@ HTF_EMA_SLOW = getattr(config, "HTF_EMA_SLOW", 200)
 VOL_REGIME_MIN = getattr(config, "VOL_REGIME_MIN", 1.05)
 VOL_REGIME_FAST = getattr(config, "VOL_REGIME_FAST", 20)
 VOL_REGIME_SLOW = getattr(config, "VOL_REGIME_SLOW", 200)
-MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.09)
+MAX_PORTFOLIO_RISK = getattr(config, "MAX_PORTFOLIO_RISK", 0.10)
 PORTFOLIO_VOL_TARGET_ANNUAL = getattr(config, "PORTFOLIO_VOL_TARGET_ANNUAL", 0.10)
 PORTFOLIO_RISK_MIN_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MIN_MULTIPLIER", 0.35)
 PORTFOLIO_RISK_MAX_MULTIPLIER = getattr(config, "PORTFOLIO_RISK_MAX_MULTIPLIER", 1.00)
@@ -1355,14 +1355,22 @@ def market_strategy_signal(df, epic, htf_df=None):
     buy = buy_trend or buy_breakout
     sell = sell_trend or sell_breakout
 
-    if buy and not sell:
+    # Prefer the direct EMA/candle trend when it is available. Breakout is
+    # a secondary confirmation, not a reason to suppress an otherwise valid trend.
+    if buy_trend:
         log(f"{epic}: CORE STRATEGY BUY | EMA9/21={ema9:.5f}/{ema21:.5f} | breakout={buy_breakout} | candle={completed_candle_key(df)}")
         return "BUY"
-    if sell and not buy:
+    if sell_trend:
         log(f"{epic}: CORE STRATEGY SELL | EMA9/21={ema9:.5f}/{ema21:.5f} | breakout={sell_breakout} | candle={completed_candle_key(df)}")
         return "SELL"
+    if buy_breakout and not sell_breakout:
+        log(f"{epic}: CORE STRATEGY BUY BREAKOUT | EMA9/21={ema9:.5f}/{ema21:.5f} | candle={completed_candle_key(df)}")
+        return "BUY"
+    if sell_breakout and not buy_breakout:
+        log(f"{epic}: CORE STRATEGY SELL BREAKOUT | EMA9/21={ema9:.5f}/{ema21:.5f} | candle={completed_candle_key(df)}")
+        return "SELL"
 
-    log(f"{epic}: CORE STRATEGY WAIT | EMA9/21={ema9:.5f}/{ema21:.5f} | buy={buy} sell={sell} | candle={completed_candle_key(df)}")
+    log(f"{epic}: CORE STRATEGY WAIT | EMA9/21={ema9:.5f}/{ema21:.5f} | trend_buy={buy_trend} trend_sell={sell_trend} breakout_buy={buy_breakout} breakout_sell={sell_breakout} | candle={completed_candle_key(df)}")
     return None
 
 
