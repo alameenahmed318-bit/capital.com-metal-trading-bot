@@ -36,7 +36,9 @@ class Capital:
             json={"identifier": IDENTIFIER, "password": PASSWORD, "encryptedPassword": False},
             timeout=20,
         )
-        r.raise_for_status()
+        if r.status_code >= 400:
+            detail = r.text[:500].replace("\n", " ")
+            raise RuntimeError(f"Capital session failed ({r.status_code}): {detail}")
         self.s.headers.update({
             "CST": r.headers.get("CST"),
             "X-SECURITY-TOKEN": r.headers.get("X-SECURITY-TOKEN"),
