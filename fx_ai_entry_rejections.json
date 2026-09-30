@@ -1,83 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T19:32:48.651818+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:33:00.432391+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:33:12.301140+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:33:24.186863+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:33:34.542297+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:33:46.317658+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:33:57.131992+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:34:08.934288+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:34:20.727665+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:34:32.522130+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:34:44.309360+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:34:56.105339+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T19:35:07.953894+00:00",
-    "epic": "USDJPY",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
     "timestamp": "2026-09-29T19:35:19.747479+00:00",
     "epic": "USDJPY",
     "reason": "BASKET_NOT_PROFITABLE",
@@ -5996,6 +5918,84 @@
   {
     "timestamp": "2026-09-30T05:58:25.158827+00:00",
     "epic": "AUDMXN",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:07:21.675371+00:00",
+    "epic": "AUDZAR",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:09:09.166903+00:00",
+    "epic": "EURGBP",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:09:26.952586+00:00",
+    "epic": "EURNZD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:09:29.554383+00:00",
+    "epic": "EURPLN",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:10:50.540735+00:00",
+    "epic": "HKDTRY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:12:12.693112+00:00",
+    "epic": "USDDKK",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:12:20.176568+00:00",
+    "epic": "USDHUF",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:12:32.864697+00:00",
+    "epic": "USDPLN",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:12:35.463564+00:00",
+    "epic": "USDSEK",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:12:38.051882+00:00",
+    "epic": "USDSGD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:14:55.152207+00:00",
+    "epic": "EURCAD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:15:20.401813+00:00",
+    "epic": "EURJPY",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T06:17:02.257972+00:00",
+    "epic": "NOKJPY",
     "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
     "details": ""
   }
