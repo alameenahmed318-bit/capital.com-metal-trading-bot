@@ -1,8 +1,0 @@
-# Backtest-only dependencies. NOT installed in the GitHub Actions live-bot runtime.
-# Requires Python >=3.10,<3.14 (numba constraint). Build the venv with:
-#   /usr/local/bin/python3.12 -m venv .venv
-#   .venv/bin/pip install -r requirements.txt -r requirements-backtest.txt
-dukascopy-python
-numpy
-scipy
-pyarrow
