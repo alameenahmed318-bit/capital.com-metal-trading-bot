@@ -155,14 +155,14 @@ def iron_signal(df, epic, htf_df=None, live_quote=None, open_positions_list=None
             f"advisory_only=True"
         )
 
-    if trend_up and not is_wick_dangerous(last_candle, "BUY"):
+    if trend_up:
         base.log(
             f"{epic}: IRON BUY SIGNAL | EMA9={ema9:.6f} | EMA21={ema21:.6f} | "
             f"ATR={atr:.6f} | drift={price_drift:.6f}"
         )
         return "BUY"
 
-    if trend_down and not is_wick_dangerous(last_candle, "SELL"):
+    if trend_down:
         base.log(
             f"{epic}: IRON SELL SIGNAL | EMA9={ema9:.6f} | EMA21={ema21:.6f} | "
             f"ATR={atr:.6f} | drift={price_drift:.6f}"
