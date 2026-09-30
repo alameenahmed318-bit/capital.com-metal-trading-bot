@@ -18,6 +18,8 @@ MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
 PROFIT_ARM = float(os.getenv("PROFIT_ARM_AED", "1"))
 PROFIT_LOCK = float(os.getenv("PROFIT_LOCK_AED", "0.25"))
 TRAIL_GIVEBACK = float(os.getenv("TRAIL_GIVEBACK_AED", "1.0"))
+ORDER_COOLDOWN_SECONDS = int(os.getenv("ORDER_COOLDOWN_SECONDS", "60"))
+MARKET_RULES_REFRESH_SECONDS = int(os.getenv("MARKET_RULES_REFRESH_SECONDS", "3600"))
 STATE_FILE = Path("bot_state.json")
 
 log = logging.getLogger("hybrid")
@@ -54,7 +56,9 @@ class Capital:
         return r.json()
     def post(self, path, payload):
         r = self.s.post(BASE + path, json=payload, timeout=20)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            detail = r.text[:500].replace("\\n", " ")
+            raise RuntimeError(f"Capital POST {path} failed ({r.status_code}): {detail}")
         return r.json()
 
     def put(self, path, payload):
@@ -67,6 +71,9 @@ class Capital:
 
     def markets(self):
         return self.get("/api/v1/markets").get("markets", [])
+
+    def market_details(self, epic):
+        return self.get(f"/api/v1/markets/{epic}")
 
     def prices(self, epic, n=100):
         return self.get(f"/api/v1/prices/{epic}", resolution="MINUTE", max=n)
@@ -287,6 +294,31 @@ def tighten_profit_stop(api, item, state_entry, market):
         log.warning("profit stop update failed %s: %s", deal_id, e)
 
 
+def normalize_size(api, epic, configured_size, rules_cache):
+    now = time.time()
+    row = rules_cache.get(epic)
+    if row and now - row.get("ts", 0) < MARKET_RULES_REFRESH_SECONDS:
+        rules = row.get("rules", {})
+    else:
+        details = api.market_details(epic)
+        rules = details.get("dealingRules", {})
+        rules_cache[epic] = {"ts": now, "rules": rules}
+
+    min_size = float(rules.get("minDealSize", {}).get("value", configured_size) or configured_size)
+    max_size = float(rules.get("maxDealSize", {}).get("value", configured_size) or configured_size)
+    increment = float(rules.get("minSizeIncrement", {}).get("value", 0) or 0)
+
+    size = max(float(configured_size), min_size)
+    if increment > 0:
+        steps = round(size / increment)
+        size = steps * increment
+        if size < min_size:
+            size = min_size
+    if size > max_size:
+        raise RuntimeError(f"SIZE_TOO_LARGE configured={configured_size} max={max_size}")
+    return size
+
+
 def open_bot_position(api, epic, direction, size, state, market):
     result = api.open(epic, direction, size)
     if DRY_RUN or not result:
@@ -358,6 +390,8 @@ def run():
     cycle_started = time.time()
     market_cache = {"ts": 0.0, "markets": []}
     position_cache = {"ts": 0.0, "positions": []}
+    market_rules = {}
+    order_cooldown = {}
 
     log.info(
         "HYBRID FX BOT | DRY_RUN=%s | SCAN=2s | ALL TRADEABLE CURRENCIES ONLY",
@@ -418,8 +452,18 @@ def run():
                     )
 
                     if sig and not existing_any:
-                        open_bot_position(api, epic, sig, SIZE, state, market)
-                        log.info("ENTRY | %s -> %s", epic, sig)
+                        last_order = order_cooldown.get(epic, 0.0)
+                        if time.time() - last_order < ORDER_COOLDOWN_SECONDS:
+                            continue
+                        order_cooldown[epic] = time.time()
+                        try:
+                            order_size = normalize_size(api, epic, SIZE, market_rules)
+                            if order_size != SIZE:
+                                log.info("SIZE NORMALIZED | %s | configured=%.4f -> broker_min=%.4f", epic, SIZE, order_size)
+                            open_bot_position(api, epic, sig, order_size, state, market)
+                            log.info("ENTRY | %s -> %s | size=%.4f", epic, sig, order_size)
+                        except Exception as e:
+                            log.warning("%s ENTRY FAILED | %s", epic, e)
                 except Exception as e:
                     log.warning("%s scan failed: %s", epic, e)
 
