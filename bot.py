@@ -2353,11 +2353,17 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             log(f"{epic}: POSITION MANAGEMENT ONLY | entry scan skipped after AI management.")
             return None
         # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
+        # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
         strategy_signal = legacy_signal
-        signal = strategy_signal  # Hyper-Scalper direction is executed as generated.
-        strategy_strength = market_entry_strength(df, htf_df, strategy_signal) if strategy_signal in {"BUY", "SELL"} else 0.0
-        if strategy_signal in {"BUY", "SELL"} and signal != strategy_signal:
+        # The wrappers intentionally request reversed execution. Apply the
+        # reversal here, before quote selection and calculate_trade(), so the
+        # broker direction, SL and TP are all calculated for the actual order.
+        if strategy_signal in {"BUY", "SELL"} and REVERSE_ENTRY_DIRECTION:
+            signal = "SELL" if strategy_signal == "BUY" else "BUY"
             log(f"{epic}: ENTRY DIRECTION REVERSED | strategy={strategy_signal} -> broker_order={signal}")
+        else:
+            signal = strategy_signal
+        strategy_strength = market_entry_strength(df, htf_df, strategy_signal) if strategy_signal in {"BUY", "SELL"} else 0.0
         ai_support_signal = ai_decision.get("signal") or ai_decision.get("raw_signal")
         ai_support_confidence = float(ai_decision.get("confidence", 0.0) or 0.0)
         log(
@@ -2366,7 +2372,6 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             f"AI_agrees={ai_support_signal == signal if signal in {'BUY','SELL'} else False} | "
             f"no_ai_entry_gate=True"
         )
-        epic_positions = get_positions_for_epic(owned_positions, epic)
         # Manual broker positions do not belong to this bot and must never
         # block a new bot entry or consume the bot's per-epic capacity.
         # Only positions registered in POSITION_OWNERSHIP_FILE are managed
