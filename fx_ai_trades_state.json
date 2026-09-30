@@ -1,5 +1,8 @@
 {
-  "risk_distance": {},
+  "risk_distance": {
+    "00000000-66d9-c4fb-0493-972c0004511e": 0.0001904154388837847,
+    "00000000-66d9-c4fe-0493-972c0004511e": 0.0001904154388837847
+  },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
       "peak_profit": 1.25,
@@ -60,6 +63,16 @@
       "last_update": "2026-09-29T10:35:11.053446+00:00",
       "protected_fraction": 0.306,
       "protected_floor": 0.02
+    },
+    "00000000-66d9-c4fe-0493-972c0004511e": {
+      "epic": "EURUSD",
+      "risk": 0.00019042,
+      "entry": 1.13541,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T09:42:42.524423+00:00"
     }
   },
   "position_telemetry": {
@@ -210,6 +223,19 @@
       "profit_acceleration": 0.0,
       "peak_time": null,
       "last_update": "2026-09-30T08:33:49.834692+00:00"
+    },
+    "00000000-66d9-c4fe-0493-972c0004511e": {
+      "epic": "EURUSD",
+      "deal_id": "00000000-66d9-c4fe-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -3.68,
+      "peak_profit": -3.68,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T09:42:42.155577+00:00"
     }
   }
 }
