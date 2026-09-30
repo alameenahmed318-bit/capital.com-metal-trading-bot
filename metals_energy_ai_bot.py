@@ -32,6 +32,8 @@ base.EPICS = [
     "US100", "US500", "BTCUSD", "OIL_CRUDE",
 ]
 base.STRATEGY_ALLOWED_EPICS = list(base.EPICS)
+# Metals/energy bot must never inherit the FX discovery universe.
+base.DYNAMIC_FX_UNIVERSE = False
 
 # أكبر عدد ممكن بدون حد اصطناعي لكل سوق.
 # حدود الوسيط وإدارة المخاطر تبقى فعالة.
