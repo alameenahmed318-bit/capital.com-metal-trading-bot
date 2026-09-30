@@ -1,473 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T21:45:29.231282+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3329s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:29.999340+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3330s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:30.014814+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3330s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:30.793490+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3331s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:31.540510+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3332s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:38.525699+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3339s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:45.707831+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3346s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:46.381860+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3346s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:53.151238+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3353s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:54.431227+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3354s"
-  },
-  {
-    "timestamp": "2026-09-29T21:45:55.416657+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3355s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:04.837795+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3365s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:05.604787+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3366s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:05.619727+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3366s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:06.321838+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3366s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:07.027087+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3367s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:10.863803+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3371s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:19.020658+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3379s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:20.271703+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3380s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:22.908690+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3383s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:24.417741+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3384s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:25.618410+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3386s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:37.352860+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3397s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:38.270472+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3398s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:38.285773+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3398s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:39.233918+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3399s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:39.707492+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3400s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:44.000951+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3404s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:54.201853+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3414s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:54.680402+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3415s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:57.290949+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3417s"
-  },
-  {
-    "timestamp": "2026-09-29T21:46:58.834197+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3419s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:00.215794+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3420s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:15.258800+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3435s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:15.961702+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3436s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:15.977003+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3436s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:17.362952+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3437s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:18.379543+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3438s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:22.111390+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3442s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:30.622916+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3451s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:31.091390+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3451s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:34.385335+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3454s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:35.553207+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3456s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:36.556226+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3457s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:50.891068+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3471s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:52.090693+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3472s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:52.105556+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3472s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:52.615716+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3473s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:53.067237+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3473s"
-  },
-  {
-    "timestamp": "2026-09-29T21:47:59.544652+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3480s"
-  },
-  {
-    "timestamp": "2026-09-29T21:48:05.440742+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:48:06.094593+00:00",
-    "epic": "GOLD",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3486s"
-  },
-  {
-    "timestamp": "2026-09-29T21:48:06.658419+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3487s"
-  },
-  {
-    "timestamp": "2026-09-29T21:48:13.602155+00:00",
-    "epic": "SILVER",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3494s"
-  },
-  {
-    "timestamp": "2026-09-29T21:48:14.706867+00:00",
-    "epic": "PLATINUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3495s"
-  },
-  {
-    "timestamp": "2026-09-29T21:48:15.727259+00:00",
-    "epic": "PALLADIUM",
-    "reason": "STALE_OR_INVALID_STRATEGY_CANDLE",
-    "details": "STALE_COMPLETED_CANDLE:3496s"
-  },
-  {
-    "timestamp": "2026-09-29T21:48:21.050136+00:00",
-    "epic": "US500",
-    "reason": "BASKET_NOT_PROFITABLE",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:49:32.124919+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:49:36.045766+00:00",
-    "epic": "PALLADIUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:50:05.686359+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:50:08.127029+00:00",
-    "epic": "PALLADIUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:50:35.023280+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:50:37.466014+00:00",
-    "epic": "PALLADIUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:50:55.079721+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:50:56.095686+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:50:58.570204+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:51:01.013140+00:00",
-    "epic": "PALLADIUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:51:18.678001+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:51:19.671787+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:51:22.125997+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:51:24.623302+00:00",
-    "epic": "PALLADIUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:51:42.262992+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:51:43.271681+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:51:45.746116+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:51:48.263471+00:00",
-    "epic": "PALLADIUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
-    "timestamp": "2026-09-29T21:52:05.914629+00:00",
-    "epic": "GOLD",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:52:06.897265+00:00",
-    "epic": "SILVER",
-    "reason": "SAFETY_STOP",
-    "details": ""
-  },
-  {
-    "timestamp": "2026-09-29T21:52:09.421203+00:00",
-    "epic": "PLATINUM",
-    "reason": "AI_SPREAD_DECISION",
-    "details": "AI rejected current spread; legacy_cap=0.1500%"
-  },
-  {
     "timestamp": "2026-09-29T21:52:11.900476+00:00",
     "epic": "PALLADIUM",
     "reason": "AI_SPREAD_DECISION",
@@ -5996,6 +5528,474 @@
   {
     "timestamp": "2026-09-30T02:38:35.806646+00:00",
     "epic": "OIL_CRUDE",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:44:58.157774+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:45:02.205454+00:00",
+    "epic": "GOLD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:45:42.153234+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:45:44.710774+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:45:48.744313+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:45:51.780688+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:46:06.649920+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:46:09.679491+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:46:12.702244+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:46:21.528480+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:46:48.229883+00:00",
+    "epic": "US500",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:46:56.324563+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:48:26.449989+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:48:29.010370+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:48:32.041322+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:12.582794+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:15.612206+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:30.092176+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:33.598993+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:36.640627+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:40.197211+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:49:52.049819+00:00",
+    "epic": "GOLD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:50:13.144920+00:00",
+    "epic": "US500",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:50:16.175761+00:00",
+    "epic": "BTCUSD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:50:19.210920+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:50:22.236857+00:00",
+    "epic": "GOLD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:51:52.609061+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:51:55.683406+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:09.683583+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:13.225951+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:16.753872+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:20.300664+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:31.671171+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:38.196127+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:50.027808+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:53.065097+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:56.100874+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:52:59.669199+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:15.556169+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:18.587696+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:29.956977+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:32.995644+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:36.021358+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:50.970483+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:54.009843+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:53:57.513893+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:09.900944+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:12.926611+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:27.414348+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:30.942826+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:34.139536+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:37.557760+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:49.394196+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:54:56.068464+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:07.441916+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:10.941815+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:13.972295+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:17.536818+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:30.937961+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:35.437452+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:38.478038+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:51.320324+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:53.890642+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:55:56.920199+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:00.963651+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:15.835241+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:18.860464+00:00",
+    "epic": "US500",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:21.902214+00:00",
+    "epic": "BTCUSD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:34.760088+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:37.779843+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:56:41.819978+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:57:27.502727+00:00",
+    "epic": "GOLD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:57:31.543963+00:00",
+    "epic": "SILVER",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:57:36.059032+00:00",
+    "epic": "US100",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T02:57:48.916036+00:00",
+    "epic": "US500",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:57:51.948308+00:00",
+    "epic": "BTCUSD",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:57:55.001599+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T02:57:58.029854+00:00",
+    "epic": "GOLD",
     "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
     "details": ""
   }
