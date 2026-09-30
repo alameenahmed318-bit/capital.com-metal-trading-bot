@@ -31,7 +31,7 @@ jobs:
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
-          TRADE_SIZE: ${{ secrets.TRADE_SIZE }}
+          TRADE_SIZE: ${{ secrets.TRADE_SIZE || '0.01' }}
           DRY_RUN: ${{ secrets.DRY_RUN }}
           MAX_INITIAL_LOSS_AED: "10"
           PROFIT_ARM_AED: "1"
