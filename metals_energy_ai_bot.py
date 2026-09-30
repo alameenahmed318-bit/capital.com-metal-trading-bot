@@ -140,12 +140,18 @@ def iron_signal(df, epic, htf_df=None, live_quote=None, open_positions_list=None
 
     price_drift = abs(current_price - candle_close)
 
+    # Entry drift is now advisory, not a hard entry veto.
+    # The old hard gate rejected valid trend signals whenever live price had
+    # moved away from the completed candle. This caused missed opportunities
+    # without improving the strategy's core direction test.
+    # Keep the measurement for telemetry, but evaluate the signal from the
+    # completed candle + EMA trend and execute using the current live quote.
     if price_drift > allowed_drift:
         base.log(
-            f"{epic}: IRON WAIT | entry drift too large | "
-            f"drift={price_drift:.6f} allowed={allowed_drift:.6f}"
+            f"{epic}: IRON DRIFT OVERSHOOT | "
+            f"drift={price_drift:.6f} reference={allowed_drift:.6f} | "
+            f"advisory_only=True"
         )
-        return None
 
     if trend_up and not is_wick_dangerous(last_candle, "BUY"):
         base.log(
