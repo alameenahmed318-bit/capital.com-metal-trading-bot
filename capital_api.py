@@ -99,7 +99,17 @@ class CapitalAPI:
                 break
             self.login()
 
-        resp.raise_for_status()
+        if not resp.ok:
+            try:
+                detail = resp.text.strip()
+            except Exception:
+                detail = ""
+            if len(detail) > 1200:
+                detail = detail[:1200] + "..."
+            message = f"HTTP {resp.status_code} for {method} {path}"
+            if detail:
+                message += f" | Capital response: {detail}"
+            raise requests.HTTPError(message, response=resp)
 
         if not resp.content:
             return {}
