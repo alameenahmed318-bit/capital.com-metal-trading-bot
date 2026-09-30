@@ -1809,25 +1809,18 @@ def update_profit_telemetry(positions, epic):
     return result
 
 def manage_profit_trailing(api, positions, epic, account_currency):
-    """Immediate profit protection: once a position is profitable, trail the
-    broker SL behind the current profitable price. Any meaningful retracement
-    from the current protected profit closes the trade.
+    """Immediate profit protection for every owned position.
 
-    The protection starts as soon as favorable P/L becomes positive. The stop
-    follows the live price upward/downward and never moves backwards. A small
-    buffer avoids placing the stop exactly on the current quote, which can be
-    rejected by the broker because of spread/min-distance constraints.
+    Protection is armed from the first broker-reported positive P/L. It never
+    waits for a fixed AED profit target. The broker SL is advanced behind the
+    live profitable move; if the broker rejects the SL change and the trade
+    retraces through the protected floor, the bot closes the owned deal as a
+    fallback. Losing trades remain under the separate hard-loss protection.
     """
     active = set()
     trails = STATE.setdefault("profit_trail", {})
 
-    # Keep only a small amount of the current favorable move unprotected.
-    # This is deliberately tight: the user's requested behavior is to exit
-    # promptly on the first meaningful retracement after a trade turns green.
-    # Dynamic lock: small protection early, progressively more room as profit grows.
-    # Aggressive profit protection: once a trade has a meaningful positive move,
-    # lock profit quickly and tighten the lock as the peak grows.
-    MIN_PROFIT_R_TO_ARM = 0.05
+    MIN_PROFIT_R_TO_ARM = 0.0
     MIN_LOCK_R = 0.02
     LOCK_FRACTION = 0.15
 
@@ -1846,32 +1839,42 @@ def manage_profit_trailing(api, positions, epic, account_currency):
 
         favorable = current - entry if direction == "BUY" else entry - current
         favorable_r = favorable / risk
+        current_pnl = position_unrealized_pnl(position)
         key = str(deal_id)
         active.add(key)
 
         trail = trails.get(key) or {}
         previous_peak_r = float(safe_float(trail.get("peak_r"), -999.0) or -999.0)
         peak_r = max(previous_peak_r, favorable_r)
+        previous_locked_r = float(safe_float(trail.get("locked_r"), 0.0) or 0.0)
 
-        # Arm on the first meaningful positive move; keep a small positive floor.
-        if peak_r < MIN_PROFIT_R_TO_ARM:
+        # Arm immediately on any positive broker-reported P/L. If the P/L
+        # field is unavailable, the price/R calculation still protects it.
+        profitable_now = current_pnl is not None and current_pnl > 0.0
+        armed = bool(trail.get("armed")) or favorable_r > MIN_PROFIT_R_TO_ARM or profitable_now
+
+        if not armed:
             trails[key] = {
-                "epic": epic,
-                "risk": round(risk, 8),
-                "entry": entry,
-                "direction": direction,
-                "peak_r": round(peak_r, 4),
-                "locked_r": round(previous_peak_r, 4),
+                "epic": epic, "risk": round(risk, 8), "entry": entry,
+                "direction": direction, "peak_r": round(peak_r, 4),
+                "locked_r": round(previous_locked_r, 4),
                 "favorable_r": round(favorable_r, 4),
+                "armed": False,
                 "last_update": datetime.now(timezone.utc).isoformat(),
             }
             continue
 
-        # As the peak grows, the allowed pullback grows too. The protected
-        # floor remains positive and can only move in the profitable direction.
+        # Keep most of the peak move protected while allowing a little room
+        # for normal spread/noise. The lock can only move in the profitable
+        # direction.
         allowed_pullback_r = max(MIN_LOCK_R, peak_r * LOCK_FRACTION)
-        locked_r = max(MIN_LOCK_R, peak_r - allowed_pullback_r)
-        locked_r = min(locked_r, max(0.0, peak_r - MIN_PROFIT_R_TO_ARM))
+        locked_r = max(
+            MIN_LOCK_R,
+            peak_r - allowed_pullback_r,
+            previous_locked_r,
+        )
+        locked_r = min(locked_r, max(0.0, peak_r - 0.001))
+        locked_r = max(0.0, locked_r)
 
         current_sl = position_stop_level(position)
         if direction == "BUY":
@@ -1881,25 +1884,49 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             desired_sl = entry - locked_r * risk
             should_move = current_sl is None or desired_sl < current_sl
 
+        sl_updated = False
         if should_move:
             try:
                 api.modify_position(deal_id=deal_id, stop_level=desired_sl)
+                sl_updated = True
                 log(
                     f"{epic}: PROFIT LOCK | deal={deal_id} | "
+                    f"pnl={current_pnl if current_pnl is not None else 'NA'} | "
                     f"profit=+{favorable_r:.2f}R | peak=+{peak_r:.2f}R | "
                     f"locked=+{locked_r:.2f}R | SL={desired_sl}"
                 )
             except Exception as exc:
                 log(f"{epic}: PROFIT LOCK failed | deal={deal_id} | {exc}")
 
+        # If the broker refuses the protective SL, do not leave a once-profitable
+        # owned trade unprotected. Close only after it has retraced to/below the
+        # protected floor, and only when the current broker-reported P/L is not
+        # positive anymore. A still-profitable trade gets another chance to set
+        # its broker SL on the next 2-second management pass.
+        if (
+            not sl_updated
+            and bool(trail.get("armed"))
+            and peak_r > 0
+            and favorable_r <= locked_r
+            and current_pnl is not None
+            and current_pnl <= 0.0
+        ):
+            try:
+                api.close_position(deal_id)
+                log(
+                    f"{epic}: PROFIT FALLBACK CLOSE | deal={deal_id} | "
+                    f"peak=+{peak_r:.2f}R | lock=+{locked_r:.2f}R | "
+                    f"pnl={current_pnl:.2f}"
+                )
+            except Exception as exc:
+                log(f"{epic}: PROFIT FALLBACK CLOSE failed | deal={deal_id} | {exc}")
+
         trails[key] = {
-            "epic": epic,
-            "risk": round(risk, 8),
-            "entry": entry,
-            "direction": direction,
-            "peak_r": round(peak_r, 4),
+            "epic": epic, "risk": round(risk, 8), "entry": entry,
+            "direction": direction, "peak_r": round(peak_r, 4),
             "locked_r": round(locked_r, 4),
             "favorable_r": round(favorable_r, 4),
+            "armed": armed,
             "last_update": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -1908,7 +1935,6 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             trails.pop(key, None)
 
     save_state(STATE)
-
 def manage_trailing_stops(api, positions, epic, current_price, df=None):
     """Tighten broker-side SL using completed-candle ATR and market structure.
     Never widen an existing stop; never remove the original broker stop.
