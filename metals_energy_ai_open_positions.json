@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-30T05:39:58.796067+00:00",
+  "updated_at": "2026-09-30T05:56:57.652552+00:00",
   "positions": [
     {
       "dealId": "00000000-66d7-171f-0493-972c0004511e",
@@ -10,18 +10,29 @@
       "current": 88.914,
       "stopLoss": 88.36941184479238,
       "takeProfit": 89.02798435135428,
-      "profitLoss": -4.37
+      "profitLoss": -2.57
     },
     {
-      "dealId": "00000000-66d7-c697-0493-972c0004511e",
-      "epic": "BTCUSD",
-      "direction": "BUY",
-      "size": 0.0182,
-      "entry": 83455.8,
-      "current": 83455.8,
-      "stopLoss": 83306.43786944846,
-      "takeProfit": 83527.5768371745,
-      "profitLoss": -3.31
+      "dealId": "00000000-66d7-d982-0493-972c0004511e",
+      "epic": "SILVER",
+      "direction": "SELL",
+      "size": 17.8,
+      "entry": 61.026,
+      "current": 61.026,
+      "stopLoss": 61.17697420090102,
+      "takeProfit": 60.95246530592377,
+      "profitLoss": 0.46
+    },
+    {
+      "dealId": "00000000-66d7-d997-0493-972c0004511e",
+      "epic": "US100",
+      "direction": "SELL",
+      "size": 0.081,
+      "entry": 30318.7,
+      "current": 30318.7,
+      "stopLoss": 30350.916552790593,
+      "takeProfit": 30301.66729010858,
+      "profitLoss": 1.1
     }
   ]
 }
