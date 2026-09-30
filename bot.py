@@ -42,7 +42,7 @@ MAX_BASKET_RISK = 0.04
 
 EPICS = list(dict.fromkeys(getattr(config, "FX_EPICS", ["EURUSD","GBPUSD","USDJPY","USDCHF","USDCAD","AUDUSD","NZDUSD","EURGBP","EURJPY","GBPJPY","AUDJPY","EURCHF"])))
 
-RESOLUTION = "MINUTE_1"  # Hyper-Scalper M1
+RESOLUTION = "MINUTE"  # Capital.com 1-minute resolution (API value)
 CANDLE_COUNT = getattr(config, "CANDLE_COUNT", 300)
 EMA_FAST = getattr(config, "EMA_FAST", 9)
 EMA_SLOW = getattr(config, "EMA_SLOW", 21)
@@ -964,7 +964,7 @@ def get_cached_candles(api, epic, resolution, max_candles, cache=None, ttl_secon
         except Exception as exc:
             log(f"{epic}: M5->M15 fallback failed: {exc}")
         try:
-            raw1 = api.get_candles(epic=epic, resolution="MINUTE_1", max_candles=max(1200, int(max_candles) * 15))
+            raw1 = api.get_candles(epic=epic, resolution="MINUTE", max_candles=max(1200, int(max_candles) * 15))
             rebuilt1 = _aggregate_1m_to_15m(raw1, max_candles)
             rebuilt1_stale, rebuilt1_age = _strategy_candle_feed_is_stale(rebuilt1, resolution)
             if not rebuilt1.empty and not rebuilt1_stale:
@@ -1838,7 +1838,7 @@ LAST_ENTRY_AT = {}
 # cap; it prevents repeated orders from reusing the same unchanged candle signal
 # during the fast scanner and across overlapping scheduler runs.
 ENTRY_CANDLE_STATE_FILE = "fx_hyper_scalper_entry_candle_state.json"
-ENTRY_CANDLE_RESOLUTION = "MINUTE_1"
+ENTRY_CANDLE_RESOLUTION = "MINUTE"
 
 def _load_entry_candle_state():
     try:
