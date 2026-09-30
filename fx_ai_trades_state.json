@@ -1,5 +1,8 @@
 {
-  "risk_distance": {},
+  "risk_distance": {
+    "00000000-66d9-2532-0493-972c0004511e": 0.00014561180620524712,
+    "00000000-66d9-2535-0493-972c0004511e": 0.00014561180620524712
+  },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
       "peak_profit": 1.25,
@@ -197,6 +200,19 @@
       "profit_acceleration": 0.0,
       "peak_time": null,
       "last_update": "2026-09-30T08:00:45.802087+00:00"
+    },
+    "00000000-66d9-2535-0493-972c0004511e": {
+      "epic": "AUDUSD",
+      "deal_id": "00000000-66d9-2535-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": 4.81,
+      "peak_profit": 4.81,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T08:33:49.834692+00:00"
     }
   }
 }
