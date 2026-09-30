@@ -2544,6 +2544,30 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if size is None:
             record_entry_rejection(epic, "MIN_TRADE_SIZE_EXCEEDS_RISK")
             return None
+
+        # Enforce the user's requested loss threshold at the broker-side SL:
+        # before the trade has been profitable, do not place the normal ATR SL
+        # if it would realize less than the configured 10 AED loss. Rebuild the
+        # SL from the ACTUAL rounded order size so the intended stop distance
+        # corresponds to the configured cash loss threshold.
+        if MAX_LOSS_PER_POSITION is not None and MAX_LOSS_PER_POSITION > 0:
+            instrument = market.get("instrument", {}) or {}
+            lot_size = safe_float(instrument.get("lotSize"), 1.0) or 1.0
+            account_to_quote = quote_to_account_rate(market, account_currency)
+            if account_to_quote is not None and account_to_quote > 0 and lot_size > 0 and size > 0:
+                cash_risk_distance = float(MAX_LOSS_PER_POSITION) / (
+                    float(size) * float(lot_size) * float(account_to_quote)
+                )
+                if signal == "BUY":
+                    trade["stop_level"] = float(trade["entry"]) - cash_risk_distance
+                else:
+                    trade["stop_level"] = float(trade["entry"]) + cash_risk_distance
+                trade["risk_distance"] = cash_risk_distance
+                log(
+                    f"{epic}: FIXED CASH SL | target=-{MAX_LOSS_PER_POSITION:.2f} "
+                    f"{account_currency} | size={size} | distance={cash_risk_distance:.8f} | SL={trade['stop_level']}"
+                )
+
         log(f"{epic}: risk budget={risk_amount:.2f}; entry={trade['entry']}; SL={trade['stop_level']}; TP={trade['profit_level']}; size={size}")
         if DEMO_ONLY and str(getattr(config, "IS_DEMO", "true")).lower() not in ("true", "1", "yes"):
             raise RuntimeError("DEMO_ONLY=True but IS_DEMO is not enabled.")
