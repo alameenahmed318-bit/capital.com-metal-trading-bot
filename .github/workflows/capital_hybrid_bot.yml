@@ -33,7 +33,7 @@ jobs:
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           TRADE_SIZE: ${{ secrets.TRADE_SIZE || '0.01' }}
-          DRY_RUN: "true"
+          DRY_RUN: "false"
           MAX_INITIAL_LOSS_AED: "10"
           PROFIT_ARM_AED: "1"
           PROFIT_LOCK_AED: "0.25"
