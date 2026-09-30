@@ -1738,36 +1738,23 @@ def update_profit_telemetry(positions, epic):
     return result
 
 def manage_profit_trailing(api, positions, epic, account_currency):
-    """Dynamic profit-lock protection.
+    """Immediate profit protection: once a position is profitable, trail the
+    broker SL behind the current profitable price. Any meaningful retracement
+    from the current protected profit closes the trade.
 
-    The old Hyper-Scalper path forcibly closed winners at +0.8 ATR.
-    That made profitable trades exit too early. The new path only moves
-    the broker stop forward as profit grows; it never forces a profitable
-    position closed merely because an ATR milestone was reached.
-
-    Profit lock ladder (measured from the original risk distance):
-      +0.40R -> lock at entry
-      +0.80R -> lock +0.30R
-      +1.20R -> lock +0.60R
-      +1.80R -> lock +1.00R
-      +2.50R -> lock +1.50R
-      +3.50R -> lock +2.25R
-
-    The stop is monotonic: it can only move in the profitable direction.
-    The broker's existing TP remains the final hard target/safety net.
+    The protection starts as soon as favorable P/L becomes positive. The stop
+    follows the live price upward/downward and never moves backwards. A small
+    buffer avoids placing the stop exactly on the current quote, which can be
+    rejected by the broker because of spread/min-distance constraints.
     """
     active = set()
     trails = STATE.setdefault("profit_trail", {})
 
-    # (profit R threshold, locked R)
-    profit_ladder = (
-        (0.40, 0.00),
-        (0.80, 0.30),
-        (1.20, 0.60),
-        (1.80, 1.00),
-        (2.50, 1.50),
-        (3.50, 2.25),
-    )
+    # Keep only a small amount of the current favorable move unprotected.
+    # This is deliberately tight: the user's requested behavior is to exit
+    # promptly on the first meaningful retracement after a trade turns green.
+    LOCK_BUFFER_R = 0.10
+    MIN_PROFIT_R_TO_ARM = 0.02
 
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
@@ -1788,35 +1775,42 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         active.add(key)
 
         trail = trails.get(key) or {}
-        previous_locked_r = float(safe_float(trail.get("locked_r"), -999.0) or -999.0)
-        target_locked_r = previous_locked_r
+        previous_peak_r = float(safe_float(trail.get("peak_r"), -999.0) or -999.0)
+        peak_r = max(previous_peak_r, favorable_r)
 
-        for threshold_r, locked_r in profit_ladder:
-            if favorable_r >= threshold_r:
-                target_locked_r = max(target_locked_r, locked_r)
+        # Do not arm while the trade is effectively flat/negative.
+        if peak_r < MIN_PROFIT_R_TO_ARM:
+            trails[key] = {
+                "epic": epic,
+                "risk": round(risk, 8),
+                "entry": entry,
+                "direction": direction,
+                "peak_r": round(peak_r, 4),
+                "locked_r": round(previous_peak_r, 4),
+                "favorable_r": round(favorable_r, 4),
+                "last_update": datetime.now(timezone.utc).isoformat(),
+            }
+            continue
 
-        # Never move a protection stop backwards.
+        # Once green, protect the current/peak profit immediately. The stop
+        # is always behind the best favorable price seen for this position.
+        locked_r = max(0.0, peak_r - LOCK_BUFFER_R)
+
         current_sl = position_stop_level(position)
         if direction == "BUY":
-            desired_sl = entry + target_locked_r * risk
-            should_move = (
-                target_locked_r >= 0.0
-                and (current_sl is None or desired_sl > current_sl)
-            )
+            desired_sl = entry + locked_r * risk
+            should_move = current_sl is None or desired_sl > current_sl
         else:
-            desired_sl = entry - target_locked_r * risk
-            should_move = (
-                target_locked_r >= 0.0
-                and (current_sl is None or desired_sl < current_sl)
-            )
+            desired_sl = entry - locked_r * risk
+            should_move = current_sl is None or desired_sl < current_sl
 
         if should_move:
             try:
                 api.modify_position(deal_id=deal_id, stop_level=desired_sl)
                 log(
                     f"{epic}: PROFIT LOCK | deal={deal_id} | "
-                    f"+{favorable_r:.2f}R | locked=+{target_locked_r:.2f}R | "
-                    f"SL={desired_sl}"
+                    f"profit=+{favorable_r:.2f}R | peak=+{peak_r:.2f}R | "
+                    f"locked=+{locked_r:.2f}R | SL={desired_sl}"
                 )
             except Exception as exc:
                 log(f"{epic}: PROFIT LOCK failed | deal={deal_id} | {exc}")
@@ -1826,7 +1820,8 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             "risk": round(risk, 8),
             "entry": entry,
             "direction": direction,
-            "locked_r": round(max(0.0, target_locked_r), 4),
+            "peak_r": round(peak_r, 4),
+            "locked_r": round(locked_r, 4),
             "favorable_r": round(favorable_r, 4),
             "last_update": datetime.now(timezone.utc).isoformat(),
         }
