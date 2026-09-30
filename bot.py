@@ -10,6 +10,7 @@ PASSWORD = os.environ["CAPITAL_PASSWORD"]
 SIZE = float(os.getenv("TRADE_SIZE", "0.01"))
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 SCAN_SECONDS = 2
+RUN_SECONDS = int(os.getenv("RUN_SECONDS", "720"))
 HISTORY_REFRESH_SECONDS = int(os.getenv("HISTORY_REFRESH_SECONDS", "60"))
 MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
 PROFIT_ARM = float(os.getenv("PROFIT_ARM_AED", "1"))
@@ -322,11 +323,29 @@ def refresh_history(api, epic, cache):
     return cache.get(epic, {}).get("xs", [])
 
 
+def refresh_history_budget(api, epics, cache, budget=2):
+    refreshed = 0
+    for epic in epics:
+        if refreshed >= budget:
+            break
+        row = cache.get(epic)
+        if row and time.time() - row.get("ts", 0) < HISTORY_REFRESH_SECONDS:
+            continue
+        try:
+            refresh_history(api, epic, cache)
+            refreshed += 1
+            time.sleep(0.12)
+        except Exception as e:
+            log.warning("%s history refresh failed: %s", epic, e)
+    return refreshed
+
+
 def run():
     api = Capital()
     api.session()
     state = load_state()
     history = {}
+    cycle_started = time.time()
 
     log.info(
         "HYBRID FX BOT | DRY_RUN=%s | SCAN=2s | ALL TRADEABLE CURRENCIES ONLY",
@@ -342,6 +361,8 @@ def run():
 
             positions = api.positions()
             owned = owned_open_positions(positions, state)
+
+            refresh_history_budget(api, list(market_by_epic), history, budget=2)
 
             # Profit protection runs first, every 2 seconds.
             for deal_id, item in owned.items():
@@ -378,6 +399,9 @@ def run():
                     log.warning("%s scan failed: %s", epic, e)
 
             save_state(state)
+            if time.time() - cycle_started >= RUN_SECONDS:
+                log.info("RUN COMPLETE | elapsed=%ds", int(time.time() - cycle_started))
+                break
             time.sleep(SCAN_SECONDS)
 
         except Exception as e:
