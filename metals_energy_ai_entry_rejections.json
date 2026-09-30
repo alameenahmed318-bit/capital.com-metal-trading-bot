@@ -1,35 +1,5 @@
 [
   {
-    "timestamp": "2026-09-30T09:33:59.740494+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T09:34:09.839594+00:00",
-    "epic": "US500",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T09:34:12.547350+00:00",
-    "epic": "BTCUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T09:34:23.531090+00:00",
-    "epic": "SILVER",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-30T09:34:24.543485+00:00",
-    "epic": "PALLADIUM",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
     "timestamp": "2026-09-30T09:34:34.018090+00:00",
     "epic": "US500",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5968,35 @@
     "epic": "SILVER",
     "reason": "PORTFOLIO_RISK_CAP",
     "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T11:35:20.890690+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "completed_candle=2026-09-30T15:30:00+00:00; direction=BUY"
+  },
+  {
+    "timestamp": "2026-09-30T11:35:35.224531+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "completed_candle=2026-09-30T15:30:00+00:00; direction=BUY"
+  },
+  {
+    "timestamp": "2026-09-30T11:35:45.060600+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "completed_candle=2026-09-30T15:30:00+00:00; direction=BUY"
+  },
+  {
+    "timestamp": "2026-09-30T11:35:55.700734+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "completed_candle=2026-09-30T15:30:00+00:00; direction=BUY"
+  },
+  {
+    "timestamp": "2026-09-30T11:36:06.376398+00:00",
+    "epic": "OIL_CRUDE",
+    "reason": "SAME_COMPLETED_CANDLE",
+    "details": "completed_candle=2026-09-30T15:30:00+00:00; direction=BUY"
   }
 ]

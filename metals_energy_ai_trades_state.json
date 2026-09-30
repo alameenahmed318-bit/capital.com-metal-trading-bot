@@ -1,5 +1,8 @@
 {
-  "risk_distance": {},
+  "risk_distance": {
+    "00000000-66da-d9bb-0493-972c0004511e": 0.32806515373953266,
+    "00000000-66da-d9be-0493-972c0004511e": 0.32806515373953266
+  },
   "profit_trail": {
     "00000000-66d6-0c28-0493-972c0004511e": {
       "peak_profit": 0.63,
@@ -432,35 +435,15 @@
       "current_profit": -10.28,
       "last_update": "2026-09-30T09:36:59.030407+00:00"
     },
-    "00000000-66da-a2f9-0493-972c0004511e": {
-      "epic": "GOLD",
-      "risk": 4.18913966,
-      "entry": 4180.34,
+    "00000000-66da-d9be-0493-972c0004511e": {
+      "epic": "OIL_CRUDE",
+      "risk": 0.32806515,
+      "entry": 89.924,
       "direction": "BUY",
       "peak_r": 0.0,
       "locked_r": -999.0,
       "favorable_r": 0.0,
-      "last_update": "2026-09-30T11:16:37.860537+00:00"
-    },
-    "00000000-66da-a370-0493-972c0004511e": {
-      "epic": "SILVER",
-      "risk": 0.10472849,
-      "entry": 60.67,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T11:16:40.014103+00:00"
-    },
-    "00000000-66da-a416-0493-972c0004511e": {
-      "epic": "US100",
-      "risk": 22.69117313,
-      "entry": 30258.0,
-      "direction": "BUY",
-      "peak_r": 0.0,
-      "locked_r": -999.0,
-      "favorable_r": 0.0,
-      "last_update": "2026-09-30T11:16:33.636844+00:00"
+      "last_update": "2026-09-30T11:36:09.796520+00:00"
     }
   },
   "position_telemetry": {
@@ -3490,6 +3473,19 @@
       "profit_acceleration": 0.0,
       "peak_time": null,
       "last_update": "2026-09-30T11:16:33.203463+00:00"
+    },
+    "00000000-66da-d9be-0493-972c0004511e": {
+      "epic": "OIL_CRUDE",
+      "deal_id": "00000000-66da-d9be-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -1.52,
+      "peak_profit": -1.52,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T11:36:09.179951+00:00"
     }
   }
 }
