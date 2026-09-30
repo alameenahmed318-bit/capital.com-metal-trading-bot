@@ -28,7 +28,7 @@ base.ENTRY_CANDLE_STATE_FILE = "metals_energy_ai_entry_candle_state.json"
 
 # قائمة المعادن/الأسواق الحالية تبقى كما هي.
 base.EPICS = [
-    "GOLD", "SILVER", "PLATINUM", "PALLADIUM",
+    "GOLD", "SILVER", "PALLADIUM",
     "US100", "US500", "BTCUSD", "OIL_CRUDE",
 ]
 base.STRATEGY_ALLOWED_EPICS = list(base.EPICS)
