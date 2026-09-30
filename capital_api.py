@@ -215,8 +215,9 @@ class CapitalAPI:
             "direction": direction,
             "size": size,
             "guaranteedStop": False,
-            "stopLevel": stop_level,
         }
+        if stop_level is not None:
+            payload["stopLevel"] = stop_level
         if profit_level is not None:
             payload["profitLevel"] = profit_level
         return self._request("POST", "/api/v1/positions", json=payload)
