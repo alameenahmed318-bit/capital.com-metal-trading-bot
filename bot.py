@@ -46,9 +46,10 @@ class Capital:
 
     def get(self, path, **params):
         r = self.s.get(BASE + path, params=params, timeout=20)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            detail = r.text[:500].replace("\n", " ")
+            raise RuntimeError(f"Capital GET {path} failed ({r.status_code}): {detail}")
         return r.json()
-
     def post(self, path, payload):
         r = self.s.post(BASE + path, json=payload, timeout=20)
         r.raise_for_status()
@@ -361,9 +362,14 @@ def run():
             markets = forex_markets(api.markets())
             market_by_epic = {m["epic"]: m for m in markets}
 
-            positions = api.positions()
-            owned = owned_open_positions(positions, state)
+            try:
+                positions = api.positions()
+            except Exception as e:
+                log.error("POSITIONS SNAPSHOT FAILED | %s | NO ENTRIES / NO POSITION ACTIONS THIS CYCLE", e)
+                time.sleep(SCAN_SECONDS)
+                continue
 
+            owned = owned_open_positions(positions, state)
             refresh_history_budget(api, list(market_by_epic), history, budget=2)
 
             # Profit protection runs first, every 2 seconds.
@@ -376,7 +382,7 @@ def run():
             # same epic block a new entry, including manual/other-bot positions.
             for epic, market in market_by_epic.items():
                 try:
-                    xs = refresh_history(api, epic, history)
+                    xs = history.get(epic, {}).get("xs", [])
                     if len(xs) < 40:
                         continue
 
@@ -389,10 +395,10 @@ def run():
                     working = (xs + [px])[-120:]
                     sig = signal(working)
 
-                    existing_any = [
-                        x for x in positions
-                        if x.get("market", {}).get("epic") == epic
-                    ]
+                    existing_any = any(
+                        x.get("market", {}).get("epic") == epic
+                        for x in positions
+                    )
 
                     if sig and not existing_any:
                         open_bot_position(api, epic, sig, SIZE, state, market)
