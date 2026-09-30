@@ -1975,7 +1975,7 @@ def cleanup_state(positions):
 LIVE_PRICE_MAX_AGE_SECONDS = 3.0
 LIVE_PRICE_STREAM = None
 OPEN_POSITION_MONITOR_SECONDS = 2
-OPEN_POSITION_MONITOR_WINDOW_SECONDS = 14 * 60
+OPEN_POSITION_MONITOR_WINDOW_SECONDS = 270  # ~4.5 min; scheduler refreshes every 5 min
 # Fast entry scanner: rotate a small number of markets every few seconds.
 # This reduces worst-case entry wait without hammering the broker API.
 FAST_ENTRY_SCAN_SECONDS = 3
