@@ -48,10 +48,48 @@ jobs:
           touch bot_state.json
           git config user.name "capital-hybrid-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # The bot may be running from a commit that is no longer the tip of main.
+          # Fetch the latest main first, then merge ownership state before pushing.
+          git fetch origin main
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+
+          local_path = Path("bot_state.json")
+          try:
+              local = json.loads(local_path.read_text() or "{}")
+          except Exception:
+              local = {}
+
+          try:
+              remote_text = subprocess.check_output(
+                  ["git", "show", "origin/main:bot_state.json"],
+                  text=True,
+                  stderr=subprocess.DEVNULL,
+              )
+              remote = json.loads(remote_text or "{}")
+          except Exception:
+              remote = {}
+
+          merged = dict(remote)
+          remote_owned = remote.get("owned", {}) if isinstance(remote, dict) else {}
+          local_owned = local.get("owned", {}) if isinstance(local, dict) else {}
+
+          owned = dict(remote_owned) if isinstance(remote_owned, dict) else {}
+          if isinstance(local_owned, dict):
+              owned.update(local_owned)
+
+          merged["owned"] = owned
+          local_path.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n")
+          PY
+
           git add bot_state.json
           if git diff --cached --quiet; then
             echo "No state changes."
           else
             git commit -m "Update FX bot ownership state"
-            git push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi
