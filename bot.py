@@ -3097,6 +3097,7 @@ def run_cycle():
                 and instrument_type in {"CURRENCIES", "CURRENCY", "FX"}
                 and status == "TRADEABLE"
                 and epic not in disabled
+                and "JPY" not in epic
             ):
                 discovered.append(epic)
         EPICS = sorted(set(discovered))
