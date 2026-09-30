@@ -1,6 +1,17 @@
 {
-  "updated_at": "2026-09-30T10:11:24.896962+00:00",
+  "updated_at": "2026-09-30T10:31:42.945036+00:00",
   "positions": [
+    {
+      "dealId": "00000000-66da-3a20-0493-972c0004511e",
+      "epic": "USDMXN",
+      "direction": "SELL",
+      "size": 11100.0,
+      "entry": 18.08144,
+      "current": 18.08144,
+      "stopLoss": 18.085995887623497,
+      "takeProfit": 18.07860721153386,
+      "profitLoss": -7.78
+    },
     {
       "dealId": "00000000-66d9-e344-0493-972c0004511e",
       "epic": "SILVER",
@@ -10,7 +21,7 @@
       "current": 60.85,
       "stopLoss": 60.72634501008837,
       "takeProfit": 60.930704658283524,
-      "profitLoss": -6.68
+      "profitLoss": -0.82
     },
     {
       "dealId": "00000000-66d9-fc1b-0493-972c0004511e",
@@ -21,7 +32,7 @@
       "current": 83660.85,
       "stopLoss": 83955.68933075678,
       "takeProfit": 83577.23632049919,
-      "profitLoss": -2.01
+      "profitLoss": -6.34
     }
   ]
 }

@@ -1,65 +1,5 @@
 [
   {
-    "timestamp": "2026-09-29T20:21:25.004386+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:21:39.816824+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:21:44.738382+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:21:59.044759+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:22:04.554342+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:23:59.409673+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:24:06.379437+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:24:19.090563+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:24:23.694586+00:00",
-    "epic": "USDJPY",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
-    "timestamp": "2026-09-29T20:24:36.883387+00:00",
-    "epic": "EURUSD",
-    "reason": "PORTFOLIO_RISK_CAP",
-    "details": "limit=2.0%"
-  },
-  {
     "timestamp": "2026-09-29T20:24:42.014295+00:00",
     "epic": "USDJPY",
     "reason": "PORTFOLIO_RISK_CAP",
@@ -5998,5 +5938,65 @@
     "epic": "AUDCAD",
     "reason": "HTTP_400",
     "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 0.98861\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:25:16.279817+00:00",
+    "epic": "CADCNH",
+    "reason": "MIN_TRADE_SIZE_EXCEEDS_RISK",
+    "details": ""
+  },
+  {
+    "timestamp": "2026-09-30T10:25:22.092467+00:00",
+    "epic": "CADHKD",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 5.53316\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:25:39.306762+00:00",
+    "epic": "CADSEK",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 7.03437\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:25:48.932298+00:00",
+    "epic": "CADTRY",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 34.60747\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:33:52.461170+00:00",
+    "epic": "CHFTRY",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 58.73458\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:36:03.112203+00:00",
+    "epic": "GBPZAR",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.minvalue: 21.78367\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:38:34.173362+00:00",
+    "epic": "AUDSGD",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 0.88991\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:38:38.743560+00:00",
+    "epic": "AUDTRY",
+    "reason": "HTTP_400",
+    "details": "HTTP 400 for POST /api/v1/positions | Capital response: {\"errorCode\":\"error.invalid.stoploss.maxvalue: 34.13136\"}"
+  },
+  {
+    "timestamp": "2026-09-30T10:41:04.811672+00:00",
+    "epic": "EURPLN",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
+  },
+  {
+    "timestamp": "2026-09-30T10:43:48.593939+00:00",
+    "epic": "SGDHKD",
+    "reason": "PORTFOLIO_RISK_CAP",
+    "details": "limit=2.0%"
   }
 ]

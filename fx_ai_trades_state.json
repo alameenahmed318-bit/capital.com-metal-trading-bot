@@ -1,5 +1,13 @@
 {
-  "risk_distance": {},
+  "risk_distance": {
+    "00000000-66da-3a20-0493-972c0004511e": 0.004435887623498243,
+    "00000000-66da-4a1b-0493-972c0004511e": 0.00011736813689819488,
+    "00000000-66da-4a1e-0493-972c0004511e": 0.00011736813689819488,
+    "00000000-66da-4e45-0493-972c0004511e": 0.01757888748419722,
+    "00000000-66da-4e48-0493-972c0004511e": 0.01757888748419722,
+    "00000000-66da-50b3-0493-972c0004511e": 0.018931109598366233,
+    "00000000-66da-50b6-0493-972c0004511e": 0.018931109598366233
+  },
   "profit_trail": {
     "00000000-6679-4f7a-0493-972c0004511e": {
       "peak_profit": 1.25,
@@ -60,6 +68,36 @@
       "last_update": "2026-09-29T10:35:11.053446+00:00",
       "protected_fraction": 0.306,
       "protected_floor": 0.02
+    },
+    "00000000-66da-4a1e-0493-972c0004511e": {
+      "epic": "AUDUSD",
+      "risk": 0.00011737,
+      "entry": 0.69728,
+      "direction": "BUY",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T10:41:28.105019+00:00"
+    },
+    "00000000-66da-4e48-0493-972c0004511e": {
+      "epic": "EURMXN",
+      "risk": 0.01757889,
+      "entry": 20.52766,
+      "direction": "SELL",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T10:43:52.942632+00:00"
+    },
+    "00000000-66da-50b6-0493-972c0004511e": {
+      "epic": "GBPMXN",
+      "risk": 0.01893111,
+      "entry": 24.03594,
+      "direction": "SELL",
+      "peak_r": 0.0,
+      "locked_r": -999.0,
+      "favorable_r": 0.0,
+      "last_update": "2026-09-30T10:43:54.985217+00:00"
     }
   },
   "position_telemetry": {
@@ -223,6 +261,58 @@
       "profit_acceleration": 0.0,
       "peak_time": null,
       "last_update": "2026-09-30T09:42:42.155577+00:00"
+    },
+    "00000000-66da-3a20-0493-972c0004511e": {
+      "epic": "USDMXN",
+      "deal_id": "00000000-66da-3a20-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": -7.53,
+      "peak_profit": -7.53,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:34:53.067758+00:00"
+    },
+    "00000000-66da-4a1e-0493-972c0004511e": {
+      "epic": "AUDUSD",
+      "deal_id": "00000000-66da-4a1e-0493-972c0004511e",
+      "direction": "BUY",
+      "current_profit": -6.82,
+      "peak_profit": -6.82,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:41:27.782282+00:00"
+    },
+    "00000000-66da-4e48-0493-972c0004511e": {
+      "epic": "EURMXN",
+      "deal_id": "00000000-66da-4e48-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": -6.7,
+      "peak_profit": -6.7,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:43:52.578742+00:00"
+    },
+    "00000000-66da-50b6-0493-972c0004511e": {
+      "epic": "GBPMXN",
+      "deal_id": "00000000-66da-50b6-0493-972c0004511e",
+      "direction": "SELL",
+      "current_profit": -3.97,
+      "peak_profit": -3.97,
+      "giveback": 0.0,
+      "giveback_ratio": 0.0,
+      "profit_velocity": 0.0,
+      "profit_acceleration": 0.0,
+      "peak_time": null,
+      "last_update": "2026-09-30T10:43:54.583735+00:00"
     }
   }
 }
