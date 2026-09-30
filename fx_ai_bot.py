@@ -24,7 +24,7 @@ base.STRATEGY_ALLOWED_EPICS = []
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
-base.REVERSE_ENTRY_DIRECTION = True
+base.REVERSE_ENTRY_DIRECTION = False
 base.DYNAMIC_FX_UNIVERSE = True
 # Shared fast strategy: fast candle/momentum/ATR + light HTF confirmation.
 base.generate_signal = fast_strategy.fast_signal
