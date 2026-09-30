@@ -1,5 +1,41 @@
 [
   {
+    "date": "2026-09-30T09:31:47.768",
+    "dateUtc": "2026-09-30T05:31:47.768",
+    "instrumentName": "OIL_CRUDE",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140301877620835",
+    "size": "-10.02",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d7-b67d-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T09:30:13.760",
+    "dateUtc": "2026-09-30T05:30:13.760",
+    "instrumentName": "GOLD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140301779054138",
+    "size": "-10.22",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d7-ab24-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T09:15:00.694",
+    "dateUtc": "2026-09-30T05:15:00.694",
+    "instrumentName": "SILVER",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140300821697479",
+    "size": "2.12",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66d7-17cd-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-30T08:52:12.087",
     "dateUtc": "2026-09-30T04:52:12.087",
     "instrumentName": "BTCUSD",
