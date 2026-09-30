@@ -1824,8 +1824,10 @@ def manage_profit_trailing(api, positions, epic, account_currency):
     # Keep only a small amount of the current favorable move unprotected.
     # This is deliberately tight: the user's requested behavior is to exit
     # promptly on the first meaningful retracement after a trade turns green.
-    LOCK_BUFFER_R = 0.08
-    MIN_PROFIT_R_TO_ARM = 0.01
+    # Dynamic lock: small protection early, progressively more room as profit grows.
+    MIN_PROFIT_R_TO_ARM = 0.25
+    MIN_LOCK_R = 0.15
+    LOCK_FRACTION = 0.55
 
     for position in get_positions_for_epic(positions, epic):
         deal_id = position_deal_id(position)
@@ -1863,9 +1865,11 @@ def manage_profit_trailing(api, positions, epic, account_currency):
             }
             continue
 
-        # Once green, lock a positive amount. The stop never moves back to
-        # break-even or into a loss after the trade has become profitable.
-        locked_r = max(MIN_PROFIT_R_TO_ARM, peak_r - LOCK_BUFFER_R)
+        # As the peak grows, the allowed pullback grows too. The protected
+        # floor remains positive and can only move in the profitable direction.
+        allowed_pullback_r = max(MIN_LOCK_R, peak_r * LOCK_FRACTION)
+        locked_r = max(MIN_LOCK_R, peak_r - allowed_pullback_r)
+        locked_r = min(locked_r, max(0.0, peak_r - MIN_PROFIT_R_TO_ARM))
 
         current_sl = position_stop_level(position)
         if direction == "BUY":
@@ -2466,13 +2470,14 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                 # whether the account supports hedging/netting for this market.
                 log(f"{epic}: opposite-direction signal allowed | basket={basket_direction} new={signal}")
         log(f"{epic}: SIGNAL = {signal}")
-        # Candle strategy freshness gate: never re-enter from the same completed
-        # candle after a close. This is deliberately based on candle identity,
-        # not an arbitrary number of trades or a timer.
-        # Candle-repeat gate disabled: valid signals may be evaluated again on
-        # subsequent fast scans. Risk budgets remain the exposure safeguard.
-        entry_candle_key = completed_candle_key(df)
-        log(f"{epic}: CANDLE ENTRY GATE DISABLED | completed_candle={entry_candle_key} | direction={signal}")
+        # Candle freshness: a completed candle may authorize one new leg. Fast
+        # scans can therefore react quickly without firing the same signal every
+        # few seconds. This is not a fixed trade-count limit.
+        candle_fresh, entry_candle_key, candle_reason = candle_entry_is_fresh(epic, signal, df)
+        if not candle_fresh:
+            record_entry_rejection(epic, candle_reason or "STALE_SIGNAL_CANDLE", f"completed_candle={entry_candle_key}; direction={signal}")
+            return None
+        log(f"{epic}: CANDLE ENTRY READY | completed_candle={entry_candle_key} | direction={signal}")
         # Correlation is advisory in flexible-AI mode. AI owns direction; correlation is logged
         # for exposure awareness but must not silently starve valid entries.
         if CORRELATION_FILTER_ENABLED and not correlation_allows_entry(api, epic, df, positions, signal):
@@ -2655,6 +2660,28 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
         if fresh_status != "TRADEABLE":
             record_entry_rejection(epic, "MARKET_NOT_TRADEABLE", f"broker_status={fresh_status or 'UNKNOWN'}")
             return None
+
+        # Last-moment executable-price recheck. The signal uses the current
+        # completed candle, but the order uses the newest broker quote.
+        fresh_bid = safe_float(fresh_snapshot.get("bid") if fresh_snapshot.get("bid") is not None else fresh_market.get("bid"))
+        fresh_offer = safe_float(
+            fresh_snapshot.get("offer") if fresh_snapshot.get("offer") is not None
+            else fresh_snapshot.get("ask") if fresh_snapshot.get("ask") is not None
+            else fresh_market.get("offer") if fresh_market.get("offer") is not None
+            else fresh_market.get("ask")
+        )
+        if fresh_bid is None or fresh_offer is None or fresh_offer < fresh_bid:
+            record_entry_rejection(epic, "FRESH_QUOTE_INVALID")
+            return None
+        fresh_execution_price = fresh_offer if signal == "BUY" else fresh_bid
+        price_recheck_atr = abs(fresh_execution_price - float(trade["entry"])) / max(float(trade.get("atr") or 0.0), 1e-12)
+        if price_recheck_atr > 0.75:
+            record_entry_rejection(epic, "ENTRY_PRICE_MOVED", f"move={price_recheck_atr:.2f}ATR; max=0.75ATR")
+            return None
+        trade["entry"] = fresh_execution_price
+        risk_distance = float(trade.get("risk_distance") or 0.0)
+        trade["stop_level"] = fresh_execution_price - risk_distance if signal == "BUY" else fresh_execution_price + risk_distance
+        log(f"{epic}: FINAL ENTRY RECHECK | executable={fresh_execution_price} | move={price_recheck_atr:.2f}ATR | SL={trade['stop_level']}")
         try:
             response = api.place_order(
                 direction=signal,
@@ -3010,7 +3037,7 @@ def log_trade_report(api, account_currency):
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
-    log(f"Strategy: adaptive EMA/strategy-selector | SL={SL_ATR_MULT:.2f} ATR | TP={TP_ATR_MULT:.2f} ATR | dynamic profit-lock=True | reverse_entries={REVERSE_ENTRY_DIRECTION}.")
+    log(f"Strategy: adaptive EMA/strategy-selector | SL=volatility/cash-risk barrier | TP=NONE | dynamic profit-lock=True | reverse_entries={REVERSE_ENTRY_DIRECTION}.")
     log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
     log(f"Risk-budgeted entries: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; no fixed position-count cap; max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
