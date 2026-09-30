@@ -29,7 +29,7 @@ ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 # 25/9 entry inversion requested for demo testing: strategy direction is
 # intentionally flipped only at order execution. Position management is normal.
-REVERSE_ENTRY_DIRECTION = False
+REVERSE_ENTRY_DIRECTION = True
 # FX wrapper enables this to discover all tradeable currency markets returned
 # by Capital.com. Other bots leave it disabled.
 DYNAMIC_FX_UNIVERSE = False
@@ -1742,8 +1742,11 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         # tick-for-tick. If profit rises, the protected floor rises with it.
         # If profit falls from that peak, close immediately while P/L is still
         # non-negative. This deliberately removes the old percentage giveback.
-        protected_fraction = 1.0 if peak > 0 else 0.0
-        floor = peak if peak > 0 else None
+        # Flexible ratchet: allow 25% pullback from peak (at least 1 AED)
+        # rather than closing on the first tiny dip. Never target a loss.
+        allowed_giveback = max(1.0, peak * 0.25) if peak >= 2.0 else None
+        floor = max(0.0, peak - allowed_giveback) if allowed_giveback is not None else None
+        protected_fraction = floor / peak if floor is not None and peak > 0 else 0.0
         giveback = max(0.0, peak - pnl)
 
         trail["peak_profit"] = round(peak, 2)
@@ -1755,7 +1758,7 @@ def manage_profit_trailing(api, positions, epic, account_currency):
         # Activate as soon as the position has any positive broker-reported P/L.
         # A tiny positive peak is tracked, but a close is only possible after a
         # real giveback to the dynamic floor.
-        if pnl > 0:
+        if pnl >= 2.0:
             if not trail.get("activated"):
                 trail["activated"] = True
                 log(
