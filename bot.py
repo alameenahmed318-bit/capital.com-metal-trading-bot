@@ -29,10 +29,10 @@ ALLOW_MARTINGALE = False
 ALLOW_AVERAGING = False
 # 25/9 entry inversion requested for demo testing: strategy direction is
 # intentionally flipped only at order execution. Position management is normal.
-REVERSE_ENTRY_DIRECTION = True
+REVERSE_ENTRY_DIRECTION = False  # Hyper-Scalper executes generated direction
 # FX wrapper enables this to discover all tradeable currency markets returned
 # by Capital.com. Other bots leave it disabled.
-DYNAMIC_FX_UNIVERSE = False
+DYNAMIC_FX_UNIVERSE = True
 
 STRONG_SIGNAL_MIN_CONFIDENCE = 0.80
 GRID_STEP_R = 0.75
@@ -40,9 +40,9 @@ MARTINGALE_MULTIPLIER = 1.25
 AGGRESSIVE_BASE_RISK = getattr(config, "RISK_PER_TRADE", 0.01)
 MAX_BASKET_RISK = 0.04
 
-EPICS = list(dict.fromkeys(getattr(config, "EPICS", ["GOLD", "EURUSD", "SILVER", "OIL_CRUDE", "US100", "US500"])))
+EPICS = list(dict.fromkeys(getattr(config, "FX_EPICS", ["EURUSD","GBPUSD","USDJPY","USDCHF","USDCAD","AUDUSD","NZDUSD","EURGBP","EURJPY","GBPJPY","AUDJPY","EURCHF"])))
 
-RESOLUTION = getattr(config, "RESOLUTION", "MINUTE_15")
+RESOLUTION = "MINUTE_1"  # Hyper-Scalper M1
 CANDLE_COUNT = getattr(config, "CANDLE_COUNT", 300)
 EMA_FAST = getattr(config, "EMA_FAST", 9)
 EMA_SLOW = getattr(config, "EMA_SLOW", 21)
@@ -89,7 +89,7 @@ PROFIT_TRAIL_ENABLED = True
 
 # Hard per-position loss guard in account currency (AED for an AED account).
 # This is a secondary protection; the broker-side ATR stop remains the primary stop.
-MAX_LOSS_PER_POSITION = 10.0
+MAX_LOSS_PER_POSITION = None  # Hyper-Scalper uses broker SL=1.2 ATR
 
 # Strategy Selector: automatically classify market regime and choose Trend/Breakout/Range.
 STRATEGY_SELECTOR_ENABLED = True
@@ -1316,35 +1316,38 @@ def market_strategy_signal(df, epic, htf_df=None):
     return None
 
 
+def calculate_hyper_stochastic(df, k_period=5, d_period=3):
+    """Fast stochastic 5,3 for the M1 Hyper-Scalper."""
+    out = df.copy()
+    low_min = out["low"].rolling(window=k_period).min()
+    high_max = out["high"].rolling(window=k_period).max()
+    span = (high_max - low_min).replace(0, np.nan)
+    out["%K"] = 100.0 * ((out["close"] - low_min) / span)
+    out["%D"] = out["%K"].rolling(window=d_period).mean()
+    return out
+
 def generate_signal(df, epic, htf_df=None):
-    return market_strategy_signal(df, epic, htf_df)
+    """M1 EMA200 + Stochastic(5,3), using the last completed M1 candle."""
+    if df is None or df.empty or len(df) < 200:
+        return None
+    work = calculate_hyper_stochastic(df)
+    last, prev = work.iloc[-2], work.iloc[-3]
+    price = safe_float(last.get("close"))
+    ema200 = safe_float(work["close"].ewm(span=200, adjust=False).mean().iloc[-2])
+    k_val, d_val = safe_float(last.get("%K")), safe_float(last.get("%D"))
+    prior_k, prior_d = safe_float(prev.get("%K")), safe_float(prev.get("%D"))
+    if None in (price, ema200, k_val, d_val, prior_k, prior_d):
+        return None
+    if price > ema200 and prior_k < prior_d and k_val > d_val and k_val < 35:
+        log(f"{epic}: [HYPER-SCALPER] BUY | price={price} > EMA200 | K={k_val:.1f}")
+        return "BUY"
+    if price < ema200 and prior_k > prior_d and k_val < d_val and k_val > 65:
+        log(f"{epic}: [HYPER-SCALPER] SELL | price={price} < EMA200 | K={k_val:.1f}")
+        return "SELL"
+    return None
+
 def market_entry_strength(df, htf_df, direction):
-    """Independent 0..1 confidence proxy using completed 15m/1h candles.
-    This is not a predicted probability of profit.
-    """
-    if len(df) < 55 or htf_df is None or len(htf_df) < 205:
-        return 0.0
-    close = df["close"]
-    hclose = htf_df["close"]
-    last = -2
-    atr = safe_float(df["atr"].iloc[last])
-    price = safe_float(close.iloc[last])
-    if not atr or not price:
-        return 0.0
-    ema9 = close.ewm(span=9, adjust=False).mean().iloc[last]
-    ema21 = close.ewm(span=21, adjust=False).mean().iloc[last]
-    ema50 = close.ewm(span=50, adjust=False).mean().iloc[last]
-    h50 = hclose.ewm(span=50, adjust=False).mean().iloc[last]
-    h200 = hclose.ewm(span=200, adjust=False).mean().iloc[last]
-    roc5 = price - close.iloc[-7]
-    sign = 1 if direction == "BUY" else -1
-    votes = sum([
-        sign * (ema9 - ema21) > 0,
-        sign * (ema21 - ema50) > 0,
-        sign * (h50 - h200) > 0,
-        sign * roc5 > 0,
-    ])
-    return votes / 4.0
+    return 1.0 if direction in {"BUY", "SELL"} else 0.0
 
 
 # Cache 15m closes for correlation checks so the 10-second monitor does not
@@ -1423,39 +1426,19 @@ def correlation_allows_entry(api, epic, df, positions, signal):
 
 
 def calculate_trade(df, direction, entry_price=None, strength=1.0, epic=None, ai_decision=None):
-    # Use only the latest completed 15m candle for volatility.
+    """Hyper-Scalper levels: SL=1.2 ATR and TP=0.8 ATR."""
+    if df is None or len(df) < 3:
+        return None
     current = df.iloc[-2]
-    atr = safe_float(current["atr"])
-    price = safe_float(entry_price) if entry_price is not None else safe_float(current["close"])
-    reference = safe_float(current["close"])
-    if price is None or atr is None or atr <= 0 or reference is None:
+    atr = safe_float(current.get("atr"))
+    price = safe_float(entry_price) if entry_price is not None else safe_float(current.get("close"))
+    if price is None or atr is None or atr <= 0 or direction not in {"BUY", "SELL"}:
         return None
-
-    # Late-entry filter disabled: current executable price may be used when
-    # the strategy has a valid directional signal. Broker quote validity remains mandatory.
-
-    # 25/9 protection: fixed 2 ATR SL and 3 ATR TP. AI does not alter execution.
-    sl_mult = 2.0
-    tp_mult = 3.0
-    sl_distance = atr * sl_mult
-    profit_level = None
-    if tp_mult > 0:
-        profit_level = price + atr * tp_mult if direction == "BUY" else price - atr * tp_mult
-    if direction == "BUY":
-        stop_level = price - sl_distance
-    elif direction == "SELL":
-        stop_level = price + sl_distance
-    else:
-        return None
-
-    return {
-        "entry": price,
-        "stop_level": stop_level,
-        "profit_level": profit_level,
-        "risk_distance": sl_distance,
-        "atr": atr,
-        "signal_strength": strength,
-    }
+    sl_distance, tp_distance = 1.2 * atr, 0.8 * atr
+    stop_level = price - sl_distance if direction == "BUY" else price + sl_distance
+    profit_level = price + tp_distance if direction == "BUY" else price - tp_distance
+    return {"entry": price, "stop_level": stop_level, "profit_level": profit_level,
+            "risk_distance": sl_distance, "atr": atr, "signal_strength": strength}
 
 def get_positions_for_epic(positions, epic):
     return [p for p in positions if position_epic(p) == epic]
@@ -1697,127 +1680,50 @@ def update_profit_telemetry(positions, epic):
     return result
 
 def manage_profit_trailing(api, positions, epic, account_currency):
-    """Dynamic profit protection driven by the live peak, not a fixed profit target.
-
-    The manager starts tracking as soon as a position becomes profitable. The
-    protected floor rises smoothly with the peak profit, so even a small gain
-    can be protected without forcing an immediate close. AI remains responsible
-    for HOLD/PROTECT/EXIT decisions; this is the broker-side safety net.
-    """
-    if not PROFIT_TRAIL_ENABLED:
-        return
-
-    active_deals = set()
-    telemetry = STATE.setdefault("position_telemetry", {})
+    """Hyper-Scalper protection: BE +0.4 ATR, TP +0.8 ATR, SL -1.2 ATR."""
+    active = set()
     trails = STATE.setdefault("profit_trail", {})
-
     for position in get_positions_for_epic(positions, epic):
-        deal_id = position_deal_id(position)
-        pnl = position_unrealized_pnl(position)
-        if not deal_id:
+        deal_id, direction = position_deal_id(position), position_direction(position)
+        entry, current = position_open_level(position), position_current_level(position)
+        if not deal_id or direction not in {"BUY","SELL"} or entry is None or current is None:
             continue
-        if pnl is None:
-            log(f"{epic}: PROFIT TRAIL HOLD | deal={deal_id} | broker P/L unavailable; preserving peak/floor.")
+        risk = original_risk_distance(position)
+        if risk is None or risk <= 0:
             continue
-
-        deal_key = str(deal_id)
-        active_deals.add(deal_key)
-        now_iso = datetime.now(timezone.utc).isoformat()
-        trail = trails.get(deal_key) or {
-            "peak_profit": float(pnl),
-            "peak_time": now_iso,
-            "activated": False,
-        }
-        peak = safe_float(trail.get("peak_profit"), pnl)
-        if peak is None:
-            peak = float(pnl)
-
-        if pnl > peak:
-            peak = float(pnl)
-            trail["peak_profit"] = round(peak, 2)
-            trail["peak_time"] = now_iso
-
-        # Ratcheting profit protection:
-        # the protected close level follows the highest broker-reported profit
-        # tick-for-tick. If profit rises, the protected floor rises with it.
-        # If profit falls from that peak, close immediately while P/L is still
-        # non-negative. This deliberately removes the old percentage giveback.
-        # Flexible ratchet: allow 25% pullback from peak (at least 1 AED)
-        # rather than closing on the first tiny dip. Never target a loss.
-        allowed_giveback = max(1.0, peak * 0.25) if peak >= 2.0 else None
-        floor = max(0.0, peak - allowed_giveback) if allowed_giveback is not None else None
-        protected_fraction = floor / peak if floor is not None and peak > 0 else 0.0
-        giveback = max(0.0, peak - pnl)
-
-        trail["peak_profit"] = round(peak, 2)
-        trail["protected_fraction"] = round(protected_fraction, 4)
-        trail["protected_floor"] = round(floor, 2) if floor is not None else None
-        trail["giveback"] = round(giveback, 2)
-        trail["last_update"] = now_iso
-
-        # Activate as soon as the position has any positive broker-reported P/L.
-        # A tiny positive peak is tracked, but a close is only possible after a
-        # real giveback to the dynamic floor.
-        if pnl >= 2.0:
-            if not trail.get("activated"):
-                trail["activated"] = True
-                log(
-                    f"{epic}: PROFIT PROTECTION ACTIVATED | deal={deal_id} | "
-                    f"peak={peak:.2f} {account_currency} | "
-                    f"protected={protected_fraction:.0%} | floor={floor:.2f} {account_currency}"
-                )
-            elif pnl > safe_float(trails.get(deal_key, {}).get("peak_profit"), -float("inf")):
-                log(f"{epic}: PROFIT PEAK UPDATED | deal={deal_id} | peak={peak:.2f} {account_currency}")
-
-        trails[deal_key] = trail
-        telemetry[deal_key] = {
-            "epic": epic,
-            "direction": position_direction(position),
-            "current_profit": round(float(pnl), 2),
-            "peak_profit": round(float(peak), 2),
-            "giveback": round(float(giveback), 2),
-            "protected_fraction": round(float(protected_fraction), 4),
-            "protected_floor": round(float(floor), 2) if floor is not None else None,
-            "peak_time": trail.get("peak_time"),
-            "last_update": now_iso,
-        }
-
-        # LOSS-PRESERVATION RULE: this discretionary profit manager may only
-        # close while the broker still reports a non-negative P/L. Once P/L is
-        # negative, only the hard loss guard or the broker SL may close it.
-        if trail.get("activated") and floor is not None and pnl >= 0.0 and pnl < floor:
+        atr = risk / 1.2
+        favorable = current - entry if direction == "BUY" else entry - current
+        adverse = entry - current if direction == "BUY" else current - entry
+        key = str(deal_id); active.add(key)
+        trail = trails.get(key) or {"be_activated": False}
+        if favorable >= 0.4 * atr and not trail.get("be_activated"):
+            current_sl = position_stop_level(position)
+            should_move = current_sl is None or (direction == "BUY" and entry > current_sl) or (direction == "SELL" and entry < current_sl)
+            if should_move:
+                try:
+                    api.modify_position(deal_id=deal_id, stop_level=entry)
+                    log(f"{epic}: HYPER BE | deal={deal_id} | +{favorable/atr:.2f} ATR | SL={entry}")
+                except Exception as exc:
+                    log(f"{epic}: HYPER BE failed | deal={deal_id} | {exc}")
+            trail["be_activated"] = True
+        if favorable >= 0.8 * atr:
             try:
-                log(
-                    f"{epic}: PROFIT EXIT INTENT | reason=DYNAMIC_PROFIT_PROTECTION | "
-                    f"deal={deal_id} | peak={peak:.2f} {account_currency} | "
-                    f"current={pnl:.2f} {account_currency} | floor={floor:.2f} {account_currency}"
-                )
-                response = api.close_position(deal_id)
-                confirmed = confirm_position_closed(api, deal_id)
-                log(
-                    f"{epic}: DYNAMIC PROFIT PROTECTION CLOSE | deal={deal_id} | "
-                    f"peak={peak:.2f} {account_currency} | current={pnl:.2f} {account_currency} | "
-                    f"giveback={giveback:.2f} | protected={protected_fraction:.0%} | "
-                    f"floor={floor:.2f} {account_currency} | response={response} | confirmed_closed={confirmed}"
-                )
-                trails.pop(deal_key, None)
-                telemetry.pop(deal_key, None)
+                api.close_position(deal_id)
+                log(f"{epic}: HYPER TP | deal={deal_id} | +{favorable/atr:.2f} ATR")
             except Exception as exc:
-                log(f"{epic}: dynamic profit-protection close failed | deal={deal_id} | {exc}")
-        elif trail.get("activated") and floor is not None and pnl < 0.0:
-            log(
-                f"{epic}: PROFIT EXIT BLOCKED | deal={deal_id} | current={pnl:.2f} {account_currency} | "
-                f"floor={floor:.2f} {account_currency} | broker_SL_or_hard_loss_guard_only=True"
-            )
-
-    # Only prune deals belonging to this market. Other markets may be
-    # monitored later in the same pass; deleting their peaks here would
-    # reset profit protection before their next quote arrives.
-    for deal_key in list(trails.keys()):
-        if deal_key not in active_deals and (telemetry.get(deal_key) or {}).get("epic") == epic:
-            trails.pop(deal_key, None)
-            telemetry.pop(deal_key, None)
-
+                log(f"{epic}: HYPER TP failed | deal={deal_id} | {exc}")
+        elif adverse >= 1.2 * atr:
+            try:
+                api.close_position(deal_id)
+                log(f"{epic}: HYPER SL | deal={deal_id} | -{adverse/atr:.2f} ATR")
+            except Exception as exc:
+                log(f"{epic}: HYPER SL failed | deal={deal_id} | {exc}")
+        trails[key] = {"epic": epic, "atr": round(atr,8), "entry": entry, "direction": direction,
+                       "be_activated": bool(trail.get("be_activated")),
+                       "last_update": datetime.now(timezone.utc).isoformat()}
+    for key in list(trails.keys()):
+        if key not in active and (trails.get(key) or {}).get("epic") == epic:
+            trails.pop(key, None)
     save_state(STATE)
 
 def manage_trailing_stops(api, positions, epic, current_price, df=None):
@@ -1906,8 +1812,8 @@ LAST_ENTRY_AT = {}
 # authorize an entry only once per epic/direction. This is NOT a trade-count
 # cap; it prevents repeated orders from reusing the same unchanged candle signal
 # during the fast scanner and across overlapping scheduler runs.
-ENTRY_CANDLE_STATE_FILE = "fx_ai_entry_candle_state.json"
-ENTRY_CANDLE_RESOLUTION = RESOLUTION
+ENTRY_CANDLE_STATE_FILE = "fx_hyper_scalper_entry_candle_state.json"
+ENTRY_CANDLE_RESOLUTION = "MINUTE_1"
 
 def _load_entry_candle_state():
     try:
@@ -2268,8 +2174,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
                     )
             except Exception as exc:
                 log(f"{epic}: {STRATEGY_ID} HTF FALLBACK failed: {exc}")
-        # AI is SUPPORT-ONLY. The legacy strategy remains the sole entry authority.
-        # AI output is retained for advisory analysis, logging and learning only.
+        # Hyper-Scalper is the sole entry strategy. AI remains advisory only.
         legacy_signal = generate_signal(df, epic, htf_df)
         ai_decision = ai_engine.decide(df, htf_df, epic, existing_signal=legacy_signal, strategy_id=STRATEGY_ID)
         # Advanced AI safety stack is shadow-only by default. It can add diagnostics
@@ -2346,11 +2251,7 @@ def process_epic(api, epic, positions, balance, account_currency, allow_entry_wi
             return None
         # STRATEGY IS THE SOLE ENTRY AUTHORITY. AI is advisory only.
         strategy_signal = legacy_signal
-        signal = (
-            ("SELL" if strategy_signal == "BUY" else "BUY")
-            if REVERSE_ENTRY_DIRECTION and strategy_signal in {"BUY", "SELL"}
-            else strategy_signal
-        )
+        signal = strategy_signal  # Hyper-Scalper direction is executed as generated.
         strategy_strength = market_entry_strength(df, htf_df, strategy_signal) if strategy_signal in {"BUY", "SELL"} else 0.0
         if strategy_signal in {"BUY", "SELL"} and signal != strategy_signal:
             log(f"{epic}: ENTRY DIRECTION REVERSED | strategy={strategy_signal} -> broker_order={signal}")
@@ -2872,7 +2773,7 @@ def log_trade_report(api, account_currency):
 def run_cycle():
     log("Starting trading cycle...")
     log("DEMO MODE / LIVE TRADING DISABLED")
-    log(f"Safety: daily loss={DAILY_LOSS_LIMIT_PCT*100:.1f}%, equity drawdown={EQUITY_DRAWDOWN_LIMIT_PCT*100:.1f}%, spread filter={SPREAD_FILTER_ENABLED}, breakeven={BREAKEVEN_ENABLED}, cooldown={LOSS_COOLDOWN_MINUTES}m, kill switch={KILL_SWITCH_ENABLED}.")
+    log("Strategy: HYPER-SCALPER M1 | EMA200 + Stochastic(5,3) | TP=0.8 ATR | BE=0.4 ATR | SL=1.2 ATR | direction=direct.")
     log(f"Strategy Selector: enabled={STRATEGY_SELECTOR_ENABLED} | regimes=TREND/BREAKOUT/RANGE | Trend gap={TREND_EMA_GAP_ATR}ATR | Range gap<{RANGE_EMA_GAP_ATR}ATR.")
     log(f"Risk-budgeted entries: Grid={ALLOW_GRID}, Averaging={ALLOW_AVERAGING}, Martingale={ALLOW_MARTINGALE}; no fixed position-count cap; max basket risk={MAX_BASKET_RISK * 100:.1f}%.")
     api = CapitalAPI()
