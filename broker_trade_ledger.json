@@ -1,5 +1,41 @@
 [
   {
+    "date": "2026-09-30T14:44:56.213",
+    "dateUtc": "2026-09-30T10:44:56.213",
+    "instrumentName": "GBPMXN",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140321579326823",
+    "size": "4.11",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-50b6-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T14:41:29.017",
+    "dateUtc": "2026-09-30T10:41:29.017",
+    "instrumentName": "AUDUSD",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140321362270169",
+    "size": "-11.07",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-4a1e-0493-972c0004511e"
+  },
+  {
+    "date": "2026-09-30T14:35:01.034",
+    "dateUtc": "2026-09-30T10:35:01.034",
+    "instrumentName": "USDMXN",
+    "transactionType": "TRADE",
+    "note": "Trade closed",
+    "reference": "140320955420566",
+    "size": "-11.18",
+    "currency": "AED",
+    "status": "PROCESSED",
+    "dealId": "00000000-66da-3a20-0493-972c0004511e"
+  },
+  {
     "date": "2026-09-30T14:03:42.390",
     "dateUtc": "2026-09-30T10:03:42.390",
     "instrumentName": "GOLD",
