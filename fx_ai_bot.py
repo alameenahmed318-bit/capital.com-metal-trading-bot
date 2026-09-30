@@ -23,7 +23,7 @@ base.STRATEGY_ALLOWED_EPICS = []
 base.ALLOW_GRID = False
 base.ALLOW_MARTINGALE = False
 base.ALLOW_AVERAGING = False
-base.REVERSE_ENTRY_DIRECTION = False
+base.REVERSE_ENTRY_DIRECTION = True
 base.DYNAMIC_FX_UNIVERSE = True
 
 base.reload_runtime_state()
