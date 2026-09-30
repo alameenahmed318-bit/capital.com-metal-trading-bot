@@ -28,7 +28,7 @@ base.ENTRY_REJECTION_FILE = "metals_energy_ai_entry_rejections.json"
 base.ENTRY_CANDLE_STATE_FILE = "metals_energy_ai_entry_candle_state.json"
 
 # قائمة المعادن/الأسواق الحالية تبقى كما هي.
-base.EPICS = ["GOLD", "US100", "US500"]
+base.EPICS = ["GOLD", "SILVER", "OIL_CRUDE", "US100", "US500"]
 base.STRATEGY_ALLOWED_EPICS = list(base.EPICS)
 # Metals/energy bot must never inherit the FX discovery universe.
 base.DYNAMIC_FX_UNIVERSE = False
