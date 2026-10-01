@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تم الدفع — UAE Market</title><link rel="stylesheet" href="styles.css"></head>
+<body><header><a class="brand" href="index.html"><b>UAE</b><span>Market</span></a></header>
+<main style="max-width:700px;margin:60px auto;padding:30px 5%;text-align:center">
+<div class="card" style="padding:35px">
+<div style="font-size:55px">✅</div><h1>تم استلام الدفع</h1>
+<p id="status">جاري التحقق من حالة الطلب...</p><a class="primary" href="index.html">العودة للمتجر</a>
+</div></main>
+<script>
+const API_BASE=(window.UAE_MARKET_API_URL||"").replace(/\/$/,"");
+const id=new URLSearchParams(location.search).get("order_id");
+async function check(){if(!id){document.getElementById("status").textContent="تم الدفع، لكن رقم الطلب غير موجود في الرابط.";return}
+if(!API_BASE){document.getElementById("status").textContent="تم الدفع في Stripe. سيتم تحديث حالة الطلب بعد تشغيل خادم المتجر.";return}
+try{const r=await fetch(API_BASE+"/api/orders/"+encodeURIComponent(id));const o=await r.json();document.getElementById("status").textContent=o.status==="paid"?"تم تأكيد الدفع بنجاح. رقم الطلب: "+id:"حالة الطلب: "+(o.status||"pending");}catch(e){document.getElementById("status").textContent="تم الدفع. تعذر التحقق من الخادم الآن."}}
+check();
+</script></body></html>
