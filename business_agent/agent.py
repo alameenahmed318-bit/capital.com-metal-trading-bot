@@ -523,21 +523,32 @@ class BusinessAgent:
         return changed
 
     def execute_paid_requests(self) -> int:
-        """Execute supported paid services and deliver the resulting artifact."""
+        """Fulfill paid requests that have not actually been delivered yet."""
         started = 0
         for request in self.state.get("requests", []):
-            if request.get("status") != "paid":
+            # A request can remain paid after a prior run created only a task.
+            # Treat an existing in-progress task without a completion marker as
+            # resumable, so fulfillment cannot get stuck.
+            if request.get("status") not in {"paid", "in_progress"}:
                 continue
-            if request.get("execution_started_at") or request.get("execution_completed_at"):
+            if request.get("execution_completed_at") or request.get("status") == "delivered":
                 continue
 
-            service = (request.get("service") or "الخدمة").strip()
-            details = (request.get("details") or "").strip()
-            task = self.create_task(request["id"], f"تنفيذ {service}", details)
+            task = next(
+                (t for t in self.state.get("tasks", [])
+                 if t.get("id") == request.get("task_id")),
+                None
+            )
+            if not task:
+                task = self.create_task(
+                    request["id"],
+                    f"تنفيذ {request.get('service', 'الخدمة')}",
+                    request.get("details", "")
+                )
             task["status"] = "in_progress"
-            task["started_at"] = time.time()
+            task.setdefault("started_at", time.time())
             request["status"] = "in_progress"
-            request["execution_started_at"] = time.time()
+            request.setdefault("execution_started_at", time.time())
             request["task_id"] = task["id"]
 
             artifact = self._execute_service(request)
@@ -549,13 +560,13 @@ class BusinessAgent:
             request["status"] = "delivered"
 
             email = (request.get("contact") or {}).get("email", "").strip()
-            if email and self.mail:
+            if email and self.mail and not request.get("delivery_sent_at"):
                 try:
                     self.mail.send(
                         email,
-                        f"تسليم الخدمة - {service}",
+                        f"تسليم الخدمة - {request.get('service', 'الخدمة')}",
                         f"مرحباً {request.get('company','')},\n\n"
-                        f"تم إكمال خدمة {service} وتسليم نتيجة التنفيذ.\n\n"
+                        f"تم إكمال خدمة {request.get('service','الخدمة')} وتسليم نتيجة التنفيذ.\n\n"
                         f"النتيجة:\n{artifact}\n\n"
                         f"رقم الطلب: {request.get('id')}"
                     )
@@ -563,118 +574,15 @@ class BusinessAgent:
                 except Exception as exc:
                     request["delivery_error"] = str(exc)
 
-            self.log("task", "Paid service executed and delivered",
-                     request_id=request["id"], task_id=task["id"], service=service)
+            self.log(
+                "task",
+                "Paid service executed and delivered",
+                request_id=request["id"],
+                task_id=task["id"],
+                service=request.get("service", "الخدمة"),
+            )
             started += 1
 
-        self._save()
-        return started
-
-    def _execute_service(self, request: dict) -> str:
-        """Run a real supported workflow using the agent's connected tools."""
-        service = (request.get("service") or "").lower()
-        details = (request.get("details") or "").strip()
-        company = request.get("company") or "العميل"
-
-        if "market research" in service or "research" in service or "سوق" in service:
-            if not self.market:
-                return "تم استلام الطلب، لكن موصل البحث غير متاح حالياً."
-            try:
-                query = f"UAE market research for {company}. Client requirements: {details}"
-                results = self.market.search(query, max_results=8)
-                lines = []
-                for r in results[:8]:
-                    title = r.get("title") or r.get("url") or "مصدر"
-                    url = r.get("url") or ""
-                    snippet = r.get("content") or r.get("snippet") or ""
-                    lines.append(f"- {title} | {url}\n  {snippet[:500]}")
-                return "تقرير بحث سوق أولي:\n" + ("\n".join(lines) if lines else "لم يتم العثور على مصادر كافية.")
-            except Exception as exc:
-                return f"تعذر إكمال بحث السوق تلقائياً: {exc}"
-
-        if "lead generation" in service or "lead" in service or "عملاء" in service:
-            if not self.market:
-                return "تم إنشاء نتيجة البحث، لكن موصل السوق غير متاح حالياً."
-            try:
-                query = f"UAE companies and public business contacts relevant to {company}. Requirements: {details}"
-                results = self.market.search(query, max_results=10)
-                lines = []
-                for r in results[:10]:
-                    lines.append(f"- {r.get('title','Company')} | {r.get('url','')}")
-                return "قائمة أولية بجهات محتملة من مصادر عامة:\n" + ("\n".join(lines) if lines else "لا توجد نتائج كافية.")
-            except Exception as exc:
-                return f"تعذر إكمال بحث العملاء المحتملين تلقائياً: {exc}"
-
-        if "digital marketing" in service or "marketing" in service or "تسويق" in service:
-            return (
-                f"خطة تسويق أولية لـ {company}:\n"
-                f"1) تحديد الجمهور والعرض بناءً على المتطلبات: {details or 'غير محددة'}.\n"
-                "2) إعداد الرسائل والمحتوى الإعلاني المقترح.\n"
-                "3) تحديد قنوات القياس والتحسين.\n"
-                "هذه نتيجة تخطيطية؛ لم يتم إطلاق حملات مدفوعة بدون موصل إعلاني مخصص."
-            )
-
-        if "website" in service or "web" in service or "موقع" in service:
-            return (
-                f"مخطط تنفيذ موقع لـ {company}:\n"
-                f"المتطلبات: {details or 'غير محددة'}.\n"
-                "تم إنشاء مواصفات التنفيذ الأولية. النشر الفعلي يحتاج موصل استضافة/نشر."
-            )
-
-        if "automation" in service or "ai" in service or "أتمتة" in service:
-            return (
-                f"خطة أتمتة وAI لـ {company}:\n"
-                f"المتطلبات: {details or 'غير محددة'}.\n"
-                "تم إعداد نطاق التنفيذ والخطوات الأولية. ربط الأنظمة الخارجية يحتاج موصلاتها."
-            )
-
-        return (
-            f"تم تنفيذ مرحلة معالجة الطلب لـ {company}.\n"
-            f"الخدمة: {request.get('service','الخدمة')}\n"
-            f"التفاصيل: {details or 'غير محددة'}"
-        )
-
-        """Start fulfillment for paid requests and deliver a service brief.
-
-        This is the execution foundation: it creates an auditable task, marks the
-        request in progress, and sends the customer a fulfillment confirmation.
-        Provider-specific work can be attached to the queued task without
-        pretending that an unsupported external action was completed.
-        """
-        if not self.mail:
-            return 0
-        started = 0
-        for request in self.state.get("requests", []):
-            if request.get("status") != "paid":
-                continue
-            if request.get("execution_started_at") or request.get("execution_completed_at"):
-                continue
-            task = self.create_task(
-                request["id"],
-                f"تنفيذ {request.get('service', 'الخدمة')}",
-                request.get("details", "")
-            )
-            task["status"] = "in_progress"
-            task["started_at"] = time.time()
-            request["status"] = "in_progress"
-            request["execution_started_at"] = time.time()
-            request["task_id"] = task["id"]
-            email = (request.get("contact") or {}).get("email", "").strip()
-            if email:
-                try:
-                    self.mail.send(
-                        email,
-                        "تأكيد بدء تنفيذ الخدمة",
-                        f"مرحباً {request.get('company','')},\n\n"
-                        f"تم تأكيد استلام الدفع وبدأ تنفيذ خدمة {request.get('service','الخدمة')}.\n"
-                        "سنرسل لكم التسليم أو تحديث التنفيذ عبر البريد عند اكتمال المرحلة التالية.\n\n"
-                        f"رقم الطلب: {request.get('id')}"
-                    )
-                    request["execution_confirmation_sent_at"] = time.time()
-                except Exception as exc:
-                    request["execution_confirmation_error"] = str(exc)
-            self.log("task", "Paid request moved to fulfillment", request_id=request["id"], task_id=task["id"])
-            started += 1
         self._save()
         return started
 
