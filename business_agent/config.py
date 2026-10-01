@@ -19,3 +19,4 @@ class Settings:
     agentmail_api_key: str = os.getenv("AGENTMAIL_API_KEY", "")
     agentmail_inbox_id: str = os.getenv("AGENTMAIL_INBOX_ID", "uaebusinessai@agentmail.to")
     company_name: str = os.getenv("COMPANY_NAME", "UAE Business AI")
+    company_email: str = os.getenv("COMPANY_EMAIL", "uaebusinessai@agentmail.to")

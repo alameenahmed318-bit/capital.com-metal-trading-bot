@@ -152,6 +152,26 @@ class BusinessAgent:
         except Exception as exc:
             self.log("error", "HubSpot contact update failed", request_id=request["id"], error=str(exc))
 
+    def _send_professional_email(self, recipient: str, subject: str, arabic: str, english: str) -> dict:
+        """Send a concise branded bilingual HTML email with red-highlighted numbers."""
+        def esc(value: str) -> str:
+            import html
+            return html.escape(str(value))
+        def red_numbers(value: str) -> str:
+            safe = esc(value)
+            return re.sub(r"(AED\\s?\\d[\\d,]*(?:\\.\\d+)?|\\d[\\d,]*(?:AED|درهم))", r'<span style="color:#d60000;font-weight:700">\\1</span>', safe)
+        email = self.settings.company_email or self.settings.agentmail_inbox_id
+        html_body = f"""<!doctype html><html><body style="margin:0;background:#f5f7fa;font-family:Arial,sans-serif;color:#202124">
+        <div style="max-width:620px;margin:24px auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden">
+        <div style="padding:20px 24px;background:#111827;color:#fff"><div style="font-size:21px;font-weight:700">UAE Business AI</div><div style="font-size:12px;opacity:.75;margin-top:4px">Smart Business Solutions</div></div>
+        <div dir="rtl" style="padding:22px 24px;text-align:right;line-height:1.8"><div style="font-size:16px;font-weight:700;margin-bottom:8px">العربية</div>{red_numbers(arabic)}</div>
+        <div style="border-top:1px solid #eee"></div>
+        <div dir="ltr" style="padding:22px 24px;text-align:left;line-height:1.7"><div style="font-size:16px;font-weight:700;margin-bottom:8px">English</div>{red_numbers(english)}</div>
+        <div style="padding:16px 24px;border-top:1px solid #eee;font-size:12px;color:#6b7280;text-align:center">المدير العام · Alameen Alsadig<br>General Manager · Alameen Alsadig<br>{email}</div>
+        </div></body></html>"""
+        plain = arabic + "\n\n" + english + f"\n\nالمدير العام — Alameen Alsadig\nGeneral Manager — Alameen Alsadig\n{email}"
+        return self.mail.send(recipient, subject, plain, html_body)
+
     def _handle_customer_reply(self, request: dict, quote: dict, body: str) -> None:
         intent = self._classify_customer_reply(body)
         request["last_reply"] = body
@@ -170,7 +190,7 @@ class BusinessAgent:
                 "customer": request.get("contact", {})
             })
             if self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "تم تسجيل الموافقة", "شكرًا لتأكيدكم. تم تسجيل الموافقة على العرض، وسننتقل للفوترة والتنفيذ بعد اعتماد الإجراء المالي.")
+                self._send_professional_email((request.get("contact") or {}).get("email", ""), "UAE Business AI — تأكيد الطلب / Order Confirmation", "شكرًا لتأكيدكم. تم تسجيل الموافقة، وسننتقل للفوترة والتنفيذ بعد اعتماد الإجراء المالي.", "Thank you for confirming. Your approval is recorded. We will proceed to invoicing and delivery after financial approval.")
             return
 
         current = float(quote.get("amount_aed", 0))
@@ -181,19 +201,19 @@ class BusinessAgent:
             request["quote_id"] = new_quote["id"]
             request["status"] = "negotiating"
             if self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+                self._send_professional_email((request.get("contact") or {}).get("email", ""), "Re: UAE Business AI — Offer Review", reply, f"We can revise the proposal to AED {proposed:.0f} within the current scope. If suitable, we can confirm the scope and proceed.")
             new_quote["sent_at"] = time.time()
             new_quote["status"] = "sent"
         elif intent == "negotiate_scope":
             request["status"] = "negotiating"
             reply = "ممكن نعدّل نطاق العمل. أرسلوا الإضافات أو العناصر التي تريدون حذفها، وسنراجع أثرها على السعر والمدة ثم نرسل نسخة محدثة من العرض."
             if self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+                self._send_professional_email((request.get("contact") or {}).get("email", ""), "Re: UAE Business AI — Scope Review", reply, "We can adjust the scope. Please send the items you would like to add or remove, and we will review the impact on price and timeline.")
         elif intent == "question":
             request["status"] = "negotiating"
             reply = "أكيد. أرسلوا أسئلتكم أو المتطلبات بالتفصيل، وسنوضح النطاق والسعر ومدة التنفيذ قبل أي التزام."
             if self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+                self._send_professional_email((request.get("contact") or {}).get("email", ""), "Re: UAE Business AI — Questions", reply, "Absolutely. Send your questions or requirements and we will clarify the scope, price and delivery timeline before any commitment.")
         else:
             request["status"] = "negotiating"
             reply = (
@@ -208,7 +228,7 @@ class BusinessAgent:
             )
             request["quote_id"] = new_quote["id"]
             if self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة — مراجعة السعر والنطاق", reply)
+                self._send_professional_email((request.get("contact") or {}).get("email", ""), "Re: UAE Business AI — Offer Review", reply, f"Thank you for the clarification. We can review the price and scope. The current proposal is AED {current:.0f}. Please share your target budget or requested changes.")
             new_quote["sent_at"] = time.time()
             new_quote["status"] = "sent"
         self.log("sales", "Customer reply handled", request_id=request["id"], intent=intent, status=request["status"])
@@ -358,19 +378,11 @@ class BusinessAgent:
             self.log("mail", "Cannot send offer: customer email missing", request_id=request["id"])
             return False
 
-        subject = f"عرض مبدئي من {self.settings.company_name} - {request['service']}"
-        body = (
-            f"مرحباً {request.get('company','')},\n\n"
-            "شكرًا لتواصلكم معنا. راجعنا طلبكم وأعددنا تقديرًا مبدئيًا بناءً على المعلومات الحالية.\n\n"
-            f"الخدمة: {request['service']}\n"
-            f"السعر المبدئي المقترح: {quote['amount_aed']:.0f} درهم إماراتي\n"
-            f"النطاق: {quote['scope']}\n\n"
-            "هذا عرض مبدئي غير ملزم. السعر النهائي وموعد التنفيذ يتحددان بعد تأكيد المتطلبات والنطاق. "
-            "إذا كان مناسبًا، أرسلوا المتطلبات أو أسئلتكم وسنواصل معكم.\n\n"
-            f"تحياتنا،\n{self.settings.company_name}"
-        )
+        subject = f"UAE Business AI — Proposal / عرض مبدئي — {request['service']}"
+        arabic = (f"مرحباً {request.get('company','')},\n\nالخدمة: {request['service']}\nالسعر المبدئي: {quote['amount_aed']:.0f} درهم\nالنطاق: {quote['scope']}\n\nعرض مبدئي غير ملزم. إذا كان مناسبًا، أرسلوا تأكيدكم أو أي تعديل مطلوب.")
+        english = (f"Hello {request.get('company','')},\n\nService: {request['service']}\nInitial proposal: AED {quote['amount_aed']:.0f}\nScope: {quote['scope']}\n\nNon-binding initial proposal. Reply with your confirmation or requested changes.")
         try:
-            result = self.mail.send(email, subject, body)
+            result = self._send_professional_email(email, subject, arabic, english)
             quote["sent_at"] = time.time()
             quote["status"] = "sent"
             quote["delivery"] = {"message_id": result.get("message_id") or result.get("id")}
@@ -475,7 +487,7 @@ class BusinessAgent:
             request["invoice_url"] = invoice.get("hosted_invoice_url")
             approval["invoice_id"] = invoice.get("id")
             if invoice.get("hosted_invoice_url") and self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "فاتورة الخدمة", "تم إنشاء الفاتورة. رابط الدفع: " + invoice["hosted_invoice_url"])
+                self._send_professional_email((request.get("contact") or {}).get("email", ""), "UAE Business AI — Invoice / الفاتورة", f"تم إنشاء الفاتورة بقيمة {amount:.0f} درهم. رابط الدفع: {invoice['hosted_invoice_url']}", f"Your invoice for AED {amount:.0f} is ready. Payment link: {invoice['hosted_invoice_url']}")
         else:
             approval["status"] = "failed"
         self._save()
@@ -733,7 +745,7 @@ class BusinessAgent:
                 follow["status"] = "cancelled"
                 continue
             try:
-                self.mail.send(email, "متابعة العرض", f"مرحباً، نتابع معكم بخصوص عرض {request.get('service','الخدمة')} بقيمة {quote.get('amount_aed', 0):.0f} درهم. إذا كان مناسبًا يمكنكم تأكيد الطلب.")
+                self._send_professional_email(email, "UAE Business AI — Follow-up / متابعة", f"مرحباً، نتابع معكم بخصوص عرض {request.get('service','الخدمة')} بقيمة {quote.get('amount_aed', 0):.0f} درهم. إذا كان مناسبًا يمكنكم تأكيد الطلب.", f"Following up on your {request.get('service','service')} proposal for AED {quote.get('amount_aed', 0):.0f}. If suitable, you can confirm the order.")
                 follow["status"] = "sent"
                 follow["sent_at"] = now
                 follow["attempts"] = int(follow.get("attempts", 0)) + 1
