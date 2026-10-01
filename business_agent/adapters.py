@@ -11,7 +11,7 @@ class CRM(Protocol):
     def update(self, lead_id: str, data: dict) -> dict: ...
 
 class Messenger(Protocol):
-    def send(self, recipient: str, subject: str, message: str) -> dict: ...
+    def send(self, recipient: str, subject: str, message: str, html: str | None = None) -> dict: ...
     def list_messages(self, limit: int = 20) -> list[dict]: ...
     def get_message(self, message_id: str) -> dict: ...
 
@@ -84,7 +84,7 @@ class AgentMailMessenger:
         inbox_id = self._resolve_inbox_id()
         r = requests.post(f"{self.base}/inboxes/{inbox_id}/messages/send",
                           headers=self.headers,
-                          json={"to": [recipient], "subject": subject, "text": message},
+                          json={"to": [recipient], "subject": subject, "text": message, **({"html": html} if html else {})},
                           timeout=30)
         r.raise_for_status()
         return r.json()
