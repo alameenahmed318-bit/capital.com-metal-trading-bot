@@ -586,10 +586,26 @@ class BusinessAgent:
         self._save()
         return started
 
+    def _clean_customer_requirements(self, details: str) -> str:
+        """Remove quoted/replied email text from customer requirements."""
+        lines = []
+        for line in details.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith((">", "From:", "Sent:", "Date:", "Subject:")):
+                continue
+            if "كتب " in stripped and ("gmail.com" in stripped or "@" in stripped):
+                continue
+            if "wrote:" in stripped.lower():
+                continue
+            lines.append(stripped)
+        return " ".join(lines).strip()[:4000]
+
     def _execute_service(self, request: dict) -> str:
         """Execute the currently supported fulfillment workflows."""
         service = (request.get("service") or "").lower()
-        details = (request.get("details") or "").strip()
+        details = self._clean_customer_requirements(request.get("details") or "")
         company = request.get("company") or "العميل"
 
         if "market research" in service or "research" in service or "سوق" in service:
@@ -631,10 +647,47 @@ class BusinessAgent:
             )
 
         if "automation" in service or "ai" in service or "أتمتة" in service:
+            requirements = details or "لم يحدد العميل متطلبات تفصيلية بعد."
             return (
-                f"خطة أتمتة وAI لـ {company}:\n"
-                f"المتطلبات: {details or 'غير محددة'}\n"
-                "تم تجهيز نطاق التنفيذ والخطوات الأولية. ربط الأنظمة الخارجية يحتاج موصلاتها."
+                f"تقرير تنفيذ Business Automation / AI — {company}\n\n"
+                "1) تحليل احتياج العميل\n"
+                f"- المتطلبات المستخرجة: {requirements}\n"
+                "- الهدف: تقليل العمل اليدوي، تسريع معالجة الطلبات، وتحسين المتابعة.\n\n"
+                "2) المشكلة الحالية\n"
+                "- العمليات المتكررة التي تعتمد على الإدخال والمتابعة اليدوية تحتاج إلى أتمتة.\n"
+                "- المعلومات يجب أن تنتقل بين قنوات التواصل وCRM والفوترة والتنفيذ بشكل منظم.\n\n"
+                "3) الحل المقترح\n"
+                "- وكيل AI يستقبل الطلب ويفهمه ويصنفه.\n"
+                "- أتمتة إنشاء العميل والطلب والعرض والفاتورة والمتابعة.\n"
+                "- ربط CRM وسجل الطلبات والدفع والتنفيذ في دورة واحدة قابلة للتتبع.\n\n"
+                "4) سير العمل المقترح\n"
+                "طلب العميل → تحليل AI → إنشاء/تحديث CRM → عرض سعر → موافقة → فاتورة → دفع → تنفيذ → تسليم → متابعة.\n\n"
+                "5) الأدوات المطلوبة\n"
+                "- CRM لإدارة العملاء والطلبات.\n"
+                "- بريد/مراسلة لاستقبال الطلبات والتسليم.\n"
+                "- نظام دفع وفوترة.\n"
+                "- محرك بحث/بيانات عند الحاجة.\n"
+                "- موصلات إضافية للأنظمة الخارجية الخاصة بالعميل.\n\n"
+                "6) خطوات التنفيذ\n"
+                "أ) تحديد العمليات الحالية.\n"
+                "ب) تحديد نقاط الأتمتة وقواعد الموافقة.\n"
+                "ج) بناء سير العمل وربط الأنظمة.\n"
+                "د) اختبار الحالات الطبيعية والاستثنائية.\n"
+                "هـ) تشغيل تدريجي ومراقبة النتائج.\n\n"
+                "7) المخرجات\n"
+                "- مخطط Workflow.\n"
+                "- مواصفات التكامل.\n"
+                "- قواعد التشغيل والمتابعة.\n"
+                "- خطة اختبار وتسليم.\n\n"
+                "8) الجدول الزمني المقترح\n"
+                "- تحليل وتصميم: 1–2 يوم عمل.\n"
+                "- بناء وربط: 2–5 أيام عمل بحسب الأنظمة.\n"
+                "- اختبار وتسليم: 1–2 يوم عمل.\n\n"
+                "9) نطاق التنفيذ الحالي\n"
+                "- تم إعداد خطة التنفيذ بناءً على المعلومات المتاحة.\n"
+                "- لم يتم تغيير أنظمة العميل الخارجية أو إطلاق عمليات إنتاجية غير مرتبطة بموصلاتها.\n\n"
+                "10) الخطوة التالية\n"
+                "- تأكيد الأنظمة التي يريد العميل ربطها والعمليات التي يريد أتمتتها، ثم تحويل الخطة إلى تنفيذ تكاملي."
             )
 
         return (
