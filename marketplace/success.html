@@ -8,7 +8,7 @@
 <p id="status">جاري التحقق من حالة الطلب...</p><a class="primary" href="index.html">العودة للمتجر</a>
 </div></main>
 <script>
-const API_BASE=(window.UAE_MARKET_API_URL||"").replace(/\/$/,"");
+const API_BASE="https://uae-market-api.onrender.com";
 const id=new URLSearchParams(location.search).get("order_id");
 async function check(){if(!id){document.getElementById("status").textContent="تم الدفع، لكن رقم الطلب غير موجود في الرابط.";return}
 if(!API_BASE){document.getElementById("status").textContent="تم الدفع في Stripe. سيتم تحديث حالة الطلب بعد تشغيل خادم المتجر.";return}
