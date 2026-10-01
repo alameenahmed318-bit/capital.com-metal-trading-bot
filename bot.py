@@ -242,6 +242,11 @@ def value_per_price(position, current):
 
 
 def tighten_profit_stop(api, item, state_entry, market):
+    """
+    Monotonic profit protection:
+    As soon as the position is profitable, protect it at/above break-even.
+    After protection is armed, the broker stop only moves toward more profit.
+    """
     p = item.get("position", {})
     deal_id = p.get("dealId")
     direction = str(p.get("direction", "")).upper()
@@ -252,32 +257,52 @@ def tighten_profit_stop(api, item, state_entry, market):
     if not deal_id or direction not in ("BUY", "SELL") or px is None or entry <= 0:
         return
 
-    peak = max(float(state_entry.get("peak_upl", 0)), upl)
+    peak = max(float(state_entry.get("peak_upl", 0) or 0), upl)
     state_entry["peak_upl"] = peak
-
-    # Losses are not closed by profit protection; only a broker-side initial stop can close them.
-    if peak < PROFIT_ARM:
-        return
 
     vpp = value_per_price(p, px)
     if not vpp:
         return
 
-    # Trail upward whenever profit makes a new high.
-    giveback = max(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO)
-    if peak >= PROFIT_ARM + TRAIL_GIVEBACK:
-        giveback = min(giveback, peak * STRONG_RETRACE_RATIO)
+    # Protect immediately once the live UPL turns positive.
+    if upl > 0:
+        initial_lock = min(PROFIT_LOCK, max(0.01, upl * 0.50))
+        target = entry + initial_lock / vpp if direction == "BUY" else entry - initial_lock / vpp
 
+        old = state_entry.get("stop_level")
+        old = float(old) if old is not None else None
+        improve = (
+            old is None
+            or (direction == "BUY" and target > old)
+            or (direction == "SELL" and target < old)
+        )
+        if improve:
+            if DRY_RUN:
+                log.info("DRY RUN | BREAK-EVEN PROTECT | %s | UPL=%.2f | lock=%.2f | stop -> %.8f",
+                         deal_id, upl, initial_lock, target)
+                state_entry["stop_level"] = target
+            else:
+                try:
+                    api.update_position(deal_id, target)
+                    state_entry["stop_level"] = target
+                    log.info("BREAK-EVEN PROTECT | %s | UPL=%.2f | lock=%.2f | stop -> %.8f",
+                             deal_id, upl, initial_lock, target)
+                except Exception as e:
+                    log.warning("break-even protection update failed %s: %s", deal_id, e)
+
+    # Once the trade reaches the normal profit-arm level, lock a portion
+    # of the peak profit. The stop is strictly monotonic.
+    if peak < PROFIT_ARM:
+        return
+
+    giveback = max(0.0, min(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO))
     locked_profit = max(PROFIT_LOCK, peak - giveback)
     if locked_profit <= 0:
         return
 
-    lock_distance = locked_profit / vpp
-    target = entry + lock_distance if direction == "BUY" else entry - lock_distance
-
+    target = entry + locked_profit / vpp if direction == "BUY" else entry - locked_profit / vpp
     old = state_entry.get("stop_level")
-    if old is not None:
-        old = float(old)
+    old = float(old) if old is not None else None
 
     improve = (
         old is None
@@ -288,18 +313,18 @@ def tighten_profit_stop(api, item, state_entry, market):
         return
 
     if DRY_RUN:
-        log.info("DRY RUN | PROFIT TRAIL | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop %.8f -> %.8f",
-                 deal_id, upl, peak, locked_profit, old if old is not None else 0.0, target)
+        log.info("DRY RUN | PROFIT LOCK | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
+                 deal_id, upl, peak, locked_profit, target)
         state_entry["stop_level"] = target
         return
 
     try:
         api.update_position(deal_id, target)
         state_entry["stop_level"] = target
-        log.info("PROFIT TRAIL | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
+        log.info("PROFIT LOCK | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
                  deal_id, upl, peak, locked_profit, target)
     except Exception as e:
-        log.warning("profit trail update failed %s: %s", deal_id, e)
+        log.warning("profit lock update failed %s: %s", deal_id, e)
 
 
 def normalize_size(api, epic, configured_size, rules_cache):
