@@ -522,6 +522,51 @@ class BusinessAgent:
         self._save()
         return changed
 
+    def execute_paid_requests(self) -> int:
+        """Start fulfillment for paid requests and deliver a service brief.
+
+        This is the execution foundation: it creates an auditable task, marks the
+        request in progress, and sends the customer a fulfillment confirmation.
+        Provider-specific work can be attached to the queued task without
+        pretending that an unsupported external action was completed.
+        """
+        if not self.mail:
+            return 0
+        started = 0
+        for request in self.state.get("requests", []):
+            if request.get("status") != "paid":
+                continue
+            if request.get("execution_started_at") or request.get("execution_completed_at"):
+                continue
+            task = self.create_task(
+                request["id"],
+                f"تنفيذ {request.get('service', 'الخدمة')}",
+                request.get("details", "")
+            )
+            task["status"] = "in_progress"
+            task["started_at"] = time.time()
+            request["status"] = "in_progress"
+            request["execution_started_at"] = time.time()
+            request["task_id"] = task["id"]
+            email = (request.get("contact") or {}).get("email", "").strip()
+            if email:
+                try:
+                    self.mail.send(
+                        email,
+                        "تأكيد بدء تنفيذ الخدمة",
+                        f"مرحباً {request.get('company','')},\n\n"
+                        f"تم تأكيد استلام الدفع وبدأ تنفيذ خدمة {request.get('service','الخدمة')}.\n"
+                        "سنرسل لكم التسليم أو تحديث التنفيذ عبر البريد عند اكتمال المرحلة التالية.\n\n"
+                        f"رقم الطلب: {request.get('id')}"
+                    )
+                    request["execution_confirmation_sent_at"] = time.time()
+                except Exception as exc:
+                    request["execution_confirmation_error"] = str(exc)
+            self.log("task", "Paid request moved to fulfillment", request_id=request["id"], task_id=task["id"])
+            started += 1
+        self._save()
+        return started
+
     def execute_followups(self) -> int:
         """Send due follow-ups once."""
         if not self.mail:
@@ -576,6 +621,7 @@ def run_cycle():
     inbound = agent.process_inbound_mail()
     offers = agent.handle_pending_requests()
     paid = agent.reconcile_payments()
+    fulfillment_started = agent.execute_paid_requests()
     followups = agent.execute_followups()
     agent.scan_market([
         "UAE companies needing digital marketing",
@@ -587,6 +633,7 @@ def run_cycle():
     result["inbound_processed"] = inbound
     result["offers_handled"] = offers
     result["payments_reconciled"] = paid
+    result["fulfillment_started"] = fulfillment_started
     result["followups_sent"] = followups
     if approval_result is not None:
         result["approval_result"] = approval_result
