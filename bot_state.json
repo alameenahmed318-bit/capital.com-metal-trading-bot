@@ -1700,8 +1700,8 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.23,
-      "protected_profit": false,
+      "peak_upl": 0.32,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-e735-0493-972c0004511e": {
@@ -1716,7 +1716,7 @@
       "direction": "BUY",
       "epic": "CHFZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.02,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1772,7 +1772,7 @@
       "direction": "BUY",
       "epic": "EURHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.01,
+      "peak_upl": 0.02,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1820,7 +1820,7 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.06,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1828,7 +1828,7 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1836,7 +1836,7 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.01,
+      "peak_upl": 0.11,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1852,7 +1852,31 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.01,
+      "peak_upl": 0.1,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6772-ba43-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "US500",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6772-bd2d-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "US500",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6772-bde4-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "US500",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
       "protected_profit": false,
       "stop_level": null
     }
