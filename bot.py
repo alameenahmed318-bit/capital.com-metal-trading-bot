@@ -98,12 +98,14 @@ class Capital:
         if DRY_RUN:
             log.info("DRY RUN | OPEN %s %s %.4f", direction, epic, size)
             return None
+        # Capital can reject a universal stopAmount because the valid
+        # stop-loss range is instrument/price/size dependent. Open first,
+        # then enforce the account-currency loss cap locally from live UPL.
         return self.post("/api/v1/positions", {
             "epic": epic,
             "direction": direction,
             "size": size,
             "guaranteedStop": False,
-            "stopAmount": MAX_INITIAL_LOSS,
         })
 
     def update_position(self, deal_id, stop_level):
@@ -212,7 +214,15 @@ def tradable_markets(all_markets):
         epic = str(m.get("epic", "")).upper()
         name = str(m.get("instrumentName", m.get("name", ""))).upper()
         is_fx = instrument_type == "CURRENCIES"
-        requested = epic in {"GOLD", "SILVER", "US500", "US100", "US1000"} or "GOLD" in name or "SILVER" in name
+        requested = (
+            epic in {"GOLD", "SILVER", "US500", "US100", "US1000"}
+            or "GOLD" in name
+            or "SILVER" in name
+            or "US TECH 100" in name
+            or "TECH 100" in name
+            or "S&P 500" in name
+            or "US 500" in name
+        )
         if is_fx or requested:
             if epic:
                 out.append(m)
@@ -267,6 +277,23 @@ def tighten_profit_stop(api, item, state_entry, market):
     px = current_price(market)
 
     if not deal_id or direction not in ("BUY", "SELL") or px is None or entry <= 0:
+        return
+
+    # Hard account-currency loss cap. This replaces the rejected universal
+    # broker stopAmount and only closes once the live loss reaches/exceeds
+    # the configured cap. It never closes a losing trade before this level.
+    if upl <= -MAX_INITIAL_LOSS:
+        if DRY_RUN:
+            log.info("DRY RUN | MAX LOSS CLOSE | %s | UPL=%.2f | limit=-%.2f",
+                     deal_id, upl, MAX_INITIAL_LOSS)
+        else:
+            try:
+                api.close_position(deal_id)
+                log.warning("MAX LOSS CLOSE | %s | UPL=%.2f | limit=-%.2f",
+                            deal_id, upl, MAX_INITIAL_LOSS)
+                state_entry["stop_level"] = None
+            except Exception as e:
+                log.warning("max loss close failed %s: %s", deal_id, e)
         return
 
     peak = max(float(state_entry.get("peak_upl", 0) or 0), upl)
@@ -466,8 +493,9 @@ def run():
     order_cooldown = {}
 
     log.info(
-        "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | FX+GOLD+SILVER+US500+US100/US1000",
+        "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | FX+GOLD+SILVER+US500+US100/US1000 | MAX_LOSS=%.2f AED",
         DRY_RUN,
+        MAX_INITIAL_LOSS,
     )
 
     while True:
