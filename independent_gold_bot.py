@@ -189,16 +189,57 @@ def find_gold(markets):
     return candidates[0]
 
 
-def owned_positions(positions, state):
+def owned_positions(positions, state, gold_epic):
+    """
+    Keep Gold ownership isolated by exact market epic.
+    Also adopt any already-open Gold position that was created before the
+    state file recorded it, so profit protection can manage it immediately.
+    """
     out, live = {}, set()
+    gold_epic = str(gold_epic).upper()
+
     for item in positions:
-        deal = item.get("position", {}).get("dealId")
-        if deal and deal in state["owned"]:
-            out[deal] = item
-            live.add(deal)
+        pos = item.get("position", {}) or {}
+        market = item.get("market", {}) or {}
+        deal = pos.get("dealId")
+        market_epic = str(market.get("epic", "")).upper()
+
+        if not deal or market_epic != gold_epic:
+            continue
+
+        deal = str(deal)
+        live.add(deal)
+
+        if deal not in state["owned"]:
+            direction = str(pos.get("direction", "")).upper()
+            entry_price = position_level(item)
+            if direction not in {"BUY", "SELL"}:
+                log.warning("GOLD POSITION %s FOUND BUT DIRECTION IS UNKNOWN; NOT ADOPTING", deal)
+                continue
+
+            if entry_price is None:
+                entry_price = 0.0
+
+            state["owned"][deal] = {
+                "epic": gold_epic,
+                "direction": direction,
+                "entry_price": entry_price,
+                "peak_price": entry_price,
+                "peak_upl": max(0.0, upl(item)),
+                "atr_at_entry": None,
+            }
+            log.info(
+                "ADOPTED EXISTING GOLD POSITION | %s | %s | %s | entry=%.2f | UPL=%.2f",
+                deal, gold_epic, direction, entry_price, upl(item)
+            )
+
+        out[deal] = item
+
+    # Remove state entries only after confirming they are no longer live Gold positions.
     for deal in list(state["owned"]):
         if deal not in live:
             state["owned"].pop(deal, None)
+
     return out
 
 
@@ -385,7 +426,7 @@ def run():
                 continue
 
             live_positions = api.positions()
-            owned = owned_positions(live_positions, state)
+            owned = owned_positions(live_positions, state, epic)
 
             current_price = float(market.get("offer") or market.get("bid") or m15[-1]["close"])
             protect(api, owned, state, current_price, m15)
