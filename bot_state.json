@@ -921,7 +921,7 @@
     "00000000-676b-1608-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CNHHKD",
-      "peak_upl": 0.0,
+      "peak_upl": 0.01,
       "stop_level": null
     },
     "00000000-676b-a5f0-0493-972c0004511e": {
@@ -1701,6 +1701,78 @@
       "epic": "US500",
       "last_stop_update_ok": false,
       "peak_upl": 0.12,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-e735-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CHFPLN",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-e73e-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CHFZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-e81f-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "EURZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.01,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-ed1a-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "EURSGD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-f049-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "EURTRY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-f068-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CADJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-f094-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CHFJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-f0d4-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CNHJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-f114-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "EURHKD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
       "protected_profit": false,
       "stop_level": null
     }
