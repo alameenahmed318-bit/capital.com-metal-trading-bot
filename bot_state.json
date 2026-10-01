@@ -1380,7 +1380,7 @@
       "direction": "BUY",
       "epic": "CHFSEK",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.09,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1660,8 +1660,8 @@
       "direction": "BUY",
       "epic": "CADJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.23,
-      "protected_profit": false,
+      "peak_upl": 0.26,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-2d6a-0493-972c0004511e": {
@@ -1676,7 +1676,7 @@
       "direction": "BUY",
       "epic": "CHFJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.59,
+      "peak_upl": 0.64,
       "protected_profit": true,
       "stop_level": null
     },
@@ -1692,7 +1692,15 @@
       "direction": "SELL",
       "epic": "RGLD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.06,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-ba61-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "US500",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.12,
       "protected_profit": false,
       "stop_level": null
     }
