@@ -1,34 +1,63 @@
-"""UAE Market minimal order API.
-Run locally with: python -m marketplace.backend.app
-For production, deploy behind HTTPS and use a real database.
-"""
-import json, os, sqlite3, uuid, urllib.parse, urllib.request
+"""UAE Market order API with Stripe Checkout + signed webhook."""
+import hashlib, hmac, json, os, sqlite3, time, urllib.parse, urllib.request, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 DB=Path(os.getenv("MARKET_DB","marketplace/backend/market.db"))
-DB.parent.mkdir(parents=True,exist_ok=True)\nSTRIPE_SECRET_KEY=os.getenv("STRIPE_SECRET_KEY","")\nSUCCESS_URL=os.getenv("MARKET_SUCCESS_URL","https://example.com/marketplace/success.html")\nCANCEL_URL=os.getenv("MARKET_CANCEL_URL","https://example.com/marketplace/checkout.html")
+DB.parent.mkdir(parents=True, exist_ok=True)
+STRIPE_SECRET_KEY=os.getenv("STRIPE_SECRET_KEY","")
+STRIPE_WEBHOOK_SECRET=os.getenv("STRIPE_WEBHOOK_SECRET","")
+SUCCESS_URL=os.getenv("MARKET_SUCCESS_URL","https://example.com/marketplace/success.html")
+CANCEL_URL=os.getenv("MARKET_CANCEL_URL","https://example.com/marketplace/checkout.html")
 
 PRODUCTS={
-"P001":{"name":"سماعات لاسلكية Pro","price":129,"stock":24},
-"P002":{"name":"ساعة ذكية رياضية","price":199,"stock":18},
-"P003":{"name":"حقيبة يومية أنيقة","price":89,"stock":31},
-"P004":{"name":"حذاء رياضي خفيف","price":149,"stock":16},
-"P005":{"name":"طقم عناية بالبشرة","price":75,"stock":40},
-"P006":{"name":"مصباح مكتب ذكي","price":59,"stock":22},
-"P007":{"name":"زجاجة ماء حرارية","price":45,"stock":35},
-"P008":{"name":"نظارة شمسية عصرية","price":69,"stock":27},
-}
+"P001":{"name":"سماعات لاسلكية Pro","price":129,"stock":24},"P002":{"name":"ساعة ذكية رياضية","price":199,"stock":18},
+"P003":{"name":"حقيبة يومية أنيقة","price":89,"stock":31},"P004":{"name":"حذاء رياضي خفيف","price":149,"stock":16},
+"P005":{"name":"طقم عناية بالبشرة","price":75,"stock":40},"P006":{"name":"مصباح مكتب ذكي","price":59,"stock":22},
+"P007":{"name":"زجاجة ماء حرارية","price":45,"stock":35},"P008":{"name":"نظارة شمسية عصرية","price":69,"stock":27}}
 
 def db():
-    c=sqlite3.connect(DB)
-    c.row_factory=sqlite3.Row
+    c=sqlite3.connect(DB); c.row_factory=sqlite3.Row
     c.execute("""CREATE TABLE IF NOT EXISTS orders(
       id TEXT PRIMARY KEY, customer_json TEXT NOT NULL, items_json TEXT NOT NULL,
       total INTEGER NOT NULL, currency TEXT NOT NULL, status TEXT NOT NULL,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
-    c.commit()
-    return c
+      stripe_session_id TEXT UNIQUE, paid_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
+    c.commit(); return c
+
+def stripe_checkout(order_id,total,email):
+    if not STRIPE_SECRET_KEY: raise RuntimeError("STRIPE_SECRET_KEY is not configured")
+    data=urllib.parse.urlencode({
+      "mode":"payment","success_url":SUCCESS_URL+"?order_id="+order_id,
+      "cancel_url":CANCEL_URL+"?order_id="+order_id,"customer_email":email,
+      "metadata[order_id]":order_id,
+      "line_items[0][price_data][currency]":"aed",
+      "line_items[0][price_data][product_data][name]":"UAE Market Order "+order_id,
+      "line_items[0][price_data][unit_amount]":str(total*100),
+      "line_items[0][quantity]":"1"}).encode()
+    req=urllib.request.Request("https://api.stripe.com/v1/checkout/sessions",data=data,
+      headers={"Authorization":"Bearer "+STRIPE_SECRET_KEY})
+    with urllib.request.urlopen(req,timeout=30) as r: return json.loads(r.read())
+
+def verify_signature(payload,header):
+    if not STRIPE_WEBHOOK_SECRET: return False
+    parts=dict(x.split("=",1) for x in header.split(",") if "=" in x)
+    ts=parts.get("t"); sig=parts.get("v1")
+    if not ts or not sig: return False
+    try:
+        if abs(time.time()-int(ts))>300: return False
+    except ValueError: return False
+    expected=hmac.new(STRIPE_WEBHOOK_SECRET.encode(),(ts+"."+payload.decode()).encode(),hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected,sig)
+
+def mark_paid(session):
+    oid=(session.get("metadata") or {}).get("order_id")
+    if not oid: return False
+    if session.get("payment_status")!="paid": return False
+    c=db()
+    cur=c.execute("""UPDATE orders SET status='paid', stripe_session_id=?, paid_at=CURRENT_TIMESTAMP
+                     WHERE id=? AND status!='paid'""",(session.get("id"),oid))
+    c.commit(); changed=cur.rowcount>0; c.close()
+    return changed
 
 class Handler(BaseHTTPRequestHandler):
     def send_json(self,status,payload):
@@ -36,33 +65,51 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin","*"); self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
     def do_OPTIONS(self):
-        self.send_response(204); self.send_header("Access-Control-Allow-Origin","*"); self.send_header("Access-Control-Allow-Headers","Content-Type"); self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
+        self.send_response(204); self.send_header("Access-Control-Allow-Origin","*")
+        self.send_header("Access-Control-Allow-Headers","Content-Type, Stripe-Signature")
+        self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
     def do_GET(self):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"UAE Market API"})
-        if self.path=="/api/products": return self.send_json(200,PRODUCTS)\n        if self.path.startswith("/api/checkout/"):\n            oid=self.path.rsplit("/",1)[-1]\n            c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()\n            if not row: return self.send_json(404,{"error":"not_found"})\n            if row["status"]!="pending_payment": return self.send_json(409,{"error":"order_not_payable","status":row["status"]})\n            customer=json.loads(row["customer_json"]); session=stripe_checkout(oid,row["total"],customer["email"])\n            return self.send_json(200,{"order_id":oid,"checkout_url":session.get("url"),"session_id":session.get("id")})
+        if self.path=="/api/products": return self.send_json(200,PRODUCTS)
+        if self.path.startswith("/api/checkout/"):
+            oid=self.path.rsplit("/",1)[-1]; c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
+            if not row: return self.send_json(404,{"error":"not_found"})
+            if row["status"]!="pending_payment": return self.send_json(409,{"error":"order_not_payable","status":row["status"]})
+            customer=json.loads(row["customer_json"]); session=stripe_checkout(oid,row["total"],customer["email"])
+            c=db(); c.execute("UPDATE orders SET stripe_session_id=? WHERE id=?",(session.get("id"),oid)); c.commit(); c.close()
+            return self.send_json(200,{"order_id":oid,"checkout_url":session.get("url"),"session_id":session.get("id")})
         if self.path.startswith("/api/orders/"):
-            oid=self.path.rsplit("/",1)[-1]
-            c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
+            oid=self.path.rsplit("/",1)[-1]; c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
             return self.send_json(200,dict(row) if row else {"error":"not_found"})
         return self.send_json(404,{"error":"not_found"})
     def do_POST(self):
-        if self.path!="/api/orders": return self.send_json(404,{"error":"not_found"})
-        try:
-            n=int(self.headers.get("Content-Length","0")); data=json.loads(self.rfile.read(n))
-            customer=data.get("customer") or {}; raw_items=data.get("items") or []
-            if not customer.get("email") or not customer.get("name") or not raw_items: raise ValueError("customer and items are required")
-            items=[]; total=0
-            for x in raw_items:
-                p=PRODUCTS.get(x.get("id")); qty=int(x.get("qty",0))
-                if not p or qty<1 or qty>p["stock"]: raise ValueError("invalid product or quantity")
-                items.append({"id":x["id"],"name":p["name"],"price":p["price"],"qty":qty})
-                total+=p["price"]*qty
-            oid="UM-"+uuid.uuid4().hex[:10].upper()
-            c=db(); c.execute("INSERT INTO orders(id,customer_json,items_json,total,currency,status) VALUES(?,?,?,?,?,?)",
-              (oid,json.dumps(customer,ensure_ascii=False),json.dumps(items,ensure_ascii=False),total,"AED","pending_payment")); c.commit(); c.close()
-            return self.send_json(201,{"order_id":oid,"total":total,"currency":"AED","status":"pending_payment"})
-        except Exception as e: return self.send_json(400,{"error":str(e)})
+        n=int(self.headers.get("Content-Length","0")); raw=self.rfile.read(n)
+        if self.path=="/api/orders":
+            try:
+                data=json.loads(raw); customer=data.get("customer") or {}; raw_items=data.get("items") or []
+                if not customer.get("email") or not customer.get("name") or not raw_items: raise ValueError("customer and items are required")
+                items=[]; total=0
+                for x in raw_items:
+                    p=PRODUCTS.get(x.get("id")); qty=int(x.get("qty",0))
+                    if not p or qty<1 or qty>p["stock"]: raise ValueError("invalid product or quantity")
+                    items.append({"id":x["id"],"name":p["name"],"price":p["price"],"qty":qty}); total+=p["price"]*qty
+                oid="UM-"+uuid.uuid4().hex[:10].upper(); c=db()
+                c.execute("INSERT INTO orders(id,customer_json,items_json,total,currency,status) VALUES(?,?,?,?,?,?)",
+                    (oid,json.dumps(customer,ensure_ascii=False),json.dumps(items,ensure_ascii=False),total,"AED","pending_payment"))
+                c.commit(); c.close()
+                return self.send_json(201,{"order_id":oid,"total":total,"currency":"AED","status":"pending_payment"})
+            except Exception as e: return self.send_json(400,{"error":str(e)})
+        if self.path=="/api/webhooks/stripe":
+            sig=self.headers.get("Stripe-Signature","")
+            if not verify_signature(raw,sig): return self.send_json(400,{"error":"invalid_signature"})
+            try:
+                event=json.loads(raw)
+                if event.get("type")=="checkout.session.completed":
+                    session=event.get("data",{}).get("object",{}); mark_paid(session)
+                return self.send_json(200,{"received":True})
+            except Exception as e: return self.send_json(400,{"error":str(e)})
+        return self.send_json(404,{"error":"not_found"})
+
 if __name__=="__main__":
-    db().close()
-    print("UAE Market API listening on http://127.0.0.1:8080")
+    db().close(); print("UAE Market API listening on http://127.0.0.1:8080")
     ThreadingHTTPServer(("0.0.0.0",8080),Handler).serve_forever()
