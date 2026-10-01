@@ -1265,7 +1265,7 @@
     "00000000-676f-6599-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFJPY",
-      "peak_upl": 1.07,
+      "peak_upl": 1.2,
       "protected_profit": true,
       "stop_level": null
     },
@@ -1327,7 +1327,7 @@
     "00000000-676f-9e7f-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CADJPY",
-      "peak_upl": 0.64,
+      "peak_upl": 0.66,
       "protected_profit": true,
       "stop_level": null
     },
@@ -1412,7 +1412,7 @@
       "direction": "SELL",
       "epic": "EURAUD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.08,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1420,8 +1420,8 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.16,
-      "protected_profit": false,
+      "peak_upl": 0.63,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-676f-e2a1-0493-972c0004511e": {
@@ -1435,6 +1435,190 @@
     "00000000-676f-e456-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDMXN",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.01,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-039a-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "GDX",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-03a1-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "GDXJ",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-03a9-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "GOLDUS",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-03ca-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "HMY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-03d1-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "IMGCA",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-03da-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "JDST",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0403-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "NEM",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0417-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "PAAS",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0457-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "RGLD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-046f-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SIL",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0477-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SLV",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-047e-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPUS",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-04e3-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "AUDUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0522-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CADMXN",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0570-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "IVV",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0595-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-059d-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPYG",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-05b3-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPYM",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-05c5-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "VOO",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0a90-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "GLD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0a97-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "GS",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-0cfb-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "KGC",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-1200-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "CHFSGD",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
