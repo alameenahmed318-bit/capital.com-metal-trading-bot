@@ -67,7 +67,16 @@ class Capital:
 
     def put(self, path, payload):
         r = self.s.put(BASE + path, json=payload, timeout=20)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            detail = r.text[:500].replace("\n", " ")
+            raise RuntimeError(f"Capital PUT {path} failed ({r.status_code}): {detail}")
+        return r.json()
+
+    def delete(self, path):
+        r = self.s.delete(BASE + path, timeout=20)
+        if r.status_code >= 400:
+            detail = r.text[:500].replace("\n", " ")
+            raise RuntimeError(f"Capital DELETE {path} failed ({r.status_code}): {detail}")
         return r.json()
 
     def positions(self):
@@ -102,6 +111,9 @@ class Capital:
             f"/api/v1/positions/{deal_id}",
             {"guaranteedStop": False, "stopLevel": float(stop_level)},
         )
+
+    def close_position(self, deal_id):
+        return self.delete(f"/api/v1/positions/{deal_id}")
 
 
 def load_state():
@@ -295,9 +307,27 @@ def tighten_profit_stop(api, item, state_entry, market):
     if peak < PROFIT_ARM:
         return
 
-    giveback = max(0.0, min(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO))
+    giveback = max(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO)
+    # A strong retracement is allowed to close the trade directly while it
+    # is still profitable. This is the fallback for cases where the broker
+    # rejects a stop modification or the price gaps through the stop.
+    retracement = peak - upl
     locked_profit = max(PROFIT_LOCK, peak - giveback)
     if locked_profit <= 0:
+        return
+
+    if upl >= PROFIT_LOCK and retracement >= giveback and upl <= locked_profit:
+        if DRY_RUN:
+            log.info("DRY RUN | STRONG RETRACE CLOSE | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f",
+                     deal_id, upl, peak, locked_profit)
+        else:
+            try:
+                api.close_position(deal_id)
+                log.info("STRONG RETRACE CLOSE | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f",
+                         deal_id, upl, peak, locked_profit)
+                state_entry["stop_level"] = None
+            except Exception as e:
+                log.warning("strong retrace close failed %s: %s", deal_id, e)
         return
 
     target = entry + locked_profit / vpp if direction == "BUY" else entry - locked_profit / vpp
@@ -399,9 +429,13 @@ def refresh_history(api, epic, cache, resolution):
     return cache.get(key, {}).get("xs", [])
 
 
-def refresh_history_budget(api, epics, cache, budget=4):
+def refresh_history_budget(api, epics, cache, budget=6):
     refreshed = 0
-    for epic in epics:
+    # Prioritize the requested non-FX instruments so a large FX universe
+    # cannot starve GOLD/SILVER/US500/US100/US1000 from fresh M5/M15 data.
+    priority = {"GOLD", "SILVER", "US500", "US100", "US1000"}
+    ordered = sorted(epics, key=lambda e: (0 if str(e).upper() in priority else 1, str(e)))
+    for epic in ordered:
         if refreshed >= budget:
             break
         try:
@@ -459,7 +493,7 @@ def run():
             positions = position_cache["positions"]
 
             owned = owned_open_positions(positions, state)
-            refresh_history_budget(api, list(market_by_epic), history, budget=4)
+            refresh_history_budget(api, list(market_by_epic), history, budget=6)
 
             # Profit protection runs first, every 2 seconds.
             for deal_id, item in owned.items():
@@ -467,8 +501,9 @@ def run():
                 if epic in market_by_epic:
                     tighten_profit_stop(api, item, state["owned"][deal_id], market_by_epic[epic])
 
-            # Entries are restricted to currencies. Existing positions on the
-            # same epic block a new entry, including manual/other-bot positions.
+            # Entries use the same M5+M15 signal for FX and the requested
+            # metals/indices. Existing positions on the same epic block a new
+            # entry, including manual/other-bot positions.
             for epic, market in market_by_epic.items():
                 try:
                     m5 = history.get(f"{epic}:{PRICE_RESOLUTION}", {}).get("xs", [])
