@@ -21,11 +21,6 @@ MAX_POSITIONS = int(os.getenv("GOLD_MAX_POSITIONS", "1"))
 # Strategy adapted from public GitHub XAUUSD research:
 # MTF trend + RSI + ADX + ATR + pullback/structure + trailing protection.
 # The source reports a backtest, but those results are not independently verified.
-RSI_BUY_MIN = 50.0
-RSI_BUY_MAX = 65.0
-RSI_SELL_MIN = 35.0
-RSI_SELL_MAX = 50.0
-ADX_MIN = 30.0
 ATR_SL_MULT = 2.0
 ATR_TP_MULT = 3.0
 TRAIL_ACTIVATE_ATR = 0.5
@@ -370,8 +365,11 @@ def signal(candles_m15, candles_h4):
 
     # RSI is contextual only: it must point in the direction of the move,
     # without fixed 50/65/35 thresholds.
-    rsi_buy_context = r >= rsi_low and r >= 50.0
-    rsi_sell_context = r <= rsi_high and r <= 50.0
+    rsi_mid = adaptive_percentile(rsi_samples, 0.50)
+    if rsi_mid is None:
+        return None
+    rsi_buy_context = r >= rsi_mid
+    rsi_sell_context = r <= rsi_mid
 
     # Avoid entries when the latest move is tiny compared with the current range.
     meaningful_move = abs(move) >= max(recent_range * 0.08, a * 0.05)
@@ -398,10 +396,7 @@ def signal(candles_m15, candles_h4):
     return None
 
 def in_session():
-    if not SESSION_FILTER:
-        return True
-    hour = datetime.now(timezone.utc).hour
-    return SESSION_START_UTC <= hour < SESSION_END_UTC
+    return True
 
 
 def protect(api, owned, state, market_price, candles):
@@ -532,7 +527,7 @@ def run():
     started = time.time()
 
     log.info(
-        "INDEPENDENT GOLD BOT | strategy=MTF-ADX-RSI-ATR-PULLBACK | "
+        "INDEPENDENT GOLD BOT | strategy=adaptive-MTF-trend-pullback | "
         "dry_run=%s | scan=%ss | size=%.4f",
         DRY_RUN, SCAN_SECONDS, SIZE,
     )
