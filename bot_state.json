@@ -1412,7 +1412,7 @@
       "direction": "SELL",
       "epic": "EURAUD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.2,
+      "peak_upl": 0.22,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1444,7 +1444,7 @@
       "direction": "SELL",
       "epic": "GDX",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.03,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1452,7 +1452,7 @@
       "direction": "SELL",
       "epic": "GDXJ",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.03,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1484,7 +1484,7 @@
       "direction": "BUY",
       "epic": "JDST",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.07,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1500,7 +1500,7 @@
       "direction": "SELL",
       "epic": "PAAS",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.07,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1508,7 +1508,7 @@
       "direction": "SELL",
       "epic": "RGLD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.06,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1676,8 +1676,8 @@
       "direction": "BUY",
       "epic": "CHFJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
-      "protected_profit": false,
+      "peak_upl": 0.3,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-387d-0493-972c0004511e": {
