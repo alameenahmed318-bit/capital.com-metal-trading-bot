@@ -49,15 +49,33 @@ jobs:
           git config user.name "capital-hybrid-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # The bot may be running from a commit that is no longer the tip of main.
-          # Fetch the latest main first, then merge ownership state before pushing.
+          # The bot can finish on an older checkout while main has advanced.
+          # Preserve this run's ownership state, reset to the latest main, merge the
+          # state there, then commit/push. This avoids rebase conflicts in bot_state.json.
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          local_path = Path("bot_state.json")
+          try:
+              local = json.loads(local_path.read_text() or "{}")
+          except Exception:
+              local = {}
+
+          Path("/tmp/local_bot_state.json").write_text(
+              json.dumps(local, sort_keys=True) + "\n"
+          )
+          PY
+
           git fetch origin main
+          git reset --hard origin/main
+
           python - <<'PY'
           import json
           import subprocess
           from pathlib import Path
 
-          local_path = Path("bot_state.json")
+          local_path = Path("/tmp/local_bot_state.json")
           try:
               local = json.loads(local_path.read_text() or "{}")
           except Exception:
@@ -73,7 +91,7 @@ jobs:
           except Exception:
               remote = {}
 
-          merged = dict(remote)
+          merged = dict(remote) if isinstance(remote, dict) else {}
           remote_owned = remote.get("owned", {}) if isinstance(remote, dict) else {}
           local_owned = local.get("owned", {}) if isinstance(local, dict) else {}
 
@@ -82,7 +100,9 @@ jobs:
               owned.update(local_owned)
 
           merged["owned"] = owned
-          local_path.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n")
+          Path("bot_state.json").write_text(
+              json.dumps(merged, indent=2, sort_keys=True) + "\n"
+          )
           PY
 
           git add bot_state.json
@@ -90,6 +110,5 @@ jobs:
             echo "No state changes."
           else
             git commit -m "Update FX bot ownership state"
-            git pull --rebase origin main
             git push origin HEAD:main
           fi
