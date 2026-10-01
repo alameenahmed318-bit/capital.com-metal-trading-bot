@@ -1,0 +1,64 @@
+name: Independent Gold Bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+concurrency:
+  group: independent-gold-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  gold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - run: pip install requests
+
+      - name: Run independent Gold bot
+        env:
+          # Same Capital credentials as the existing bot.
+          # Values are read from the existing repository secrets at runtime;
+          # they are never copied into source code.
+          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
+          CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          TRADE_SIZE: ${{ secrets.TRADE_SIZE }}
+          GOLD_DRY_RUN: "true"
+          GOLD_TRADE_SIZE: "0.01"
+          GOLD_MAX_POSITIONS: "1"
+          GOLD_MAX_INITIAL_LOSS_AED: "10"
+          GOLD_PROTECT_TRIGGER_AED: "0.25"
+          GOLD_PROFIT_FLOOR_AED: "0.05"
+          GOLD_SCAN_SECONDS: "5"
+          GOLD_RUN_SECONDS: "720"
+        run: python independent_gold_bot.py
+
+      - name: Save independent Gold ownership state
+        if: always()
+        run: |
+          touch gold_bot_state.json
+          git config user.name "independent-gold-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git reset --hard origin/main
+          git add gold_bot_state.json
+          if git diff --cached --quiet; then
+            echo "No Gold state changes."
+          else
+            git commit -m "Update independent Gold bot state"
+            git push origin HEAD:main
+          fi
