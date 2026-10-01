@@ -297,8 +297,17 @@ def position_level(item):
     return None
 
 
+def adaptive_percentile(values, q):
+    if len(values) < 20:
+        return None
+    s = sorted(values[-min(len(values), 80):])
+    idx = max(0, min(len(s) - 1, int((len(s) - 1) * q)))
+    return s[idx]
+
+
 def signal(candles_m15, candles_h4):
-    # Closed candles only: the caller removes the still-forming bar.
+    # Market-adaptive entry: no fixed RSI/ADX entry gates.
+    # The bot compares the current market state with its own recent distribution.
     if len(candles_m15) < 80 or len(candles_h4) < 60:
         return None
 
@@ -315,49 +324,78 @@ def signal(candles_m15, candles_h4):
     adx_v = adx(candles_m15, 14)
     r = rsi(closes, 14)
 
-    if None in (fast, slow, pull, h4_ema, a, adx_v, r):
+    if None in (fast, slow, pull, h4_ema, a, adx_v, r) or a <= 0:
+        return None
+
+    # Build adaptive market context from recent closed candles.
+    atr_samples = []
+    adx_samples = []
+    rsi_samples = []
+    for i in range(30, len(candles_m15) + 1):
+        window = candles_m15[:i]
+        av = atr(window, 14)
+        xv = adx(window, 14)
+        rv = rsi([x["close"] for x in window], 14)
+        if av is not None:
+            atr_samples.append(av)
+        if xv is not None:
+            adx_samples.append(xv)
+        if rv is not None:
+            rsi_samples.append(rv)
+
+    atr_high = adaptive_percentile(atr_samples, 0.35)
+    adx_mid = adaptive_percentile(adx_samples, 0.50)
+    rsi_low = adaptive_percentile(rsi_samples, 0.25)
+    rsi_high = adaptive_percentile(rsi_samples, 0.75)
+
+    if None in (atr_high, adx_mid, rsi_low, rsi_high):
         return None
 
     price = last["close"]
+    recent_range = max(c["high"] for c in candles_m15[-6:]) - min(c["low"] for c in candles_m15[-6:])
+    move = price - prev["close"]
 
-    # Core trend alignment.
-    bullish = h4_closes[-1] > h4_ema and fast > slow
-    bearish = h4_closes[-1] < h4_ema and fast < slow
+    bullish = h4_closes[-1] >= h4_ema and fast > slow
+    bearish = h4_closes[-1] <= h4_ema and fast < slow
 
-    # Pullback/reclaim: price returns to the 20 EMA and closes back
-    # in the trend direction. This avoids chasing extended candles.
-    buy_reclaim = (
-        prev["low"] <= pull + 0.20 * a
-        and price > pull
-        and price > prev["close"]
-    )
-    sell_reclaim = (
-        prev["high"] >= pull - 0.20 * a
-        and price < pull
-        and price < prev["close"]
-    )
+    # Pullback is measured relative to current ATR, not a fixed price distance.
+    buy_reclaim = prev["low"] <= pull + 0.35 * a and price > pull and move > 0
+    sell_reclaim = prev["high"] >= pull - 0.35 * a and price < pull and move < 0
 
-    if adx_v < ADX_MIN:
-        return None
+    # Market-state gates adapt to the current instrument's own history:
+    # enough movement relative to recent volatility, and trend strength above
+    # its own recent median rather than a hard ADX number.
+    active_volatility = a >= atr_high
+    directional = adx_v >= adx_mid
 
-    if bullish and buy_reclaim and RSI_BUY_MIN <= r <= RSI_BUY_MAX:
+    # RSI is contextual only: it must point in the direction of the move,
+    # without fixed 50/65/35 thresholds.
+    rsi_buy_context = r >= rsi_low and r >= 50.0
+    rsi_sell_context = r <= rsi_high and r <= 50.0
+
+    # Avoid entries when the latest move is tiny compared with the current range.
+    meaningful_move = abs(move) >= max(recent_range * 0.08, a * 0.05)
+
+    buy = bullish and buy_reclaim and directional and active_volatility and rsi_buy_context and meaningful_move
+    sell = bearish and sell_reclaim and directional and active_volatility and rsi_sell_context and meaningful_move
+
+    if buy:
         return {
             "direction": "BUY",
             "atr": a,
             "entry": price,
-            "reason": "H4 trend + EMA pullback reclaim + ADX + RSI",
+            "reason": "adaptive H4 trend + M15 pullback + relative volatility/trend context",
         }
 
-    if bearish and sell_reclaim and RSI_SELL_MIN <= r <= RSI_SELL_MAX:
+    if sell:
         return {
             "direction": "SELL",
             "atr": a,
             "entry": price,
-            "reason": "H4 trend + EMA pullback reclaim + ADX + RSI",
+            "reason": "adaptive H4 trend + M15 pullback + relative volatility/trend context",
         }
 
     return None
-
 
 def in_session():
     if not SESSION_FILTER:
