@@ -1,0 +1,22 @@
+name: UAE Business AI Agent
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run agent heartbeat
+        env:
+          AGENT_DRY_RUN: "true"
+        run: |
+          python -m business_agent.agent
