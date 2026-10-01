@@ -110,7 +110,13 @@ class StripePayments:
         inv = requests.post(f"{self.base}/invoices", auth=self.auth,
             data={"customer":customer_id, "auto_advance":"false"}, timeout=30)
         inv.raise_for_status()
-        return inv.json()
+        invoice = inv.json()
+        # Finalize the draft so Stripe exposes a hosted invoice page for the customer.
+        invoice_id = invoice["id"]
+        finalized = requests.post(f"{self.base}/invoices/{invoice_id}/finalize",
+            auth=self.auth, timeout=30)
+        finalized.raise_for_status()
+        return finalized.json()
     def payment_status(self, payment_id: str) -> dict:
         r = requests.get(f"{self.base}/invoices/{payment_id}", auth=self.auth, timeout=30)
         r.raise_for_status()
