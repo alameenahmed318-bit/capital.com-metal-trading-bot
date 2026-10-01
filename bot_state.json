@@ -1412,8 +1412,8 @@
       "direction": "SELL",
       "epic": "EURAUD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.22,
-      "protected_profit": false,
+      "peak_upl": 0.27,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-676f-db26-0493-972c0004511e": {
@@ -1444,7 +1444,7 @@
       "direction": "SELL",
       "epic": "GDX",
       "last_stop_update_ok": false,
-      "peak_upl": 0.03,
+      "peak_upl": 0.04,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1556,7 +1556,7 @@
       "direction": "BUY",
       "epic": "IVV",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.04,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1564,7 +1564,7 @@
       "direction": "BUY",
       "epic": "SPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.04,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1588,7 +1588,7 @@
       "direction": "BUY",
       "epic": "VOO",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.03,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1636,8 +1636,8 @@
       "direction": "BUY",
       "epic": "US500",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
-      "protected_profit": false,
+      "peak_upl": 0.38,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-2c8a-0493-972c0004511e": {
@@ -1660,7 +1660,7 @@
       "direction": "BUY",
       "epic": "CADJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.04,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1676,13 +1676,21 @@
       "direction": "BUY",
       "epic": "CHFJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.3,
+      "peak_upl": 0.4,
       "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-387d-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFMXN",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6770-8087-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "RGLD",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
