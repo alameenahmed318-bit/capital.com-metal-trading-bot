@@ -473,12 +473,30 @@ def refresh_history(api, epic, cache, resolution):
     return cache.get(key, {}).get("xs", [])
 
 
-def refresh_history_budget(api, epics, cache, budget=6):
+def refresh_history_budget(api, markets, cache, budget=6):
     refreshed = 0
-    # Prioritize the requested non-FX instruments so a large FX universe
-    # cannot starve GOLD/SILVER/US500/US100/US1000 from fresh M5/M15 data.
-    priority = {"GOLD", "SILVER", "US500", "US100", "US1000"}
-    ordered = sorted(epics, key=lambda e: (0 if str(e).upper() in priority else 1, str(e)))
+    # Never let the large FX universe starve metals/indices. Capital epics are
+    # not guaranteed to be literally GOLD/SILVER/US100, so classify by both
+    # epic and instrument name.
+    priority = []
+    other = []
+    for market in markets:
+        epic = str(market.get("epic", "")).upper()
+        name = str(market.get("instrumentName", market.get("name", ""))).upper()
+        is_priority = (
+            epic in {"GOLD", "SILVER", "US500", "US100", "US1000"}
+            or "GOLD" in name
+            or "SILVER" in name
+            or "US TECH 100" in name
+            or "TECH 100" in name
+            or "S&P 500" in name
+            or "US 500" in name
+        )
+        (priority if is_priority else other).append(epic)
+    # Refresh every requested metal/index first; only then spend remaining
+    # budget on FX. This fixes the silent starvation where GOLD/SILVER could
+    # be tradable but never receive enough M5/M15 history to generate a signal.
+    ordered = priority + sorted(other)
     for epic in ordered:
         if refreshed >= budget:
             break
@@ -541,7 +559,7 @@ def run():
             positions = position_cache["positions"]
 
             owned = owned_open_positions(positions, state)
-            refresh_history_budget(api, list(market_by_epic), history, budget=6)
+            refresh_history_budget(api, list(market_by_epic.values()), history, budget=6)
 
             # Profit protection runs first, every 2 seconds.
             for deal_id, item in owned.items():
