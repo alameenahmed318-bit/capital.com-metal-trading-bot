@@ -3,7 +3,7 @@ name: Capital Hybrid Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
 
 concurrency:
   group: capital-hybrid-bot
@@ -15,7 +15,7 @@ permissions:
 jobs:
   bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 13
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +39,7 @@ jobs:
           PROFIT_LOCK_AED: "0.25"
           TRAIL_GIVEBACK_AED: "1"
           HISTORY_REFRESH_SECONDS: "60"
-          RUN_SECONDS: "720"
+          RUN_SECONDS: "240"
         run: python bot.py
 
       - name: Save bot ownership state
