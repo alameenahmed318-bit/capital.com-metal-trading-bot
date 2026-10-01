@@ -1,6 +1,7 @@
 """UAE Business AI Agent orchestration engine."""
 from __future__ import annotations
 import json
+import os
 import re
 import time
 from dataclasses import asdict, dataclass
@@ -408,6 +409,52 @@ class BusinessAgent:
         self.state["approvals"].append(a)
         self.log("approval", f"Approval required: {action}", approval=a)
 
+    def resolve_approval(self, approval_id: str, decision: str = "approve") -> dict:
+        """Resolve a pending order approval and create its invoice."""
+        approval = next((a for a in self.state.get("approvals", []) if a.get("id") == approval_id), None)
+        if not approval:
+            return {"status": "not_found", "approval_id": approval_id}
+        if approval.get("status") != "pending":
+            return {"status": approval.get("status"), "approval_id": approval_id}
+        if decision != "approve":
+            approval["status"] = "rejected"
+            approval["resolved_at"] = time.time()
+            self._save()
+            return {"status": "rejected", "approval_id": approval_id}
+        approval["status"] = "approved"
+        approval["resolved_at"] = time.time()
+        payload = approval.get("payload") or {}
+        if approval.get("type") != "order":
+            self._save()
+            return {"status": "approved", "approval_id": approval_id}
+        request_id = payload.get("request_id")
+        request = next((r for r in self.state.get("requests", []) if r.get("id") == request_id), None)
+        if not request:
+            approval["status"] = "failed"
+            self._save()
+            return {"status": "failed", "reason": "request_not_found", "approval_id": approval_id}
+        description = f"{request.get('service', 'Business service')} - {payload.get('scope', '')}".strip(" -")
+        amount = float(payload.get("amount_aed", 0))
+        customer = payload.get("customer") or request.get("contact") or {}
+        if self.settings.dry_run:
+            invoice = {"status": "dry_run", "amount_aed": amount, "description": description}
+        elif not self.payments:
+            invoice = {"status": "not_configured", "amount_aed": amount}
+        else:
+            invoice = self.payments.create_invoice(customer, amount, description)
+            self.state["payments"].append(invoice)
+            self.log("payment", "Stripe invoice created after approval", request_id=request_id, approval_id=approval_id, invoice_id=invoice.get("id"))
+        if invoice.get("status") == "dry_run" or invoice.get("id"):
+            request["status"] = "invoice_created" if invoice.get("id") else "invoice_ready_dry_run"
+            request["invoice_id"] = invoice.get("id")
+            request["invoice_url"] = invoice.get("hosted_invoice_url")
+            approval["invoice_id"] = invoice.get("id")
+            if invoice.get("hosted_invoice_url") and self.mail:
+                self.mail.send((request.get("contact") or {}).get("email", ""), "فاتورة الخدمة", "تم إنشاء الفاتورة. رابط الدفع: " + invoice["hosted_invoice_url"])
+        else:
+            approval["status"] = "failed"
+        self._save()
+        return {"status": invoice.get("status"), "approval_id": approval_id, "invoice": invoice}
     def create_invoice_after_approval(self, request_id: str, customer: dict, amount_aed: float, description: str) -> dict:
         if self.settings.approval_required_for_money:
             self.request_approval("invoice", {
@@ -443,6 +490,8 @@ def run_cycle():
     agent = BusinessAgent()
     agent.state["status"] = "running"
     agent.log("system", "Business Agent cycle started", dry_run=agent.settings.dry_run)
+    approval_id = os.getenv("APPROVAL_ID", "").strip()
+    approval_result = agent.resolve_approval(approval_id, os.getenv("APPROVAL_DECISION", "approve").strip().lower()) if approval_id else None
     inbound = agent.process_inbound_mail()
     offers = agent.handle_pending_requests()
     agent.scan_market([
@@ -454,6 +503,8 @@ def run_cycle():
     result = agent.status()
     result["inbound_processed"] = inbound
     result["offers_handled"] = offers
+    if approval_result is not None:
+        result["approval_result"] = approval_result
     agent.log("system", "Business Agent cycle completed", status=result)
     return result
 
