@@ -17,4 +17,5 @@ class Settings:
     hubspot_access_token: str = os.getenv("HUBSPOT_ACCESS_TOKEN", "")
     tavily_api_key: str = os.getenv("TAVILY_API_KEY", "")
     agentmail_api_key: str = os.getenv("AGENTMAIL_API_KEY", "")
+    agentmail_inbox_id: str = os.getenv("AGENTMAIL_INBOX_ID", "uaebusinessai@agentmail.to")
     company_name: str = os.getenv("COMPANY_NAME", "UAE Business AI")
