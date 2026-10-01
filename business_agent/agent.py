@@ -414,7 +414,9 @@ class BusinessAgent:
         approval = next((a for a in self.state.get("approvals", []) if a.get("id") == approval_id), None)
         if not approval:
             return {"status": "not_found", "approval_id": approval_id}
-        if approval.get("status") != "pending":
+        # A dry-run must not consume the approval. Also allow a previously
+        # dry-run-approved approval to be retried in real Sandbox mode.
+        if approval.get("status") not in {"pending", "approved"}:
             return {"status": approval.get("status"), "approval_id": approval_id}
         if decision != "approve":
             approval["status"] = "rejected"
@@ -422,7 +424,6 @@ class BusinessAgent:
             self._save()
             return {"status": "rejected", "approval_id": approval_id}
         approval["status"] = "approved"
-        approval["resolved_at"] = time.time()
         payload = approval.get("payload") or {}
         if approval.get("type") != "order":
             self._save()
@@ -437,6 +438,9 @@ class BusinessAgent:
         amount = float(payload.get("amount_aed", 0))
         customer = payload.get("customer") or request.get("contact") or {}
         if self.settings.dry_run:
+            # Keep the approval pending so a later non-dry-run Sandbox run
+            # can safely execute the same approved money action.
+            approval["status"] = "pending"
             invoice = {"status": "dry_run", "amount_aed": amount, "description": description}
         elif not self.payments:
             invoice = {"status": "not_configured", "amount_aed": amount}
@@ -445,6 +449,9 @@ class BusinessAgent:
             self.state["payments"].append(invoice)
             self.log("payment", "Stripe invoice created after approval", request_id=request_id, approval_id=approval_id, invoice_id=invoice.get("id"))
         if invoice.get("status") == "dry_run" or invoice.get("id"):
+            if invoice.get("id"):
+                approval["status"] = "approved"
+                approval["resolved_at"] = time.time()
             request["status"] = "invoice_created" if invoice.get("id") else "invoice_ready_dry_run"
             request["invoice_id"] = invoice.get("id")
             request["invoice_url"] = invoice.get("hosted_invoice_url")
