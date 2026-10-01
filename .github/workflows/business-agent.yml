@@ -42,19 +42,35 @@ jobs:
           python-version: "3.13"
       - name: Install business agent dependencies
         run: python -m pip install --disable-pip-version-check requests
-      - name: Run business agent
+      - name: Run business agent (manual)
+        if: github.event_name == 'workflow_dispatch'
         env:
-          # Scheduled runs are always safe/dry-run. Manual runs use the checkbox value exactly.
-          AGENT_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'true' }}
+          # Preserve an explicit false value from the checkbox.
+          AGENT_DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
           APPROVAL_REQUIRED_FOR_MONEY: "true"
           APPROVAL_REQUIRED_FOR_CONTRACTS: "true"
-          APPROVAL_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_id || '' }}
-          APPROVAL_DECISION: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_decision || 'approve' }}
+          APPROVAL_ID: ${{ inputs.approval_id }}
+          APPROVAL_DECISION: ${{ inputs.approval_decision }}
           HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           AGENTMAIL_API_KEY: ${{ secrets.AGENTMAIL_API_KEY }}
         run: python -m business_agent.agent
+
+      - name: Run business agent (scheduled)
+        if: github.event_name == 'schedule'
+        env:
+          AGENT_DRY_RUN: "true"
+          APPROVAL_REQUIRED_FOR_MONEY: "true"
+          APPROVAL_REQUIRED_FOR_CONTRACTS: "true"
+          APPROVAL_ID: ""
+          APPROVAL_DECISION: "approve"
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          AGENTMAIL_API_KEY: ${{ secrets.AGENTMAIL_API_KEY }}
+        run: python -m business_agent.agent
+
       - name: Persist agent state safely
         run: |
           git config user.name "uae-business-ai-agent"
