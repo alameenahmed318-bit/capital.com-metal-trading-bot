@@ -10,6 +10,7 @@ from typing import Any
 from .config import Settings
 from .adapters import TavilyMarketResearch, HubSpotCRM, StripePayments, AgentMailMessenger
 
+
 @dataclass
 class Event:
     ts: float
@@ -17,12 +18,14 @@ class Event:
     message: str
     data: dict[str, Any]
 
+
 class BusinessAgent:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or Settings()
         self.state: dict[str, Any] = {
-            "status":"ready","leads":[],"requests":[],"tasks":[],"payments":[],
-            "approvals":[],"opportunities":[],"quotes":[],"processed_messages":[]
+            "status": "ready", "leads": [], "requests": [], "tasks": [], "payments": [],
+            "approvals": [], "opportunities": [], "quotes": [], "processed_messages": [],
+            "followups": []
         }
         self.events: list[Event] = []
         self._load()
@@ -32,90 +35,124 @@ class BusinessAgent:
         self.mail = AgentMailMessenger(self.settings.agentmail_api_key, self.settings.agentmail_inbox_id) if self.settings.agentmail_api_key else None
 
     def log(self, kind: str, message: str, **data: Any) -> None:
-        e=Event(time.time(),kind,message,data); self.events.append(e); self.events=self.events[-500:]
-        self.state["last_event"]=asdict(e); self._save()
+        e = Event(time.time(), kind, message, data)
+        self.events.append(e)
+        self.events = self.events[-500:]
+        self.state["last_event"] = asdict(e)
+        self._save()
 
     def _load(self) -> None:
-        p=Path(self.settings.state_file)
+        p = Path(self.settings.state_file)
         if p.exists():
-            try: self.state.update(json.loads(p.read_text(encoding="utf-8")))
-            except (OSError,json.JSONDecodeError): pass
+            try:
+                self.state.update(json.loads(p.read_text(encoding="utf-8")))
+            except (OSError, json.JSONDecodeError):
+                pass
 
     def _save(self) -> None:
-        p=Path(self.settings.state_file); p.parent.mkdir(parents=True,exist_ok=True)
-        p.write_text(json.dumps(self.state,ensure_ascii=False,indent=2),encoding="utf-8")
+        p = Path(self.settings.state_file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(self.state, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def scan_market(self, queries: list[str]) -> list[dict]:
         if not self.market:
-            self.log("market","Market connector not configured"); return []
-        results=[]
+            self.log("market", "Market connector not configured")
+            return []
+        results = []
         for q in queries:
             try:
-                found=self.market.search(q); results.extend(found)
-                self.log("market","Market scan completed",query=q,results=len(found))
-            except Exception as exc: self.log("error","Market scan failed",query=q,error=str(exc))
-        self.state["opportunities"]=results[-100:]; self._save(); return results
+                found = self.market.search(q)
+                results.extend(found)
+                self.log("market", "Market scan completed", query=q, results=len(found))
+            except Exception as exc:
+                self.log("error", "Market scan failed", query=q, error=str(exc))
+        self.state["opportunities"] = results[-100:]
+        self._save()
+        return results
 
     def _extract_email(self, sender: str) -> str:
-        m=re.search(r"<([^>]+)>", sender or "")
+        m = re.search(r"<([^>]+)>", sender or "")
         return m.group(1) if m else (sender or "").strip()
 
     def _classify_service(self, text: str) -> str:
-        t=text.lower()
-        if any(x in t for x in ("website","web site","موقع","ويب")): return "Website / Web Services"
-        if any(x in t for x in ("automation","automate","أتمتة","بوت","bot","ai")): return "Business Automation / AI"
-        if any(x in t for x in ("marketing","تسويق","ads","advertising","إعلانات")): return "Digital Marketing"
-        if any(x in t for x in ("lead","leads","عملاء","عملاء محتملين")): return "Lead Generation"
-        if any(x in t for x in ("research","بحث","دراسة","market")): return "Market Research"
+        t = text.lower()
+        if any(x in t for x in ("website", "web site", "موقع", "ويب")):
+            return "Website / Web Services"
+        if any(x in t for x in ("automation", "automate", "أتمتة", "بوت", "bot", "ai")):
+            return "Business Automation / AI"
+        if any(x in t for x in ("marketing", "تسويق", "ads", "advertising", "إعلانات")):
+            return "Digital Marketing"
+        if any(x in t for x in ("lead", "leads", "عملاء", "عملاء محتملين")):
+            return "Lead Generation"
+        if any(x in t for x in ("research", "بحث", "دراسة", "market")):
+            return "Market Research"
         return "Business Services Inquiry"
+
+    def _clean_customer_text(self, text: str) -> str:
+        """Remove common quoted-email sections so replies are not treated as fresh requests."""
+        text = re.sub(r"(?im)^>.*$", "", text)
+        text = re.split(r"(?im)^\s*(?:On .+ wrote:|From: .+|Sent: .+|-----Original Message-----)\s*$", text)[0]
+        return re.sub(r"\n{3,}", "\n\n", text).strip()
 
     def process_inbound_mail(self) -> int:
         if not self.mail:
-            self.log("mail","AgentMail connector not configured"); return 0
-        processed=set(self.state.get("processed_messages", []))
-        count=0
+            self.log("mail", "AgentMail connector not configured")
+            return 0
+        processed = set(self.state.get("processed_messages", []))
+        count = 0
         try:
-            messages=self.mail.list_messages(limit=50)
+            messages = self.mail.list_messages(limit=50)
         except Exception as exc:
-            self.log("error","AgentMail list failed",error=str(exc)); return 0
+            self.log("error", "AgentMail list failed", error=str(exc))
+            return 0
         for meta in messages:
-            mid=meta.get("message_id")
-            if not mid or mid in processed: continue
+            mid = meta.get("message_id")
+            if not mid or mid in processed:
+                continue
             try:
-                msg=self.mail.get_message(mid)
-                sender=self._extract_email(msg.get("from",""))
-                if sender.lower()==self.settings.agentmail_inbox_id.lower(): 
-                    processed.add(mid); continue
-                body=msg.get("extracted_text") or msg.get("text") or msg.get("preview") or ""
-                subject=msg.get("subject") or "Business inquiry"
-                service=self._classify_service(subject+"\n"+body)
-                name=sender.split("@")[0] if sender else "Prospect"
-                req=self.create_request(name,service,body,{"email":sender,"first_name":name})
-                req["source"]="agentmail"
-                req["message_id"]=mid
-                req["subject"]=subject
-                self.log("mail","Inbound customer email processed",message_id=mid,request_id=req["id"],sender=sender,service=service)
-                processed.add(mid); count += 1
+                msg = self.mail.get_message(mid)
+                sender = self._extract_email(msg.get("from", ""))
+                if sender.lower() == self.settings.agentmail_inbox_id.lower():
+                    processed.add(mid)
+                    continue
+                body = self._clean_customer_text(msg.get("extracted_text") or msg.get("text") or msg.get("preview") or "")
+                subject = msg.get("subject") or "Business inquiry"
+                service = self._classify_service(subject + "\n" + body)
+                name = sender.split("@")[0] if sender else "Prospect"
+                req = self.create_request(name, service, body, {"email": sender, "first_name": name})
+                req["source"] = "agentmail"
+                req["message_id"] = mid
+                req["subject"] = subject
+                req["thread_id"] = msg.get("thread_id") or meta.get("thread_id")
+                self.log("mail", "Inbound customer email processed", message_id=mid, request_id=req["id"], sender=sender, service=service)
+                processed.add(mid)
+                count += 1
             except Exception as exc:
-                self.log("error","Inbound email processing failed",message_id=mid,error=str(exc))
-        self.state["processed_messages"]=list(processed)[-1000:]
+                self.log("error", "Inbound email processing failed", message_id=mid, error=str(exc))
+        self.state["processed_messages"] = list(processed)[-1000:]
         self._save()
         return count
 
-    def create_request(self, company: str, service: str, details: str="", contact: dict|None=None) -> dict:
-        req={"id":f"REQ-{int(time.time()*1000)}","company":company,"service":service,
-             "details":details,"contact":contact or {},"status":"new","created_at":time.time()}
+    def create_request(self, company: str, service: str, details: str = "", contact: dict | None = None) -> dict:
+        req = {
+            "id": f"REQ-{int(time.time()*1000)}", "company": company, "service": service,
+            "details": details, "contact": contact or {}, "status": "new", "created_at": time.time()
+        }
         self.state["requests"].append(req)
         if self.crm and contact:
             try:
-                lead=self.crm.create_lead({"firstname":contact.get("first_name",""),
-                    "lastname":contact.get("last_name",""),"email":contact.get("email",""),
-                    "company":company,"jobtitle":contact.get("job_title","")})
-                req["hubspot_id"]=lead.get("id"); self.state["leads"].append(lead)
-            except Exception as exc: self.log("error","CRM create failed",error=str(exc),request_id=req["id"])
-        self.log("request","New service request",request=req); return req
+                lead = self.crm.create_lead({
+                    "firstname": contact.get("first_name", ""), "lastname": contact.get("last_name", ""),
+                    "email": contact.get("email", ""), "company": company, "jobtitle": contact.get("job_title", "")
+                })
+                req["hubspot_id"] = lead.get("id")
+                self.state["leads"].append(lead)
+            except Exception as exc:
+                self.log("error", "CRM create failed", error=str(exc), request_id=req["id"])
+        self.log("request", "New service request", request=req)
+        return req
 
-    def _quote_for_service(self, service: str) -> tuple[float, str]:
+    def _base_quote(self, service: str) -> tuple[float, str]:
         catalog = {
             "Website / Web Services": (2500.0, "تصميم وتطوير موقع إلكتروني للشركة، صفحات أساسية، نموذج تواصل، وتجهيز مبدئي للنشر."),
             "Business Automation / AI": (3500.0, "أتمتة عمليات الأعمال باستخدام حلول AI وأتمتة مخصصة حسب احتياج الشركة."),
@@ -126,29 +163,79 @@ class BusinessAgent:
         }
         return catalog.get(service, catalog["Business Services Inquiry"])
 
-    def prepare_quote(self, request_id: str, amount_aed: float, scope: str, terms: str="") -> dict:
-        q={"id":f"Q-{int(time.time()*1000)}","request_id":request_id,"amount_aed":float(amount_aed),
-           "scope":scope,"terms":terms,"status":"ready_to_send","created_at":time.time()}
+    def _dynamic_quote(self, request: dict) -> tuple[float, str, dict]:
+        """Estimate price from requested complexity and current market signals.
+
+        Market results inform the estimate; they are not treated as authoritative price lists.
+        """
+        service = request.get("service", "Business Services Inquiry")
+        details = request.get("details", "")
+        amount, scope = self._base_quote(service)
+        complexity = 1.0
+        additions: list[str] = []
+
+        rules = [
+            (("ecommerce", "متجر", "دفع", "payment", "online store"), 1.45, "متجر/دفع إلكتروني"),
+            (("booking", "حجز", "موعد", "calendar"), 1.20, "حجوزات أو مواعيد"),
+            (("multilingual", "عربي وإنجليزي", "لغتين", "متعدد اللغات"), 1.15, "تعدد اللغات"),
+            (("app", "تطبيق", "mobile"), 1.35, "تكامل/تطبيق"),
+            (("crm", "hubspot", "salesforce"), 1.20, "تكامل CRM"),
+            (("api", "تكامل", "integration"), 1.20, "تكاملات خارجية"),
+            (("custom", "مخصص", "خاص"), 1.15, "تخصيص إضافي"),
+        ]
+        lower = details.lower()
+        for words, multiplier, label in rules:
+            if any(w in lower for w in words):
+                complexity *= multiplier
+                additions.append(label)
+
+        market_refs = []
+        if self.market:
+            try:
+                query = f"UAE {service} pricing packages 2026 Dubai Abu Dhabi"
+                market_refs = self.market.search(query)[:5]
+                self.log("market", "Pricing market check completed", service=service, results=len(market_refs))
+            except Exception as exc:
+                self.log("error", "Pricing market check failed", error=str(exc))
+
+        amount = round((amount * complexity) / 100.0) * 100
+        amount = max(750.0, min(amount, 25000.0))
+        evidence = [
+            {"title": r.get("title"), "url": r.get("url")}
+            for r in market_refs if r.get("title") or r.get("url")
+        ]
+        if additions:
+            scope += " يشمل التقدير الحالي أيضًا: " + "، ".join(additions) + "."
+        return amount, scope, {"complexity": round(complexity, 2), "market_references": evidence}
+
+    def prepare_quote(self, request_id: str, amount_aed: float, scope: str, terms: str = "", pricing_meta: dict | None = None) -> dict:
+        q = {
+            "id": f"Q-{int(time.time()*1000)}", "request_id": request_id,
+            "amount_aed": float(amount_aed), "scope": scope, "terms": terms,
+            "pricing": pricing_meta or {}, "status": "ready_to_send", "created_at": time.time()
+        }
         self.state["quotes"].append(q)
-        self.log("quote","Non-binding quote prepared",quote=q); return q
+        self.log("quote", "Dynamic non-binding quote prepared", quote=q)
+        return q
 
     def _send_customer_reply(self, request: dict, quote: dict) -> bool:
         if not self.mail:
-            self.log("mail","Cannot send offer: AgentMail not configured",request_id=request["id"])
+            self.log("mail", "Cannot send offer: AgentMail not configured", request_id=request["id"])
             return False
-        email = (request.get("contact") or {}).get("email","").strip()
+        email = (request.get("contact") or {}).get("email", "").strip()
         if not email:
-            self.log("mail","Cannot send offer: customer email missing",request_id=request["id"])
+            self.log("mail", "Cannot send offer: customer email missing", request_id=request["id"])
             return False
+
         subject = f"عرض مبدئي من {self.settings.company_name} - {request['service']}"
         body = (
             f"مرحباً {request.get('company','')},\n\n"
-            f"شكرًا لتواصلكم معنا. بناءً على طلبكم، هذا عرض مبدئي غير ملزم لخدمة "
-            f"{request['service']}.\n\n"
-            f"السعر المبدئي: {quote['amount_aed']:.0f} درهم إماراتي\n"
+            "شكرًا لتواصلكم معنا. راجعنا طلبكم وأعددنا تقديرًا مبدئيًا بناءً على المعلومات الحالية.\n\n"
+            f"الخدمة: {request['service']}\n"
+            f"السعر المبدئي المقترح: {quote['amount_aed']:.0f} درهم إماراتي\n"
             f"النطاق: {quote['scope']}\n\n"
-            "السعر النهائي وموعد التنفيذ يتحددان بعد تأكيد المتطلبات والنطاق. "
-            "إذا كان العرض مناسبًا، يمكنكم الرد على هذه الرسالة بتفاصيلكم أو الأسئلة، وسنقوم بالمتابعة.\n\n"
+            "هذا عرض مبدئي غير ملزم. السعر النهائي وموعد التنفيذ يتحددان بعد تأكيد المتطلبات والنطاق. "
+            "إذا كان مناسبًا، أرسلوا المتطلبات أو أسئلتكم وسنواصل معكم.\n\n"
             f"تحياتنا،\n{self.settings.company_name}"
         )
         try:
@@ -156,68 +243,108 @@ class BusinessAgent:
             quote["sent_at"] = time.time()
             quote["status"] = "sent"
             quote["delivery"] = {"message_id": result.get("message_id") or result.get("id")}
-            self.log("mail","Customer offer sent",request_id=request["id"],quote_id=quote["id"],recipient=email)
+            self.log("mail", "Customer offer sent", request_id=request["id"], quote_id=quote["id"], recipient=email)
             return True
         except Exception as exc:
-            self.log("error","Customer offer send failed",request_id=request["id"],error=str(exc))
+            self.log("error", "Customer offer send failed", request_id=request["id"], error=str(exc))
             return False
+
+    def _schedule_followup(self, request: dict, quote: dict, days: int = 2) -> None:
+        follow = {
+            "id": f"FU-{int(time.time()*1000)}", "request_id": request["id"], "quote_id": quote["id"],
+            "status": "scheduled", "due_at": time.time() + days * 86400, "attempts": 0
+        }
+        self.state.setdefault("followups", []).append(follow)
+        self.log("followup", "Customer follow-up scheduled", followup=follow)
 
     def handle_pending_requests(self) -> int:
         handled = 0
         for request in self.state.get("requests", []):
             if request.get("status") != "new" or request.get("source") != "agentmail":
                 continue
-            amount, scope = self._quote_for_service(request.get("service",""))
-            quote = self.prepare_quote(request["id"], amount, scope,
-                                       "عرض مبدئي غير ملزم؛ الفاتورة أو العقد لا يتم إنشاؤهما تلقائيًا.")
+            amount, scope, meta = self._dynamic_quote(request)
+            quote = self.prepare_quote(
+                request["id"], amount, scope,
+                "عرض مبدئي غير ملزم؛ الفاتورة أو العقد لا يتم إنشاؤهما تلقائيًا.",
+                meta
+            )
             if self._send_customer_reply(request, quote):
                 request["status"] = "offer_sent"
                 request["quote_id"] = quote["id"]
                 request["offer_sent_at"] = time.time()
+                self._schedule_followup(request, quote)
                 handled += 1
             else:
                 request["status"] = "offer_send_failed"
         self._save()
         return handled
 
+    def create_task(self, request_id: str, title: str, instructions: str = "") -> dict:
+        task = {
+            "id": f"TASK-{int(time.time()*1000)}", "request_id": request_id, "title": title,
+            "instructions": instructions, "status": "queued", "created_at": time.time()
+        }
+        self.state["tasks"].append(task)
+        self.log("task", "Task queued", task=task)
+        return task
 
-    def create_task(self, request_id: str, title: str, instructions: str="") -> dict:
-        task={"id":f"TASK-{int(time.time()*1000)}","request_id":request_id,"title":title,
-              "instructions":instructions,"status":"queued","created_at":time.time()}
-        self.state["tasks"].append(task); self.log("task","Task queued",task=task); return task
-
-    def request_approval(self, action: str, payload: dict[str,Any]) -> None:
-        a={"id":f"APR-{int(time.time()*1000)}","type":action,"status":"pending","payload":payload,"created_at":time.time()}
-        self.state["approvals"].append(a); self.log("approval",f"Approval required: {action}",approval=a)
+    def request_approval(self, action: str, payload: dict[str, Any]) -> None:
+        a = {
+            "id": f"APR-{int(time.time()*1000)}", "type": action, "status": "pending",
+            "payload": payload, "created_at": time.time()
+        }
+        self.state["approvals"].append(a)
+        self.log("approval", f"Approval required: {action}", approval=a)
 
     def create_invoice_after_approval(self, request_id: str, customer: dict, amount_aed: float, description: str) -> dict:
         if self.settings.approval_required_for_money:
-            self.request_approval("invoice",{"request_id":request_id,"customer":customer,
-                                             "amount_aed":amount_aed,"description":description})
-            return {"status":"approval_required"}
-        if self.settings.dry_run: return {"status":"dry_run","amount_aed":amount_aed}
-        if not self.payments: return {"status":"not_configured"}
-        inv=self.payments.create_invoice(customer,amount_aed,description)
-        self.state["payments"].append(inv); self.log("payment","Stripe invoice created",invoice_id=inv.get("id")); return inv
+            self.request_approval("invoice", {
+                "request_id": request_id, "customer": customer,
+                "amount_aed": amount_aed, "description": description
+            })
+            return {"status": "approval_required"}
+        if self.settings.dry_run:
+            return {"status": "dry_run", "amount_aed": amount_aed}
+        if not self.payments:
+            return {"status": "not_configured"}
+        inv = self.payments.create_invoice(customer, amount_aed, description)
+        self.state["payments"].append(inv)
+        self.log("payment", "Stripe invoice created", invoice_id=inv.get("id"))
+        return inv
 
-    def status(self) -> dict[str,Any]:
-        return {"name":self.settings.app_name,"dry_run":self.settings.dry_run,
-                "connectors":{"market":bool(self.market),"hubspot":bool(self.crm),"stripe":bool(self.payments),"agentmail":bool(self.mail)},
-                "status":self.state.get("status","ready"),"requests":len(self.state["requests"]),
-                "leads":len(self.state["leads"]),"tasks":len(self.state["tasks"]),
-                "payments":len(self.state["payments"]),"approvals":len(self.state["approvals"]),
-                "opportunities":len(self.state["opportunities"]),"quotes":len(self.state["quotes"])}
+    def status(self) -> dict[str, Any]:
+        return {
+            "name": self.settings.app_name, "dry_run": self.settings.dry_run,
+            "connectors": {
+                "market": bool(self.market), "hubspot": bool(self.crm),
+                "stripe": bool(self.payments), "agentmail": bool(self.mail)
+            },
+            "status": self.state.get("status", "ready"),
+            "requests": len(self.state["requests"]), "leads": len(self.state["leads"]),
+            "tasks": len(self.state["tasks"]), "payments": len(self.state["payments"]),
+            "approvals": len(self.state["approvals"]), "opportunities": len(self.state["opportunities"]),
+            "quotes": len(self.state["quotes"]), "followups": len(self.state.get("followups", []))
+        }
+
 
 def run_cycle():
-    agent=BusinessAgent(); agent.state["status"]="running"
-    agent.log("system","Business Agent cycle started",dry_run=agent.settings.dry_run)
-    inbound=agent.process_inbound_mail()
-    offers=agent.handle_pending_requests()
-    agent.scan_market(["UAE companies needing digital marketing","UAE SMEs needing websites",
-                       "UAE companies needing business automation","Abu Dhabi Dubai companies needing lead generation"])
-    result=agent.status(); result["inbound_processed"]=inbound
-    agent.log("system","Business Agent cycle completed",status=result)
+    agent = BusinessAgent()
+    agent.state["status"] = "running"
+    agent.log("system", "Business Agent cycle started", dry_run=agent.settings.dry_run)
+    inbound = agent.process_inbound_mail()
+    offers = agent.handle_pending_requests()
+    agent.scan_market([
+        "UAE companies needing digital marketing",
+        "UAE SMEs needing websites",
+        "UAE companies needing business automation",
+        "Abu Dhabi Dubai companies needing lead generation"
+    ])
+    result = agent.status()
+    result["inbound_processed"] = inbound
+    result["offers_handled"] = offers
+    agent.log("system", "Business Agent cycle completed", status=result)
     return result
 
-if __name__=="__main__":
-    print(json.dumps(run_cycle(),ensure_ascii=False,indent=2))
+
+if __name__ == "__main__":
+    print(json.dumps(run_cycle(), ensure_ascii=False, indent=2))
