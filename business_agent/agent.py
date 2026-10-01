@@ -471,6 +471,69 @@ class BusinessAgent:
         self.log("payment", "Stripe invoice created", invoice_id=inv.get("id"))
         return inv
 
+    def reconcile_payments(self) -> int:
+        """Refresh Stripe invoice status for recorded invoices."""
+        if not self.payments:
+            return 0
+        changed = 0
+        for payment in self.state.get("payments", []):
+            invoice_id = payment.get("id")
+            if not invoice_id or payment.get("status") == "paid":
+                continue
+            try:
+                latest = self.payments.payment_status(invoice_id)
+                old = payment.get("status")
+                payment.update({
+                    "status": latest.get("status", old),
+                    "paid": latest.get("paid", False),
+                    "hosted_invoice_url": latest.get("hosted_invoice_url"),
+                    "amount_due": latest.get("amount_due"),
+                    "currency": latest.get("currency"),
+                    "last_checked_at": time.time(),
+                })
+                if payment.get("paid") and old != "paid":
+                    changed += 1
+                    request = next((r for r in self.state.get("requests", [])
+                                     if r.get("invoice_id") == invoice_id), None)
+                    if request:
+                        request["status"] = "paid"
+                        request["paid_at"] = time.time()
+                    self.log("payment", "Stripe invoice marked paid", invoice_id=invoice_id)
+            except Exception as exc:
+                self.log("error", "Stripe payment status check failed", invoice_id=invoice_id, error=str(exc))
+        self._save()
+        return changed
+
+    def execute_followups(self) -> int:
+        """Send due follow-ups once."""
+        if not self.mail:
+            return 0
+        now = time.time()
+        sent = 0
+        for follow in self.state.get("followups", []):
+            if follow.get("status") != "scheduled" or follow.get("due_at", now + 1) > now:
+                continue
+            request = next((r for r in self.state.get("requests", []) if r.get("id") == follow.get("request_id")), None)
+            quote = next((q for q in self.state.get("quotes", []) if q.get("id") == follow.get("quote_id")), None)
+            if not request or not quote:
+                follow["status"] = "cancelled"
+                continue
+            email = (request.get("contact") or {}).get("email", "").strip()
+            if not email:
+                follow["status"] = "cancelled"
+                continue
+            try:
+                self.mail.send(email, "متابعة العرض", f"مرحباً، نتابع معكم بخصوص عرض {request.get('service','الخدمة')} بقيمة {quote.get('amount_aed', 0):.0f} درهم. إذا كان مناسبًا يمكنكم تأكيد الطلب.")
+                follow["status"] = "sent"
+                follow["sent_at"] = now
+                follow["attempts"] = int(follow.get("attempts", 0)) + 1
+                sent += 1
+            except Exception as exc:
+                follow["attempts"] = int(follow.get("attempts", 0)) + 1
+                follow["last_error"] = str(exc)
+        self._save()
+        return sent
+
     def status(self) -> dict[str, Any]:
         return {
             "name": self.settings.app_name, "dry_run": self.settings.dry_run,
@@ -482,7 +545,7 @@ class BusinessAgent:
             "requests": len(self.state["requests"]), "leads": len(self.state["leads"]),
             "tasks": len(self.state["tasks"]), "payments": len(self.state["payments"]),
             "approvals": len(self.state["approvals"]), "opportunities": len(self.state["opportunities"]),
-            "quotes": len(self.state["quotes"]), "followups": len(self.state.get("followups", []))
+            "quotes": len(self.state["quotes"]), "followups": len(self.state.get("followups", [])), "paid_requests": sum(1 for r in self.state["requests"] if r.get("status") == "paid")
         }
 
 
@@ -494,6 +557,8 @@ def run_cycle():
     approval_result = agent.resolve_approval(approval_id, os.getenv("APPROVAL_DECISION", "approve").strip().lower()) if approval_id else None
     inbound = agent.process_inbound_mail()
     offers = agent.handle_pending_requests()
+    paid = agent.reconcile_payments()
+    followups = agent.execute_followups()
     agent.scan_market([
         "UAE companies needing digital marketing",
         "UAE SMEs needing websites",
@@ -503,6 +568,8 @@ def run_cycle():
     result = agent.status()
     result["inbound_processed"] = inbound
     result["offers_handled"] = offers
+    result["payments_reconciled"] = paid
+    result["followups_sent"] = followups
     if approval_result is not None:
         result["approval_result"] = approval_result
     agent.log("system", "Business Agent cycle completed", status=result)
