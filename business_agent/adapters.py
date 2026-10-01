@@ -105,7 +105,7 @@ class StripePayments:
                   "product_data[name]":description[:250]}, timeout=30)
         price.raise_for_status()
         item = requests.post(f"{self.base}/invoiceitems", auth=self.auth,
-            data={"customer":customer_id, "price":price.json()["id"]}, timeout=30)
+            data={"customer":customer_id, "pricing[price]":price.json()["id"]}, timeout=30)
         if not item.ok:
             try:
                 err = item.json().get("error", {})
