@@ -9,6 +9,7 @@ const UAE_MARKET_PRODUCTS=[
 {id:"P007",name:"زجاجة ماء حرارية",category:"المنزل",price:45,compareAt:65,stock:35,rating:4.6,emoji:"🥤"},
 {id:"P008",name:"نظارة شمسية عصرية",category:"أزياء",price:69,compareAt:99,stock:27,rating:4.5,emoji:"🕶️"}
 ];
+function setMarketProducts(items){UAE_MARKET_PRODUCTS.splice(0,UAE_MARKET_PRODUCTS.length,...items)}
 function loadCart(){try{return JSON.parse(localStorage.getItem("uae_market_cart")||"[]")}catch{return[]}}
 function saveCart(c){localStorage.setItem("uae_market_cart",JSON.stringify(c))}
 function cartItems(){return loadCart()}
