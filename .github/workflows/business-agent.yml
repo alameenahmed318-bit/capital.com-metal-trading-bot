@@ -21,7 +21,7 @@ on:
         default: true
         type: boolean
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
 
 concurrency:
   group: business-ai-agent-main
