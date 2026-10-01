@@ -85,7 +85,7 @@
         "email": "meenosvn1@gmail.com",
         "first_name": "meenosvn1"
       },
-      "status": "paid",
+      "status": "in_progress",
       "created_at": 1790830748.040652,
       "source": "agentmail",
       "message_id": "<CANKUOXreeD0oZsm+GwSfgm_nCckkNTzSDLNH1=PUZLmcUaBfng@mail.gmail.com>",
@@ -101,10 +101,23 @@
       "approval_at": 1790836275.9552891,
       "invoice_id": "in_1ULdtwGyDBanOLKhRRQKFHzR",
       "invoice_url": "https://invoice.stripe.com/i/acct_1ULRekGyDBanOLKh/test_YWNjdF8xVUxSZWtHeURCYW5PTEtoLF9WTU1kU2dZbTZIQWJ6MlJ5aUFLZkZpWnBKblNwVmw3LDE4MTM3ODUzMw0200UcJWKeyu?s=ap",
-      "paid_at": 1790838414.038426
+      "paid_at": 1790838414.038426,
+      "execution_started_at": 1790838603.8143196,
+      "task_id": "TASK-1790838603812",
+      "execution_confirmation_sent_at": 1790838604.3013506
     }
   ],
-  "tasks": [],
+  "tasks": [
+    {
+      "id": "TASK-1790838603812",
+      "request_id": "REQ-1790830748040",
+      "title": "تنفيذ Business Automation / AI",
+      "instructions": "في ‫خميس، 1 أكتوبر، 2026 في 8:55 ص‬‏، كتب ‪meeno svn <meenosvn1@gmail.com\n>‬‏:",
+      "status": "in_progress",
+      "created_at": 1790838603.8129945,
+      "started_at": 1790838603.8143187
+    }
+  ],
   "payments": [
     {
       "id": "in_1ULdtwGyDBanOLKhRRQKFHzR",
@@ -212,7 +225,7 @@
       "total_taxes": [],
       "webhooks_delivered_at": 1790837732,
       "paid": true,
-      "last_checked_at": 1790838414.0384164
+      "last_checked_at": 1790838603.8113987
     }
   ],
   "approvals": [
@@ -237,28 +250,20 @@
   ],
   "opportunities": [
     {
-      "url": "https://themanifest.com/ae/digital-marketing/agencies",
-      "title": "The Best Digital Marketing Companies in United Arab Emirates",
-      "content": "Highly reviewed Digital Marketing companies in United Arab Emirates include Admiral Media, YouYaa, Digital Gratified, theKOLLAB, Cryptic, Blue Beetle,",
-      "score": 0.918663,
-      "raw_content": null,
-      "id": "9d6b84-00"
-    },
-    {
       "url": "https://www.gulftalent.com/jobs/title/digital-marketing",
       "title": "Digital Marketing Jobs (Sep 2026)",
       "content": "Top companies hiring for Digital Marketing jobs are Marriott International, Al Futtaim Group, Accor, Chalhoub and Hilton Hotel. Additionally, Digital",
       "score": 0.88822687,
       "raw_content": null,
-      "id": "0e93f6-01"
+      "id": "b363b9-00"
     },
     {
-      "url": "https://www.ajmedia.ae/digital-marketing",
-      "title": "Digital Marketing Agency UAE | SEO, PPC and Social Media Services | AJ Media",
-      "content": "20M+\n\n### Digital Marketing Company In UAE\n\nBrands need to acquire new customers to grow. We work with you to tailor a marketing strategy that works.\n\nNo matter what business you own, you would require a marketing strategy to promote it. These days, people opt to have digital platforms for their business rather than physical shops. So, such companies would require a proper channel through which they can promote themselves. Thus, AJ Media is the best digital marketing company in Abu Dhabi, UAE. Moreover, it provides digital marketing services in UAE. The main focus of the company is to promote the company digitally and convert it into a brand name. This would also help in increasing the sale from the product.\n\n### Digital Marketing Services in UAE [...] AJ Media AJ Media\n\n Home\n About Us\n  + About Us\n  + Our Chairman\n  + Group Companies\n Services\n Clientele\n Portfolio\n Contact\n Startup Program\n\nAJ Media\n\n### Follow Us\n\n Instagram\n Facebook\n\n About\n Blog\n Career\n\n### Get in touch\n\n +971 52 246 6855\n (/cdn-cgi/l/email-protection#2c45424a436c4d46414948454d024d49)\n AJ Media, First Floor, Office 15, Al Shorafa Tower, Ajman, UAE\n\nshape shape\n\n## Digital Marketing Agency UAE\n\n# Digital Marketing Agency in UAE\n\nBrands need to acquire new customers to grow. We work with you to tailor a marketing strategy that works.We specialize in Search Marketing, Social Media Marketing and Content Marketing\n\nWe specialize in Search Marketing, Social Media Marketing and Content Marketing [...] Creating campaign\n Content production\n Strategy optimization\n Campaign Analysis\n\nservices-process\n\n###### Monitoring & Analysis\n\nUse analytics tools to monitor key metrics (e.g., traffic, engagement, conversion rates).\n\n Performance Tracking\n A/B Testing\n Reporting\n Campaign Evaluation\n\n## The Best Digital Marketing Company In UAE\n\nGrow your online business with AJ Media, a leading digital marketing agency in the UAE. AJ Media offers affordable multi-channel digital marketing services to a range of big and small businesses from various industries.\n\n## Key Highlights our work in numbers.\n\nHappy Clients\n\n100+\n\nProjects Completed\n\n200+\n\nAd Budget Managed\n\n20M+\n\n### Digital Marketing Company In UAE",
-      "score": 0.8877607,
+      "url": "https://www.brandstory.ae/blogs/digital-marketing-agency-in-abu-dhabi-2026",
+      "title": "Best Digital Marketing Agencies in Abu Dhabi 2026",
+      "content": "Services Offered:\n\n Digital Marketing Strategy\n SEO & PPC\n Website Development & Maintenance\n IT Network Services\n Social Media Management\n Email Marketing\n\nContact Details:\n\n Phone: +971 503536824\n Email: info@greenwavenet.com\n Website: \n Location: No. 17 Al Laqeen Street, Al Nahyan, Abu Dhabi, UAE\n\n### 10. Al Tawakkal\n\nAl Tawakkal rounds out our list of the top 10 digital marketing companies in Abu Dhabi. Based in Musaffah's industrial hub, Al Tawakkal caters primarily to SMEs and local businesses in Abu Dhabi that need affordable, practical, and effective digital marketing support to establish and grow their online presence. [...] Summarize with AI\n\nAbu Dhabi is no longer just the political capital of the UAE- it has evolved into one of the most dynamic and competitive digital business hubs in the Middle East. Driven by the UAE government's vision for a knowledge-based economy, widespread smartphone adoption, and an increasingly digital-first consumer population, businesses in Abu Dhabi can no longer afford to overlook their online presence.\n\nWhether you operate a real estate company in Al Reem Island, a retail business on Yas Island, a healthcare clinic in the city centre, or a startup in Masdar City, partnering with the right digital marketing agency in Abu Dhabi can significantly impact your visibility, customer acquisition, and long-term growth. [...] Services Offered:\n\n Digital Strategy & Consulting\n Search Engine Optimization (SEO)\n PPC & Performance Marketing\n Social Media Strategy & Management\n Content Marketing\n Brand Identity & Design\n\nContact Details:\n\n Phone: +971 25829911\n Email: hello@agencyhelix.com\n Website: \n Location: Salam HQ Building, Floor 6, Sheikh Zayed Bin Sultan St, Abu Dhabi, UAE\n\n### 4. Netarabia Marketing Agency LLC\n\nNetarabia Marketing Agency LLC is a well-established digital marketing company in Abu Dhabi serving the UAE and broader Arab world. Located in the Al Danah area of Abu Dhabi, Netarabia specializes in bilingual (Arabic and English) digital marketing campaigns that effectively engage both local Emirati audiences and the expatriate community.",
+      "score": 0.88705814,
       "raw_content": null,
-      "id": "764a91-02"
+      "id": "dd350a-01"
     },
     {
       "url": "https://clutch.co/ae/agencies/digital-marketing",
@@ -266,15 +271,15 @@
       "content": "Ability to Deliver (y-axis)\n\nAbility to Deliver considers three criteria:\n\n1. Client feedback and reviews\n2. Work experience and previous projects\n3. Market presence and reputation in the industry\n\n## List of the Top 15 United Arab Emirates Digital Marketing Companies\n\n1. Admiral Media Logotype\n\n   ### Admiral Media\n\n   $5,000+\n\n   Undisclosed\n\n   10 - 49\n\n   Dubai, United Arab Emirates\n\n   Ability to deliver\n\n   38.8/40.0\n\n   19.2/20 Reviews\n\n   10/10 Clients & Experience\n\n   9.6/10 Market Presence\n\n   Service focus\n\n   50% Digital Marketing\n\n   50% Other\n\n   View Profile\n   Visit Website\n2. Digital Gratified Logotype\n\n   ### Digital Gratified\n\n   $1,000+\n\n   < $25 / hr\n\n   10 - 49\n\n   رأس الخيمة, United Arab Emirates\n\n   Ability to deliver\n\n   33.6/40.0\n\n   16.4/20 Reviews",
       "score": 0.8765607,
       "raw_content": null,
-      "id": "06a9db-03"
+      "id": "f7ab28-02"
     },
     {
       "url": "https://www.digitalnexa.com/digital-marketing-agency-dubai",
       "title": "Digital Marketing Agency Dubai, UAE - Digital Marketing Company Dubai",
-      "content": "# Accelerating Business Growth Through Digital Marketing for Clients Since 2005\n\nNEXA is a digital marketing agency in Dubai, helping businesses across the UAE grow through SEO, PPC, social media marketing, web design, and AI. We've partnered with startups, SMEs, and enterprise brands across Dubai, Abu Dhabi, Saudi Arabia, the UK, the US, and Australia, combining local market expertise with proven digital strategies to deliver measurable growth. Whether you're launching a new brand or scaling an established business, NEXA builds the digital presence that gets you found, chosen, and remembered.\n\nSpeak to us\n\nGet Started\n\nInvisalign - NEXA Portfolio\n\nGeidea - NEXA Portfolio\n\nJotun - NEXA Portfolio\n\nMicrosoft - NEXA Partner\n\nCBRE - NEXA Portfolio\n\nWarner Brothers Abu Dhabi - NEXA Portfolio [...] Digital Marketing Services that are aligned to your business' growth targets. By implementing a strategy-first approach, our team identifies the right approach aligned to the goals of your business. This process includes a full competitor audit together with an outline of the messaging, content and services required to achieve your business' growth targets.\n\nOur digital marketing strategies are designed to meet the customer where they are at in the buyer's journey and ultimately convert them into loyal customers and long-standing brand advocates. This is done through smart and personalized digital marketing services, creative thinking and transformative technology, ensuring effective and measurable results.\n\nIf your business has clear growth targets, partner with NEXA to achieve these. [...] For 21+ years, NEXA has partnered with businesses across a wide range of sectors, developing tailored digital marketing strategies that align with each industry's unique buying journey, market dynamics, and growth opportunities. Our deep understanding of the UAE market enables us to create campaigns that deliver measurable results where they matter most.\n\nb2b\n\nB2B Marketing\n\nmortarboard\n\nEducation\n\ncar-parts\n\nAutomotive\n\nprotection\n\nHealthcare\n\nhospitality\n\nHospitality\n\nbuilding\n\nReal Estate\n\nshopping-cart\n\nE-commerce\n\n## What our clients say\n\nHubSpot - NEXA Testimonial",
+      "content": "# Accelerating Business Growth Through Digital Marketing for Clients Since 2005\n\nNEXA is a digital marketing agency in Dubai, helping businesses across the UAE grow through SEO, PPC, social media marketing, web design, and AI. We've partnered with startups, SMEs, and enterprise brands across Dubai, Abu Dhabi, Saudi Arabia, the UK, the US, and Australia, combining local market expertise with proven digital strategies to deliver measurable growth. Whether you're launching a new brand or scaling an established business, NEXA builds the digital presence that gets you found, chosen, and remembered.\n\nSpeak to us\n\nGet Started\n\nInvisalign - NEXA Portfolio\n\nGeidea - NEXA Portfolio\n\nJotun - NEXA Portfolio\n\nMicrosoft - NEXA Partner\n\nCBRE - NEXA Portfolio\n\nWarner Brothers Abu Dhabi - NEXA Portfolio [...] For 21+ years, NEXA has partnered with businesses across a wide range of sectors, developing tailored digital marketing strategies that align with each industry's unique buying journey, market dynamics, and growth opportunities. Our deep understanding of the UAE market enables us to create campaigns that deliver measurable results where they matter most.\n\nb2b\n\nB2B Marketing\n\nmortarboard\n\nEducation\n\ncar-parts\n\nAutomotive\n\nprotection\n\nHealthcare\n\nhospitality\n\nHospitality\n\nbuilding\n\nReal Estate\n\nshopping-cart\n\nE-commerce\n\n## What our clients say\n\nHubSpot - NEXA Testimonial [...] Audi\n\n### Audi\n\nAudi, part of the VW Group, partnered with NEXA to drive qualified leads for its Q3, Q5, and Q7 models in the UAE. With demand shifting toward used cars and traditional campaigns underperforming, Audi needed a digital-first approach. NEXA delivered targeted, awareness-led campaigns across social and search, focused on test drive bookings and CRM-integrated lead generation to support sales growth.\n\nRove case study.png?width=320&height=480&name=10B%20(1).png)\n\nRove\n\n### Rove",
       "score": 0.8703443,
       "raw_content": null,
-      "id": "41a28a-04"
+      "id": "963bb2-03"
     },
     {
       "url": "https://www.naukrigulf.com/digital-marketing-jobs-in-uae",
@@ -282,23 +287,7 @@
       "content": "Digital Marketing Jobs in Nearby Locations\n\n       Digital Marketing Jobs in Dubai\n       Digital Marketing Jobs in Abu Dhabi\n       Digital Marketing Jobs in Sharjah\n\n   Companies hiring in UAE\n\n       Accor Jobs in UAE\n       Chalhoub Group Jobs in UAE\n       Marriott Jobs in UAE\n       Al Futtaim Jobs in UAE\n       Noor Al Hayah Mobile Phone Careers\n       Cara Jewellers FZCO Careers\n       + 1 More\n\n   Home\n   Jobs in UAE\n   Digital Marketing Jobs\n   Digital Marketing Jobs in UAE\n\n\n   \n\nAll trademarks are properties of their respective owners.All rights reserved ©2026 Info Edge (India) Ltd.\n\nPartner Sites\n   Image 15: naukri-logo\n   Image 16: naukri-ff-logo\n   Image 17: ambition-logoAmbitionBox\n   Image 18: job-hai-logo\n\nShare Feedback'\n\nImage 21 [...] Responsible for generating customers, promoting cargo services via digital marketing, and maintaining relationships through effective communication and sales strategies.\n\nEasy Apply Employer Active 29 Sep\n\nLogin/Register\nLooking for the perfect job?\n\nGet personalised jobs in email. Apply in one click.\n\nDigital Marketing ManagerKAAYA PRIME REALTY L.L.C\n   4 - 9 Years\n   Dubai - United Arab Emirates (UAE)\n\nSeeking a strategic thinker to build brand identity and marketing strategies, focusing on digital marketing and lead generation in real estate.\n\nEasy Apply Employer Active 13 hrs ago\n\nBusiness Development Executive (DIGITAL MARKETING | SaaS)HolistiQ Digital LLC\n   2 - 5 Years\n   Dubai - United Arab Emirates (UAE) [...] Digital marketing & social media specialistBiddix\n   2 - 4 Years\n   Dubai - United Arab Emirates (UAE)\n\nManage social media accounts, online stores, and customer inquiries while possessing skills in digital marketing, content creation, and administrative tasks.\n\nEasy Apply Multiple Vacancies 25 Sep\n\ndigital/marketing sales executiveAl KATHEEB INTERIOR DESIGN LLC\n   1 - 3 Years\n   Dubai - United Arab Emirates (UAE)\n\nDrive revenue growth through strategic sales plans, build client relationships, and deliver tailored digital marketing solutions with expertise in SEO and CRM tools.\n\nEasy Apply 17 Sep\n\nDigital Marketing ManagerZentra facilities Services LLC\n   1 - 5 Years\n   Dubai - United Arab Emirates (UAE)",
       "score": 0.86981434,
       "raw_content": null,
-      "id": "e89a4d-05"
-    },
-    {
-      "url": "https://techbehemoths.com/companies/digital-marketing/united-arab-emirates",
-      "title": "Top 20+ Digital Marketing Agencies in United Arab Emirates (2026) - TechBehemoths",
-      "content": "In Europe\n\nIn Asia\n\nIn Latin America\n\nNorth America & Australia\n\nIndustry\n\nServices\n\nWeb & Software Development\n\nDesign\n\nAdvertising\n\nBusiness Services\n\nUnited Arab Emirates Photo\n\n# There are 437 Companies in the United Arab Emirates that provide Digital Marketing Services!\n\nThe United Arab Emirates' IT infrastructure has known colossal progress since 2010, and the country is expected to become one of the leading tech giants in the world by 2025. Only in 2025, the revenue of the IT Services market in the UAE is predicted to reach $3.7 billion.\n\nDiscover Top IT Companies in the United Arab Emirates specialized in Digital Marketing and other related services. Find the best IT service providers for your projects. [...] Fingent Logo\n\nFingent\nVerified Company\n\nDubai, \nUnited Arab Emirates Head office in:\nUnited States\n\nCustom Software Development Experts.\n\nKuchoriya TechSoft Logo\n\nKuchoriya TechSoft\nVerified Company\n\nDubai, \nUnited Arab Emirates Head office in:\nUnited States\n\nKuchoriya Techsoft—Mobile app, web, and custom software development company helping businesses with scalable digital transformation solutions.\n\n## Explore Top Digital Marketing Companies in United Arab Emirates\n\nEvonicsoft FZE LLC Logo\n\nEvonicsoft FZE LLC\nVerified Company\n\nDubai, \nUnited Arab Emirates\n\nWe are a digital solution provider company, experts in CRM & ERP, web design & development, UI/UX design, digital marketing, SEO, and CMS development.\n\nServices:\n\nDev Centre House Ireland Logo [...] Ajman, \nUnited Arab Emirates Head office in:\nIndia\n\nOrange Dice Solutions is a leading web design company in Kerala specializing in custom websites, e-commerce development, and SEO solutions.\n\nServices:\n\nTop Customer Service Logo\n\nTop Customer Service\nVerified Company\n\nDubai, \nUnited Arab Emirates Head office in:\nUnited States\n\nWhere People and AI Unite to Deliver Exceptional Customer Experiences\n\nServices:\n\nClicktap Digital Technologies Logo\n\nClicktap Digital Technologies\nVerified Company\n\nDubai, \nUnited Arab Emirates\n\nClicktap Digital is a big Google Partner digital marketing agency in the UAE, leading in paid marketing, website creation, and social media marketing.\n\nServices:\n\nDesignbub Logo\n\nDesignbub\nVerified Company\n\nDubai, \nUnited Arab Emirates Head office in:\nUnited Kingdom",
-      "score": 0.86928266,
-      "raw_content": null,
-      "id": "70640e-06"
-    },
-    {
-      "url": "https://www.digitalpiloto.com/digital-marketing-agency-uae",
-      "title": "Digital Marketing Agency UAE : Best Digital Marketing & SMO Company",
-      "content": "###### Real Estate\n\nBest Leading Digital Marketing Agency UAE\n\n#### Raising Our Reputation On Online Platforms!\n\nThe stats show that more than 76% of leading healthcare units in the UAE get their clients through strong digital marketing procedures. Don’t get left behind in the race as the loss would be substantial. Reach Digital Piloto to ensure your share!\n\n Explore Opportunities Digital Marketing Company\n\n###### Healthcare\n\nBest Local Digital Marketing Company UAE\n\n#### We Target The Top-Spot For You\n\nThe stats show that more than 76% of leading healthcare units in the UAE get their clients through strong digital marketing procedures. Don’t get left behind in the race as the loss would be substantial. Reach Digital Piloto to ensure your share! [...] ##### Verticals Digital Piloto Serves\n\n## Adding value to your business and brands.\n\n Healthcare\n Manufacturing\n Education\n Real Estate\n Retail\n Hospitality\n\n###### Manufacturing\n\nBest Digital Branding Company UAE\n\n#### We Got You Covered!\n\nThe competition is huge in the digital marketing industry. We have achieved the first position of the best marketing agency in uae and worldwide for our top-notch services!\n\n Explore Opportunities Digital Marketing Services Company Near Me\n\n###### Education\n\nBest Digital Marketing Providers UAE\n\n#### Ensuring The Top Spot For You!\n\nThe expert digital consultants in our company ensure superior results by consistently working for assured growth!\n\n Explore Opportunities Digital Marketing Providers Near Me\n\n###### Real Estate [...] ### Our Expertise\n\nOur in-depth expertise in digital marketing methodology has paid us well! We make your business grow with outstanding digital marketing services in the UAE. Our proficiency is an advantage for all businesses that reach us for superior and assured growth.\n\n Top Digital Branding Company UAE Near MeSEO\n Top Digital Marketing Providers UAE Near MeSMO\n Top Leading Digital Marketing Agency UAE Near MePaid Ads\n Top Local Digital Marketing Company UAE Near MeCRO\n Top Biggest Digital Marketing Agencies UAE Near MeContent\n images/digital-marketing-firms.pngDevelopment\n\nDigital Marketing Services Company UAE\n\n## We Serve Varying Destinations Across uae.We Serve Varying Destinations Across The UAE",
-      "score": 0.8479807,
-      "raw_content": null,
-      "id": "b36012-07"
+      "id": "0baeca-04"
     },
     {
       "url": "https://www.prism-me.com",
@@ -306,7 +295,15 @@
       "content": "## Prism Comprehensive Advertising Services in Dubai\n\nPrism is one of the Best Digital Marketing Companies in Dubai. Prism Digital is a full-service digital marketing agency in Dubai, ranked among the top 10 digital marketing agencies in the UAE for over a decade. We combine SEO, paid media, social media, content and PR into one accountable strategy instead of running each channel in isolation.\n\nWhether you're a startup in Dubai or an established enterprise across the GCC, our team builds digital marketing programs around your commercial goals, leads, revenue, brand awareness  and reports on the numbers that actually move your business forward. [...] Digital marketing budgets in the UAE typically range from a few thousand to several hundred thousand dirhams per month, depending on channels, ad spend and company size. Most experts recommend allocating 5–10% of revenue to marketing; Prism tailors packages to your specific budget and objectives.\n\nLook for a social media agency with a proven content and paid-social track record in your industry, transparent reporting, and local UAE market experience. Prism Digital manages organic content, community management and paid social campaigns for brands across retail, real estate and hospitality in the UAE. [...] ### Digital Marketing Agency Abu Dhabi\n\nSEO, social media and paid media support for businesses and government-adjacent entities across Abu Dhabi.\n\nDigital Marketing Company in Sharjah\n\n### Digital Marketing Company in Sharjah\n\nWeb design, SEO and social media marketing for Sharjah-based SMEs and enterprises.\n\nMarketing Agency, UAE-Wide\n\n### Marketing Agency, UAE-Wide\n\nFrom Ras Al Khaimah to Fujairah, Prism supports brands across all seven emirates with one integrated marketing strategy.\n\n## Frequently Asked Questions\n\nView FAQs\n\nDepending on your objectives, marketing usually accounts for 5–10% of your total income, but where you spend your money matters just as much as how much you spend. For the best return on investment, Prism Digital assists you in making wise investments.",
       "score": 0.8467682,
       "raw_content": null,
-      "id": "39ee10-08"
+      "id": "f17949-05"
+    },
+    {
+      "url": "https://www.quora.com/Which-business-highly-needs-digital-marketing-in-the-UAE",
+      "title": "Which business highly needs digital marketing in the UAE?",
+      "content": "Which business highly needs digital marketing in the UAE? · Digital Gravity. · 7G Media - Digital Agency. · EDS FZE. · Igloo - Award-Winning Digital",
+      "score": 0.84215075,
+      "raw_content": null,
+      "id": "954455-06"
     },
     {
       "url": "https://www.f6s.com/companies/digital-marketing/united-arab-emirates/co",
@@ -314,7 +311,23 @@
       "content": "37 top Digital Marketing companies and startups in United Arab Emirates in August 2026 · Heroleads · Brokstack · Lumrah Media FZE · Upstyle Internet Marketing",
       "score": 0.84183896,
       "raw_content": null,
-      "id": "71b038-09"
+      "id": "f0e8e1-07"
+    },
+    {
+      "url": "https://careerpro.ae/industry/digital-marketing-recruitment-agency",
+      "title": "Digital Marketing Recruitment Agency UAE - Career Pro UAE",
+      "content": "Proven-Track-Record-Across-Digital-Roles\n\n##### /\n\n## Access to Specialist Digital Marketing Talent Across the UAE\n\nCareer Pro connects UAE businesses with pre-screened, performance-driven digital professionals. From SEO specialists and paid media experts to content strategists, CRM managers, and AI-enabled marketing professionals, our digital marketing recruitment agency evaluates candidates on verified campaign results, platform certifications, and GCC-specific market experience. As dedicated digital marketing recruiters, our curated talent pool is ready to fill high-demand roles across digital agencies, direct brands, eCommerce businesses, and fast-scaling startups, helping companies reduce hiring delays, close performance gaps, and build digital teams that deliver measurable ROI. [...] ## Deep Understanding of UAE's Digital Marketing Landscape\n\nAs one of the leading digital marketing recruitment companies in the UAE, Career Pro has an in-depth understanding of the region's digital advertising ecosystem. From the dominance of Meta and TikTok to Google's strong UAE search penetration, the rise of Arabic-language content, and the growth of eCommerce and app-based platforms across the GCC. This insight allows our digital marketing recruitment agency to rapidly align candidates with business goals ensuring UAE companies hire professionals who understand local audience behaviour, regional campaign benchmarks, and the platform dynamics that drive real digital performance across the Emirates.\n\n## End-to-End Digital Marketing Recruitment Support [...] Omar Nasser, Head of Growth, Sharjah\n\nOmar Nasser, Head of Growth, Sharjah\n\n 8 months ago\n\nstar\n\nstar\n\nstar\n\nstar\n\nstar\n\nCareer Pro understood our digital marketing hiring needs clearly. The candidates they shared had practical experience in Google Ads, Meta Ads, and campaign reporting, which made our selection easier.\n\nMeera F., Talent Acquisition Lead, Dubai\n\nMeera F., Talent Acquisition Lead, Dubai\n\n 8 months ago\n\nstar\n\nstar\n\nstar\n\nstar\n\nstar\n\nWorking with Career Pro saved us a lot of time. Their team understood the UAE market well and connected us with digital marketing professionals who matched both our skill requirements and company culture.",
+      "score": 0.8399576,
+      "raw_content": null,
+      "id": "85f4cd-08"
+    },
+    {
+      "url": "https://tracxn.com/d/companies/uaedigitaladvertising/__nlDaZXeR6Jjf05LC8RkmBXoDYpRiCSa8lINi-6-3750",
+      "title": "UAE Digital Advertising",
+      "content": "What does UAE Digital Advertising do?\n\nUAE Digital Advertising is a digital marketing solutions provider that helps businesses reach their target audiences through various digital channels. The company offers a range of services, including digital advertising, content creation, and data analytics, to help its clients achieve their marketing goals. With a focus on the UAE market, UAE Digital Advertising helps businesses navigate the complexities of digital advertising and reach their target audiences effectively.\n\nWhere does UAE Digital Advertising rank among its competitors? [...] ### Company Details\n\nUAE Digital Advertising is a digital marketing solutions provider that helps businesses reach their target audiences through various digital channels. The company offers a range of services, including digital advertising, content creation, and data analytics, to help its clients achieve their marketing goals. With a focus on the UAE market, UAE Digital Advertising helps businesses navigate the complexities of digital advertising and reach their target audiences effectively.\n\nKey Metrics\n\nLocation\n\nDubai, United Arab Emirates\n\nStage\n\nUnfunded\n\nRanked\n\n7325 th among8181 active competitors\n\nSimilar Companies\n\nSandbox&9490 more\n\nView UAE Digital Advertising's full profile\n\nImage 14: PDF Illustration Image\n\nSign up to download UAE Digital Advertising's company profile [...] ## UAE Digital Advertising - About the company\n\nUAE Digital Advertising is an unfunded company based in Dubai (United Arab Emirates). It operates as a Provider of digital advertising services. UAE Digital Advertising has not raised any funding yet. The company has 8181 active competitors, including 132 funded and 596 that have exited. Its top competitor s include companies like Sandbox, Entravision Communications and AutoWeb. \n\n### Company Details",
+      "score": 0.8351749,
+      "raw_content": null,
+      "id": "30bf22-09"
     },
     {
       "url": "https://tasjeel.ae/uae-smes-and-digital-technology-a-complete-guide",
@@ -322,7 +335,7 @@
       "content": "### Website Development\n\n29% of SMEs in Dubai still don’t have websites. If your business is one of them, then website development should be your top priority. Of course, the same applies if you’re based elsewhere in the UAE too.\n\nIn the past, building a small business website usually meant hiring a web developer or agency. This approach is easy – but expensive. Today, many owners of UAE SMEs prefer to build and maintain their own websites.\n\nFor most businesses, a simple website that showcases what they do or sell is all they need. Using a website builder is the perfect way to achieve this. We developed our own Website Builder to empower SMEs to get online fast, with no fuss. We’ve also developed a guide to building a website using this kind of solution. [...] Self-hosted WordPress websites are the next step up. You’ll need to select the right type of web hosting. Look for a plan that offers good performance at a reasonable price. For optimal security, you’ll need to keep WordPress up to date. This is especially important if you sell online, or manage customers’ data. An easier alternative is a managed WordPress hosting plan – this will free you from the hassle of updating WordPress yourself.\n\n### Ecommerce Stores\n\n77% of Dubai SMEs don’t have an ecommerce store. Of course, ecommerce stores aren’t needed for every kind of business. Let’s say you provide a local service like home maintenance. You may just need a website that includes your phone number and email address. This way, you can book appointments and give your customers quotes. [...] The report points out some recent improvements. In 2013, just 50% of Dubai SMEs had a website. That rose to 71% by 2019. The authors also noted improvements in the features included in these websites. 11% now include live chat functionality, while social media integration is a feature of 54%.\n\nSo far, so good. But the report highlights a significant weakness among Dubai SMEs: Less than one in four – 23% – use ecommerce platforms to sell directly to their customers. Unsurprisingly, overall revenue percentages from ecommerce are much lower than in many developed countries.\n\n## Digital Technology for Small Businesses\n\nThe importance of digital technology for small businesses is clear. But many UAE SMEs aren’t using digital tech to its full potential.\n\n### Website Development",
       "score": 0.8708723,
       "raw_content": null,
-      "id": "4f9184-00"
+      "id": "5a14fc-00"
     },
     {
       "url": "https://thewebmakers.ae/small-business-website-design-uae",
@@ -330,7 +343,7 @@
       "content": "Who It's For\n\n## Which UAE small businesses does this suit?\n\nThe Web Makers works best with UAE small businesses that need a professional, enquiry-generating website without a large agency budget or a long production timeline. That includes:\n\n🏪Retail & local shops 🩺Clinics & healthcare 🍽️Restaurants & cafés 🏢Real estate & property 💇Salons & beauty 🔧Home services & trades 💼Consultants & freelancers 🚀New RAKEZ / free-zone startups 🛍️Online shops & e-commerce 📚Training & education\n\nIf your business is based anywhere across Dubai, Sharjah, Abu Dhabi, Ajman, Al Ain, Ras Al Khaimah or the wider UAE, The Web Makers serves you — everything runs over WhatsApp and email, so location within the UAE makes no difference to the service or the price.\n\nProof [...] Small business website design means building a fast, mobile-friendly, professionally structured website that fits a small business's real budget, launches quickly, and is optimised to bring in enquiries from UAE customers — not just a site that looks nice and sits there.\n\nFor most UAE small businesses, that means a WordPress website or a Shopify/WooCommerce online store with a WhatsApp contact button, clear pricing or service information, basic local SEO setup, and content that makes a first-time visitor feel they're in the right place. It doesn't mean paying agency prices or waiting months for a launch. [...] Yes — and The Web Makers includes on-page SEO setup in every build as standard. This covers proper heading structure, meta titles and descriptions, mobile optimisation, and connection to Google Search Console and Google Analytics, giving your small business a real foundation for local UAE search visibility.\n\nWordPress is the best fit for most UAE small businesses — it's affordable, flexible, and lets you manage your own content after launch. WooCommerce is ideal for shops. Shopify suits businesses that want a fully hosted online store with minimal technical management.",
       "score": 0.8446273,
       "raw_content": null,
-      "id": "192407-01"
+      "id": "ee2d14-01"
     },
     {
       "url": "https://designgoogly.com/why-most-uae-smes-dont-need-more-ads-they-need-better-websites",
@@ -338,7 +351,7 @@
       "content": "A Dubai SME spending AED 5,000/month on ads:\n\n Before: 0.6% conversion rate\n After website optimization: 3.2% conversion rate\n\nResult:  \n ✅ Same ad budget  \n✅ 5× more leads  \n✅ Lower cost per lead\n\nNo extra ads. Just a better website.\n\n## What UAE SMEs Should Fix First\n\nIf you want better results without increasing ad spend, start with:\n\n1. Website speed optimization\n2. Clear headline + messaging\n3. Strong CTA (Call, WhatsApp, Form)\n4. Conversion-focused landing pages\n5. Lead tracking & analytics\n\n## Final Thoughts\n\nAds don’t fail businesses — bad websites do.\n\nFor UAE SMEs, especially in Dubai’s competitive market, the smartest growth move isn’t more ads—it’s a better website built for conversions.\n\nYour website should not just look good.  \nIt should sell, capture, and convert. [...] Why Every Business Needs a Website in 2025\n\n18 November, 2025 \n\n### Why Every Business Needs a Website in 2025\n\n### About Us\n\nBy optimizing content, leveraging relevant keywords, and adhering to best practices, businesses can secure prominent position (SEO)\n\n### Our Services\n\n Website Design & Development\n Digital Marketing\n Mobile App Development\n Design & Branding\n\n### Quick Link\n\n About Us\n Our Services\n Portfolio\n Blogs\n Contact Us\n\n### Quick Link\n\n ##### Call Us\n\n  +91 8961231562\n ##### Mail Us\n\n  sales@designgoogly.com\n ##### Address\n\n  India | Dubai\n\n### Who We Serve\n\n Real Estate Developers\n Interior Designers\n Clinics\n Dentists\n School\n College\n CA & CS Firms\n Gym\n Hotels\n Resturants & Cafes\n Tour & Travel Company\n\nCopyright 2026 All - Rights Reserved [...] ## Free Website Review for UAE SMEs\n\nNot sure if your website is killing your ROI?\n\n👉 Get a Free Website Review  \nWe’ll show you exactly:\n\n Why visitors don’t convert\n What to fix first\n How to improve leads without increasing ads\n\n📩 Contact Design Googly/contact-us\n\nOur News\n\n## Our Latest insight and Blog\n\nWhy Most UAE SMEs Don’t Need More Ads – They Need Better Websites\n\n08 January, 2026 \n\n### Why Most UAE SMEs Don’t Need More Ads – They Need Better Websites\n\nHow AI Websites Increase Conversions\n\n08 January, 2026 \n\n### How AI Websites Increase Conversions\n\nHRMS Software for SMEs\n\n08 January, 2026 \n\n### HRMS Software for SMEs\n\nBest Website Design Company for Startups\n\n07 January, 2026 \n\n### Best Website Design Company for Startups\n\nWhy Every Business Needs a Website in 2025",
       "score": 0.82560414,
       "raw_content": null,
-      "id": "f15298-02"
+      "id": "7e3bca-02"
     },
     {
       "url": "https://www.godaddy.com/resources/ae/skills/lets-build-you-a-website-free-websites-for-small-businesses",
@@ -346,7 +359,7 @@
       "content": "Bingo website homepage\n\n## Okay, why do I need a website?\n\nAn estimated 50% of SMEs across Dubai indicated that they have a website. This means the other half is not visible, cannot be found online. Technology is constantly evolving, and small business owners struggle to keep up. Having a digital presence will help businesses grow, reach and engage with their potential clients. [...] In 2016, 33% of small businesses in the region were at an advanced level of digitization, according to PwC, and this is expected to more than double to 72% by 2020. When it comes to SMEs using technology, we are aware of the challenges that they may face. Bearing that in mind, our mission is to help our customers turn their ideas and projects into real success stories. We provide them with the online tools and services to help them create and manage their business’s online identity and attract new customers. We focus on supporting SMEs on their online journey by providing inspirational and educational videos and articlesto assist and guide them in building their digital identities. [...] Within this framework, we developed the “Let’s build you a website” project, where for a year we offer free websites for SMEs that are already operating.\n\n## An easy start with a free website, GoDaddy Website Builder\n\nThe feedback we received from our customers and the people we met through our activities showed us that many small businesses think that they don't need a website for their business or that it would be very difficult and / or costly to set up a website. Within the scope of our project, where we offer a complimentary 12-month subscription to GoDaddy’s Website Builder to jump-start their online journey, our goal is to give them an easy start so they can experience the advantages of having a digital identity first-hand.",
       "score": 0.82254606,
       "raw_content": null,
-      "id": "15a5d2-03"
+      "id": "a9f878-03"
     },
     {
       "url": "https://truehost.cloud/small-businesses-in-the-uae-that-need-a-website",
@@ -354,7 +367,7 @@
       "content": "21. Art prints and posters seller – Sell digital or physical art prints to UAE residents decorating their homes.\n22. Baby products store – From nappies to nursery décor — parents research and buy online.\n23. Fitness equipment retailer – Sell resistance bands, dumbbells, and yoga mats to the UAE’s fitness-conscious population.\n24. DIY craft kits seller – Sell embroidery, rug-making, or painting kits — a website showcases the finished product.\n25. Gourmet food store – Sell artisanal olive oils, spices, and specialty ingredients online. [...] 7. Kids’ activity kit brand: Create and sell educational or fun activity boxes for children across the UAE.\n8. Sportswear trader: The UAE sportswear market is worth nearly $1 billion, a website is essential for visibility.\n9. Luxury watch reseller: High-value items need a professional site to build buyer confidence.\n10. Handicrafts and souvenirs: Sell Emirati crafts, camel milk soap, or local art to tourists and gift-givers.\n11. Furniture and home décor store: Showcase sofas, lighting, and accessories with room-setting photos that inspire purchases.\n12. Cosmetics reseller: Sell global or local beauty brands, a website with swatches and reviews drives sales.\n13. Pet accessories brand: From luxury collars to organic treats, pet owners in the UAE love to shop online. [...] 1. Business consultant – Case studies and service offerings — a website attracts clients seeking expertise.\n2. Accountant – Tax season drives searches — a website with services and credentials turns anxiety into bookings.\n3. Lawyer – Practice areas and case results — a website is your first step to new clients.\n4. Real estate agent – Property listings and agent bios — a website sells homes.\n5. Financial advisor – Trust is everything — a website with philosophy, team bios, and success stories builds it.\n6. HR consultant – A website with services and case studies attracts businesses needing people solutions.\n7. IT consultant – Digital and AI-based businesses are the fastest-growing category — a website showcases expertise.",
       "score": 0.8020137,
       "raw_content": null,
-      "id": "209a14-04"
+      "id": "d8b5b1-04"
     },
     {
       "url": "https://bird.ae/web-design/small-business",
@@ -362,7 +375,7 @@
       "content": "At Bird, we provide tailored web design services that help SMEs establish their brand, engage their audience, and drive business growth. Bespoke Website",
       "score": 0.71995544,
       "raw_content": null,
-      "id": "98de1f-05"
+      "id": "2509e8-05"
     },
     {
       "url": "https://www.globalmediainsight.com/web-design-services",
@@ -370,7 +383,7 @@
       "content": "## Best Website Design Company in Dubai\n\nGlobal Media Insight is a leading web design company in Dubai, specializing in creating visually stunning and highly functional websites that enhance user experience. With offices in Dubai, Abu Dhabi, and Sharjah, we have been delivering modern, responsive websites across the UAE and beyond since 2001.\n\nOur portfolio covers web designs for individuals, small businesses, startups, and global enterprises. Whether you need a new website or want to update an existing one, we are here to help.\n\nWe have successfully completed over 1250 projects for brands, SMEs, MNCs, government bodies, healthcare institutions, and celebrities. As experts in web design and development, we provide services that maximize your website's potential and achieve your goals. [...] Global Media Insight has more than 26 years of experience in the web design field. During this time span, we have created successful web design solutions for clients from diverse fields, including real estate, FMCG, fashion, SME’s, manufacturing, government agencies, multinational brands, automotive, technology and much more.\n\nYes, Global Media Insight offers post-launch support and maintenance services for all the websites we develop. For existing websites, we offer a range of services to enhance functionality, design, and user experience. Along with this, we also offer technical assistance, maintenance and regular updates to ensure that your site performs well. Contact us to get tailored solutions for your specific needs.\n\ngmi",
       "score": 0.7135319,
       "raw_content": null,
-      "id": "0fbf3b-06"
+      "id": "8ba79c-06"
     },
     {
       "url": "https://origami.chat/blog/business-owners-uae-need-websites",
@@ -378,7 +391,7 @@
       "content": "Charlie Mallery••Updated •10 min read\n\nGTM @ Origami\n\nQuick Answer: The fastest way to find UAE business owners who need a website is Origami — describe your ideal customer in one prompt (e.g., \"Dubai restaurant owners with no website\") and the AI agent searches the live web, enriches contacts, and qualifies leads, then you can send multi-channel sequences right inside the platform. Other tools like Apollo or Lusha miss locally listed businesses that only appear on Google Maps and industry directories. [...] ## Start finding UAE website leads today\n\nProspecting for UAE business owners who need a website is not a technology problem anymore — it’s an execution problem. The tools exist to replace your four-step, multi-platform hunt with a single prompt and a clean, verified list of owner contacts with direct phone numbers and emails. The salespeople we see winning in 2026 are the ones who spend their mornings sending personalized outreach, not copy-pasting from one tool to another. [...] ## Why do traditional prospecting tools fail for UAE business owners?\n\nApollo, ZoomInfo, and similar platforms are built on contact-centric databases curated largely from North American and European corporate sources. In the UAE, the ownership structure of small and mid-sized businesses is often tied to a personal trade license, a free zone registration, or a virtual office — not a corporate LinkedIn page. The “Director” or “Owner” you need might be the person who answers the phone at the trading company in Deira. Static databases rarely index these individuals, and when they do, the email is often the generic info@ address.",
       "score": 0.6786044,
       "raw_content": null,
-      "id": "f760db-07"
+      "id": "56cf96-07"
     },
     {
       "url": "https://www.reddit.com/r/UAE/comments/y7js2q/where_can_i_find_clients_in_the_uae_that_need",
@@ -386,55 +399,55 @@
       "content": "UAE that need websites or systems made ? There are a lot of people trying to start small businesses here especially people trying to sell stuff",
       "score": 0.6549173,
       "raw_content": null,
-      "id": "e45aa3-08"
+      "id": "e1fc14-08"
     },
     {
-      "url": "https://webcastle.ae",
-      "title": "Top Web Design & Development Company in Dubai, UAE | Custom Website Solutions",
-      "content": "We expand the reach and results in creating or recreating websites in the United Arab Emirates for small, medium or large enterprises. We empower businesses and boost customer delight with clutter-free and responsive web page designs for brands representing diverse industries. \n\nOur web designing services and the websites designed by us perform well and are capable of delivering a solution that tags immense pleasure. We develop for clients as one of the top web design companies in the region and we as the renowned one in the industry serve all verticals irrespective of the size of their companies. [...] Get one-stop optimal fit and world-class services and support that empower clients to grow the venture at WebCastle. Unlock growth with our purpose-driven agile team and unleash sustainable solutions that are off-the-charts to take your venture to new heights. Our extensive experience has been instrumental and we have consistently facilitated the growth and success. With our state-of-the-art web design services in UAE, we can help you design intuitive websites driven by international standards and out-of-the-box ideas. This is the speciality of our seamless web design services and harnessing years of industry experience, our creative capabilities target us as a top-rate web design company in Dubai. \n\nWebcastle – Custom Web Designing Services [...] We design, develop and optimise websites that showcase your business and offer state-of-the-art responsive website design services. Our creative web designers properly blend the design with user experience and functionality. Our design expertise combined with technology and intelligence delivers attention and partners with clients to meet the art of performance to simplify, strengthen, and transform their businesses. Our effort to create a measurable impact on businesses revolutionise user experience by all means.",
-      "score": 0.61972505,
+      "url": "https://www.linkedin.com/pulse/top-12-website-development-companies-dubai-uae-techanic-infotech-t0xof",
+      "title": "Top 12 Website Development Companies in Dubai, UAE",
+      "content": "Techanic Infotech UAE is a technology and software development company offering customized digital solutions for startups, SMEs, and enterprises",
+      "score": 0.6391287,
       "raw_content": null,
-      "id": "ecf46a-09"
+      "id": "ebf7c9-09"
     },
     {
-      "url": "https://www.zavior.org/blog/business-process-automation-uae",
-      "title": "Business Process Automation in UAE | Save Time & Scale Faster | Zavior",
-      "content": "For related reading, see how Odoo and AI automation work together and how UAE SMEs are approaching CRM implementation as part of the same automation push.\n\nReady to automate the workflows slowing your team down? Contact Zavior Technologies to identify the highest-impact automation opportunities in your business.\n\n## Related Services\n\n### Odoo ERP Services Dubai\n\nOdoo services in Dubai for UAE companies that need CRM, accounting, inventory, POS, manufacturing, and business automation in one ERP platform.### ERP Software Company Dubai for Business Growth\n\nERP software company in Dubai helping UAE businesses choose, implement, customize, and integrate Odoo ERP and business automation platforms.### Odoo ERP Services Dubai for Smarter Business Management [...] ERP Strategy\n\n### Why UAE Businesses Need ERP\n\nLearn why UAE businesses need ERP systems to connect finance, sales, inventory, procurement, CRM, reporting, and business automation. [...] ## How to Start Automating Without Disrupting Operations\n\nThe safest starting point is to automate one workflow at a time, measure the impact, and expand from there. Businesses that try to automate everything at once often end up with brittle systems that are hard to maintain. Starting with the workflow that currently causes the most delays or errors, whether that is lead follow-up, invoicing, or reporting, gives the clearest early win.\n\nOur AI automation team builds this kind of workflow and chatbot automation for UAE businesses, and our ERP and Odoo solutions practice handles the underlying process automation inside sales, inventory, and finance. For broader IT groundwork that supports automation, our IT solutions in Dubai team can help as well.",
-      "score": 0.8790744,
+      "url": "https://revenuebase.ai/companies/business-automation-platform-companies/united-arab-emirates",
+      "title": "Top 25 Business automation platform companies based in the United Arab Emirates",
+      "content": "| 22 | MMarkathon | Indirect evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 6 contacts → |\n| Indirect evidence  “We’ve spent the last decade building content, campaigns, and systems for our clients.”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 23 | NNodex Technologies LLC | Partial evidence | Deira, United Arab Emirates✓HQ checked Sep 14, 2026 | 1-10 | 6 contacts → |\n| Partial evidence  “NODEX TECHNOLOGIES LLC - ERP for Business Automation.”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 24 | SSoftnames | Indirect evidence | Al Reem Island, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 5 contacts → | [...] | 14 | TThink Tribe Technologies | Indirect evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 13 contacts → |\n| Indirect evidence  “ThinkTribe offers Powerful Cloud ERP Solutions to transform your entire business.”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 15 | LLibromi | Partial evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 12 contacts → |\n| Partial evidence  “Libromi LLC is a Dubai-based software company specializing in customer engagement and automation solutions.”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 16 | NNestrom INC | Strong evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 1-10 | 9 contacts → | [...] | 20 | TTecharabia | Partial evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 7 contacts → |\n| Partial evidence  “We specialize in Ai-powered automation, custom software, and cloud-based systems-delivering efficient, high-impact solutions across industries.”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 21 | DDeap Vision | Indirect evidence | Abu Dhabi, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 6 contacts → |\n| Indirect evidence  “DEAP VISION” is a software company that combines business process management with digital technologies to automate workflows for maximising productivity, eliminate non-productive…”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |",
+      "score": 0.87782305,
       "raw_content": null,
-      "id": "42bc90-00"
+      "id": "48fe0b-00"
     },
     {
-      "url": "https://sisgain.ae/robotic-process-automation-in-uae",
-      "title": "Robotic Process Automation Services in UAE | RPA Company UAE | SISGAIN",
-      "content": "Bots in Production\n\n24/7 Execution\n\n## Trusted By\n\nSISGAIN has partnered with mid-sized and enterprise organizations across banking, healthcare, manufacturing, and government sectors in the UAE to design, build, and support robotic process automation programs that move beyond isolated bots into genuine operational change.\n\nAkosMD\n\nAvino\n\nCMC Limited\n\nGSS\n\nHealth Neutron\n\ni-Billed\n\nIndieChain\n\nMahindra\n\nMaxcare Health\n\nPyxis\n\nRoyal Jet\n\nModel Craft Group\n\nNiros Restaurant\n\nTawuniya\n\nAkos\n\nAvino\n\nCMC Limited\n\nGSS\n\nHealth Neutron\n\ni-Billed\n\nIndieChain\n\nMahindra\n\nMaxcare Health\n\nPyxis\n\nRoyal Jet\n\nModel Craft Group\n\nNiros Restaurant\n\nTawuniya\n\n## Business Challenges We Solve\n\n### Why UAE Businesses Are Investing in Automation [...] ## Business Processes We Automate\n\nBusiness process automation in UAE spans nearly every department. Below is a breakdown of the processes we automate most frequently, organized by function.\n\n### Invoice Processing\n\nBots extract invoice data using OCR, validate it against purchase orders, and route exceptions for review, cutting processing time from days to hours.\n\n### Accounts Payable\n\nAutomated three-way matching, approval routing, and payment scheduling reduce late payments and free finance staff from manual reconciliation.\n\n### Accounts Receivable\n\nBots generate invoices, send payment reminders, and match incoming payments to open invoices automatically, improving collections cycle time.\n\n### Payroll [...] ### \n\nThere isn't a single best platform for every business — the right choice depends on your existing technology stack, budget, and governance needs. UiPath is often preferred for complex enterprise automation with strong analytics, Power Automate suits organizations already using Microsoft 365, and Blue Prism is common in highly regulated environments prioritizing governance. A platform-agnostic assessment upfront avoids locking into the wrong tool.\n\n###",
-      "score": 0.84215075,
+      "url": "https://barawave.com/erp/top-business-automation-tools-in-the-uae-2025-guide",
+      "title": "Top Business Automation Tools in the UAE (2025 Guide)",
+      "content": "Skip to content\n\nBusiness Management Software\n\nSign Up\n\nSign in\n\nHome / Blog\n\n# Top Business Automation Tools in the UAE (2025 Guide)\n\nAI\n\nIn a competitive market like the United Arab Emirates, business speed isn’t optional—it’s a requirement.\n\nFrom logistics firms in Dubai to eCommerce startups in Abu Dhabi, more companies across the UAE are turning to business automation tools in 2025 to streamline operations, reduce costs, and boost productivity.\n\nThis guide explores the top automation platforms used by UAE companies, including tools for CRM, HR, finance, inventory, marketing, and customer service—plus a spotlight on Barawave, one of the fastest-growing AI-powered ERP tools for SMEs.\n\n## 🇦🇪 Why Business Automation Is Booming in the UAE [...] ## 🥇 Top Business Automation Tools Used in the UAE (2025)\n\nHere’s a curated list of the best automation platforms for businesses across the Emirates:\n\n### 1. Barawave ERP – Best All-in-One Automation Tool for UAE SMEs\n\n🌐   \n💸 Free plan available | Paid from AED 139/month  \n🧠 AI-powered | Built for SMEs | VAT-compliant\n\nBarawave is a modern, cloud-based ERP platform designed for small to medium-sized businesses in the UAE and beyond. It combines CRM, finance, inventory, HR, sales, and task management into one intelligent system—fully equipped with AI automation and Arabic-English UI.\n\n#### 🔑 Key Features: [...] ## 🚀 Why Barawave Is the Smart Choice for UAE SMEs\n\n✅ UAE VAT and Arabic-friendly interface  \n✅ AI-powered workflow automation  \n✅ CRM + finance + HR + inventory in one  \n✅ Affordable pricing (free plan available)  \n✅ Easy to implement—no IT team needed  \n✅ Scales from 1 to 100+ users and multiple branches\n\n👉 Start your free trial: \n\n### 🔗 Learn More:\n\n Barawave Official Website\n Register Free Account\n ERP for Cleaning Companies\n ERP for Restaurants & Hospitality\n ERP for Manufacturing Companies\n\n### Meta Title:\n\nTop Business Automation Tools in the UAE (2025 Guide)\n\n### Meta Description:\n\nDiscover the best automation platforms for UAE businesses in 2025. Compare Barawave, Zoho, HubSpot & more. Learn how to automate sales, finance, HR, inventory & CRM.\n\n## More from the Barawave AI Blog:",
+      "score": 0.8763069,
       "raw_content": null,
-      "id": "1401b5-01"
+      "id": "0789dd-01"
     },
     {
-      "url": "https://thebitmasters.com/blog/business-process-automation-software-uae-the-complete-guide-for-modern-businesses-2026",
-      "title": "Business Process Automation Software UAE | Complete Guide for Businesses (2026)",
-      "content": "Instead of relying on multiple disconnected tools, businesses increasingly adopt real estate management software UAE that centralizes these workflows into a single platform.\n\nWurken is an example of a specialized Business Process Automation solution built for real estate companies and co-working or business centers. The platform combines operational management with financial management, allowing organizations to manage physical and virtual offices, meeting rooms, desks, tenants, subscriptions, contracts, booking operations, supplier management, warehouse activities, budgeting, and profitability tracking from one integrated system.\n\n### Restaurant Business Process Automation [...] ## Why UAE Businesses Are Investing in Business Process Automation\n\nThe UAE has become one of the leading digital economies in the region, with organizations actively investing in technologies that improve efficiency and support long-term growth. Several factors are driving the adoption of Business Process Automation software across industries.\n\n### Accelerating Digital Transformation\n\nOrganizations are modernizing legacy processes by replacing paper-based workflows and disconnected systems with integrated digital platforms. Automation plays a central role in this transformation by connecting departments and reducing manual work.\n\n### Increasing Operational Efficiency [...] ## Business Process Automation Solutions Across Different Industries\n\nWhile the core principles of Business Process Automation remain consistent, every industry has unique operational challenges. Modern automation software is most effective when it is designed around specific business workflows rather than relying on generic processes.\n\n### Business Process Automation for Real Estate & Co-Working Spaces\n\nReal estate companies and co-working operators often manage multiple operational processes simultaneously, including tenant onboarding, office bookings, contracts, subscriptions, payments, supplier management, warehouse operations, and financial reporting.",
-      "score": 0.8405867,
+      "url": "https://www.c3automation.com/blog/industrial-automation-companies-in-uae",
+      "title": "Best 5 Industrial automation companies in UAE",
+      "content": "1. Healthcare and Pharmaceuticals:\n\n Automation ensures precise control in pharmaceutical manufacturing, laboratories, and healthcare facilities.\n The healthcare sector in the UAE benefits from automation in ensuring patient safety and efficient operations.\n\n1. Water and Wastewater Management:\n\n Automation is crucial for the monitoring and control of water treatment and distribution systems.\n The UAE uses automation to manage its water resources and ensure sustainability. [...] ### Syscom\n\nSyscom Automation, a UAE-based company, offers advanced automation solutions for businesses. Focusing on precision, efficiency, and quality, they provide customized solutions across industries. Their commitment to sustainability aligns with the UAE’s dynamic market needs, making them a preferred choice for automation companies in UAE.\n\n ### Control Tech\n\nControl Tech is a vibrant and inventive company that specializes in advanced control systems and cutting-edge automation solutions. Drawing from their dedication to precision, efficiency, and cutting-edge technology, they offer customized control and automation services designed to cater to the unique requirements of businesses in diverse industries.\n\n ### Waylog [...] 1. Manufacturing and Industrial Automation:\n\n Industrial Automation companies in UAE enhance manufacturing processes with technologies like PLCs, HMIs(Homeless Management Information Systems), and SCADA systems, improving efficiency, quality, and production rates.\n The UAE’s manufacturing sector benefits from automation, especially in industries like petrochemicals, automotive, and electronics, where precise control is crucial.\n\n1. Energy and Utilities:\n\n Schneider Electric’s energy management solutions contribute to efficient energy use, reducing costs and environmental impact.\n Automation plays a vital role in managing and optimizing renewable energy in the UAE’s power sector.\n\n1. Construction and Building Management:",
+      "score": 0.8740022,
       "raw_content": null,
-      "id": "f7a6f4-02"
+      "id": "5f04de-02"
     },
     {
-      "url": "https://revenuebase.ai/companies/ai-business-process-automation/united-arab-emirates",
-      "title": "Top 24 AI business process automation based in the United Arab Emirates",
-      "content": "MenuClose\n\nCompanies›AI business process automation›United Arab Emirates \n\nCompany lists · Data refreshed September 2026\n\n# Top 24 AI business process automation based in the United Arab Emirates\n\nCompiled by the RevenueBase Data Team Data refreshed Sep 16, 2026 325 companies tracked\n\nRevenueBase identified 325 AI business process automation headquartered in the United Arab Emirates as of September 2026 and tracks 4,249 professional contacts across them, including 375 with verified work emails. Dubai is the largest hub. [...] | Strong evidence  “AutomateMyBiz is a leading automation agency based in Dubai, dedicated to helping businesses streamline their processes and supercharge their growth.”  Source: RevenueBase Database · checked Sep 16, 2026Thanks. The Data Team will review it. |\n| 23 | KKlevere AI | Partial evidence | Dubai, United Arab Emirates✓HQ checked Sep 16, 2026 | 1-10 | 8 contacts → |\n| Partial evidence  “Klevere is building an AI workforce across marketing, sales, HR and finance to help companies 100X growth and scale economically.”  Source: RevenueBase Database · checked Sep 16, 2026Thanks. The Data Team will review it. |\n| 24 | TTecharabia | Strong evidence | Dubai, United Arab Emirates✓HQ checked Sep 16, 2026 | 11-50 | 7 contacts → | [...] | # | Company | RevenueBase Smart Search | Headquarters | Employees | Contacts |\n| 1 | OOnpassive | Indirect evidence | Dubai, United Arab Emirates✓HQ checked Sep 16, 2026 | n/a | 1,956 contacts → |\n| Indirect evidence  “ONPASSIVE is an IT company solely focused on building a total business solution.”  Source: RevenueBase Database · checked Sep 16, 2026Thanks. The Data Team will review it. |\n| 2 | CCyborg Automation HUB | Partial evidence | Dubai, United Arab Emirates✓HQ checked Sep 16, 2026 | 51-200 | 117 contacts → |",
-      "score": 0.834852,
+      "url": "https://singleclic.com/top-automation-companies-in-uae",
+      "title": "Top Automation Companies in UAE | singleclic",
+      "content": "Skip to content\n\n +2 010 099 98699 / +966 58 110 6563 / +971 55 705 7674\n Info@singleclic.com\n\n## Contact us\n\nSingleclic - Digital Transformation & Low-Code Solutions in MENA\n\n Singleclic\n\n# Top Automation Companies in UAE: Unlock New Levels of Efficiency\n\nUAE businesses thrive by adopting smarter solutions for everyday tasks. Automation companies in UAE bring tangible benefits to sectors like retail, manufacturing, healthcare, and beyond. They streamline workflows, reduce errors, and help leaders focus on strategic decisions instead of getting bogged down with repetitive duties. This guide explores key players, highlights potential drawbacks, and offers insights on how to choose the right partner for your organization. [...] 1. Singleclic\n    Services: Comprehensive automation consulting, software integrations, and workflow optimization.\n    Highlight: Focuses on business process automation to help clients optimize tasks such as data entry, approvals, and compliance checks.\n    Opinion: Tamer Badr notes, “We tailor each project to the client’s unique pain points, ensuring they see tangible benefits in a short time.”\n2. Emirates Tech Solutions\n    Services: Customized robotic process automation (RPA) and IoT implementations, specifically for logistics and retail.\n    Highlight: Offers bilingual support and local training sessions in the UAE.\n    Potential Drawback: Some users mention a slightly longer lead time for post-deployment assistance.\n3. Futurix Innovations [...] ## Conclusion\n\nAutomation companies in UAE deliver innovative methods to help businesses reduce manual tasks, cut costs, and boost efficiency. By adopting solutions like RPA, IoT integrations, or full-scope process automation, organizations can address daily challenges without draining resources.\n\n“Pinpoint your biggest bottlenecks first,” advises Tamer Badr. “Then choose a provider whose strengths fit those areas, rather than a one-size-fits-all solution.”",
+      "score": 0.8443195,
       "raw_content": null,
-      "id": "85147c-03"
+      "id": "c4df61-03"
     },
     {
-      "url": "https://www.linkedin.com/pulse/top-10-ai-automation-companies-dubai-uae-techanic-infotech-orlnf",
-      "title": "Top 10 AI Automation Companies in Dubai, UAE",
-      "content": "Top 10 AI Automation Companies in Dubai, UAE · 1. Techanic Infotech UAE · 2. CrinPro Solutions · 3. Accenture Middle East · 4. Fingent · 5. Code Brew",
-      "score": 0.829285,
+      "url": "https://savtechdigital.ae/ai-workflow-automation",
+      "title": "Savtech AE || AI Workflow Automation",
+      "content": "#### Complete Automation Solutions in the UAE\n\nWe provide a full Automation Solution in UAE for businesses looking to modernize their operations. Instead of relying on multiple tools or disconnected systems, companies get a unified platform that supports organization-wide automation so that they have a higher chance at achieving smoother collaboration and processes that can scale alongside business growth.\n\n## How We Do Things At SavTech\n\n### 01\n\n#### Understanding Your Operations\n\nDuring this phase, we assess opportunities across multiple domains, such as business process and even real estate automation AI, ensuring every workflow is accounted fo,r so you don’t deal with complex logistics cycles, or high-volume customer handling.\n\n### 02\n\n#### Designing a Tailored Automation Outline",
+      "score": 0.838376,
       "raw_content": null,
-      "id": "f2317d-04"
+      "id": "5e0a84-04"
     },
     {
       "url": "https://mosaicconnect.io/en/corporate-business-automation-uae-saudi-arabia",
@@ -442,23 +455,7 @@
       "content": "## Conclusion: Corporate Automation as a Strategic Investment, Not a Cost Initiative\n\nThe Gulf corporations that will define the competitive landscape in 2030 and beyond are building their operational foundations now. The decisions being made in UAE and Saudi boardrooms today — about automation, digital infrastructure, data strategy, and talent deployment — will determine which companies can serve the next generation of Gulf customers at the quality and efficiency levels that market will demand, and which cannot. [...] Corporate automation investment decisions in the UAE and Saudi Arabia are increasingly reaching the boardroom — and for good reason. When operational automation is deployed at genuine scale, it does not merely reduce administrative costs. It changes the fundamental economics of growth, the quality ceiling of customer experience, the reliability of management information, and the strategic options available to the business. These are board-level outcomes, not IT-department metrics. [...] ## The Strategic Case for Corporate Automation in the UAE and Saudi Arabia\n\nThe macro-environment facing Gulf corporations in 2026 creates a specific strategic imperative for automation investment. Understanding this imperative at a structural level — not just an operational level — is the starting point for any serious automation investment decision.\n\n### The Competitive Landscape Has Fundamentally Changed",
       "score": 0.8091708,
       "raw_content": null,
-      "id": "09f2d9-05"
-    },
-    {
-      "url": "https://orksync.com/ai-solutions",
-      "title": "AI Solutions & Automation Services Dubai - AI Agency UAE - Orksync",
-      "content": "Orksync helps businesses across Dubai, Abu Dhabi, and the UAE implement practical, outcome-driven AI solutions for businesses that combine automation, predictive intelligence, and operational visibility.\n\nOur AI consultants and automation specialists focus on:\n\n Business automation strategy\n AI integration\n Machine learning solutions\n Workflow engineering\n Intelligent process automation\n Conversational AI\n GPT-powered systems\n Enterprise AI scalability\n\n### Faster business operations\n\n### Automated workflows\n\n### AI-powered customer engagement\n\n### Intelligent reporting\n\n### Better customer experiences\n\n### Operational scalability\n\n### Smarter decision-making\n\n### Increased productivity\n\n## What Our AI and Data Solutions Deliver\n\n### Intelligent Automation [...] Skip to content\n\n[](\n\n Careers\n Get in Touch\n\n Careers\n Get in Touch\n\n# AI Solutions & Automation Services for Intelligent Business Growth\n\nOrksync delivers AI solutions & automation services in Dubai designed to help businesses streamline operations, automate workflows, improve customer experiences, and accelerate digital transformation across the UAE and global markets. We implement scalable AI-powered business systems that improve operational efficiency, reduce manual workloads, and support faster decision-making in real time.\n\nGet in Touch\n\n## Data and AI Services That Drive Real Business Impact\n\nModern businesses increasingly rely on AI-powered automation, intelligent analytics, and machine learning to improve productivity, reduce repetitive work, and optimize operations at scale. [...] ## AI Solutions Focused on Operational Efficiency & ROI\n\nOur AI-powered business systems are designed to improve measurable business performance through automation, analytics, and intelligent operational workflows.\n\n Reduced manual work\n Faster customer response times\n Improved workflow efficiency\n Increased productivity\n Automated operations\n Better reporting accuracy\n Smarter decision-making\n Improved customer experiences\n\n### Industry expertise\n\n## Smarter CRM Solutions Across Every Industry We Serve\n\nWe deliver CRM implementation services UAE businesses use to improve customer management, automate workflows, and scale operations across competitive industries.\n\nFintech Interior Healthcare Ecommerce Real Estate Construction Oil & Gas Travel Industry Logistics Manufacturing Finance",
-      "score": 0.8058924,
-      "raw_content": null,
-      "id": "b052f3-06"
-    },
-    {
-      "url": "https://www.digityzesolutions.com/blog/intelligent-process-automation-companies-dubai",
-      "title": "Top 10 Intelligent Process Automation Companies in Dubai UAE - Digityze Solutions",
-      "content": "## Digityze Solutions\n\nDigityze Solutions is redefining how businesses in Dubai approach automation with Intelligent Process Automation (IPA). By integrating AI, machine learning, and automation tools, they create seamless workflows tailored to your business needs. Their solutions eliminate inefficiencies, helping companies save time and resources. Digityze’s focus on delivering personalized, scalable solutions makes them a reliable partner for businesses looking to drive smarter operations and enhance productivity.\n\n## Let’s Transform Your Business Together\n\nReady to transform your business? At Digityze Solutions, we help businesses like yours streamline operations and grow smarter. Let’s talk! Book your free 30-minute consulting call now.\n\nBook Meeting\n\n## SquareOne Technologies [...] ## Falcon Group\n\nFalcon Group delivers Intelligent Process Automation solutions that empower businesses to work smarter. Their approach involves analyzing existing workflows and designing automation systems that streamline operations. Falcon’s commitment to innovation and adaptability has earned them a reputation as a trusted partner for businesses in Dubai looking to enhance efficiency and stay competitive.\n\n## Al Gurg Automation and Controls (AGAC) [...] ## Al Gurg Automation and Controls (AGAC)\n\nAl Gurg Automation and Controls (AGAC) offers cutting-edge Intelligent Process Automation services tailored for businesses in Dubai. With a focus on operational excellence, they integrate advanced automation tools to eliminate inefficiencies and improve productivity. AGAC’s ability to craft solutions specific to industry requirements makes them a dependable choice for digital transformation.\n\n## Sunnyville",
-      "score": 0.80089486,
-      "raw_content": null,
-      "id": "cd491f-07"
+      "id": "04c68c-05"
     },
     {
       "url": "https://www.reddit.com/r/AINativeEconomy/comments/1tycc10/the_best_ai_automation_companies_in_the_uae_right",
@@ -466,7 +463,15 @@
       "content": "Microsoft UAE, Accenture, and PwC operate the most mature AI transformation practices for large UAE enterprises. Microsoft's advantage is the",
       "score": 0.79958355,
       "raw_content": null,
-      "id": "51ee3c-08"
+      "id": "1a9f95-06"
+    },
+    {
+      "url": "https://revenuebase.ai/companies/digital-process-automation-software-companies/united-arab-emirates",
+      "title": "Top 19 Digital process automation software companies based in the United Arab Emirates",
+      "content": "| 11 | AAutonomous Technologies FZ LLC | Strong evidence | Al Barsha, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 14 contacts → |\n| Strong evidence  “AuTech is specialised Intelligent Automation and Process Optimisation company.”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 12 | NNestrom INC | Strong evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 1-10 | 9 contacts → |\n| Strong evidence  “Nestrom is an innovative, zero-code Business Process Management (BPM) and Workflow Automation platform built to simplify complex operations across various functions, including HSE…”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. | [...] | Partial evidence  “Operational in the UAE since 2006 and based in Dubai, 360 Solutions is an IT company, covering Business Process, Document Capture and Content Management, partnering the best in…”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 17 | FFlowzy | Strong evidence | Ajman, United Arab Emirates✓HQ checked Sep 14, 2026 | 1-10 | 4 contacts → |\n| Strong evidence  “flowzy is a versatile AI automation software, capable of saving you and your business multiple hours per day by automating business processes pertaining to content creation and…”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. | [...] | Strong evidence  “SCASYS is a Digital Transformation and Enterprise Solutions company specializing in ERP consulting, business process automation, AI-driven innovation, systems integration and…”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |\n| 8 | NNuummite Consulting | Strong evidence | Dubai, United Arab Emirates✓HQ checked Sep 14, 2026 | 11-50 | 17 contacts → |\n| Strong evidence  “Nuummite is a Digital Transformation Consulting and Implementation firm based in the UAE with offices in KSA & Jordan offering business process automation & digital transformation…”  Source: RevenueBase Database · checked Sep 14, 2026Thanks. The Data Team will review it. |",
+      "score": 0.79119295,
+      "raw_content": null,
+      "id": "406144-07"
     },
     {
       "url": "https://gcg.ae/digital-transformation/business-process-automation",
@@ -474,7 +479,15 @@
       "content": "#### How do I know if my organization is ready for Business Process Automation?\n\nIf your organization relies on repetitive manual tasks, paper-based processes, multiple approvals, or time-consuming workflows, Business Process Automation can provide significant benefits. GCG’s specialists can assess your existing processes, identify automation opportunities, and recommend a tailored solution that aligns with your business objectives and digital transformation goals.\n\nDelivery Management Model\n\n\n\n+971 4 5281000\n\nMakeen Building , Airport Road,  \n Deira, Dubai\n\nFounded in 1982, Gulf Commercial Group’s Digital Imaging & Office Services Solutions is a leader in UAE office automation.\n\n Digital Transformation\n IT Services\n AV Systems\n Print Services\n Industry Solutions\n\n#### Print Services",
       "score": 0.79099923,
       "raw_content": null,
-      "id": "6546c5-09"
+      "id": "b06729-08"
+    },
+    {
+      "url": "https://www.squareonemea.com/solutions/business-process-automation-solutions-in-the-uae",
+      "title": "Business Process Automation Solutions in the UAE | SquareOne",
+      "content": "Through the BPA solution for automating intelligent business processes, SquareOne helps enterprises across the GCC region to manage workflows using advanced technology by fostering an end-to-end process. Using low-code automation, seamless system integration, and intelligent content management capabilities, businesses can eliminate redundancies, shorten delays, and maintain consistency across critical functions.\n\nTalk to our Experts!\n\n## Industries We Serve\n\n### Public Sector\n\n## Business Functions Enabled by BPA\n\n### Customer Onboarding & Support\n\n### Invoice & Payment Processing\n\n### Procurement & Vendor Management\n\n### Audit & Compliance Management\n\n### Service Request Management\n\n### Performance Tracking\n\n### Document & Content Management\n\n## Role-Specific BPA System for Organisation [...] ### Seamless System Alignment\n\nAdapt your workflow as your organisation evolves. With modular integration and dynamic configurations, teams can modify steps, approvals, and transitions without tech roadblocks.\n\n### Timely Operational Alerts\n\nReceive actionable updates tied to deadlines, escalations, or compliance checks. Ensure decisions are made in real time, keeping processes aligned and on schedule.\n\n## Business Process Automation Platform Enabled by\n\n## SquareOne: Offering Smart & Low-code Business Process Automation Solution in the UAE\n\nAs a key enabler of tech-led business evolution across the Middle East, SquareOne continues to leverage low-code AI and automation to simplify, standardise, and scale operations. [...] With proven expertise and partnerships with Microsoft and Hyland, SquareOne  introduces Business Process Automation solutions to the region, fostering transparency, accountability, and compliance. It helps organisations reinvent efficiency, streamline workflows, and reduce cycle times, making enterprises to achieve ROI and better decision-making.\n\n## Our Customers\n\n“Working with SquareOne has helped our organisation be free from complex workflows and automate the process. Their intuitive dashboards and real-time insights have empowered us to make quicker, smarter business decisions.”\n\nAshley Robertson\n\nOperational Manager",
+      "score": 0.7892503,
+      "raw_content": null,
+      "id": "ce0b35-09"
     },
     {
       "url": "https://www.naukri.com/lead-generation-jobs-in-uae-abu-dhabi",
@@ -482,7 +495,7 @@
       "content": "- [x] \nIT Services & Consulting(5)\n\n \n\n- [x] \nOil & Gas(5)\n\n \n\n- [x] \nRecruitment / Staffing(4)\n\n \n\n- [x] \nReal Estate(4)\n\n \n\nView More\n\nTop companies\n\n- [x] \nSBI General Insurance(1)\n\n \n\nFreshness\n\nSelect\n   Last 30 days\n   Last 15 days\n   Last 7 days\n   Last 3 days\n   Last 1 day\n\nLocation\n\n- [x] \nDubai(30)\n\n \n\n- [x] \nAbu Road(4)\n\n \n\n- [x] \nUnited Arab Emirates(4)\n\n \n\n- [x] \nJodhpur(2)\n\n \n\nView More\n\n1 - 20 of 34 \n# Lead Generation Jobs In Uae Abu Dhabi\n\nSort by: \n\nRelevance\n   Relevance\n   Date\n\n## Business Development Executive (Plastic Injection Mold)\")\n\nImage 5: Confidential logo\n\nConfidential\n\n5-10 Yrs Dubai\n\nDevelop relationships with prospective clients by soliciting and following up on referr... [...] Image 32: Airdit Software Services logo\n\nAirdit Software Services2.356 Reviews\n\n2-4 Yrs Dubai\n\nAbout the RoleAIRDIT is looking for a proactive and results-oriented International Mark...\n\n   International Marketing\n   B2B Marketing\n   LinkedIn Sales Navigator\n   Lead Generation\n   Inside Sales Support\n   Dripify\n   Demand Generation\n   prospect segmentation\n\n1 week ago save\n\nImage 33: companyLogo\n\nWe’re urgently hiring\n\nAnarock Property Consultants\n\nImage 34: rating3.5\n\n744 Reviews\n\nInternational Sales Manager\n\nImage 35: year-logo5-10 YrsImage 36: salaryNot disclosedImage 37: location-logoDubai, United Arab Emirates [...] Image 38: description-logo5+ years of UAE experience.  Strong UAE / GCC Channel Partner & Broker network.  Proven experience selling Indian properties to NRI clients.  Experience with a real estate developer preferred.  Strong understanding of Indian RE markets Mumbai,Gurgaon / NCR & Bangalore.  Willingness to travel across UAE & GCC.  Independent,self-driven & strong at stakeholder management.\n\nNRI Sales Residential Properties International Sales HNI Key Account Mgmt NRI Channel Sales B2B Sales\n\nImage 39: footer-iconMatching jobs promoted by companies\n\n## Business Development Manager\n\nImage 40: Easa Saleh Al Gurg Group (ESAG) logo\n\nEasa Saleh Al Gurg Group (ESAG)\")4.272 Reviews\n\n12-15 Yrs Dubai\n\nBachelors Degree in Business Administration, Marketing, Education, Technology, or relat...",
       "score": 0.8668671,
       "raw_content": null,
-      "id": "9fe1e9-00"
+      "id": "085ad9-00"
     },
     {
       "url": "https://www.sortlist.com/s/lead-generation/abu-dhabi-ae",
@@ -490,7 +503,7 @@
       "content": "From €1,000 for Lead Generation\n\n  Worked in Software & Computer Services (+8)\n\n  Speaks English, Turkish\n\n  11-50 members\n Pixoo Media Creative Agency\n\n  Pixoo Media Creative Agency\n\n  claimed-flag\n\n  5\n\n  (19 reviews)\n\n  Pixoo Media, the leading creative agency in Dubai, Abu Dhabi, UAE. \"Where The Brand Begins\"\n\n  Recommended\n\n  Top awarded [...] Looking for work in Lead Generation\n\n  Located in Dubai, United Arab Emirates (+2)\n\n  From €1,000 for Lead Generation\n\n  Worked in Banking & Financials (+23)\n\n  Speaks English, Arabic(+2)\n\n  11-50 members\n\n## All Lead Generation Agencies in Abu Dhabi\n\n Square Marketing\n\n  Square Marketing\n\n  claimed-flagtrusted-flag\n\n  4.9\n\n  (51 reviews)\n\n  MAKE IT REAL. ⬛️\n\n  Highly recommended\n\n  Top awarded [...] Takes 3 min. 100% free\n\nLinkedIn\n\nAudi\n\nBlizzard\n\nNew Balance\n\nVelux\n\nYale\n\nBBC\n\nAmazon\n\nLead GenerationUnited Arab EmiratesAbu Dhabi\n\n41 companies\n\nSearch location\n\nRatings\n\nBudget",
       "score": 0.834852,
       "raw_content": null,
-      "id": "f074c7-01"
+      "id": "2808f4-01"
     },
     {
       "url": "https://theprimeads.com/lead-generation-in-dubai",
@@ -498,7 +511,7 @@
       "content": "What are the best lead generation companies in Dubai?\n\nThe best lead generation companies in Dubai include performance-focused agencies like The Prime Ads, established firms like Leads Dubai (14+ years), and enterprise-level partners like Digital NEXA (HubSpot Diamond Partner). The right choice depends on your industry, budget, and growth stage. Key evaluation criteria: ask for case studies with actual conversion data, understand their tracking methodology, and check if they optimize for qualified leads rather than just volume. See our detailed comparison above.\n\nWhich platform works best for B2B lead generation in UAE? [...] You're blaming the agency or your marketing team. But the reality is, in your niche there might be 1,000 or more businesses competing for that same lead across Dubai, Abu Dhabi, and Sharjah.\n\nHere's the truth: If your leads aren't converting, the problem isn't traffic. It's a systematic flaw — not designing a clear system that enriches leads with the right information, implements lead qualification mechanisms, and sends the right data to platforms so they can identify your ideal customer profile.\n\nThis applies whether you're in real estate, B2B services, SaaS, finance, education, healthcare, or hospitality. The fundamentals of lead generation in Dubai are the same across industries — only the targeting and messaging differ. [...] Lead generation in Dubai is broken for most businesses. Companies waste 100,000+ AED on campaigns that generate hundreds of unqualified leads while sales teams struggle with poor conversion rates. With over 1.4 million companies competing across the UAE according to Kelmer, the problem isn't traffic — it's the lack of a systematic approach to lead enrichment, qualification, and platform optimization.",
       "score": 0.8235701,
       "raw_content": null,
-      "id": "aaa7ce-02"
+      "id": "45ed44-02"
     },
     {
       "url": "https://www.remotedxb.com/skill/lead-generation",
@@ -506,7 +519,7 @@
       "content": "RemoteDXB\n\nPost a job\n\n# Lead Generation Jobs in Dubai and UAE\n\nBrowse 62 lead generation remote and hybrid jobs in Dubai and UAE. Updated daily.\n\n1,538 jobs\n\n1,538 jobs\n\nBombardierAbu DhabiUAE remoteHybridFull TimeMid LevelSAPMicrosoft Office\n\n1d ago\n\n### Buyer\n\nBombardier\n\nUAE remoteHybridFull Time\n\n1d ago\n\n### Senior Named Account Executive, Telcos & SPs\n\nCloudflareDubaiUAE remoteHybridFull TimeSeniorCybersecurityNetworking\n\n1d ago\n\n### Senior Named Account Executive, Telcos & SPs\n\nCloudflare\n\nUAE remoteHybridFull Time\n\n1d ago\n\n### Channel Business Manager IQSIGHT – Abu Dhabi, UAE\n\nKeenfinityDubaiUAE remoteHybridFull TimeSeniorCRMB2B Sales\n\n1d ago\n\n### Channel Business Manager IQSIGHT – Abu Dhabi, UAE\n\nKeenfinity\n\nUAE remoteHybridFull Time\n\n1d ago\n\n### Sales Manager, Startups",
       "score": 0.81489426,
       "raw_content": null,
-      "id": "ce3221-03"
+      "id": "4c8e10-03"
     },
     {
       "url": "https://www.naukrigulf.com/lead-generation-jobs-in-dubai",
@@ -514,7 +527,7 @@
       "content": "Easy Apply 28 Sep\n\nBusiness Development Executive (DIGITAL MARKETING | SaaS)HolistiQ Digital LLC\n   2 - 5 Years\n   Dubai - United Arab Emirates (UAE)\n\nIdentify potential clients for digital marketing services, generate leads, conduct sales meetings, and achieve targets in SaaS sales and client acquisition.\n\nEasy Apply 28 Sep\n\nOutdoor Sales ExecutiveExtreme Group\n   2 - 4 Years\n   Abu Dhabi , Dubai - United Arab Emirates (UAE)\n\nIdentify business opportunities, promote products, build client relationships, negotiate sales, achieve targets, and conduct market research in outdoor sales.\n\nEasy Apply 28 Sep\n\nBusiness ManagerCyberia Recruitment Services - L.L.C - S.P.C\n   5 - 10 Years\n   Dubai - United Arab Emirates (UAE) [...] Easy Apply Employer Active 15 hrs ago\n\nSales Development ExecutiveConstruction Sales\n   0 - 3 Years\n   Dubai , Abu Dhabi - United Arab Emirates (UAE)\n\nResponsible for generating leads through cold calling, maintaining records, and meeting sales targets while possessing strong communication and persuasion skills.\n\nEasy Apply Multiple Vacancies Employer Active 17 hrs ago\n\nSales ManagerKRISHLOGIX GLOBAL SHIPPING LLC\n   3 - 8 Years\n   Dubai - United Arab Emirates (UAE)\n\nDevelop and execute strategic sales plans for freight forwarding and logistics, while leading a sales team to achieve revenue targets and build client relationships.\n\nEasy Apply Employer Active 29 Sep\n\nSales Executive – RoboticsROBOHUB ROBOTICS TRADING L.L.C\n   1 - 6 Years\n   Dubai - United Arab Emirates (UAE) [...] Companies hiring in Dubai\n\n       Al Futtaim Jobs in Dubai\n       Arenco Real Estate Jobs in Dubai\n       Amit International Group Jobs in Dubai\n       Abdulwahed Bin Shabib Investment Group LLC Careers\n       Xenox Technology LLC Careers\n       Hafele Middle East Trading LLC Careers\n       + 1 More\n\n   Home\n   Jobs in UAE\n   Jobs in Dubai\n   Lead Generation Jobs\n   Lead Generation Jobs in Dubai\n\n\n   \n\nAll trademarks are properties of their respective owners.All rights reserved ©2026 Info Edge (India) Ltd.\n\nPartner Sites\n   Image 9: naukri-logo\n   Image 10: naukri-ff-logo\n   Image 11: ambition-logoAmbitionBox\n   Image 12: job-hai-logo\n\nShare Feedback'\n\nImage 15",
       "score": 0.81418616,
       "raw_content": null,
-      "id": "e02493-04"
+      "id": "b1825b-04"
     },
     {
       "url": "https://clutch.co/ae/call-centers/lead-generation",
@@ -522,7 +535,7 @@
       "content": "### Six Figure Consulting\n\n    $1,000+\n\n    $25 - $49 / hr\n\n    2 - 9\n\n    Abu Dhabi, United Arab Emirates\n\n    16/20 Reviews\n\n    0/10 Clients & Experience\n\n    4.6/10 Market Presence\n\n    Service focus\n\n    20% Sales Outsourcing\n\n    20% B2B Lead Generation\n\n    80% Other\n\n    View Profile\n    Visit Website\n11. Dreamline Digital FZCO Logotype\n\n    ### Dreamline Digital FZCO\n\n    $5,000+\n\n    $50 - $99 / hr\n\n    2 - 9\n\n    Dubai, United Arab Emirates\n\n    16/20 Reviews\n\n    0/10 Clients & Experience\n\n    0/10 Market Presence\n\n    Service focus\n\n    55% Sales Outsourcing\n\n    30% B2B Lead Generation\n\n    45% Other\n\n    View Profile\n    Visit Website\n12. $1,000+\n\n    $50 - $99 / hr\n\n    2 - 9\n\n    Dubai, United Arab Emirates\n\n    0/20 Reviews\n\n    6.1/10 Clients & Experience [...] Dubai, United Arab Emirates\n\n   16.4/20 Reviews\n\n   2.2/10 Clients & Experience\n\n   4/10 Market Presence\n\n   Service focus\n\n   70% Sales Outsourcing\n\n   50% B2B Lead Generation\n\n   30% Other\n\n   View Profile\n   Visit Website\n6. BUSINESS THRIVER Logotype\n\n   ### BUSINESS THRIVER\n\n   $5,000+\n\n   $150 - $199 / hr\n\n   10 - 49\n\n   Dubai, United Arab Emirates\n\n   16.8/20 Reviews\n\n   0/10 Clients & Experience\n\n   4/10 Market Presence\n\n   Service focus\n\n   20% Sales Outsourcing\n\n   100% B2B Lead Generation\n\n   80% Other\n\n   View Profile\n   Visit Website\n7. Belsons Digital Logotype\n\n   ### Belsons Digital\n\n   $25,000+\n\n   $50 - $99 / hr\n\n   10 - 49\n\n   Dubai, United Arab Emirates\n\n   16.2/20 Reviews\n\n   0/10 Clients & Experience\n\n   4.9/10 Market Presence\n\n   Service focus [...] 4.9/10 Market Presence\n\n   Service focus\n\n   10% Sales Outsourcing\n\n   100% B2B Lead Generation\n\n   90% Other\n\n   View Profile\n   Visit Website\n8. HatchTechs UAE Logotype\n\n   ### HatchTechs UAE\n\n   $1,000+\n\n   $25 - $49 / hr\n\n   10 - 49\n\n   Dubai, United Arab Emirates\n\n   16.2/20 Reviews\n\n   0/10 Clients & Experience\n\n   4/10 Market Presence\n\n   Service focus\n\n   10% Sales Outsourcing\n\n   100% B2B Lead Generation\n\n   90% Other\n\n   View Profile\n   Visit Website\n9. Undisclosed\n\n   Undisclosed\n\n   2 - 9\n\n   Dubai, United Arab Emirates\n\n   9.4/20 Reviews\n\n   2.4/10 Clients & Experience\n\n   4.6/10 Market Presence\n\n   Service focus\n\n   100% Sales Outsourcing\n\n   35% B2B Lead Generation\n\n   View Profile\n   Visit Website\n10. Six Figure Consulting Logotype\n\n    ### Six Figure Consulting",
       "score": 0.81204927,
       "raw_content": null,
-      "id": "b2fa23-05"
+      "id": "3e38d6-05"
     },
     {
       "url": "https://ae.linkedin.com/company/leads-dubai",
@@ -530,7 +543,7 @@
       "content": "## Similar Companies\nThe Lead Generation Company - B2B Sales Support (Advertising Services):  (Glasgow, Glasgow); Prism Digital (Advertising Services):  (Dubai, Dubai); EDS FZCO (Advertising Services):  (Dubai, Dubai); NEXA - Digital Marketing (Advertising Services):  (Dubai, Dubai); Wisoft Solutions (Advertising Services):  (N/A); Lead Generation World (Advertising Services):  (San Diego, CA); ENH Marketing (Advertising Services):  (Dubai, Dubai); DigitalLancers - B2B Lead Generation (IT Services and IT Consulting):  (Gurugram, Haryana); Lead Generation Company (IT Services and IT Consulting):  (New Delhi, Delhi); Lead Generation Services Provider (IT Services and IT Consulting):  (N/A) [...] Leads Dubai - Lead Generation Company (3w): Most law firms in Dubai are built on referrals. Referrals are valuable. But they cannot be scaled. They cannot be predicted. And they will never give your firm the consistent growth that a proper digital marketing strategy delivers. The legal clients you are missing right now are not missing because your firm is not good enough. They are missing because when they searched online for a lawyer in Dubai, they found your competitor instead of you. Here is what the law firms winning in Dubai are doing differently: Google Ads targeting high-intent legal searches SEO that puts your firm on Page 1 Content marketing that builds authority and trust WhatsApp lead generation for instant client contact Landing pages that convert enquiries into consultations [...] ## Overview\nMarketing in todays world is needed by almost everyone. Leads Dubai is a Lead Generation Company. We help you get new leads / enquiries / calls / downloads / walkins. Leads Dubai makes it easy for marketers and companies to get new business by marketing on the Internet. Leads Dubai was established in 2013 with the aim to help companies find new customers in more effective ways. We help you do the following Email Marketing Google Advertising SMS Marketing Mobile Marketing Website Creation SEO Services App Marketing Facebook Advertising Youtube Advertising Linkedin Advertising Instagram Advertising Snapchat Advertising\n\n### Website\n\n### Crunchbase\nN/A\n### LinkedIn\nN/A\n\n### Industry\nAdvertising Services",
       "score": 0.8088086,
       "raw_content": null,
-      "id": "f50a12-06"
+      "id": "934e58-06"
     },
     {
       "url": "https://www.saleshandy.com/blog/lead-generation-companies-in-uae",
@@ -538,7 +551,7 @@
       "content": "You can use our curated list to find an agency that best matches your budget and business needs. Here’s a list of all the companies in our list. You can click on the link to jump to their profile.\n\n1. EDS\n2. Leads Dubai\n3. Ubrik Media\n4. Growth Rhino\n5. Heroleads\n6. Dreamline Digital\n7. NEXA\n8. KBA Business Consultants\n9. Prism Digital\n10. Hello Pixels\n\nLet’s explore the top 10 lead-gen agencies that can fuel your sales pipeline with quality leads!\n\n### 1. EDS\n\nGoogle Reviews – 4.4/5 ⭐\n\nEDS is a digital marketing company that can help your business with tailored lead-generation solutions. [...] ### 9. Prism Digital\n\nGoogle Reviews – 4.8/5 ⭐\n\nPrism Digital is a digital marketing agency based in Dubai that can help your business with lead generation through SEO, PPC, and social media marketing.\n\nFor lead generation, they start by researching your industry, ideal customers, and business offerings. You can also work with them for SEO if you want to optimize your website to rank higher in the search engine results.\n\nTheir PPC strategies are tailored to your business goals and audiences. They aim for a high return on ad spend by using various targeting options to take the right message to audiences at the right time.\n\nIn the past, Prism Digital has worked with various businesses from different sectors, such as education, hotel and tourism, SaaS, finance, etc.\n\n#### Key Services [...] Website Development: Leads Dubai is all about making websites that are fast and look great on mobile and desktop. They primarily use WordPress and PHP for development and make sure everything is SEO-friendly so that you rank better on Google.\n Newspaper Ads: If you want to get your message out in newspapers, then this service is the right one for you. This will help improve your brand recognition and sales. Their team will put your ads in different sections of the paper, and even help with the copy and catchy CTAs.\n SEO Services: They help with everything related to SEO — from keyword research to content creation and even video SEO.",
       "score": 0.8036831,
       "raw_content": null,
-      "id": "23971e-07"
+      "id": "267745-07"
     },
     {
       "url": "https://www.gulftalent.com/uae/jobs/title/lead-generation-executive",
@@ -546,7 +559,7 @@
       "content": "Top companies hiring for Lead Generation Executive jobs in UAE are ADNOC, Etihad Airways, Al Futtaim Group, CBD and GEMS Education. Additionally, Lead",
       "score": 0.8036831,
       "raw_content": null,
-      "id": "0de2c0-08"
+      "id": "8a22ae-08"
     },
     {
       "url": "https://ciente.io/blogs/lead-generation-companies-uae",
@@ -554,7 +567,7 @@
       "content": "Ciente is a one of the most famous lead generation companies in dubai, this organization is industry-agnostic with deep expertise in all things tech- including marketing, information technology, and sales. Ciente serves its clients with exceptional quality by building an editorial trusted by leaders globally. With this engaged readership, the brand has built a foundation of trust with its clients and buyers, and helps connect two (or more!) great fits together.\n\nIt is based on the design of a positive loop- exceptional content brings readers in, readers care about the problems presented, and the possible solution could be your organization. The connection drives meaningful conversations and positions Ciente as a problem-solver, leading to increased engagement. [...] The brand uses this loop to empower itself, its readers, and its clients.\n\nFrom Top-of-the-funnel leads to appointments, with specialization in content syndication and appointments, Ciente presents a host of services for its clients to drive revenue and help organizations prove their marketing is more than just its cost as outlined in modern content syndication for lead generation frameworks.\n\nCiente is known for:\n\n1. Record-time campaigns.\n2. Market insights and intelligence.\n3. Lead quality and conversion ratio.\n4. Consistent branding, i.e., one of the best partners as a brand extension.\n\nThis comprehensive service suite makes Ciente a top contender for one of the best B2B lead generation firms in Dubai. Without a doubt, it is a powerhouse.\n\n### Initiative\n\nLocation: Abu Dhabi/Dubai [...] They host one of the best tech and marketing events in Dubai. They have a proprietary solution that drives their demand and lead generation campaigns– and provides a full-funnel user orchestration for their clients.\n\n### Martal Group\n\nLocation: Canada, USA, Latvia\n\nMarkets Served: APAC, EMEA, NAM, LATAM.\n\nThe Martal Group is an organization that specializes in tailoring its solutions to align with each unique client’s needs. They provide services from appointment setting to inbound lead generation with a focus on sales enablement.\n\nConsistently ranked as one of the best lead and demand generation agencies out there, they are a good fit for organizations inside Dubai that need to capture international or regional markets.",
       "score": 0.7927375,
       "raw_content": null,
-      "id": "c3717a-09"
+      "id": "615742-09"
     }
   ],
   "quotes": [
@@ -613,21 +626,21 @@
     }
   ],
   "processed_messages": [
-    "<010001a0f628fce6-5a915353-42fd-47f9-a6e3-e6bb35f98cb9-000000@email.amazonses.com>",
-    "<010001a0f63f3ab1-285d41b6-7b47-4bc3-a820-aa4274a1dbf5-000000@email.amazonses.com>",
-    "<CANKUOXoeduwnr+6equVeHhogVG-HAyRoG5i22C5zFp40ampDFA@mail.gmail.com>",
-    "<CANKUOXoBuuDPhSf9LXXTaqDs1fdL384AFJYx7C_sTvV=saQpLA@mail.gmail.com>",
-    "<CANKUOXogfw=BSu77nxea5pE5Z2x_oZEgp2Z=oYxVwJJ_gTLA_Q@mail.gmail.com>",
-    "<010001a0f618b93a-d424f53f-400a-4033-bbe1-4b402b1080e2-000000@email.amazonses.com>",
-    "<010001a0f6101526-e347e481-7cc0-4a7b-b459-14ae9a965e18-000000@email.amazonses.com>",
-    "<010001a0f5c240d0-01c9dbbb-85c9-4601-bbde-f8ce93bf97a0-000000@email.amazonses.com>",
     "<010001a0f610132b-e5692ca4-c4d4-454f-a7a6-0e82be3da02d-000000@email.amazonses.com>",
     "<010001a0f6101728-9ee7c438-3be1-4afe-849c-3a9d4907dbf4-000000@email.amazonses.com>",
-    "<CANKUOXreeD0oZsm+GwSfgm_nCckkNTzSDLNH1=PUZLmcUaBfng@mail.gmail.com>"
+    "<CANKUOXogfw=BSu77nxea5pE5Z2x_oZEgp2Z=oYxVwJJ_gTLA_Q@mail.gmail.com>",
+    "<010001a0f63f3ab1-285d41b6-7b47-4bc3-a820-aa4274a1dbf5-000000@email.amazonses.com>",
+    "<010001a0f618b93a-d424f53f-400a-4033-bbe1-4b402b1080e2-000000@email.amazonses.com>",
+    "<CANKUOXoeduwnr+6equVeHhogVG-HAyRoG5i22C5zFp40ampDFA@mail.gmail.com>",
+    "<CANKUOXoBuuDPhSf9LXXTaqDs1fdL384AFJYx7C_sTvV=saQpLA@mail.gmail.com>",
+    "<CANKUOXreeD0oZsm+GwSfgm_nCckkNTzSDLNH1=PUZLmcUaBfng@mail.gmail.com>",
+    "<010001a0f6101526-e347e481-7cc0-4a7b-b459-14ae9a965e18-000000@email.amazonses.com>",
+    "<010001a0f5c240d0-01c9dbbb-85c9-4601-bbde-f8ce93bf97a0-000000@email.amazonses.com>",
+    "<010001a0f628fce6-5a915353-42fd-47f9-a6e3-e6bb35f98cb9-000000@email.amazonses.com>"
   ],
   "followups": [],
   "last_event": {
-    "ts": 1790838427.9332793,
+    "ts": 1790838615.5033422,
     "kind": "system",
     "message": "Business Agent cycle completed",
     "data": {
@@ -643,16 +656,17 @@
         "status": "running",
         "requests": 3,
         "leads": 1,
-        "tasks": 0,
+        "tasks": 1,
         "payments": 1,
         "approvals": 1,
         "opportunities": 40,
         "quotes": 4,
         "followups": 0,
-        "paid_requests": 1,
+        "paid_requests": 0,
         "inbound_processed": 0,
         "offers_handled": 0,
-        "payments_reconciled": 1,
+        "payments_reconciled": 0,
+        "fulfillment_started": 1,
         "followups_sent": 0
       }
     }
