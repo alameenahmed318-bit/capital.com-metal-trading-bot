@@ -1,4 +1,4 @@
-"""Provider adapters for the UAE Business AI Agent."""
+""""Provider adapters for the UAE Business AI Agent."""
 from __future__ import annotations
 from typing import Protocol
 import requests
@@ -40,7 +40,7 @@ class HubSpotCRM:
         return r.json()
     def update(self, lead_id: str, data: dict) -> dict:
         r = requests.patch(f"{self.base}/crm/v3/objects/contacts/{lead_id}", headers=self.headers,
-                            json={"properties": data}, timeout=30)
+                           json={"properties": data}, timeout=30)
         r.raise_for_status()
         return r.json()
 
@@ -80,12 +80,13 @@ class AgentMailMessenger:
         r.raise_for_status()
         return r.json()
 
-    def send(self, recipient: str, subject: str, message: str) -> dict:
+    def send(self, recipient: str, subject: str, message: str, html: str | None = None) -> dict:
         inbox_id = self._resolve_inbox_id()
+        payload = {"to": [recipient], "subject": subject, "text": message}
+        if html:
+            payload["html"] = html
         r = requests.post(f"{self.base}/inboxes/{inbox_id}/messages/send",
-                          headers=self.headers,
-                          json={"to": [recipient], "subject": subject, "text": message, **({"html": html} if html else {})},
-                          timeout=30)
+                          headers=self.headers, json=payload, timeout=30)
         r.raise_for_status()
         return r.json()
 
@@ -125,7 +126,6 @@ class StripePayments:
             data={"customer":customer_id, "auto_advance":"false"}, timeout=30)
         inv.raise_for_status()
         invoice = inv.json()
-        # Finalize the draft so Stripe exposes a hosted invoice page for the customer.
         invoice_id = invoice["id"]
         finalized = requests.post(f"{self.base}/invoices/{invoice_id}/finalize",
             auth=self.auth, timeout=30)
