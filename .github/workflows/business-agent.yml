@@ -15,8 +15,20 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Run agent heartbeat
+      - name: Run business agent
         env:
           AGENT_DRY_RUN: "true"
+          APPROVAL_REQUIRED_FOR_MONEY: "true"
+          APPROVAL_REQUIRED_FOR_CONTRACTS: "true"
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          AGENTMAIL_API_KEY: ${{ secrets.AGENTMAIL_API_KEY }}
+        run: python -m business_agent.agent
+      - name: Persist agent state
         run: |
-          python -m business_agent.agent
+          git config user.name "uae-business-ai-agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add business_agent/state.json
+          git diff --cached --quiet || git commit -m "chore: persist business agent state"
+          git push
