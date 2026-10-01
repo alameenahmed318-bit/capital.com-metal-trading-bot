@@ -1,0 +1,13 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UAE Market</title><meta name="description" content="UAE Market — متجر إلكتروني إماراتي"><link rel="stylesheet" href="styles.css"></head><body>
+<div class="topbar">🇦🇪 توصيل داخل الإمارات • عروض يومية • دفع آمن</div>
+<header><a class="brand" href="#"><b>UAE</b><span>Market</span></a><div class="search"><input id="search" placeholder="ابحث عن منتج أو فئة..." autocomplete="off"><button id="searchBtn">⌕</button></div><button class="iconBtn" id="accountBtn">◯ <span>حسابي</span></button><button class="cartBtn" id="cartBtn">🛒 <span>السلة</span><i id="cartCount">0</i></button></header>
+<nav id="categories"></nav>
+<main>
+<section class="hero"><div><small>خصومات اليوم</small><h1>تسوق أذكى.<br><em>أسعار أفضل.</em></h1><p>اكتشف منتجات مختارة وعروضًا يومية مع تجربة تسوق مصممة للإمارات.</p><button class="primary" onclick="document.getElementById('products').scrollIntoView({behavior:'smooth'})">ابدأ التسوق ←</button></div><div class="heroArt">🛍️<span>🔥</span></div></section>
+<section class="sectionHead"><div><small>مختارات UAE Market</small><h2>عروض اليوم</h2></div><div id="countText"></div></section>
+<section id="products" class="grid"></section>
+</main>
+<aside id="cart" class="drawer"><div class="drawerHead"><h2>سلة المشتريات</h2><button id="closeCart">×</button></div><div id="cartItems"></div><div class="cartFoot"><div><span>الإجمالي</span><strong id="cartTotal">AED 0</strong></div><button class="primary full" id="checkout">إتمام الطلب</button><small>الدفع الحقيقي سيتم ربطه في المرحلة التالية مع Stripe.</small></div></aside>
+<div id="overlay"></div>
+<footer><b>UAE Market</b><p>متجر إماراتي بتجربة تجارة إلكترونية حديثة.</p><span>© 2026 UAE Market</span></footer>
+<script src="app.js"></script></body></html>
