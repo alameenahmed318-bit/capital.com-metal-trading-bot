@@ -20,6 +20,8 @@ MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
 PROFIT_ARM = float(os.getenv("PROFIT_ARM_AED", "1"))
 PROFIT_LOCK = float(os.getenv("PROFIT_LOCK_AED", "0.25"))
 TRAIL_GIVEBACK = float(os.getenv("TRAIL_GIVEBACK_AED", "1.0"))
+PROFIT_TRAIL_RATIO = float(os.getenv("PROFIT_TRAIL_RATIO", "0.30"))
+STRONG_RETRACE_RATIO = float(os.getenv("STRONG_RETRACE_RATIO", "0.35"))
 ORDER_COOLDOWN_SECONDS = int(os.getenv("ORDER_COOLDOWN_SECONDS", "60"))
 MARKET_RULES_REFRESH_SECONDS = int(os.getenv("MARKET_RULES_REFRESH_SECONDS", "3600"))
 STATE_FILE = Path("bot_state.json")
@@ -189,16 +191,19 @@ def signal(m5, m15):
         return "SELL"
     return None
 
-def forex_markets(all_markets):
+def tradable_markets(all_markets):
     out = []
     for m in all_markets:
-        if str(m.get("instrumentType", "")).upper() != "CURRENCIES":
-            continue
         if str(m.get("marketStatus", "")).upper() != "TRADEABLE":
             continue
-        epic = m.get("epic")
-        if epic:
-            out.append(m)
+        instrument_type = str(m.get("instrumentType", "")).upper()
+        epic = str(m.get("epic", "")).upper()
+        name = str(m.get("instrumentName", m.get("name", ""))).upper()
+        is_fx = instrument_type == "CURRENCIES"
+        requested = epic in {"GOLD", "SILVER", "US500", "US100", "US1000"} or "GOLD" in name or "SILVER" in name
+        if is_fx or requested:
+            if epic:
+                out.append(m)
     return sorted(out, key=lambda x: x["epic"])
 
 
@@ -250,7 +255,7 @@ def tighten_profit_stop(api, item, state_entry, market):
     peak = max(float(state_entry.get("peak_upl", 0)), upl)
     state_entry["peak_upl"] = peak
 
-    # Never turn a profitable position back into a losing one.
+    # Losses are not closed by profit protection; only a broker-side initial stop can close them.
     if peak < PROFIT_ARM:
         return
 
@@ -258,12 +263,17 @@ def tighten_profit_stop(api, item, state_entry, market):
     if not vpp:
         return
 
-    if peak < PROFIT_ARM + TRAIL_GIVEBACK:
-        lock_price = PROFIT_LOCK / vpp
-        target = entry + lock_price if direction == "BUY" else entry - lock_price
-    else:
-        giveback_price = TRAIL_GIVEBACK / vpp
-        target = px - giveback_price if direction == "BUY" else px + giveback_price
+    # Trail upward whenever profit makes a new high.
+    giveback = max(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO)
+    if peak >= PROFIT_ARM + TRAIL_GIVEBACK:
+        giveback = min(giveback, peak * STRONG_RETRACE_RATIO)
+
+    locked_profit = max(PROFIT_LOCK, peak - giveback)
+    if locked_profit <= 0:
+        return
+
+    lock_distance = locked_profit / vpp
+    target = entry + lock_distance if direction == "BUY" else entry - lock_distance
 
     old = state_entry.get("stop_level")
     if old is not None:
@@ -274,27 +284,22 @@ def tighten_profit_stop(api, item, state_entry, market):
         or (direction == "BUY" and target > old)
         or (direction == "SELL" and target < old)
     )
-
     if not improve:
         return
 
     if DRY_RUN:
-        log.info(
-            "DRY RUN | PROFIT PROTECT | %s | UPL=%.2f | stop %.8f -> %.8f",
-            deal_id, upl, old if old is not None else 0.0, target
-        )
+        log.info("DRY RUN | PROFIT TRAIL | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop %.8f -> %.8f",
+                 deal_id, upl, peak, locked_profit, old if old is not None else 0.0, target)
         state_entry["stop_level"] = target
         return
 
     try:
         api.update_position(deal_id, target)
         state_entry["stop_level"] = target
-        log.info(
-            "PROFIT PROTECT | %s | UPL=%.2f | stop -> %.8f",
-            deal_id, upl, target
-        )
+        log.info("PROFIT TRAIL | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
+                 deal_id, upl, peak, locked_profit, target)
     except Exception as e:
-        log.warning("profit stop update failed %s: %s", deal_id, e)
+        log.warning("profit trail update failed %s: %s", deal_id, e)
 
 
 def normalize_size(api, epic, configured_size, rules_cache):
@@ -402,7 +407,7 @@ def run():
     order_cooldown = {}
 
     log.info(
-        "HYBRID FX BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | ALL TRADEABLE CURRENCIES ONLY",
+        "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | FX+GOLD+SILVER+US500+US100/US1000",
         DRY_RUN,
     )
 
@@ -413,7 +418,7 @@ def run():
             now = time.time()
             if now - market_cache["ts"] >= MARKET_REFRESH_SECONDS or not market_cache["markets"]:
                 try:
-                    market_cache["markets"] = forex_markets(api.markets())
+                    market_cache["markets"] = tradable_markets(api.markets())
                     market_cache["ts"] = now
                 except Exception as e:
                     log.warning("MARKETS SNAPSHOT FAILED | %s | using cached markets", e)
