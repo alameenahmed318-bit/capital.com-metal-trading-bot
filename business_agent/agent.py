@@ -485,26 +485,37 @@ class BusinessAgent:
         changed = 0
         for payment in self.state.get("payments", []):
             invoice_id = payment.get("id")
-            if not invoice_id or payment.get("status") == "paid":
+            if not invoice_id:
                 continue
             try:
+                # Always reconcile the request, even when the invoice object was
+                # already returned as paid during creation. The previous code
+                # skipped status=="paid" records before linking them to a request.
                 latest = self.payments.payment_status(invoice_id)
-                old = payment.get("status")
+                old_status = payment.get("status")
+                old_paid = bool(payment.get("paid"))
+                latest_status = latest.get("status", old_status)
+                latest_paid = bool(latest.get("paid")) or latest_status == "paid"
                 payment.update({
-                    "status": latest.get("status", old),
-                    "paid": latest.get("paid", False),
-                    "hosted_invoice_url": latest.get("hosted_invoice_url"),
-                    "amount_due": latest.get("amount_due"),
-                    "currency": latest.get("currency"),
+                    "status": latest_status,
+                    "paid": latest_paid,
+                    "hosted_invoice_url": latest.get("hosted_invoice_url") or payment.get("hosted_invoice_url"),
+                    "amount_due": latest.get("amount_due", payment.get("amount_due")),
+                    "currency": latest.get("currency", payment.get("currency")),
                     "last_checked_at": time.time(),
                 })
-                if payment.get("paid") and old != "paid":
+                request = next((r for r in self.state.get("requests", [])
+                                 if r.get("invoice_id") == invoice_id), None)
+                if request and latest_paid:
+                    was_paid_request = request.get("status") == "paid"
+                    request["status"] = "paid"
+                    request.setdefault("paid_at", time.time())
+                    if not was_paid_request:
+                        changed += 1
+                        self.log("payment", "Stripe invoice marked paid and request reconciled",
+                                 invoice_id=invoice_id, request_id=request.get("id"))
+                elif latest_paid and not old_paid:
                     changed += 1
-                    request = next((r for r in self.state.get("requests", [])
-                                     if r.get("invoice_id") == invoice_id), None)
-                    if request:
-                        request["status"] = "paid"
-                        request["paid_at"] = time.time()
                     self.log("payment", "Stripe invoice marked paid", invoice_id=invoice_id)
             except Exception as exc:
                 self.log("error", "Stripe payment status check failed", invoice_id=invoice_id, error=str(exc))
