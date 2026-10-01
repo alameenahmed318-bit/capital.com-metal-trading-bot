@@ -1,27 +1,23 @@
 # UAE Business AI Agent
 
-وكيل أعمال قابل للتوسع لمراقبة السوق، استقبال طلبات الشركات، إعداد العروض،
-إدارة التنفيذ، CRM، التواصل، الفوترة والمدفوعات — مع طبقة موافقات للعمليات الحساسة.
+الوكيل مصمم لإدارة دورة العمل من اكتشاف الفرص إلى الطلب والتنفيذ والفوترة والمتابعة.
 
-## الوضع الحالي
-- Core orchestration
-- Persistent JSON state
-- Activity/approval log
-- Mobile dashboard prototype
-- Provider-neutral adapters
-- Dry-run افتراضيًا
+تم تجهيز:
+- بحث سوق عبر Tavily API عند توفر المفتاح.
+- CRM عبر HubSpot API عند توفر المفتاح.
+- فواتير Stripe عند توفر المفتاح.
+- حالة دائمة وسجل نشاط.
+- تشغيل مجدول كل 15 دقيقة.
+- موافقات للمال والعقود.
 
-## المراحل التالية
-1. Market research connector
-2. CRM connector
-3. Email connector
-4. WhatsApp Business API connector
-5. Invoice/payment provider
-6. Execution tool registry
-7. Authentication + audit log
-8. Production database
-9. Background worker/scheduler
+مهم: ربط Stripe وHubSpot داخل ChatGPT لا يرسل مفاتيح API إلى GitHub Actions تلقائياً.
+للتشغيل الخارجي نستخدم GitHub Actions Secrets فقط، ولا نضع الأسرار داخل الكود.
 
-## أمان
-لا تضع مفاتيح الدفع أو WhatsApp أو البريد داخل الكود. استخدم Secrets/Environment
-Variables. أبقِ DRY_RUN=true إلى أن يتم اختبار كل connector.
+الأسرار المطلوبة للتشغيل الخارجي:
+HUBSPOT_ACCESS_TOKEN
+STRIPE_SECRET_KEY
+TAVILY_API_KEY
+AGENTMAIL_API_KEY (اختياري)
+
+حالياً DRY_RUN=true، لذلك لا توجد مدفوعات حقيقية ولا إرسال تلقائي للأموال.
+التواصل والتنفيذ الفعلي يحتاجان موصلات القناة والخدمة المناسبة.
