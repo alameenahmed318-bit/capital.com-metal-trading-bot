@@ -7,8 +7,8 @@ DB=Path(os.getenv("MARKET_DB","marketplace/backend/market.db"))
 DB.parent.mkdir(parents=True, exist_ok=True)
 STRIPE_SECRET_KEY=os.getenv("STRIPE_SECRET_KEY","")
 STRIPE_WEBHOOK_SECRET=os.getenv("STRIPE_WEBHOOK_SECRET","")
-SUCCESS_URL=os.getenv("MARKET_SUCCESS_URL","https://example.com/marketplace/success.html")
-CANCEL_URL=os.getenv("MARKET_CANCEL_URL","https://example.com/marketplace/checkout.html")
+SUCCESS_URL=os.getenv("MARKET_SUCCESS_URL","")
+CANCEL_URL=os.getenv("MARKET_CANCEL_URL","")
 
 PRODUCTS={
 "P001":{"name":"سماعات لاسلكية Pro","price":129,"stock":24},"P002":{"name":"ساعة ذكية رياضية","price":199,"stock":18},
@@ -26,6 +26,7 @@ def db():
 
 def stripe_checkout(order_id,total,email):
     if not STRIPE_SECRET_KEY: raise RuntimeError("STRIPE_SECRET_KEY is not configured")
+    if not SUCCESS_URL or not CANCEL_URL: raise RuntimeError("MARKET_SUCCESS_URL and MARKET_CANCEL_URL are required")
     data=urllib.parse.urlencode({
       "mode":"payment","success_url":SUCCESS_URL+"?order_id="+order_id,
       "cancel_url":CANCEL_URL+"?order_id="+order_id,"customer_email":email,
@@ -40,19 +41,23 @@ def stripe_checkout(order_id,total,email):
 
 def verify_signature(payload,header):
     if not STRIPE_WEBHOOK_SECRET: return False
-    parts=dict(x.split("=",1) for x in header.split(",") if "=" in x)
-    ts=parts.get("t"); sig=parts.get("v1")
-    if not ts or not sig: return False
+    timestamp=None; signatures=[]
+    for item in header.split(","):
+        if "=" not in item: continue
+        k,v=item.split("=",1)
+        if k=="t": timestamp=v
+        elif k=="v1": signatures.append(v)
+    if not timestamp or not signatures: return False
     try:
-        if abs(time.time()-int(ts))>300: return False
+        if abs(time.time()-int(timestamp))>300: return False
     except ValueError: return False
-    expected=hmac.new(STRIPE_WEBHOOK_SECRET.encode(),(ts+"."+payload.decode()).encode(),hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected,sig)
+    signed=(timestamp+".").encode()+payload
+    expected=hmac.new(STRIPE_WEBHOOK_SECRET.encode(),signed,hashlib.sha256).hexdigest()
+    return any(hmac.compare_digest(expected,s) for s in signatures)
 
 def mark_paid(session):
     oid=(session.get("metadata") or {}).get("order_id")
-    if not oid: return False
-    if session.get("payment_status")!="paid": return False
+    if not oid or session.get("payment_status")!="paid": return False
     c=db()
     cur=c.execute("""UPDATE orders SET status='paid', stripe_session_id=?, paid_at=CURRENT_TIMESTAMP
                      WHERE id=? AND status!='paid'""",(session.get("id"),oid))
@@ -103,13 +108,15 @@ class Handler(BaseHTTPRequestHandler):
             sig=self.headers.get("Stripe-Signature","")
             if not verify_signature(raw,sig): return self.send_json(400,{"error":"invalid_signature"})
             try:
-                event=json.loads(raw)
-                if event.get("type")=="checkout.session.completed":
-                    session=event.get("data",{}).get("object",{}); mark_paid(session)
+                event=json.loads(raw); event_type=event.get("type")
+                if event_type in ("checkout.session.completed","checkout.session.async_payment_succeeded"):
+                    mark_paid(event.get("data",{}).get("object",{}))
                 return self.send_json(200,{"received":True})
             except Exception as e: return self.send_json(400,{"error":str(e)})
         return self.send_json(404,{"error":"not_found"})
 
 if __name__=="__main__":
-    db().close(); print("UAE Market API listening on http://127.0.0.1:8080")
-    ThreadingHTTPServer(("0.0.0.0",8080),Handler).serve_forever()
+    db().close()
+    port=int(os.getenv("PORT","10000"))
+    print(f"UAE Market API listening on 0.0.0.0:{port}")
+    ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
