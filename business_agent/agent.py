@@ -642,8 +642,7 @@ class BusinessAgent:
             if not self.market:
                 return "موصل البحث غير متاح حالياً."
             results = self.market.search(
-                f"UAE market research for {company}. Requirements: {details}",
-                max_results=8,
+                f"UAE market research for {company}. Requirements: {details}"
             )
             lines = [
                 f"- {r.get('title') or 'مصدر'} | {r.get('url') or ''}\n  {(r.get('content') or r.get('snippet') or '')[:500]}"
@@ -655,8 +654,7 @@ class BusinessAgent:
             if not self.market:
                 return "موصل السوق غير متاح حالياً."
             results = self.market.search(
-                f"UAE companies and public business contacts relevant to {company}. Requirements: {details}",
-                max_results=10,
+                f"UAE companies and public business contacts relevant to {company}. Requirements: {details}"
             )
             lines = [f"- {r.get('title') or 'Company'} | {r.get('url') or ''}" for r in results[:10]]
             return "قائمة أولية بجهات محتملة من مصادر عامة:\n" + ("\n".join(lines) if lines else "لا توجد نتائج كافية.")
