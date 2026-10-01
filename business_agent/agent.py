@@ -586,6 +586,63 @@ class BusinessAgent:
         self._save()
         return started
 
+    def _execute_service(self, request: dict) -> str:
+        """Execute the currently supported fulfillment workflows."""
+        service = (request.get("service") or "").lower()
+        details = (request.get("details") or "").strip()
+        company = request.get("company") or "العميل"
+
+        if "market research" in service or "research" in service or "سوق" in service:
+            if not self.market:
+                return "موصل البحث غير متاح حالياً."
+            results = self.market.search(
+                f"UAE market research for {company}. Requirements: {details}",
+                max_results=8,
+            )
+            lines = [
+                f"- {r.get('title') or 'مصدر'} | {r.get('url') or ''}\n  {(r.get('content') or r.get('snippet') or '')[:500]}"
+                for r in results[:8]
+            ]
+            return "تقرير بحث سوق أولي:\n" + ("\n".join(lines) if lines else "لم يتم العثور على مصادر كافية.")
+
+        if "lead generation" in service or "lead" in service or "عملاء" in service:
+            if not self.market:
+                return "موصل السوق غير متاح حالياً."
+            results = self.market.search(
+                f"UAE companies and public business contacts relevant to {company}. Requirements: {details}",
+                max_results=10,
+            )
+            lines = [f"- {r.get('title') or 'Company'} | {r.get('url') or ''}" for r in results[:10]]
+            return "قائمة أولية بجهات محتملة من مصادر عامة:\n" + ("\n".join(lines) if lines else "لا توجد نتائج كافية.")
+
+        if "digital marketing" in service or "marketing" in service or "تسويق" in service:
+            return (
+                f"خطة تسويق أولية لـ {company}:\n"
+                f"المتطلبات: {details or 'غير محددة'}\n"
+                "تتضمن تحديد الجمهور، العرض، الرسائل، القنوات ومؤشرات القياس. "
+                "لم يتم إطلاق حملات مدفوعة لعدم وجود موصل إعلاني."
+            )
+
+        if "website" in service or "web" in service or "موقع" in service:
+            return (
+                f"مواصفات تنفيذ موقع لـ {company}:\n"
+                f"المتطلبات: {details or 'غير محددة'}\n"
+                "تم تجهيز نطاق التنفيذ الأولي. النشر الفعلي يحتاج موصل استضافة/نشر."
+            )
+
+        if "automation" in service or "ai" in service or "أتمتة" in service:
+            return (
+                f"خطة أتمتة وAI لـ {company}:\n"
+                f"المتطلبات: {details or 'غير محددة'}\n"
+                "تم تجهيز نطاق التنفيذ والخطوات الأولية. ربط الأنظمة الخارجية يحتاج موصلاتها."
+            )
+
+        return (
+            f"تمت معالجة طلب {company}.\n"
+            f"الخدمة: {request.get('service', 'الخدمة')}\n"
+            f"التفاصيل: {details or 'غير محددة'}"
+        )
+
     def execute_followups(self) -> int:
         """Send due follow-ups once."""
         if not self.mail:
