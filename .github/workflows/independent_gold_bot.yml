@@ -15,7 +15,7 @@ permissions:
 jobs:
   gold:
     runs-on: ubuntu-latest
-    timeout-minutes: 13
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +28,8 @@ jobs:
 
       - name: Run independent Gold bot
         env:
-          CAPITAL_BASE_URL: ${{ secrets.CAPITAL_BASE_URL }}
+          # Explicit Capital Demo endpoint: GOLD_DRY_RUN=false executes on Demo, not Live.
+          CAPITAL_BASE_URL: https://demo-api-capital.backend-capital.com
           CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
           CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
@@ -41,7 +42,7 @@ jobs:
           GOLD_PROTECT_TRIGGER_AED: "0.25"
           GOLD_PROFIT_FLOOR_AED: "0.05"
           GOLD_SCAN_SECONDS: "5"
-          GOLD_RUN_SECONDS: "720"
+          GOLD_RUN_SECONDS: "840"
         run: python independent_gold_bot.py
 
       - name: Save independent Gold ownership state
@@ -50,12 +51,20 @@ jobs:
           touch gold_bot_state.json
           git config user.name "independent-gold-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git reset --hard origin/main
+
+          # Commit the state BEFORE syncing with main so reset cannot erase it.
           git add gold_bot_state.json
           if git diff --cached --quiet; then
             echo "No Gold state changes."
           else
             git commit -m "Update independent Gold bot state"
+          fi
+
+          git fetch origin main
+          git rebase origin/main
+
+          if git log -1 --format=%s | grep -q "Update independent Gold bot state"; then
             git push origin HEAD:main
+          else
+            echo "No Gold state commit to push."
           fi
