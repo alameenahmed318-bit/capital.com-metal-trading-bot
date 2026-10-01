@@ -1,14 +1,14 @@
 """UAE Business AI Agent orchestration engine."""
-
 from __future__ import annotations
 import json
+import re
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 from .config import Settings
-from .adapters import TavilyMarketResearch, HubSpotCRM, StripePayments
+from .adapters import TavilyMarketResearch, HubSpotCRM, StripePayments, AgentMailMessenger
 
 @dataclass
 class Event:
@@ -22,13 +22,14 @@ class BusinessAgent:
         self.settings = settings or Settings()
         self.state: dict[str, Any] = {
             "status":"ready","leads":[],"requests":[],"tasks":[],"payments":[],
-            "approvals":[],"opportunities":[],"quotes":[]
+            "approvals":[],"opportunities":[],"quotes":[],"processed_messages":[]
         }
         self.events: list[Event] = []
         self._load()
         self.market = TavilyMarketResearch(self.settings.tavily_api_key) if self.settings.tavily_api_key else None
         self.crm = HubSpotCRM(self.settings.hubspot_access_token) if self.settings.hubspot_access_token else None
         self.payments = StripePayments(self.settings.stripe_secret_key) if self.settings.stripe_secret_key else None
+        self.mail = AgentMailMessenger(self.settings.agentmail_api_key, self.settings.agentmail_inbox_id) if self.settings.agentmail_api_key else None
 
     def log(self, kind: str, message: str, **data: Any) -> None:
         e=Event(time.time(),kind,message,data); self.events.append(e); self.events=self.events[-500:]
@@ -54,6 +55,52 @@ class BusinessAgent:
                 self.log("market","Market scan completed",query=q,results=len(found))
             except Exception as exc: self.log("error","Market scan failed",query=q,error=str(exc))
         self.state["opportunities"]=results[-100:]; self._save(); return results
+
+    def _extract_email(self, sender: str) -> str:
+        m=re.search(r"<([^>]+)>", sender or "")
+        return m.group(1) if m else (sender or "").strip()
+
+    def _classify_service(self, text: str) -> str:
+        t=text.lower()
+        if any(x in t for x in ("website","web site","موقع","ويب")): return "Website / Web Services"
+        if any(x in t for x in ("automation","automate","أتمتة","بوت","bot","ai")): return "Business Automation / AI"
+        if any(x in t for x in ("marketing","تسويق","ads","advertising","إعلانات")): return "Digital Marketing"
+        if any(x in t for x in ("lead","leads","عملاء","عملاء محتملين")): return "Lead Generation"
+        if any(x in t for x in ("research","بحث","دراسة","market")): return "Market Research"
+        return "Business Services Inquiry"
+
+    def process_inbound_mail(self) -> int:
+        if not self.mail:
+            self.log("mail","AgentMail connector not configured"); return 0
+        processed=set(self.state.get("processed_messages", []))
+        count=0
+        try:
+            messages=self.mail.list_messages(limit=50)
+        except Exception as exc:
+            self.log("error","AgentMail list failed",error=str(exc)); return 0
+        for meta in messages:
+            mid=meta.get("message_id")
+            if not mid or mid in processed: continue
+            try:
+                msg=self.mail.get_message(mid)
+                sender=self._extract_email(msg.get("from",""))
+                if sender.lower()==self.settings.agentmail_inbox_id.lower(): 
+                    processed.add(mid); continue
+                body=msg.get("extracted_text") or msg.get("text") or msg.get("preview") or ""
+                subject=msg.get("subject") or "Business inquiry"
+                service=self._classify_service(subject+"\n"+body)
+                name=sender.split("@")[0] if sender else "Prospect"
+                req=self.create_request(name,service,body,{"email":sender,"first_name":name})
+                req["source"]="agentmail"
+                req["message_id"]=mid
+                req["subject"]=subject
+                self.log("mail","Inbound customer email processed",message_id=mid,request_id=req["id"],sender=sender,service=service)
+                processed.add(mid); count += 1
+            except Exception as exc:
+                self.log("error","Inbound email processing failed",message_id=mid,error=str(exc))
+        self.state["processed_messages"]=list(processed)[-1000:]
+        self._save()
+        return count
 
     def create_request(self, company: str, service: str, details: str="", contact: dict|None=None) -> dict:
         req={"id":f"REQ-{int(time.time()*1000)}","company":company,"service":service,
@@ -97,19 +144,21 @@ class BusinessAgent:
 
     def status(self) -> dict[str,Any]:
         return {"name":self.settings.app_name,"dry_run":self.settings.dry_run,
-                "connectors":{"market":bool(self.market),"hubspot":bool(self.crm),"stripe":bool(self.payments)},
+                "connectors":{"market":bool(self.market),"hubspot":bool(self.crm),"stripe":bool(self.payments),"agentmail":bool(self.mail)},
                 "status":self.state.get("status","ready"),"requests":len(self.state["requests"]),
                 "leads":len(self.state["leads"]),"tasks":len(self.state["tasks"]),
                 "payments":len(self.state["payments"]),"approvals":len(self.state["approvals"]),
-                "opportunities":len(self.state["opportunities"]),"quotes":len(self.state["quotes"]),
-                "last_event":self.state.get("last_event")}
+                "opportunities":len(self.state["opportunities"]),"quotes":len(self.state["quotes"])}
 
 def run_cycle():
     agent=BusinessAgent(); agent.state["status"]="running"
     agent.log("system","Business Agent cycle started",dry_run=agent.settings.dry_run)
+    inbound=agent.process_inbound_mail()
     agent.scan_market(["UAE companies needing digital marketing","UAE SMEs needing websites",
                        "UAE companies needing business automation","Abu Dhabi Dubai companies needing lead generation"])
-    result=agent.status(); agent.log("system","Business Agent cycle completed",status=result); return result
+    result=agent.status(); result["inbound_processed"]=inbound
+    agent.log("system","Business Agent cycle completed",status=result)
+    return result
 
 if __name__=="__main__":
     print(json.dumps(run_cycle(),ensure_ascii=False,indent=2))
