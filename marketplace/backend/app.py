@@ -2,12 +2,12 @@
 Run locally with: python -m marketplace.backend.app
 For production, deploy behind HTTPS and use a real database.
 """
-import json, os, sqlite3, uuid
+import json, os, sqlite3, uuid, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 DB=Path(os.getenv("MARKET_DB","marketplace/backend/market.db"))
-DB.parent.mkdir(parents=True,exist_ok=True)
+DB.parent.mkdir(parents=True,exist_ok=True)\nSTRIPE_SECRET_KEY=os.getenv("STRIPE_SECRET_KEY","")\nSUCCESS_URL=os.getenv("MARKET_SUCCESS_URL","https://example.com/marketplace/success.html")\nCANCEL_URL=os.getenv("MARKET_CANCEL_URL","https://example.com/marketplace/checkout.html")
 
 PRODUCTS={
 "P001":{"name":"سماعات لاسلكية Pro","price":129,"stock":24},
@@ -39,7 +39,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(204); self.send_header("Access-Control-Allow-Origin","*"); self.send_header("Access-Control-Allow-Headers","Content-Type"); self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
     def do_GET(self):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"UAE Market API"})
-        if self.path=="/api/products": return self.send_json(200,PRODUCTS)
+        if self.path=="/api/products": return self.send_json(200,PRODUCTS)\n        if self.path.startswith("/api/checkout/"):\n            oid=self.path.rsplit("/",1)[-1]\n            c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()\n            if not row: return self.send_json(404,{"error":"not_found"})\n            if row["status"]!="pending_payment": return self.send_json(409,{"error":"order_not_payable","status":row["status"]})\n            customer=json.loads(row["customer_json"]); session=stripe_checkout(oid,row["total"],customer["email"])\n            return self.send_json(200,{"order_id":oid,"checkout_url":session.get("url"),"session_id":session.get("id")})
         if self.path.startswith("/api/orders/"):
             oid=self.path.rsplit("/",1)[-1]
             c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
