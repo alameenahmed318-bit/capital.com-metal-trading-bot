@@ -1,8 +1,19 @@
 // UAE Market storefront UI. Cart state is shared with checkout.html via store.js.
-const products=UAE_MARKET_PRODUCTS.map((p)=>({id:p.id,n:p.name,c:p.category,p:p.price,o:p.compareAt,e:p.emoji,stock:p.stock}));
+let products=[];
 let cat="الكل";
 
 const $=id=>document.getElementById(id);
+
+async function loadProducts(){
+  try{
+    const r=await fetch("https://uae-market-api.onrender.com/api/products");
+    const data=await r.json();
+    const rows=Object.entries(data).map(([id,p])=>({id,n:p.name,c:p.category||"منتجات",p:Number(p.price),o:Number(p.compareAt||p.price*1.25),e:p.emoji||"🛍️",stock:Number(p.stock||0),image:p.image||""})).filter(x=>x.stock>0);
+    setMarketProducts(rows.map(x=>({id:x.id,name:x.n,category:x.c,price:x.p,compareAt:x.o,stock:x.stock,emoji:x.e,image:x.image})));
+    products=rows;
+  }catch(e){products=UAE_MARKET_PRODUCTS.map((p)=>({id:p.id,n:p.name,c:p.category,p:p.price,o:p.compareAt,e:p.emoji,stock:p.stock,image:p.image||""}));}
+  render(); updateCart();
+}
 
 function renderCats(){
   const cs=["الكل",...new Set(products.map(x=>x.c))];
@@ -47,5 +58,4 @@ $("checkout").addEventListener("click",()=>{
 $("accountBtn").addEventListener("click",()=>alert("حساب العميل سيتم ربطه في المرحلة التالية."));
 
 window.addEventListener("cartchange",updateCart);
-render();
-updateCart();
+loadProducts();
