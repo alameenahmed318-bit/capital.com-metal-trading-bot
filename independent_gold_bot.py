@@ -15,7 +15,7 @@ SIZE = float(os.getenv("GOLD_TRADE_SIZE", os.getenv("TRADE_SIZE", "0.01")))
 DRY_RUN = os.getenv("GOLD_DRY_RUN", "true").lower() == "true"
 SCAN_SECONDS = int(os.getenv("GOLD_SCAN_SECONDS", "5"))
 RUN_SECONDS = int(os.getenv("GOLD_RUN_SECONDS", "720"))
-MAX_POSITIONS = int(os.getenv("GOLD_MAX_POSITIONS", "1"))
+ADD_ON_MIN_MOVE_ATR = float(os.getenv("GOLD_ADD_ON_MIN_MOVE_ATR", "0.25"))
 
 ATR_SL_MULT = 2.0
 ATR_TP_MULT = 3.0
@@ -403,7 +403,28 @@ def run():
                 epic, sig["direction"] if sig else "NONE", session_ok, len(owned), len(live_gold), current_price,
             )
 
-            if not owned and not live_gold and sig and session_ok and len(live_gold) < MAX_POSITIONS:
+            # No fixed maximum number of Gold positions. The bot may scale in dynamically
+            # when the market keeps producing a valid signal in the same direction and price
+            # has moved enough from the most recent owned entry. Opposite-direction stacking
+            # is avoided while positions are open.
+            can_open = False
+            if sig and session_ok:
+                directions = {str(v.get("direction", "")).upper() for v in state["owned"].values()}
+                if not directions:
+                    can_open = not live_gold
+                elif sig["direction"] in directions:
+                    last_entries = [
+                        float(v.get("entry_price")) for v in state["owned"].values()
+                        if str(v.get("direction", "")).upper() == sig["direction"] and v.get("entry_price") is not None
+                    ]
+                    if last_entries:
+                        nearest = min(last_entries, key=lambda x: abs(sig["entry"] - x))
+                        can_open = abs(sig["entry"] - nearest) >= sig["atr"] * ADD_ON_MIN_MOVE_ATR
+                # Never stack a new position in the opposite direction.
+                if directions and sig["direction"] not in directions:
+                    can_open = False
+
+            if can_open:
                 open_position(api, market, sig, state)
 
             save_state(state)
