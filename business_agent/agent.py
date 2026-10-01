@@ -94,6 +94,106 @@ class BusinessAgent:
         text = re.split(r"(?im)^\s*(?:On .+ wrote:|From: .+|Sent: .+|-----Original Message-----)\s*$", text)[0]
         return re.sub(r"\n{3,}", "\n\n", text).strip()
 
+    def _find_open_request(self, sender: str, thread_id: str | None) -> dict | None:
+        candidates = [r for r in self.state.get("requests", []) if (r.get("contact") or {}).get("email", "").lower() == sender.lower()]
+        if thread_id:
+            for r in reversed(candidates):
+                if r.get("thread_id") == thread_id:
+                    return r
+        for r in reversed(candidates):
+            if r.get("status") not in {"completed", "cancelled"}:
+                return r
+        return None
+
+    def _classify_customer_reply(self, text: str) -> str:
+        t = text.lower()
+        if any(x in t for x in ("موافق", "موافقين", "ابدأ", "ابدؤوا", "go ahead", "approved", "approve", "accept", "accepted")):
+            return "approved"
+        if any(x in t for x in ("غالي", "سعر أقل", "خصم", "تخفيض", "budget", "cheaper", "discount", "too expensive")):
+            return "negotiate_price"
+        if any(x in t for x in ("تعديل", "تعديلات", "نطاق", "scope", "include", "إضافة", "اضافة", "غيروا")):
+            return "negotiate_scope"
+        if any(x in t for x in ("سؤال", "استفسار", "كيف", "متى", "when", "what", "question")):
+            return "question"
+        return "general_reply"
+
+    def _sync_hubspot_request(self, request: dict, status: str, note: str = "") -> None:
+        if not self.crm:
+            return
+        hid = request.get("hubspot_id")
+        if not hid:
+            try:
+                contact = request.get("contact") or {}
+                lead = self.crm.create_lead({
+                    "firstname": contact.get("first_name", ""),
+                    "lastname": contact.get("last_name", ""),
+                    "email": contact.get("email", ""),
+                    "company": request.get("company", ""),
+                    "jobtitle": contact.get("job_title", "")
+                })
+                hid = lead.get("id")
+                request["hubspot_id"] = hid
+                self.state.setdefault("leads", []).append(lead)
+            except Exception as exc:
+                self.log("error", "HubSpot contact create failed", request_id=request["id"], error=str(exc))
+                return
+        try:
+            self.crm.update(hid, {"lifecyclestage": "lead", "hs_lead_status": status})
+            request["hubspot_status"] = status
+            if note:
+                request["last_customer_note"] = note[:1000]
+        except Exception as exc:
+            self.log("error", "HubSpot contact update failed", request_id=request["id"], error=str(exc))
+
+    def _handle_customer_reply(self, request: dict, quote: dict, body: str) -> None:
+        intent = self._classify_customer_reply(body)
+        request["last_reply"] = body
+        request["last_reply_at"] = time.time()
+        request["conversation_state"] = intent
+        self._sync_hubspot_request(request, "OPEN", body)
+
+        if intent == "approved":
+            request["status"] = "approved_pending_invoice"
+            request["approval_at"] = time.time()
+            self.request_approval("order", {
+                "request_id": request["id"],
+                "quote_id": quote["id"],
+                "amount_aed": quote["amount_aed"],
+                "scope": quote["scope"],
+                "customer": request.get("contact", {})
+            })
+            if self.mail:
+                self.mail.send((request.get("contact") or {}).get("email", ""), "تم تسجيل الموافقة", "شكرًا لتأكيدكم. تم تسجيل الموافقة على العرض، وسننتقل للفوترة والتنفيذ بعد اعتماد الإجراء المالي.")
+            return
+
+        current = float(quote.get("amount_aed", 0))
+        if intent == "negotiate_price":
+            proposed = round(max(750.0, current * 0.90) / 100.0) * 100
+            reply = f"يمكننا مراجعة السعر إلى {proposed:.0f} درهم إماراتي ضمن النطاق الحالي. إذا كان مناسبًا نثبت النطاق وننتقل للخطوة التالية."
+            new_quote = self.prepare_quote(request["id"], proposed, quote["scope"], "عرض تفاوضي غير ملزم؛ يحتاج تأكيد النطاق قبل الفاتورة أو العقد.", {"negotiated_from": quote["id"], "customer_intent": intent})
+            request["quote_id"] = new_quote["id"]
+            request["status"] = "negotiating"
+            if self.mail:
+                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+            new_quote["sent_at"] = time.time()
+            new_quote["status"] = "sent"
+        elif intent == "negotiate_scope":
+            request["status"] = "negotiating"
+            reply = "ممكن نعدّل نطاق العمل. أرسلوا الإضافات أو العناصر التي تريدون حذفها، وسنراجع أثرها على السعر والمدة ثم نرسل نسخة محدثة من العرض."
+            if self.mail:
+                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+        elif intent == "question":
+            request["status"] = "negotiating"
+            reply = "أكيد. أرسلوا أسئلتكم أو المتطلبات بالتفصيل، وسنوضح النطاق والسعر ومدة التنفيذ قبل أي التزام."
+            if self.mail:
+                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+        else:
+            request["status"] = "awaiting_customer"
+            reply = "شكرًا لردكم. نقدر نراجع السعر والنطاق معكم للوصول إلى صيغة مناسبة قبل اعتماد الطلب."
+            if self.mail:
+                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+        self.log("sales", "Customer reply handled", request_id=request["id"], intent=intent, status=request["status"])
+
     def process_inbound_mail(self) -> int:
         if not self.mail:
             self.log("mail", "AgentMail connector not configured")
@@ -117,14 +217,26 @@ class BusinessAgent:
                     continue
                 body = self._clean_customer_text(msg.get("extracted_text") or msg.get("text") or msg.get("preview") or "")
                 subject = msg.get("subject") or "Business inquiry"
-                service = self._classify_service(subject + "\n" + body)
-                name = sender.split("@")[0] if sender else "Prospect"
-                req = self.create_request(name, service, body, {"email": sender, "first_name": name})
-                req["source"] = "agentmail"
-                req["message_id"] = mid
-                req["subject"] = subject
-                req["thread_id"] = msg.get("thread_id") or meta.get("thread_id")
-                self.log("mail", "Inbound customer email processed", message_id=mid, request_id=req["id"], sender=sender, service=service)
+                thread_id = msg.get("thread_id") or meta.get("thread_id")
+                req = self._find_open_request(sender, thread_id)
+                if req:
+                    quote = next((q for q in reversed(self.state.get("quotes", [])) if q.get("id") == req.get("quote_id")), None)
+                    if quote:
+                        self._handle_customer_reply(req, quote, body)
+                    else:
+                        req["last_reply"] = body
+                        req["conversation_state"] = self._classify_customer_reply(body)
+                        req["last_reply_at"] = time.time()
+                    self.log("mail", "Customer reply matched to existing request", message_id=mid, request_id=req["id"], sender=sender)
+                else:
+                    service = self._classify_service(subject + "\n" + body)
+                    name = sender.split("@")[0] if sender else "Prospect"
+                    req = self.create_request(name, service, body, {"email": sender, "first_name": name})
+                    req["source"] = "agentmail"
+                    req["message_id"] = mid
+                    req["subject"] = subject
+                    req["thread_id"] = thread_id
+                    self.log("mail", "Inbound customer email processed", message_id=mid, request_id=req["id"], sender=sender, service=service)
                 processed.add(mid)
                 count += 1
             except Exception as exc:
