@@ -1,5 +1,4 @@
-"""Production-ready provider adapters. Credentials come from environment variables."""
-
+"""Provider adapters for the UAE Business AI Agent."""
 from __future__ import annotations
 from typing import Protocol
 import requests
@@ -12,7 +11,9 @@ class CRM(Protocol):
     def update(self, lead_id: str, data: dict) -> dict: ...
 
 class Messenger(Protocol):
-    def send(self, recipient: str, message: str) -> dict: ...
+    def send(self, recipient: str, subject: str, message: str) -> dict: ...
+    def list_messages(self, limit: int = 20) -> list[dict]: ...
+    def get_message(self, message_id: str) -> dict: ...
 
 class Payments(Protocol):
     def create_invoice(self, customer: dict, amount_aed: float, description: str) -> dict: ...
@@ -43,6 +44,35 @@ class HubSpotCRM:
         r.raise_for_status()
         return r.json()
 
+class AgentMailMessenger:
+    """AgentMail API adapter. The API key is read only from the runtime secret."""
+    def __init__(self, api_key: str, inbox_id: str):
+        self.base = "https://api.agentmail.to/v0"
+        self.inbox_id = inbox_id
+        self.headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    def list_messages(self, limit: int = 20) -> list[dict]:
+        r = requests.get(f"{self.base}/inboxes/{self.inbox_id}/messages",
+                         headers=self.headers,
+                         params={"limit": min(limit, 100), "ascending": "true"},
+                         timeout=30)
+        r.raise_for_status()
+        return r.json().get("messages", [])
+
+    def get_message(self, message_id: str) -> dict:
+        r = requests.get(f"{self.base}/inboxes/{self.inbox_id}/messages/{message_id}",
+                         headers=self.headers, timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+    def send(self, recipient: str, subject: str, message: str) -> dict:
+        r = requests.post(f"{self.base}/inboxes/{self.inbox_id}/messages/send",
+                           headers=self.headers,
+                           json={"to": [recipient], "subject": subject, "text": message},
+                           timeout=30)
+        r.raise_for_status()
+        return r.json()
+
 class StripePayments:
     def __init__(self, secret_key: str):
         self.base = "https://api.stripe.com/v1"
@@ -55,14 +85,14 @@ class StripePayments:
             r.raise_for_status()
             customer_id = r.json()["id"]
         price = requests.post(f"{self.base}/prices", auth=self.auth,
-            data={"currency":"aed","unit_amount":int(round(amount_aed*100)),
+            data={"currency":"aed", "unit_amount":int(round(amount_aed*100)),
                   "product_data[name]":description[:250]}, timeout=30)
         price.raise_for_status()
         item = requests.post(f"{self.base}/invoiceitems", auth=self.auth,
-            data={"customer":customer_id,"price":price.json()["id"]}, timeout=30)
+            data={"customer":customer_id, "price":price.json()["id"]}, timeout=30)
         item.raise_for_status()
         inv = requests.post(f"{self.base}/invoices", auth=self.auth,
-            data={"customer":customer_id,"auto_advance":"false"}, timeout=30)
+            data={"customer":customer_id, "auto_advance":"false"}, timeout=30)
         inv.raise_for_status()
         return inv.json()
     def payment_status(self, payment_id: str) -> dict:
