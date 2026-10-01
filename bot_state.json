@@ -1748,7 +1748,7 @@
       "direction": "BUY",
       "epic": "CADJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.1,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1803,6 +1803,14 @@
     "00000000-6772-58a3-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "GBPCZK",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6772-6211-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "EURMXN",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
