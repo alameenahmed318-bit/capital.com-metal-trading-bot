@@ -627,7 +627,7 @@
     "00000000-6720-02e0-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDCAD",
-      "peak_upl": 0.0,
+      "peak_upl": 0.04,
       "stop_level": null
     },
     "00000000-6720-02ee-0493-972c0004511e": {
@@ -645,24 +645,30 @@
     "00000000-6720-03bf-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "EURHKD",
-      "peak_upl": 0.0,
+      "peak_upl": 0.02,
       "stop_level": null
     },
     "00000000-6720-03eb-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "EURUSD",
-      "peak_upl": 0.0,
+      "peak_upl": 0.01,
       "stop_level": null
     },
     "00000000-6720-041d-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "CHFHKD",
-      "peak_upl": 0.0,
+      "peak_upl": 0.06,
       "stop_level": null
     },
     "00000000-6720-058a-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CNHJPY",
+      "peak_upl": 0.0,
+      "stop_level": null
+    },
+    "00000000-6720-0bc6-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "CADHKD",
       "peak_upl": 0.0,
       "stop_level": null
     }
