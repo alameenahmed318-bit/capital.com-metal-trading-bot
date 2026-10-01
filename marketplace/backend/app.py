@@ -1,5 +1,5 @@
 """UAE Market order API with Stripe Checkout + signed webhook."""
-import hashlib, hmac, json, os, sqlite3, time, urllib.parse, urllib.request, uuid
+import hashlib, hmac, json, os, sqlite3, time, urllib.parse, urllib.request, urllib.error, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -28,16 +28,26 @@ def stripe_checkout(order_id,total,email):
     if not STRIPE_SECRET_KEY: raise RuntimeError("STRIPE_SECRET_KEY is not configured")
     if not SUCCESS_URL or not CANCEL_URL: raise RuntimeError("MARKET_SUCCESS_URL and MARKET_CANCEL_URL are required")
     data=urllib.parse.urlencode({
-      "mode":"payment","success_url":SUCCESS_URL+"?order_id="+order_id,
-      "cancel_url":CANCEL_URL+"?order_id="+order_id,"customer_email":email,
+      "mode":"payment","success_url":SUCCESS_URL+"?order_id="+urllib.parse.quote(order_id),
+      "cancel_url":CANCEL_URL+"?order_id="+urllib.parse.quote(order_id),"customer_email":email,
       "metadata[order_id]":order_id,
       "line_items[0][price_data][currency]":"aed",
       "line_items[0][price_data][product_data][name]":"UAE Market Order "+order_id,
       "line_items[0][price_data][unit_amount]":str(total*100),
       "line_items[0][quantity]":"1"}).encode()
     req=urllib.request.Request("https://api.stripe.com/v1/checkout/sessions",data=data,
-      headers={"Authorization":"Bearer "+STRIPE_SECRET_KEY})
-    with urllib.request.urlopen(req,timeout=30) as r: return json.loads(r.read())
+      headers={"Authorization":"Bearer "+STRIPE_SECRET_KEY,"Content-Type":"application/x-www-form-urlencoded"})
+    try:
+        with urllib.request.urlopen(req,timeout=30) as r: return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail=e.read().decode("utf-8","replace")
+        try:
+            obj=json.loads(detail); msg=(obj.get("error") or {}).get("message") or detail
+        except Exception:
+            msg=detail or f"Stripe HTTP {e.code}"
+        raise RuntimeError(f"Stripe: {msg}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Stripe connection: {e.reason}")
 
 def verify_signature(payload,header):
     if not STRIPE_WEBHOOK_SECRET: return False
@@ -80,9 +90,12 @@ class Handler(BaseHTTPRequestHandler):
             oid=self.path.rsplit("/",1)[-1]; c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
             if not row: return self.send_json(404,{"error":"not_found"})
             if row["status"]!="pending_payment": return self.send_json(409,{"error":"order_not_payable","status":row["status"]})
-            customer=json.loads(row["customer_json"]); session=stripe_checkout(oid,row["total"],customer["email"])
-            c=db(); c.execute("UPDATE orders SET stripe_session_id=? WHERE id=?",(session.get("id"),oid)); c.commit(); c.close()
-            return self.send_json(200,{"order_id":oid,"checkout_url":session.get("url"),"session_id":session.get("id")})
+            try:
+                customer=json.loads(row["customer_json"]); session=stripe_checkout(oid,row["total"],customer["email"])
+                c=db(); c.execute("UPDATE orders SET stripe_session_id=? WHERE id=?",(session.get("id"),oid)); c.commit(); c.close()
+                return self.send_json(200,{"order_id":oid,"checkout_url":session.get("url"),"session_id":session.get("id")})
+            except Exception as e:
+                return self.send_json(502,{"error":str(e)})
         if self.path.startswith("/api/orders/"):
             oid=self.path.rsplit("/",1)[-1]; c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
             return self.send_json(200,dict(row) if row else {"error":"not_found"})
