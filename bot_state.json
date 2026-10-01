@@ -135,7 +135,7 @@
     "00000000-66df-24f7-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "EURCZK",
-      "peak_upl": 0.0,
+      "peak_upl": 0.1,
       "stop_level": null
     },
     "00000000-66df-2502-0493-972c0004511e": {
@@ -147,13 +147,13 @@
     "00000000-66df-2527-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CADSEK",
-      "peak_upl": 0.28,
+      "peak_upl": 0.71,
       "stop_level": null
     },
     "00000000-66df-2532-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFCZK",
-      "peak_upl": 0.06,
+      "peak_upl": 0.62,
       "stop_level": null
     },
     "00000000-66df-2546-0493-972c0004511e": {
@@ -189,7 +189,7 @@
     "00000000-66df-25ea-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFPLN",
-      "peak_upl": 0.0,
+      "peak_upl": 1.28,
       "stop_level": null
     },
     "00000000-66df-25f5-0493-972c0004511e": {
@@ -225,7 +225,7 @@
     "00000000-66df-274b-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "EURPLN",
-      "peak_upl": 0.07,
+      "peak_upl": 0.96,
       "stop_level": null
     },
     "00000000-66df-290c-0493-972c0004511e": {
@@ -369,7 +369,7 @@
     "00000000-671e-64d9-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFZAR",
-      "peak_upl": 0.0,
+      "peak_upl": 1.14,
       "stop_level": null
     },
     "00000000-671e-9c70-0493-972c0004511e": {
@@ -417,7 +417,7 @@
     "00000000-671f-5916-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFMXN",
-      "peak_upl": 0.15,
+      "peak_upl": 1.05,
       "stop_level": null
     },
     "00000000-671f-5972-0493-972c0004511e": {
@@ -429,7 +429,7 @@
     "00000000-671f-59be-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "EURGBP",
-      "peak_upl": 0.32,
+      "peak_upl": 0.39,
       "stop_level": null
     },
     "00000000-671f-59d6-0493-972c0004511e": {
@@ -525,19 +525,19 @@
     "00000000-671f-afd8-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CHFSEK",
-      "peak_upl": 0.05,
+      "peak_upl": 0.41,
       "stop_level": null
     },
     "00000000-671f-afe3-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "DKKSEK",
-      "peak_upl": 0.1,
+      "peak_upl": 0.23,
       "stop_level": null
     },
     "00000000-671f-aff2-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "EURSEK",
-      "peak_upl": 0.13,
+      "peak_upl": 0.22,
       "stop_level": null
     },
     "00000000-671f-b078-0493-972c0004511e": {
@@ -603,7 +603,7 @@
     "00000000-6720-0294-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CADJPY",
-      "peak_upl": 0.35,
+      "peak_upl": 0.53,
       "stop_level": null
     },
     "00000000-6720-02a2-0493-972c0004511e": {
@@ -645,13 +645,13 @@
     "00000000-6720-03bf-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "EURHKD",
-      "peak_upl": 0.62,
+      "peak_upl": 0.7,
       "stop_level": null
     },
     "00000000-6720-03eb-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "EURUSD",
-      "peak_upl": 0.62,
+      "peak_upl": 0.69,
       "stop_level": null
     },
     "00000000-6720-041d-0493-972c0004511e": {
@@ -747,7 +747,7 @@
     "00000000-6721-7022-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "EURAUD",
-      "peak_upl": 0.27,
+      "peak_upl": 0.33,
       "stop_level": null
     },
     "00000000-6721-7096-0493-972c0004511e": {
@@ -771,19 +771,25 @@
     "00000000-6721-e16a-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDZAR",
-      "peak_upl": 0.0,
+      "peak_upl": 0.76,
       "stop_level": null
     },
     "00000000-6721-e179-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "GBPCHF",
-      "peak_upl": 0.0,
+      "peak_upl": 0.03,
       "stop_level": null
     },
     "00000000-6721-e1a2-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "CHFHKD",
-      "peak_upl": 0.0,
+      "peak_upl": 0.15,
+      "stop_level": null
+    },
+    "00000000-6722-110c-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "EURMXN",
+      "peak_upl": 0.15,
       "stop_level": null
     }
   }
