@@ -10,16 +10,22 @@ PASSWORD = os.environ["CAPITAL_PASSWORD"]
 SIZE = float(os.getenv("TRADE_SIZE", "0.01"))
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 SCAN_SECONDS = 2
-MARKET_REFRESH_SECONDS = 10
-POSITION_REFRESH_SECONDS = 5
+MARKET_REFRESH_SECONDS = 2
+POSITION_REFRESH_SECONDS = 2
 PRICE_RESOLUTION = "MINUTE_5"
 TREND_RESOLUTION = "MINUTE_15"
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "720"))
 HISTORY_REFRESH_SECONDS = int(os.getenv("HISTORY_REFRESH_SECONDS", "60"))
 MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
-PROFIT_ARM = float(os.getenv("PROFIT_ARM_AED", "1"))
-PROFIT_LOCK = float(os.getenv("PROFIT_LOCK_AED", "0.25"))
-TRAIL_GIVEBACK = float(os.getenv("TRAIL_GIVEBACK_AED", "1.0"))
+# Staged profit protection:
+# +0.25 AED = arm protection, +0.50 AED = raise the protected floor,
+# +1.00 AED = activate the normal trailing stage.
+PROFIT_PROTECT_TRIGGER = float(os.getenv("PROFIT_PROTECT_TRIGGER_AED", "0.25"))
+PROFIT_STAGE_2 = float(os.getenv("PROFIT_STAGE_2_AED", "0.50"))
+PROFIT_ARM = float(os.getenv("PROFIT_ARM_AED", "1.00"))
+PROFIT_FLOOR = float(os.getenv("PROFIT_FLOOR_AED", "0.05"))
+PROFIT_LOCK = float(os.getenv("PROFIT_LOCK_AED", "0.10"))
+TRAIL_GIVEBACK = float(os.getenv("TRAIL_GIVEBACK_AED", "0.75"))
 PROFIT_TRAIL_RATIO = float(os.getenv("PROFIT_TRAIL_RATIO", "0.30"))
 STRONG_RETRACE_RATIO = float(os.getenv("STRONG_RETRACE_RATIO", "0.35"))
 ORDER_COOLDOWN_SECONDS = int(os.getenv("ORDER_COOLDOWN_SECONDS", "60"))
@@ -265,9 +271,14 @@ def value_per_price(position, current):
 
 def tighten_profit_stop(api, item, state_entry, market):
     """
-    Monotonic profit protection:
-    As soon as the position is profitable, protect it at/above break-even.
-    After protection is armed, the broker stop only moves toward more profit.
+    Staged, monotonic profit protection.
+
+    1) At +0.25 AED: arm protection.
+    2) At +0.50 AED: raise the protected profit floor.
+    3) At +1.00 AED: use the normal trailing stage.
+    4) The protected level only moves toward more profit.
+    5) If broker stop modification fails, the bot has a local fallback:
+       once a protected trade falls back to the profit floor, close it directly.
     """
     p = item.get("position", {})
     deal_id = p.get("dealId")
@@ -279,9 +290,8 @@ def tighten_profit_stop(api, item, state_entry, market):
     if not deal_id or direction not in ("BUY", "SELL") or px is None or entry <= 0:
         return
 
-    # Hard account-currency loss cap. This replaces the rejected universal
-    # broker stopAmount and only closes once the live loss reaches/exceeds
-    # the configured cap. It never closes a losing trade before this level.
+    # Hard account-currency loss cap. This remains the emergency loss limit
+    # for trades that never became protected.
     if upl <= -MAX_INITIAL_LOSS:
         if DRY_RUN:
             log.info("DRY RUN | MAX LOSS CLOSE | %s | UPL=%.2f | limit=-%.2f",
@@ -292,6 +302,7 @@ def tighten_profit_stop(api, item, state_entry, market):
                 log.warning("MAX LOSS CLOSE | %s | UPL=%.2f | limit=-%.2f",
                             deal_id, upl, MAX_INITIAL_LOSS)
                 state_entry["stop_level"] = None
+                state_entry["protected_profit"] = False
             except Exception as e:
                 log.warning("max loss close failed %s: %s", deal_id, e)
         return
@@ -299,65 +310,57 @@ def tighten_profit_stop(api, item, state_entry, market):
     peak = max(float(state_entry.get("peak_upl", 0) or 0), upl)
     state_entry["peak_upl"] = peak
 
-    vpp = value_per_price(p, px)
-    if not vpp:
-        return
+    # Once the trade has reached +0.25 AED, it is considered protected.
+    protected = bool(state_entry.get("protected_profit", False))
+    if peak >= PROFIT_PROTECT_TRIGGER:
+        protected = True
+        state_entry["protected_profit"] = True
 
-    # Protect immediately once the live UPL turns positive.
-    if upl > 0:
-        initial_lock = min(PROFIT_LOCK, max(0.01, upl * 0.50))
-        target = entry + initial_lock / vpp if direction == "BUY" else entry - initial_lock / vpp
-
-        old = state_entry.get("stop_level")
-        old = float(old) if old is not None else None
-        improve = (
-            old is None
-            or (direction == "BUY" and target > old)
-            or (direction == "SELL" and target < old)
-        )
-        if improve:
-            if DRY_RUN:
-                log.info("DRY RUN | BREAK-EVEN PROTECT | %s | UPL=%.2f | lock=%.2f | stop -> %.8f",
-                         deal_id, upl, initial_lock, target)
-                state_entry["stop_level"] = target
-            else:
-                try:
-                    api.update_position(deal_id, target)
-                    state_entry["stop_level"] = target
-                    log.info("BREAK-EVEN PROTECT | %s | UPL=%.2f | lock=%.2f | stop -> %.8f",
-                             deal_id, upl, initial_lock, target)
-                except Exception as e:
-                    log.warning("break-even protection update failed %s: %s", deal_id, e)
-
-    # Once the trade reaches the normal profit-arm level, lock a portion
-    # of the peak profit. The stop is strictly monotonic.
-    if peak < PROFIT_ARM:
-        return
-
-    giveback = max(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO)
-    # A strong retracement is allowed to close the trade directly while it
-    # is still profitable. This is the fallback for cases where the broker
-    # rejects a stop modification or the price gaps through the stop.
-    retracement = peak - upl
-    locked_profit = max(PROFIT_LOCK, peak - giveback)
-    if locked_profit <= 0:
-        return
-
-    if upl >= PROFIT_LOCK and retracement >= giveback and upl <= locked_profit:
+    # Local fallback: if a trade has already reached protected profit, never
+    # let the bot's own logic carry it back through zero. This is also the
+    # fallback when Capital rejects a stop modification.
+    if protected and upl <= PROFIT_FLOOR:
         if DRY_RUN:
-            log.info("DRY RUN | STRONG RETRACE CLOSE | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f",
-                     deal_id, upl, peak, locked_profit)
+            log.info(
+                "DRY RUN | PROFIT FLOOR CLOSE | %s | UPL=%.2f | PEAK=%.2f | floor=%.2f",
+                deal_id, upl, peak, PROFIT_FLOOR
+            )
         else:
             try:
                 api.close_position(deal_id)
-                log.info("STRONG RETRACE CLOSE | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f",
-                         deal_id, upl, peak, locked_profit)
+                log.info(
+                    "PROFIT FLOOR CLOSE | %s | UPL=%.2f | PEAK=%.2f | floor=%.2f",
+                    deal_id, upl, peak, PROFIT_FLOOR
+                )
                 state_entry["stop_level"] = None
+                state_entry["protected_profit"] = False
             except Exception as e:
-                log.warning("strong retrace close failed %s: %s", deal_id, e)
+                log.warning("profit floor close failed %s: %s", deal_id, e)
         return
 
-    target = entry + locked_profit / vpp if direction == "BUY" else entry - locked_profit / vpp
+    vpp = value_per_price(p, px)
+    if not vpp or not protected:
+        return
+
+    # Determine the amount of profit we want the broker stop to protect.
+    # The target is monotonic: it can only move farther into profit.
+    if peak >= PROFIT_ARM:
+        giveback = max(TRAIL_GIVEBACK, peak * PROFIT_TRAIL_RATIO)
+        locked_profit = max(PROFIT_LOCK, peak - giveback)
+    elif peak >= PROFIT_STAGE_2:
+        locked_profit = max(0.20, peak * 0.40)
+    else:
+        locked_profit = PROFIT_FLOOR
+
+    if locked_profit <= 0:
+        return
+
+    target = (
+        entry + locked_profit / vpp
+        if direction == "BUY"
+        else entry - locked_profit / vpp
+    )
+
     old = state_entry.get("stop_level")
     old = float(old) if old is not None else None
 
@@ -370,18 +373,30 @@ def tighten_profit_stop(api, item, state_entry, market):
         return
 
     if DRY_RUN:
-        log.info("DRY RUN | PROFIT LOCK | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
-                 deal_id, upl, peak, locked_profit, target)
+        log.info(
+            "DRY RUN | PROFIT PROTECT | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
+            deal_id, upl, peak, locked_profit, target
+        )
         state_entry["stop_level"] = target
         return
 
     try:
-        api.update_position(deal_id, target)
+        result = api.update_position(deal_id, target)
+        # Only mark the local stop as installed after Capital accepts the
+        # modification. If it fails, the next cycle uses the profit-floor
+        # fallback instead of silently assuming protection exists.
         state_entry["stop_level"] = target
-        log.info("PROFIT LOCK | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
-                 deal_id, upl, peak, locked_profit, target)
+        state_entry["last_stop_update_ok"] = True
+        log.info(
+            "PROFIT PROTECT | %s | UPL=%.2f | PEAK=%.2f | locked=%.2f | stop -> %.8f",
+            deal_id, upl, peak, locked_profit, target
+        )
     except Exception as e:
-        log.warning("profit lock update failed %s: %s", deal_id, e)
+        state_entry["last_stop_update_ok"] = False
+        log.warning(
+            "PROFIT PROTECT UPDATE FAILED | %s | UPL=%.2f | PEAK=%.2f | target=%.8f | %s",
+            deal_id, upl, peak, target, e
+        )
 
 
 def normalize_size(api, epic, configured_size, rules_cache):
@@ -439,6 +454,8 @@ def open_bot_position(api, epic, direction, size, state, market):
                 "direction": direction,
                 "peak_upl": 0.0,
                 "stop_level": None,
+                "protected_profit": False,
+                "last_stop_update_ok": False,
             }
             log.info("OWNED POSITION | %s | %s", deal_id, epic)
 
@@ -493,8 +510,11 @@ def run():
     order_cooldown = {}
 
     log.info(
-        "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | FX+GOLD+SILVER+US500+US100/US1000 | MAX_LOSS=%.2f AED",
+        "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | PROFIT_PROTECT=+%.2f/+%.2f/+%.2f | FX+GOLD+SILVER+US500+US100/US1000 | MAX_LOSS=%.2f AED",
         DRY_RUN,
+        PROFIT_PROTECT_TRIGGER,
+        PROFIT_STAGE_2,
+        PROFIT_ARM,
         MAX_INITIAL_LOSS,
     )
 
