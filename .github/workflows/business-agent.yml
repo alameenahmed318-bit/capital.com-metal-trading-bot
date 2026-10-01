@@ -16,7 +16,7 @@ on:
           - approve
           - reject
       dry_run:
-        description: "Keep invoice creation in dry-run mode"
+        description: "TRUE = simulation only; FALSE = create the approved Stripe Sandbox invoice"
         required: false
         default: true
         type: boolean
@@ -44,6 +44,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check requests
       - name: Run business agent
         env:
+          # Scheduled runs are always safe/dry-run. Manual runs use the checkbox value exactly.
           AGENT_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'true' }}
           APPROVAL_REQUIRED_FOR_MONEY: "true"
           APPROVAL_REQUIRED_FOR_CONTRACTS: "true"
