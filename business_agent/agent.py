@@ -115,13 +115,71 @@ class BusinessAgent:
             except Exception as exc: self.log("error","CRM create failed",error=str(exc),request_id=req["id"])
         self.log("request","New service request",request=req); return req
 
+    def _quote_for_service(self, service: str) -> tuple[float, str]:
+        catalog = {
+            "Website / Web Services": (2500.0, "تصميم وتطوير موقع إلكتروني للشركة، صفحات أساسية، نموذج تواصل، وتجهيز مبدئي للنشر."),
+            "Business Automation / AI": (3500.0, "أتمتة عمليات الأعمال باستخدام حلول AI وأتمتة مخصصة حسب احتياج الشركة."),
+            "Digital Marketing": (3000.0, "خطة تسويق رقمي وتشغيل حملات ومتابعة أولية حسب نطاق العمل المتفق عليه."),
+            "Lead Generation": (2500.0, "إعداد نظام لتوليد وتنظيم العملاء المحتملين مع تسليم البيانات المتاحة حسب النطاق."),
+            "Market Research": (1800.0, "بحث سوق مختصر وتحليل فرص ومنافسين وتوصيات عملية."),
+            "Business Services Inquiry": (2000.0, "خدمة أعمال مخصصة؛ السعر تقديري أولي ويحتاج تأكيد النطاق.")
+        }
+        return catalog.get(service, catalog["Business Services Inquiry"])
+
     def prepare_quote(self, request_id: str, amount_aed: float, scope: str, terms: str="") -> dict:
         q={"id":f"Q-{int(time.time()*1000)}","request_id":request_id,"amount_aed":float(amount_aed),
-           "scope":scope,"terms":terms,"status":"approval_required" if self.settings.approval_required_for_money else "ready",
-           "created_at":time.time()}
+           "scope":scope,"terms":terms,"status":"ready_to_send","created_at":time.time()}
         self.state["quotes"].append(q)
-        if q["status"]=="approval_required": self.request_approval("quote",q)
-        self.log("quote","Quote prepared",quote=q); return q
+        self.log("quote","Non-binding quote prepared",quote=q); return q
+
+    def _send_customer_reply(self, request: dict, quote: dict) -> bool:
+        if not self.mail:
+            self.log("mail","Cannot send offer: AgentMail not configured",request_id=request["id"])
+            return False
+        email = (request.get("contact") or {}).get("email","").strip()
+        if not email:
+            self.log("mail","Cannot send offer: customer email missing",request_id=request["id"])
+            return False
+        subject = f"عرض مبدئي من {self.settings.company_name} - {request['service']}"
+        body = (
+            f"مرحباً {request.get('company','')},\n\n"
+            f"شكرًا لتواصلكم معنا. بناءً على طلبكم، هذا عرض مبدئي غير ملزم لخدمة "
+            f"{request['service']}.\n\n"
+            f"السعر المبدئي: {quote['amount_aed']:.0f} درهم إماراتي\n"
+            f"النطاق: {quote['scope']}\n\n"
+            "السعر النهائي وموعد التنفيذ يتحددان بعد تأكيد المتطلبات والنطاق. "
+            "إذا كان العرض مناسبًا، يمكنكم الرد على هذه الرسالة بتفاصيلكم أو الأسئلة، وسنقوم بالمتابعة.\n\n"
+            f"تحياتنا،\n{self.settings.company_name}"
+        )
+        try:
+            result = self.mail.send(email, subject, body)
+            quote["sent_at"] = time.time()
+            quote["status"] = "sent"
+            quote["delivery"] = {"message_id": result.get("message_id") or result.get("id")}
+            self.log("mail","Customer offer sent",request_id=request["id"],quote_id=quote["id"],recipient=email)
+            return True
+        except Exception as exc:
+            self.log("error","Customer offer send failed",request_id=request["id"],error=str(exc))
+            return False
+
+    def handle_pending_requests(self) -> int:
+        handled = 0
+        for request in self.state.get("requests", []):
+            if request.get("status") != "new" or request.get("source") != "agentmail":
+                continue
+            amount, scope = self._quote_for_service(request.get("service",""))
+            quote = self.prepare_quote(request["id"], amount, scope,
+                                       "عرض مبدئي غير ملزم؛ الفاتورة أو العقد لا يتم إنشاؤهما تلقائيًا.")
+            if self._send_customer_reply(request, quote):
+                request["status"] = "offer_sent"
+                request["quote_id"] = quote["id"]
+                request["offer_sent_at"] = time.time()
+                handled += 1
+            else:
+                request["status"] = "offer_send_failed"
+        self._save()
+        return handled
+
 
     def create_task(self, request_id: str, title: str, instructions: str="") -> dict:
         task={"id":f"TASK-{int(time.time()*1000)}","request_id":request_id,"title":title,
@@ -154,6 +212,7 @@ def run_cycle():
     agent=BusinessAgent(); agent.state["status"]="running"
     agent.log("system","Business Agent cycle started",dry_run=agent.settings.dry_run)
     inbound=agent.process_inbound_mail()
+    offers=agent.handle_pending_requests()
     agent.scan_market(["UAE companies needing digital marketing","UAE SMEs needing websites",
                        "UAE companies needing business automation","Abu Dhabi Dubai companies needing lead generation"])
     result=agent.status(); result["inbound_processed"]=inbound
