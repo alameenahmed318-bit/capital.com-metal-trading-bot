@@ -37,7 +37,7 @@ jobs:
           TRADE_SIZE: ${{ secrets.TRADE_SIZE }}
           GOLD_DRY_RUN: "false"
           GOLD_TRADE_SIZE: "0.01"
-          GOLD_MAX_POSITIONS: "1"
+          GOLD_ADD_ON_MIN_MOVE_ATR: "0.25"
           GOLD_MAX_INITIAL_LOSS_AED: "10"
           GOLD_PROTECT_TRIGGER_AED: "0.25"
           GOLD_PROFIT_FLOOR_AED: "0.05"
