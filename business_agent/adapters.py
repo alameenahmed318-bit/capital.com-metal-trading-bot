@@ -106,6 +106,20 @@ class StripePayments:
         price.raise_for_status()
         item = requests.post(f"{self.base}/invoiceitems", auth=self.auth,
             data={"customer":customer_id, "price":price.json()["id"]}, timeout=30)
+        if not item.ok:
+            try:
+                err = item.json().get("error", {})
+                message = err.get("message") or item.text
+                code = err.get("code")
+                param = err.get("param")
+                details = f"Stripe invoice item failed: {message}"
+                if code:
+                    details += f" | code={code}"
+                if param:
+                    details += f" | param={param}"
+                raise RuntimeError(details)
+            except ValueError:
+                item.raise_for_status()
         item.raise_for_status()
         inv = requests.post(f"{self.base}/invoices", auth=self.auth,
             data={"customer":customer_id, "auto_advance":"false"}, timeout=30)
