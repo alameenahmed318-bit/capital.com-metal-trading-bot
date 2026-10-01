@@ -45,31 +45,47 @@ class HubSpotCRM:
         return r.json()
 
 class AgentMailMessenger:
-    """AgentMail API adapter. The API key is read only from the runtime secret."""
+    """AgentMail API adapter. Resolves the inbox by email before every operation."""
     def __init__(self, api_key: str, inbox_id: str):
         self.base = "https://api.agentmail.to/v0"
         self.inbox_id = inbox_id
         self.headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
+    def _resolve_inbox_id(self) -> str:
+        r = requests.get(f"{self.base}/inboxes", headers=self.headers,
+                         params={"limit": 100}, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        inboxes = data.get("inboxes", data if isinstance(data, list) else [])
+        for inbox in inboxes:
+            email = inbox.get("email") or inbox.get("address") or ""
+            if email.lower() == self.inbox_id.lower():
+                return inbox.get("inbox_id") or inbox.get("id") or self.inbox_id
+        raise RuntimeError(f"AgentMail inbox not visible to this API key: {self.inbox_id}")
+
     def list_messages(self, limit: int = 20) -> list[dict]:
-        r = requests.get(f"{self.base}/inboxes/{self.inbox_id}/messages",
+        inbox_id = self._resolve_inbox_id()
+        r = requests.get(f"{self.base}/inboxes/{inbox_id}/messages",
                          headers=self.headers,
                          params={"limit": min(limit, 100), "ascending": "true"},
                          timeout=30)
         r.raise_for_status()
-        return r.json().get("messages", [])
+        data = r.json()
+        return data.get("messages", data if isinstance(data, list) else [])
 
     def get_message(self, message_id: str) -> dict:
-        r = requests.get(f"{self.base}/inboxes/{self.inbox_id}/messages/{message_id}",
+        inbox_id = self._resolve_inbox_id()
+        r = requests.get(f"{self.base}/inboxes/{inbox_id}/messages/{message_id}",
                          headers=self.headers, timeout=30)
         r.raise_for_status()
         return r.json()
 
     def send(self, recipient: str, subject: str, message: str) -> dict:
-        r = requests.post(f"{self.base}/inboxes/{self.inbox_id}/messages/send",
-                           headers=self.headers,
-                           json={"to": [recipient], "subject": subject, "text": message},
-                           timeout=30)
+        inbox_id = self._resolve_inbox_id()
+        r = requests.post(f"{self.base}/inboxes/{inbox_id}/messages/send",
+                          headers=self.headers,
+                          json={"to": [recipient], "subject": subject, "text": message},
+                          timeout=30)
         r.raise_for_status()
         return r.json()
 
