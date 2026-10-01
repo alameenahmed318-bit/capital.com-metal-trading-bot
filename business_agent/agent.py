@@ -180,20 +180,46 @@ class BusinessAgent:
         self._sync_hubspot_request(request, "OPEN", body)
 
         if intent == "approved":
-            request["status"] = "approved_pending_invoice"
             request["approval_at"] = time.time()
-            self.request_approval("order", {
-                "request_id": request["id"],
-                "quote_id": quote["id"],
-                "amount_aed": quote["amount_aed"],
-                "scope": quote["scope"],
-                "customer": request.get("contact", {})
-            })
+            if request.get("invoice_url"):
+                request["status"] = "invoice_created"
+                if self.mail:
+                    amount = float(quote.get("amount_aed", 0))
+                    invoice_url = request.get("invoice_url", "")
+                    self._send_professional_email(
+                        (request.get("contact") or {}).get("email", ""),
+                        "UAE Business AI — Invoice / الفاتورة",
+                        f"تم تأكيد طلبكم. الفاتورة بقيمة {amount:.0f} درهم جاهزة. رابط الدفع: {invoice_url}",
+                        f"Your order is confirmed. The invoice for AED {amount:.0f} is ready. Payment link: {invoice_url}"
+                    )
+                self.log("sales", "Existing invoice resent after customer approval",
+                         request_id=request["id"], invoice_id=request.get("invoice_id"))
+                return
+            request["status"] = "approved_pending_invoice"
+            existing = next(
+                (a for a in self.state.get("approvals", [])
+                 if a.get("type") == "order"
+                 and a.get("status") == "pending"
+                 and (a.get("payload") or {}).get("request_id") == request["id"]),
+                None
+            )
+            if not existing:
+                self.request_approval("order", {
+                    "request_id": request["id"],
+                    "quote_id": quote["id"],
+                    "amount_aed": quote["amount_aed"],
+                    "scope": quote["scope"],
+                    "customer": request.get("contact", {})
+                })
             if self.mail:
-                self._send_professional_email((request.get("contact") or {}).get("email", ""), "UAE Business AI — تأكيد الطلب / Order Confirmation", "شكرًا لتأكيدكم. تم تسجيل الموافقة، وسننتقل للفوترة والتنفيذ بعد اعتماد الإجراء المالي.", "Thank you for confirming. Your approval is recorded. We will proceed to invoicing and delivery after financial approval.")
+                self._send_professional_email(
+                    (request.get("contact") or {}).get("email", ""),
+                    "UAE Business AI — تأكيد الطلب / Order Confirmation",
+                    "شكرًا لتأكيدكم. تم تسجيل الموافقة، وسننتقل للفوترة والتنفيذ بعد اعتماد الإجراء المالي.",
+                    "Thank you for confirming. Your approval is recorded. We will proceed to invoicing and delivery after financial approval."
+                )
             return
 
-        current = float(quote.get("amount_aed", 0))
         if intent == "negotiate_price":
             proposed = round(max(750.0, current * 0.90) / 100.0) * 100
             reply = f"يمكننا مراجعة السعر إلى {proposed:.0f} درهم إماراتي ضمن النطاق الحالي. إذا كان مناسبًا نثبت النطاق وننتقل للخطوة التالية."
