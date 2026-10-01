@@ -567,7 +567,7 @@
     "00000000-671f-b199-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "GBPCHF",
-      "peak_upl": 0.0,
+      "peak_upl": 0.01,
       "stop_level": null
     },
     "00000000-671f-b1f7-0493-972c0004511e": {
@@ -724,6 +724,42 @@
       "direction": "SELL",
       "epic": "GBPHKD",
       "peak_upl": 0.43,
+      "stop_level": null
+    },
+    "00000000-6721-6ff2-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "peak_upl": 0.0,
+      "stop_level": null
+    },
+    "00000000-6721-7006-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCHF",
+      "peak_upl": 0.01,
+      "stop_level": null
+    },
+    "00000000-6721-7017-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "CADMXN",
+      "peak_upl": 0.0,
+      "stop_level": null
+    },
+    "00000000-6721-7022-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "EURAUD",
+      "peak_upl": 0.0,
+      "stop_level": null
+    },
+    "00000000-6721-7096-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "CADZAR",
+      "peak_upl": 0.0,
+      "stop_level": null
+    },
+    "00000000-6721-7154-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "EURZAR",
+      "peak_upl": 0.0,
       "stop_level": null
     }
   }
