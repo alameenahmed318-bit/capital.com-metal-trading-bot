@@ -110,9 +110,15 @@ class BusinessAgent:
         t = text.lower()
         if any(x in t for x in ("موافق", "موافقين", "ابدأ", "ابدؤوا", "go ahead", "approved", "approve", "accept", "accepted")):
             return "approved"
-        if any(x in t for x in ("غالي", "سعر أقل", "خصم", "تخفيض", "budget", "cheaper", "discount", "too expensive")):
+        if any(x in t for x in (
+            "غالي", "سعر أقل", "خصم", "تخفيض", "السعر", "مراجعة السعر",
+            "السعر والنطاق", "ميزانية", "budget", "cheaper", "discount", "too expensive"
+        )):
             return "negotiate_price"
-        if any(x in t for x in ("تعديل", "تعديلات", "نطاق", "scope", "include", "إضافة", "اضافة", "غيروا")):
+        if any(x in t for x in (
+            "تعديل", "تعديلات", "نطاق", "مراجعة النطاق", "الصيغة", "صيغة مناسبة",
+            "scope", "include", "إضافة", "اضافة", "غيروا"
+        )):
             return "negotiate_scope"
         if any(x in t for x in ("سؤال", "استفسار", "كيف", "متى", "when", "what", "question")):
             return "question"
@@ -189,10 +195,22 @@ class BusinessAgent:
             if self.mail:
                 self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
         else:
-            request["status"] = "awaiting_customer"
-            reply = "شكرًا لردكم. نقدر نراجع السعر والنطاق معكم للوصول إلى صيغة مناسبة قبل اعتماد الطلب."
+            request["status"] = "negotiating"
+            reply = (
+                f"شكرًا لتوضيحكم. يمكننا مراجعة السعر والنطاق للوصول إلى صيغة مناسبة. "
+                f"العرض الحالي {current:.0f} درهم. أخبرونا بالميزانية المستهدفة أو العناصر "
+                "التي تريدون تعديلها، وسنرسل لكم عرضًا محدثًا قبل الفاتورة."
+            )
+            new_quote = self.prepare_quote(
+                request["id"], current, quote["scope"],
+                "عرض محدث للتفاوض؛ غير ملزم ولا يتم إصدار فاتورة قبل تأكيد العميل.",
+                {"negotiated_from": quote["id"], "customer_intent": "general_negotiation"}
+            )
+            request["quote_id"] = new_quote["id"]
             if self.mail:
-                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة", reply)
+                self.mail.send((request.get("contact") or {}).get("email", ""), "Re: عرض الخدمة — مراجعة السعر والنطاق", reply)
+            new_quote["sent_at"] = time.time()
+            new_quote["status"] = "sent"
         self.log("sales", "Customer reply handled", request_id=request["id"], intent=intent, status=request["status"])
 
     def process_inbound_mail(self) -> int:
