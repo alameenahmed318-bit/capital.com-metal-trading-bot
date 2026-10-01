@@ -1,7 +1,51 @@
-const products=[{id:1,n:"سماعات لاسلكية Pro",c:"إلكترونيات",p:129,o:179,e:"🎧"},{id:2,n:"ساعة ذكية رياضية",c:"إلكترونيات",p:199,o:249,e:"⌚"},{id:3,n:"حقيبة يومية أنيقة",c:"أزياء",p:89,o:129,e:"👜"},{id:4,n:"حذاء رياضي خفيف",c:"أزياء",p:149,o:199,e:"👟"},{id:5,n:"طقم عناية بالبشرة",c:"جمال",p:75,o:99,e:"🧴"},{id:6,n:"مصباح مكتب ذكي",c:"المنزل",p:59,o:79,e:"💡"},{id:7,n:"زجاجة ماء حرارية",c:"المنزل",p:45,o:65,e:"🥤"},{id:8,n:"نظارة شمسية عصرية",c:"أزياء",p:69,o:99,e:"🕶️"}];let cat="الكل",cart=[];const $=id=>document.getElementById(id);
-function renderCats(){const cs=["الكل",...new Set(products.map(x=>x.c))];$("categories").innerHTML=cs.map(x=>`<button class="${x===cat?"active":""}" onclick="cat='${x}';render()">${x}</button>`).join("")}
-function render(){renderCats();const q=$("search").value.trim().toLowerCase();const list=products.filter(x=>(cat==="الكل"||x.c===cat)&&x.n.toLowerCase().includes(q));$("countText").textContent=`${list.length} منتجات`;$("products").innerHTML=list.map(x=>`<article class="card"><span class="badge">خصم</span><div class="visual">${x.e}</div><div class="info"><div class="name">${x.n}</div><div class="meta">${x.c} · توصيل داخل الإمارات</div><div class="price">AED ${x.p} <span class="old">AED ${x.o}</span></div><button class="add" onclick="add(${x.id})">أضف للسلة</button></div></article>`).join("")}
-function add(id){cart.push(products.find(x=>x.id===id));updateCart();openCart()}
-function updateCart(){$("cartCount").textContent=cart.length;const total=cart.reduce((s,x)=>s+x.p,0);$("cartTotal").textContent="AED "+total; $("cartItems").innerHTML=cart.length?cart.map((x,i)=>`<div class="cartRow"><span>${x.e} ${x.n}</span><b>AED ${x.p}</b><button class="remove" onclick="cart.splice(${i},1);updateCart()">×</button></div>`).join(""):"<p style='padding:20px;color:#777'>السلة فارغة حالياً.</p>"}
-function openCart(){$("cart").classList.add("open");$("overlay").classList.add("show")}function closeCart(){$("cart").classList.remove("open");$("overlay").classList.remove("show")}
-$("search").addEventListener("input",render);$("searchBtn").addEventListener("click",render);$("cartBtn").addEventListener("click",openCart);$("closeCart").addEventListener("click",closeCart);$("overlay").addEventListener("click",closeCart);$("checkout").addEventListener("click",()=>alert(cart.length?"Checkout الحقيقي سيكون في المرحلة التالية مع Stripe.":"السلة فارغة."));$("accountBtn").addEventListener("click",()=>alert("حساب العميل سيتم ربطه في المرحلة التالية."));render();updateCart();
+// UAE Market storefront UI. Cart state is shared with checkout.html via store.js.
+const products=UAE_MARKET_PRODUCTS.map((p)=>({id:p.id,n:p.name,c:p.category,p:p.price,o:p.compareAt,e:p.emoji,stock:p.stock}));
+let cat="الكل";
+
+const $=id=>document.getElementById(id);
+
+function renderCats(){
+  const cs=["الكل",...new Set(products.map(x=>x.c))];
+  $("categories").innerHTML=cs.map(x=>`<button class="${x===cat?"active":""}" onclick="cat='${x}';render()">${x}</button>`).join("");
+}
+
+function render(){
+  renderCats();
+  const q=$("search").value.trim().toLowerCase();
+  const list=products.filter(x=>(cat==="الكل"||x.c===cat)&&x.n.toLowerCase().includes(q));
+  $("countText").textContent=`${list.length} منتجات`;
+  $("products").innerHTML=list.map(x=>`<article class="card"><span class="badge">خصم</span><div class="visual">${x.e}</div><div class="info"><div class="name">${x.n}</div><div class="meta">${x.c} · توصيل داخل الإمارات</div><div class="price">AED ${x.p} <span class="old">AED ${x.o}</span></div><button class="add" onclick="add('${x.id}')">أضف للسلة</button></div></article>`).join("");
+}
+
+function add(id){
+  addToCart(id);
+  updateCart();
+  openCart();
+}
+
+function updateCart(){
+  const c=cartItems();
+  $("cartCount").textContent=c.reduce((n,x)=>n+x.qty,0);
+  $("cartTotal").textContent="AED "+cartTotal(c);
+  $("cartItems").innerHTML=c.length
+    ? c.map(x=>`<div class="cartRow"><span>${x.emoji} ${x.name} × ${x.qty}</span><b>AED ${x.price*x.qty}</b><button class="remove" onclick="removeFromCart('${x.id}')">×</button></div>`).join("")
+    : "<p style='padding:20px;color:#777'>السلة فارغة حالياً.</p>";
+}
+
+function openCart(){$("cart").classList.add("open");$("overlay").classList.add("show")}
+function closeCart(){$("cart").classList.remove("open");$("overlay").classList.remove("show")}
+
+$("search").addEventListener("input",render);
+$("searchBtn").addEventListener("click",render);
+$("cartBtn").addEventListener("click",openCart);
+$("closeCart").addEventListener("click",closeCart);
+$("overlay").addEventListener("click",closeCart);
+$("checkout").addEventListener("click",()=>{
+  if(!cartItems().length){alert("السلة فارغة.");return;}
+  location.href="checkout.html";
+});
+$("accountBtn").addEventListener("click",()=>alert("حساب العميل سيتم ربطه في المرحلة التالية."));
+
+window.addEventListener("cartchange",updateCart);
+render();
+updateCart();
