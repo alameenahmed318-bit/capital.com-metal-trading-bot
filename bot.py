@@ -221,8 +221,7 @@ def tradable_markets(all_markets):
         name = str(m.get("instrumentName", m.get("name", ""))).upper()
         is_fx = instrument_type == "CURRENCIES"
         requested = (
-            epic in {"GOLD", "SILVER", "US500", "US100", "US1000"}
-            or "GOLD" in name
+            epic in {"SILVER", "US500", "US100", "US1000"}
             or "SILVER" in name
             or "US TECH 100" in name
             or "TECH 100" in name
@@ -484,8 +483,7 @@ def refresh_history_budget(api, markets, cache, budget=6):
         epic = str(market.get("epic", "")).upper()
         name = str(market.get("instrumentName", market.get("name", ""))).upper()
         is_priority = (
-            epic in {"GOLD", "SILVER", "US500", "US100", "US1000"}
-            or "GOLD" in name
+            epic in {"SILVER", "US500", "US100", "US1000"}
             or "SILVER" in name
             or "US TECH 100" in name
             or "TECH 100" in name
