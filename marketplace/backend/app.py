@@ -9,12 +9,48 @@ STRIPE_SECRET_KEY=os.getenv("STRIPE_SECRET_KEY","")
 STRIPE_WEBHOOK_SECRET=os.getenv("STRIPE_WEBHOOK_SECRET","")
 SUCCESS_URL=os.getenv("MARKET_SUCCESS_URL","")
 CANCEL_URL=os.getenv("MARKET_CANCEL_URL","")
+JASANI_API_TOKEN=os.getenv("JASANI_API_TOKEN","")
+MARKUP=1.20
 
 PRODUCTS={
 "P001":{"name":"سماعات لاسلكية Pro","price":129,"stock":24},"P002":{"name":"ساعة ذكية رياضية","price":199,"stock":18},
 "P003":{"name":"حقيبة يومية أنيقة","price":89,"stock":31},"P004":{"name":"حذاء رياضي خفيف","price":149,"stock":16},
 "P005":{"name":"طقم عناية بالبشرة","price":75,"stock":40},"P006":{"name":"مصباح مكتب ذكي","price":59,"stock":22},
 "P007":{"name":"زجاجة ماء حرارية","price":45,"stock":35},"P008":{"name":"نظارة شمسية عصرية","price":69,"stock":27}}
+
+def supplier_products():
+    """Fetch Jasani catalog and apply a 20% markup when a reseller token is configured."""
+    if not JASANI_API_TOKEN:
+        return {}
+    base="https://www.jasani.ae"
+    try:
+        req=urllib.request.Request(
+            f"{base}/products/all/{urllib.parse.quote(JASANI_API_TOKEN)}",
+            headers={"Accept":"application/xml"})
+        with urllib.request.urlopen(req,timeout=30) as r:
+            xml=r.read().decode("utf-8","replace")
+        import xml.etree.ElementTree as ET
+        root=ET.fromstring(xml)
+        out={}
+        for node in root.iter():
+            if node.tag.split("}")[-1]!="product":
+                continue
+            def val(name):
+                x=node.find(".//"+name)
+                return (x.text or "").strip() if x is not None and x.text else ""
+            pid=val("id"); name=val("name"); price=val("list_price") or val("price")
+            image=val("image_url"); stock=val("net_available_qty") or val("stock")
+            if not pid or not name:
+                continue
+            try: cost=float(price)
+            except (TypeError,ValueError): continue
+            try: qty=max(0,int(float(stock)))
+            except (TypeError,ValueError): qty=0
+            out["J"+pid]={"name":name,"cost":round(cost,2),"price":round(cost*MARKUP,2),"stock":qty,"image":image}
+        return out
+    except Exception as e:
+        print("JASANI_SYNC_ERROR:",e)
+        return {}
 
 def db():
     c=sqlite3.connect(DB); c.row_factory=sqlite3.Row
@@ -85,7 +121,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
     def do_GET(self):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"UAE Market API"})
-        if self.path=="/api/products": return self.send_json(200,PRODUCTS)
+        if self.path=="/api/products":\n            supplier=supplier_products()\n            return self.send_json(200,supplier or PRODUCTS)
         if self.path.startswith("/api/checkout/"):
             oid=self.path.rsplit("/",1)[-1]; c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
             if not row: return self.send_json(404,{"error":"not_found"})
@@ -108,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not customer.get("email") or not customer.get("name") or not raw_items: raise ValueError("customer and items are required")
                 items=[]; total=0
                 for x in raw_items:
-                    p=PRODUCTS.get(x.get("id")); qty=int(x.get("qty",0))
+                    p=(supplier_products() or PRODUCTS).get(x.get("id")); qty=int(x.get("qty",0))
                     if not p or qty<1 or qty>p["stock"]: raise ValueError("invalid product or quantity")
                     items.append({"id":x["id"],"name":p["name"],"price":p["price"],"qty":qty}); total+=p["price"]*qty
                 oid="UM-"+uuid.uuid4().hex[:10].upper(); c=db()
