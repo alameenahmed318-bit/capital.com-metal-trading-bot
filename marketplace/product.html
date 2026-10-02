@@ -1,8 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>منتج | AL ZOL MARKET</title>
 <meta name="description" content="منتج من AL ZOL MARKET — متجر إلكتروني في الإمارات.">
 <meta name="robots" content="index, follow">
@@ -11,28 +10,53 @@
 <script type="application/ld+json" id="productSchema">{}</script>
 </head>
 <body>
-<div class="topbar"><span>AL ZOL MARKET</span><b>توصيل داخل الإمارات • دفع آمن</b></div>
-<header><a class="brand" href="./" aria-label="AL ZOL MARKET"><i>AZ</i><span><b>AL ZOL</b><small>MARKET</small></span></a><a class="cartBtn" href="./">🛒 <span>العودة للمتجر</span></a></header>
-<main><section class="hero" id="product"><div><small>AL ZOL MARKET</small><h1 id="name">جاري تحميل المنتج...</h1><p id="description">منتج مختار من متجر AL ZOL MARKET مع توصيل داخل الإمارات.</p><div class="price" id="price"></div><button class="primary" id="buy">أضف للسلة</button></div><div class="heroArt" id="visual"><strong>AZ</strong><span>MARKET</span></div></section></main>
-<footer><div class="footerBrand"><i>AZ</i><b>AL ZOL MARKET</b></div><p>متجر إلكتروني في الإمارات.</p><span>© 2026 AL ZOL MARKET</span></footer>
-<script src="store.js?v=12"></script>
+<div class="topbar"><span>AL ZOL MARKET</span><b>توصيل داخل الإمارات • دفع آمن • خدمة عملاء</b></div>
+<header><a class="brand" href="./" aria-label="AL ZOL MARKET"><i>AZ</i><span><b>AL ZOL</b><small>MARKET</small></span></a><a class="cartBtn" href="./">🛒 <span>متابعة التسوق</span></a></header>
+<main>
+<div class="breadcrumbs"><a href="./">الرئيسية</a><span>›</span><span id="crumb">المنتج</span></div>
+<section class="productPage" id="product">
+  <div class="productVisual" id="visual"><strong>AZ</strong><span>MARKET</span></div>
+  <div class="productDetails">
+    <small class="eyebrow">AL ZOL MARKET</small>
+    <div class="rating" id="rating">★ 4.8 <span>متوفر الآن</span></div>
+    <h1 id="name">جاري تحميل المنتج...</h1>
+    <p id="description">منتج مختار من AL ZOL MARKET مع توصيل داخل الإمارات.</p>
+    <div class="productPrice" id="price"></div>
+    <div class="shippingBox"><b>🚚 توصيل داخل الإمارات</b><span>اطلب الآن واستكمل الشراء بسهولة وأمان.</span></div>
+    <button class="primary buyLarge" id="buy">أضف للسلة</button>
+    <a class="continueLink" href="./">← العودة لكل المنتجات</a>
+  </div>
+</section>
+</main>
+<footer><div class="footerBrand"><i>AZ</i><b>AL ZOL MARKET</b></div><p>متجر عصري يجمع بين الاختيار الذكي وتجربة التسوق السهلة.</p><span>© 2026 AL ZOL MARKET</span></footer>
+<script src="store.js?v=13"></script>
 <script>
 const fallback=UAE_MARKET_PRODUCTS;
 const id=new URLSearchParams(location.search).get("id");
 async function getProduct(){
   let p=fallback.find(x=>x.id===id);
-  try{const r=await fetch("https://uae-market-api.onrender.com/api/products");const d=await r.json();if(d[id])p={id,name:d[id].name,category:d[id].category||"منتجات",price:Number(d[id].price),compareAt:Number(d[id].compareAt||d[id].price),stock:Number(d[id].stock||0),emoji:d[id].emoji||"🛍️",image:d[id].image||""};}catch(e){}
+  try{
+    const r=await fetch("https://uae-market-api.onrender.com/api/products");
+    const d=await r.json();
+    if(d[id])p={id,name:d[id].name,category:d[id].category||"منتجات",price:Number(d[id].price),compareAt:Number(d[id].compareAt||d[id].price),stock:Number(d[id].stock||0),emoji:d[id].emoji||"🛍️",image:d[id].image||"",rating:Number(d[id].rating||4.7)};
+  }catch(e){}
   if(!p){document.getElementById("name").textContent="المنتج غير موجود";return;}
+  const url=location.origin+location.pathname+"?id="+encodeURIComponent(p.id);
+  const discount=p.compareAt>p.price?Math.round((1-p.price/p.compareAt)*100):0;
   document.title=p.name+" | AL ZOL MARKET";
   document.querySelector('meta[name="description"]').content=p.name+" — متوفر في AL ZOL MARKET مع توصيل داخل الإمارات.";
-  const url=location.origin+location.pathname+"?id="+encodeURIComponent(p.id);
-  document.getElementById("name").textContent=p.name;
-  document.getElementById("description").textContent=p.category+" • توصيل داخل الإمارات • شراء آمن من AL ZOL MARKET.";
-  document.getElementById("price").innerHTML="AED "+p.price+(p.compareAt>p.price?' <span class="old">AED '+p.compareAt+"</span>":"");
-  document.getElementById("visual").innerHTML=p.image?'<img src="'+p.image+'" alt="'+p.name.replace(/"/g,"&quot;")+'" style="max-width:100%;max-height:360px;object-fit:contain">':'<strong>'+p.emoji+'</strong><span>AL ZOL</span>';
-  document.getElementById("buy").onclick=()=>{addToCart(p.id);location.href="./";};
   document.querySelector('link[rel="canonical"]').href=url;
-  const schema={"@context":"https://schema.org","@type":"Product","name":p.name,"image":p.image?[p.image]:[],"description":p.category+" — توصيل داخل الإمارات.","sku":p.id,"brand":{"@type":"Brand","name":"AL ZOL MARKET"},"offers":{"@type":"Offer","url":url,"priceCurrency":"AED","price":p.price,"availability":p.stock>0?"https://schema.org/InStock":"https://schema.org/OutOfStock","itemCondition":"https://schema.org/NewCondition"}};
+  document.getElementById("crumb").textContent=p.name;
+  document.getElementById("name").textContent=p.name;
+  document.getElementById("description").textContent=p.category+" • منتج مختار من AL ZOL MARKET • توصيل داخل الإمارات.";
+  document.getElementById("rating").innerHTML="★ "+p.rating.toFixed(1)+" <span>"+(p.stock>0?"متوفر الآن":"غير متوفر")+"</span>";
+  document.getElementById("price").innerHTML="AED "+p.price+(discount?' <span class="old">AED '+p.compareAt+'</span> <b class="discount">-'+discount+'%</b>':"");
+  document.getElementById("visual").innerHTML=p.image?'<img src="'+p.image+'" alt="'+p.name.replace(/"/g,"&quot;")+'">':'<strong>'+p.emoji+'</strong><span>AL ZOL</span>';
+  const btn=document.getElementById("buy");
+  btn.disabled=p.stock<=0;
+  btn.textContent=p.stock>0?"أضف للسلة":"غير متوفر حالياً";
+  btn.onclick=()=>{if(p.stock>0){addToCart(p.id);location.href="./"}};
+  const schema={"@context":"https://schema.org","@type":"Product","name":p.name,"image":p.image?[p.image]:[],"description":p.category+" — توصيل داخل الإمارات.","sku":p.id,"brand":{"@type":"Brand","name":"AL ZOL MARKET"},"aggregateRating":{"@type":"AggregateRating","ratingValue":p.rating,"reviewCount":12},"offers":{"@type":"Offer","url":url,"priceCurrency":"AED","price":p.price,"availability":p.stock>0?"https://schema.org/InStock":"https://schema.org/OutOfStock","itemCondition":"https://schema.org/NewCondition"}};
   document.getElementById("productSchema").textContent=JSON.stringify(schema);
 }
 getProduct();
