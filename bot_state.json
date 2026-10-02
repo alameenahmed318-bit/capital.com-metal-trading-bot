@@ -1287,7 +1287,8 @@
     "00000000-676f-6d59-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "DKKSEK",
-      "peak_upl": 0.22,
+      "peak_upl": 0.27,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-676f-8fa4-0493-972c0004511e": {
@@ -1792,8 +1793,8 @@
       "direction": "BUY",
       "epic": "GBPHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.22,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6772-41f6-0493-972c0004511e": {
@@ -1816,7 +1817,7 @@
       "direction": "SELL",
       "epic": "EURMXN",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.04,
       "protected_profit": false,
       "stop_level": null
     },
