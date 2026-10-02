@@ -1259,13 +1259,14 @@
     "00000000-676f-64af-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AGQ",
-      "peak_upl": 0.19,
+      "peak_upl": 0.55,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-676f-657d-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CATH",
-      "peak_upl": 0.0,
+      "peak_upl": 0.16,
       "stop_level": null
     },
     "00000000-676f-6599-0493-972c0004511e": {
@@ -1278,7 +1279,7 @@
     "00000000-676f-660e-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "EFIV",
-      "peak_upl": 0.0,
+      "peak_upl": 0.14,
       "stop_level": null
     },
     "00000000-676f-672a-0493-972c0004511e": {
@@ -1540,8 +1541,8 @@
       "direction": "BUY",
       "epic": "SPUS",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
-      "protected_profit": false,
+      "peak_upl": 1.84,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-04e3-0493-972c0004511e": {
@@ -1580,15 +1581,15 @@
       "direction": "BUY",
       "epic": "SPYG",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
-      "protected_profit": false,
+      "peak_upl": 0.41,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6770-05b3-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "SPYM",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.19,
       "protected_profit": false,
       "stop_level": null
     },
@@ -5829,7 +5830,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.87,
+      "peak_upl": 0.97,
       "protected_profit": true,
       "stop_level": null
     },
@@ -5909,7 +5910,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.6,
+      "peak_upl": 0.69,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6013,8 +6014,8 @@
       "direction": "SELL",
       "epic": "EURNOK",
       "last_stop_update_ok": false,
-      "peak_upl": 0.22,
-      "protected_profit": false,
+      "peak_upl": 0.33,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6777-9dca-0493-972c0004511e": {
@@ -6157,7 +6158,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.65,
+      "peak_upl": 0.7,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6165,7 +6166,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.69,
+      "peak_upl": 0.77,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6181,7 +6182,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.86,
+      "peak_upl": 1.0,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6197,7 +6198,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.38,
+      "peak_upl": 0.48,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6205,7 +6206,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.5,
+      "peak_upl": 0.53,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6213,7 +6214,7 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.85,
+      "peak_upl": 1.0,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6221,7 +6222,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.64,
+      "peak_upl": 0.73,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6269,7 +6270,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
+      "peak_upl": 0.16,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6285,7 +6286,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.36,
+      "peak_upl": 0.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6301,7 +6302,7 @@
       "direction": "BUY",
       "epic": "GBPCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.56,
+      "peak_upl": 1.09,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6325,7 +6326,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.37,
+      "peak_upl": 0.47,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6349,7 +6350,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.38,
+      "peak_upl": 0.47,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6357,7 +6358,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.39,
+      "peak_upl": 0.44,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6365,7 +6366,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.37,
+      "peak_upl": 0.47,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6373,7 +6374,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.36,
+      "peak_upl": 0.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6381,7 +6382,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.37,
+      "peak_upl": 0.42,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6389,7 +6390,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.36,
+      "peak_upl": 0.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6397,7 +6398,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.38,
+      "peak_upl": 0.43,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6405,7 +6406,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.34,
+      "peak_upl": 0.44,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6421,7 +6422,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.35,
+      "peak_upl": 0.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6453,8 +6454,8 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.24,
-      "protected_profit": false,
+      "peak_upl": 0.29,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-6fe4-0493-972c0004511e": {
@@ -6469,16 +6470,16 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.2,
-      "protected_profit": false,
+      "peak_upl": 0.34,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-7080-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.21,
-      "protected_profit": false,
+      "peak_upl": 0.36,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-717d-0493-972c0004511e": {
@@ -6501,7 +6502,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.19,
+      "peak_upl": 0.24,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6509,7 +6510,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
+      "peak_upl": 0.24,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6517,7 +6518,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.16,
+      "peak_upl": 0.18,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6533,7 +6534,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.09,
+      "peak_upl": 0.24,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6541,8 +6542,8 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.1,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-7590-0493-972c0004511e": {
@@ -6557,7 +6558,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.26,
+      "peak_upl": 0.36,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6565,7 +6566,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.15,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6573,7 +6574,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.08,
+      "peak_upl": 0.18,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6581,7 +6582,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.09,
+      "peak_upl": 0.11,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6597,7 +6598,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.06,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6605,7 +6606,7 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.06,
+      "peak_upl": 0.21,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6621,7 +6622,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.65,
+      "peak_upl": 0.75,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6629,8 +6630,8 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.18,
-      "protected_profit": false,
+      "peak_upl": 0.27,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-79f4-0493-972c0004511e": {
@@ -6645,7 +6646,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.13,
+      "peak_upl": 0.18,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6661,7 +6662,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6669,7 +6670,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.09,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6677,7 +6678,7 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.09,
+      "peak_upl": 0.24,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6693,15 +6694,15 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.19,
-      "protected_profit": false,
+      "peak_upl": 0.29,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-afa1-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.13,
+      "peak_upl": 0.18,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6709,23 +6710,23 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.17,
-      "protected_profit": false,
+      "peak_upl": 0.27,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-afd0-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.24,
-      "protected_profit": false,
+      "peak_upl": 0.38,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-afdb-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.35,
+      "peak_upl": 0.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6733,15 +6734,15 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.16,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-afec-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.09,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6749,8 +6750,8 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.21,
-      "protected_profit": false,
+      "peak_upl": 0.36,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b0d8-0493-972c0004511e": {
@@ -6765,7 +6766,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.08,
+      "peak_upl": 0.13,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6773,7 +6774,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.1,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6781,15 +6782,15 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.18,
-      "protected_profit": false,
+      "peak_upl": 0.32,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b202-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.37,
+      "peak_upl": 0.47,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6797,7 +6798,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.12,
+      "peak_upl": 0.21,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6805,7 +6806,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.03,
+      "peak_upl": 0.05,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6813,8 +6814,8 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
-      "protected_profit": false,
+      "peak_upl": 0.29,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b3e7-0493-972c0004511e": {
@@ -6829,7 +6830,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.12,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6837,7 +6838,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.17,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6845,15 +6846,15 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.13,
-      "protected_profit": false,
+      "peak_upl": 0.28,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b5b2-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.33,
+      "peak_upl": 0.43,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6861,7 +6862,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.15,
+      "peak_upl": 0.24,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6869,7 +6870,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.03,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6877,8 +6878,8 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.1,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b6bb-0493-972c0004511e": {
@@ -6893,7 +6894,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.12,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6901,7 +6902,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.17,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6909,15 +6910,15 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
-      "protected_profit": false,
+      "peak_upl": 0.29,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b82e-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.29,
+      "peak_upl": 0.38,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6925,7 +6926,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
+      "peak_upl": 0.23,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6933,7 +6934,7 @@
       "direction": "BUY",
       "epic": "AUDSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.01,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6941,8 +6942,8 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.15,
-      "protected_profit": false,
+      "peak_upl": 0.3,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-b909-0493-972c0004511e": {
@@ -6957,7 +6958,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6965,7 +6966,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.17,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6973,7 +6974,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.16,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6981,7 +6982,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.09,
+      "peak_upl": 0.23,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6997,15 +6998,15 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.1,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6778-ea75-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.01,
+      "peak_upl": 0.11,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7013,7 +7014,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.22,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7021,7 +7022,7 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.22,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7029,7 +7030,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.1,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7037,7 +7038,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.04,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7053,7 +7054,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.06,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7061,7 +7062,7 @@
       "direction": "SELL",
       "epic": "EURNOK",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.04,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7069,7 +7070,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.01,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7077,7 +7078,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.13,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7085,7 +7086,7 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7093,7 +7094,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.01,
+      "peak_upl": 0.1,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7101,7 +7102,7 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.09,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7117,7 +7118,7 @@
       "direction": "BUY",
       "epic": "AUDCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.06,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7125,7 +7126,7 @@
       "direction": "SELL",
       "epic": "EURNOK",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.05,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7133,7 +7134,7 @@
       "direction": "BUY",
       "epic": "AUDHKD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.18,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7141,7 +7142,7 @@
       "direction": "BUY",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.04,
+      "peak_upl": 0.23,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7149,7 +7150,7 @@
       "direction": "BUY",
       "epic": "AUDJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.1,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7157,13 +7158,205 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.09,
       "protected_profit": false,
       "stop_level": null
     },
     "00000000-6778-f555-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDSGD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-212a-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2364-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2582-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCNH",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.03,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-258d-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDHKD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.06,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-25a3-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.04,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-25dc-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.09,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2604-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-27b9-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-27c0-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDSGD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-281a-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPUS",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2935-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCNH",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-293c-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDHKD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-294a-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-29a2-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.01,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-29c7-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2b8c-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2bc6-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPUS",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2c26-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AGQ",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2e22-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "SPYG",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2e8a-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCNH",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2e91-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDHKD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2e98-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2ea2-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6779-2f74-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDUSD",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
