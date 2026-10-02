@@ -1266,7 +1266,8 @@
     "00000000-676f-657d-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CATH",
-      "peak_upl": 0.23,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-676f-6599-0493-972c0004511e": {
@@ -1279,7 +1280,7 @@
     "00000000-676f-660e-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "EFIV",
-      "peak_upl": 0.17,
+      "peak_upl": 0.18,
       "stop_level": null
     },
     "00000000-676f-672a-0493-972c0004511e": {
@@ -1541,7 +1542,7 @@
       "direction": "BUY",
       "epic": "SPUS",
       "last_stop_update_ok": false,
-      "peak_upl": 2.24,
+      "peak_upl": 2.28,
       "protected_profit": true,
       "stop_level": null
     },
@@ -1589,7 +1590,7 @@
       "direction": "BUY",
       "epic": "SPYM",
       "last_stop_update_ok": false,
-      "peak_upl": 0.25,
+      "peak_upl": 0.26,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6142,7 +6143,7 @@
       "direction": "BUY",
       "epic": "IVV",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
+      "peak_upl": 0.15,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6150,7 +6151,7 @@
       "direction": "BUY",
       "epic": "SPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.14,
+      "peak_upl": 0.15,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6174,7 +6175,7 @@
       "direction": "BUY",
       "epic": "VOO",
       "last_stop_update_ok": false,
-      "peak_upl": 0.12,
+      "peak_upl": 0.13,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6302,7 +6303,7 @@
       "direction": "BUY",
       "epic": "GBPCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 1.12,
+      "peak_upl": 1.3,
       "protected_profit": true,
       "stop_level": null
     },
@@ -7318,7 +7319,7 @@
       "direction": "BUY",
       "epic": "SPYG",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.01,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7517,6 +7518,70 @@
     "00000000-6797-f4db-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "SPYG",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-2118-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-2121-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCNH",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-2130-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.04,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-2162-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.13,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-21b5-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "CADSGD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-2331-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-2598-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.03,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-26c9-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CATH",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
