@@ -3,9 +3,9 @@ services:
     name: uae-market-api
     runtime: python
     plan: free
-    rootDir: .
-    buildCommand: pip install -r marketplace/backend/requirements.txt
-    startCommand: python marketplace/backend/app.py
+    rootDir: marketplace/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
     healthCheckPath: /api/health
     envVars:
       - key: STRIPE_SECRET_KEY
