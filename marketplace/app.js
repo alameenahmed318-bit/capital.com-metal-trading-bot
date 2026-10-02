@@ -25,7 +25,7 @@ function render(){
   const q=$("search").value.trim().toLowerCase();
   const list=products.filter(x=>(cat==="الكل"||x.c===cat)&&x.n.toLowerCase().includes(q));
   $("countText").textContent=`${list.length} منتجات`;
-  $("products").innerHTML=list.map(x=>`<article class="card"><span class="badge">خصم</span><div class="visual">${x.e}</div><div class="info"><div class="name">${x.n}</div><div class="meta">${x.c} · توصيل داخل الإمارات</div><div class="price">AED ${x.p} <span class="old">AED ${x.o}</span></div><button class="add" onclick="add('${x.id}')">أضف للسلة</button></div></article>`).join("");
+  $("products").innerHTML=list.map(x=>`<article class="card"><span class="badge">خصم</span><a href="product.html?id=${encodeURIComponent(x.id)}" aria-label="عرض ${x.n}"><div class="visual">${x.e}</div></a><div class="info"><div class="name"><a href="product.html?id=${encodeURIComponent(x.id)}">${x.n}</a></div><div class="meta">${x.c} · توصيل داخل الإمارات</div><div class="price">AED ${x.p} <span class="old">AED ${x.o}</span></div><button class="add" onclick="add('${x.id}')">أضف للسلة</button></div></article>`).join("");
 }
 
 function add(id){
