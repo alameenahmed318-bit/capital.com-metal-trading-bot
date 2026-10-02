@@ -56,7 +56,7 @@ def db():
     c=sqlite3.connect(DB); c.row_factory=sqlite3.Row
     c.execute("""CREATE TABLE IF NOT EXISTS orders(
       id TEXT PRIMARY KEY, customer_json TEXT NOT NULL, items_json TEXT NOT NULL,
-      total INTEGER NOT NULL, currency TEXT NOT NULL, status TEXT NOT NULL,
+      total REAL NOT NULL, currency TEXT NOT NULL, status TEXT NOT NULL,
       stripe_session_id TEXT UNIQUE, paid_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)""")
     c.commit(); return c
 
@@ -69,7 +69,7 @@ def stripe_checkout(order_id,total,email):
       "metadata[order_id]":order_id,
       "line_items[0][price_data][currency]":"aed",
       "line_items[0][price_data][product_data][name]":"UAE Market Order "+order_id,
-      "line_items[0][price_data][unit_amount]":str(total*100),
+      "line_items[0][price_data][unit_amount]":str(int(round(float(total)*100))),
       "line_items[0][quantity]":"1"}).encode()
     req=urllib.request.Request("https://api.stripe.com/v1/checkout/sessions",data=data,
       headers={"Authorization":"Bearer "+STRIPE_SECRET_KEY,"Content-Type":"application/x-www-form-urlencoded"})
@@ -144,11 +144,11 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 data=json.loads(raw); customer=data.get("customer") or {}; raw_items=data.get("items") or []
                 if not customer.get("email") or not customer.get("name") or not raw_items: raise ValueError("customer and items are required")
-                items=[]; total=0
+                items=[]; total=0.0
                 for x in raw_items:
                     p=(supplier_products() or PRODUCTS).get(x.get("id")); qty=int(x.get("qty",0))
                     if not p or qty<1 or qty>p["stock"]: raise ValueError("invalid product or quantity")
-                    items.append({"id":x["id"],"name":p["name"],"price":p["price"],"qty":qty}); total+=p["price"]*qty
+                    items.append({"id":x["id"],"name":p["name"],"price":round(float(p["price"]),2),"qty":qty}); total=round(total+float(p["price"])*qty,2)
                 oid="UM-"+uuid.uuid4().hex[:10].upper(); c=db()
                 c.execute("INSERT INTO orders(id,customer_json,items_json,total,currency,status) VALUES(?,?,?,?,?,?)",
                     (oid,json.dumps(customer,ensure_ascii=False),json.dumps(items,ensure_ascii=False),total,"AED","pending_payment"))
