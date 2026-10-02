@@ -1199,7 +1199,8 @@
     "00000000-676f-14ae-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "SILVER",
-      "peak_upl": 0.04,
+      "peak_upl": 0.83,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-676f-14c0-0493-972c0004511e": {
@@ -1540,7 +1541,7 @@
       "direction": "SELL",
       "epic": "AUDUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.06,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1652,7 +1653,7 @@
       "direction": "BUY",
       "epic": "AUDZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.06,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1668,7 +1669,7 @@
       "direction": "BUY",
       "epic": "CADZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.42,
+      "peak_upl": 0.46,
       "protected_profit": true,
       "stop_level": null
     },
@@ -1764,7 +1765,7 @@
       "direction": "BUY",
       "epic": "CNHJPY",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.02,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1796,7 +1797,7 @@
       "direction": "BUY",
       "epic": "EURAUD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.03,
+      "peak_upl": 0.04,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1844,7 +1845,7 @@
       "direction": "BUY",
       "epic": "EURZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.15,
       "protected_profit": false,
       "stop_level": null
     },
@@ -2084,7 +2085,7 @@
       "direction": "BUY",
       "epic": "CADZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.03,
+      "peak_upl": 0.07,
       "protected_profit": false,
       "stop_level": null
     },
@@ -2124,7 +2125,7 @@
       "direction": "BUY",
       "epic": "CADZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.09,
       "protected_profit": false,
       "stop_level": null
     },
@@ -2164,7 +2165,7 @@
       "direction": "BUY",
       "epic": "CADZAR",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.05,
       "protected_profit": false,
       "stop_level": null
     },
@@ -2236,13 +2237,77 @@
       "direction": "SELL",
       "epic": "GBPUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
     "00000000-6773-3e0e-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "GBPNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5725-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.22,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-57bb-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CADZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5b11-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5bb0-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CADZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5be5-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "US500",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5ca0-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5da3-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CADZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-5de0-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
