@@ -5991,8 +5991,8 @@
       "direction": "SELL",
       "epic": "EURGBP",
       "last_stop_update_ok": false,
-      "peak_upl": 0.21,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6777-9d6c-0493-972c0004511e": {
@@ -6263,7 +6263,7 @@
       "direction": "SELL",
       "epic": "CADCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.26,
+      "peak_upl": 0.31,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6303,7 +6303,7 @@
       "direction": "BUY",
       "epic": "GBPCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 1.83,
+      "peak_upl": 1.94,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6311,8 +6311,8 @@
       "direction": "BUY",
       "epic": "GBPDKK",
       "last_stop_update_ok": false,
-      "peak_upl": 0.21,
-      "protected_profit": false,
+      "peak_upl": 0.26,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6777-db6c-0493-972c0004511e": {
@@ -7823,7 +7823,7 @@
       "direction": "BUY",
       "epic": "AUDCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.02,
       "protected_profit": false,
       "stop_level": null
     },
