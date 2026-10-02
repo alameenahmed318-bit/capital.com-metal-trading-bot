@@ -6263,15 +6263,15 @@
       "direction": "SELL",
       "epic": "CADCNH",
       "last_stop_update_ok": false,
-      "peak_upl": 0.09,
-      "protected_profit": false,
+      "peak_upl": 0.26,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6777-da58-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.3,
+      "peak_upl": 0.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -6303,7 +6303,7 @@
       "direction": "BUY",
       "epic": "GBPCAD",
       "last_stop_update_ok": false,
-      "peak_upl": 1.44,
+      "peak_upl": 1.54,
       "protected_profit": true,
       "stop_level": null
     },
@@ -7367,7 +7367,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.17,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7423,7 +7423,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.17,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7495,7 +7495,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.01,
+      "peak_upl": 0.16,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7559,7 +7559,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.2,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7615,7 +7615,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.22,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7631,15 +7631,15 @@
       "direction": "SELL",
       "epic": "SILVER",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
-      "protected_profit": false,
+      "peak_upl": 0.54,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6798-8bad-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.15,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7647,7 +7647,7 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.14,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7655,13 +7655,69 @@
       "direction": "SELL",
       "epic": "CADSGD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.12,
       "protected_profit": false,
       "stop_level": null
     },
     "00000000-6798-997b-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "CADSGD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.12,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d301-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SLV",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d32f-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.13,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d34c-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d393-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "CADCNH",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d4e8-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d57e-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.02,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6798-d948-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDCAD",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
