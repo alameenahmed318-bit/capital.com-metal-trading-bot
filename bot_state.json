@@ -1236,7 +1236,7 @@
     "00000000-676f-3800-0493-972c0004511e": {
       "direction": "SELL",
       "epic": "GBPCNH",
-      "peak_upl": 0.07,
+      "peak_upl": 0.11,
       "stop_level": null
     },
     "00000000-676f-3fd3-0493-972c0004511e": {
@@ -1797,7 +1797,7 @@
       "direction": "BUY",
       "epic": "EURAUD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.1,
       "protected_profit": false,
       "stop_level": null
     },
@@ -1925,7 +1925,7 @@
       "direction": "BUY",
       "epic": "GBPNOK",
       "last_stop_update_ok": false,
-      "peak_upl": 0.05,
+      "peak_upl": 0.07,
       "protected_profit": false,
       "stop_level": null
     },
@@ -2253,8 +2253,8 @@
       "direction": "SELL",
       "epic": "SILVER",
       "last_stop_update_ok": false,
-      "peak_upl": 0.22,
-      "protected_profit": false,
+      "peak_upl": 0.3,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-6773-57bb-0493-972c0004511e": {
@@ -2309,7 +2309,7 @@
       "direction": "SELL",
       "epic": "SILVER",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.08,
       "protected_profit": false,
       "stop_level": null
     },
@@ -2348,6 +2348,54 @@
     "00000000-6773-7523-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "CADZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-815a-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-8251-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-82dc-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "GBPSGD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-83de-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "GBPZAR",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-8597-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6773-881b-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
