@@ -121,7 +121,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS"); self.end_headers()
     def do_GET(self):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"UAE Market API"})
-        if self.path=="/api/products":\n            supplier=supplier_products()\n            return self.send_json(200,supplier or PRODUCTS)
+        if self.path=="/api/products":
+            supplier=supplier_products()
+            return self.send_json(200,supplier or PRODUCTS)
         if self.path.startswith("/api/checkout/"):
             oid=self.path.rsplit("/",1)[-1]; c=db(); row=c.execute("SELECT * FROM orders WHERE id=?",(oid,)).fetchone(); c.close()
             if not row: return self.send_json(404,{"error":"not_found"})
