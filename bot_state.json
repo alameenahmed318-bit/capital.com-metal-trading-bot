@@ -1510,7 +1510,7 @@
       "direction": "SELL",
       "epic": "PAAS",
       "last_stop_update_ok": false,
-      "peak_upl": 0.07,
+      "peak_upl": 0.15,
       "protected_profit": false,
       "stop_level": null
     },
@@ -6135,7 +6135,7 @@
       "direction": "SELL",
       "epic": "AG",
       "last_stop_update_ok": false,
-      "peak_upl": 0.0,
+      "peak_upl": 0.15,
       "protected_profit": false,
       "stop_level": null
     },
@@ -7631,7 +7631,7 @@
       "direction": "SELL",
       "epic": "SILVER",
       "last_stop_update_ok": false,
-      "peak_upl": 0.54,
+      "peak_upl": 1.7,
       "protected_profit": true,
       "stop_level": null
     },
@@ -7711,13 +7711,69 @@
       "direction": "BUY",
       "epic": "AUDNZD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
+      "peak_upl": 0.07,
       "protected_profit": false,
       "stop_level": null
     },
     "00000000-6798-d948-0493-972c0004511e": {
       "direction": "BUY",
       "epic": "AUDCAD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-01d7-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-02b7-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-04d1-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.09,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-05e5-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-07ed-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "CNHJPY",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-081b-0493-972c0004511e": {
+      "direction": "SELL",
+      "epic": "SILVER",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.04,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-6799-0b75-0493-972c0004511e": {
+      "direction": "BUY",
+      "epic": "AUDNZD",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
