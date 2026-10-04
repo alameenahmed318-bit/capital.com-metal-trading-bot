@@ -31,12 +31,10 @@ MARKET_RULES_REFRESH_SECONDS = int(os.getenv("MARKET_RULES_REFRESH_SECONDS", "36
 # Only liquid, widely followed instruments. We intentionally do NOT trade
 # every currency offered by Capital.com.
 POPULAR_FX = {
-    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD",
-    "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY",
+    "EURUSD", "USDCHF", "USDCAD", "NZDUSD",
 }
 POPULAR_NAMES = (
-    "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD",
-    "AUD/USD", "NZD/USD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
+    "EUR/USD", "USD/CHF", "USD/CAD", "NZD/USD",
 )
 POPULAR_NON_FX_EPICS = {"GOLD", "SILVER", "US500", "US100", "US1000"}
 POPULAR_NON_FX_NAMES = (
@@ -341,7 +339,7 @@ def tighten_profit_stop(api, item, state_entry, market):
         log.warning("BROKER PROFIT STOP FAILED | %s | %s", deal_id, e)
 
 
-def normalize_size(api, epic, rules_cache, desired_size):
+def normalize_size(api, epic, rules_cache):
     now = time.time()
     row = rules_cache.get(epic)
     if row and now - row.get("ts", 0) < MARKET_RULES_REFRESH_SECONDS:
@@ -570,7 +568,7 @@ def run():
                             continue
 
                         try:
-                            order_size = normalize_size(api, epic, market_rules, desired_size=None)
+                                            order_size = normalize_size(api, epic, market_rules)
                             log.info("DYNAMIC SIZE | %s | selected=%.4f", epic, order_size)
 
                             pending_epics[epic] = time.time()
