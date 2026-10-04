@@ -433,21 +433,9 @@ def open_bot_position(api, epic, direction, size, state, market):
 
 
 def reconcile_owned_state(positions, state):
-    """Adopt a live position when order confirmation arrived late."""
-    for item in positions:
-        p = item.get("position", {})
-        deal_id = p.get("dealId")
-        epic = item.get("market", {}).get("epic")
-        if not deal_id or not epic or deal_id in state["owned"]:
-            continue
-        state["owned"][deal_id] = {
-            "epic": epic,
-            "direction": str(p.get("direction", "")).upper(),
-            "peak_upl": max(0.0, float(p.get("upl", 0) or 0)),
-            "stop_level": None,
-            "protected_profit": False,
-            "last_stop_update_ok": False,
-        }
+    # Intentionally do not adopt arbitrary live positions.
+    # Ownership is created only from this bot's own order confirmation.
+    return
 
 def refresh_history(api, epic, cache, resolution):
     now = time.time()
