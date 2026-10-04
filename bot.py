@@ -432,6 +432,23 @@ def open_bot_position(api, epic, direction, size, state, market):
             log.info("OWNED POSITION | %s | %s", deal_id, epic)
 
 
+def reconcile_owned_state(positions, state):
+    """Adopt a live position when order confirmation arrived late."""
+    for item in positions:
+        p = item.get("position", {})
+        deal_id = p.get("dealId")
+        epic = item.get("market", {}).get("epic")
+        if not deal_id or not epic or deal_id in state["owned"]:
+            continue
+        state["owned"][deal_id] = {
+            "epic": epic,
+            "direction": str(p.get("direction", "")).upper(),
+            "peak_upl": max(0.0, float(p.get("upl", 0) or 0)),
+            "stop_level": None,
+            "protected_profit": False,
+            "last_stop_update_ok": False,
+        }
+
 def refresh_history(api, epic, cache, resolution):
     now = time.time()
     key = f"{epic}:{resolution}"
@@ -497,6 +514,7 @@ def run():
     position_cache = {"ts": 0.0, "positions": []}
     market_rules = {}
     order_cooldown = {}
+    pending_epics = {}
 
     log.info(
         "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | PROFIT_PROTECT=+%.2f/+%.2f/+%.2f | FX+SILVER+US500+US100/US1000 | ADD_ON>=%.2f AED | MAX_LOSS=%.2f AED",
@@ -530,6 +548,18 @@ def run():
                     log.error("POSITIONS SNAPSHOT FAILED | %s | keeping last snapshot", e)
             positions = position_cache["positions"]
 
+            live_epics = {
+                x.get("market", {}).get("epic")
+                for x in positions
+                if x.get("position", {}).get("dealId")
+            }
+            for locked_epic in list(pending_epics):
+                if locked_epic in live_epics:
+                    pending_epics[locked_epic] = time.time()
+                elif time.time() - pending_epics[locked_epic] > 20:
+                    del pending_epics[locked_epic]
+
+            reconcile_owned_state(positions, state)
             owned = owned_open_positions(positions, state)
             refresh_history_budget(api, list(market_by_epic.values()), history, budget=6)
 
@@ -571,7 +601,7 @@ def run():
                         if str(x.get("position", {}).get("direction", "")).upper() != sig
                     ]
 
-                    can_open = not same_epic
+                    can_open = not same_epic and epic not in pending_epics
                     add_on = False
 
                     # Add only when the existing position is already profitable
@@ -602,7 +632,14 @@ def run():
                             order_size = normalize_size(api, epic, SIZE, market_rules)
                             if order_size != SIZE:
                                 log.info("SIZE NORMALIZED | %s | configured=%.4f -> broker_min=%.4f", epic, SIZE, order_size)
+                            pending_epics[epic] = time.time()
                             open_bot_position(api, epic, sig, order_size, state, market)
+                            try:
+                                position_cache["positions"] = api.positions()
+                                position_cache["ts"] = time.time()
+                                pending_epics.pop(epic, None)
+                            except Exception:
+                                pass
                             order_cooldown[epic] = time.time()
                             log.info(
                                 "ENTRY | %s -> %s | size=%.4f | mode=%s | existing=%d",
