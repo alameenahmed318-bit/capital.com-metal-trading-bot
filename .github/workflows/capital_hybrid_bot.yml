@@ -35,9 +35,15 @@ jobs:
           TRADE_SIZE: ${{ secrets.TRADE_SIZE || '0.01' }}
           DRY_RUN: "false"
           MAX_INITIAL_LOSS_AED: "10"
-          PROFIT_ARM_AED: "1"
+          PROFIT_PROTECT_TRIGGER_AED: "0.25"
+          PROFIT_STAGE_2_AED: "0.50"
+          PROFIT_ARM_AED: "1.00"
+          PROFIT_FLOOR_AED: "0.05"
           PROFIT_LOCK_AED: "0.25"
-          TRAIL_GIVEBACK_AED: "1"
+          TRAIL_GIVEBACK_AED: "1.00"
+          PROFIT_TRAIL_RATIO: "0.30"
+          ADD_ON_MIN_PROFIT_AED: "0.20"
+          ORDER_COOLDOWN_SECONDS: "120"
           HISTORY_REFRESH_SECONDS: "60"
           RUN_SECONDS: "240"
         run: python bot.py
