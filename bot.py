@@ -7,7 +7,6 @@ API_KEY = os.environ["CAPITAL_API_KEY"]
 IDENTIFIER = os.environ.get("CAPITAL_IDENTIFIER") or os.environ["CAPITAL_EMAIL"]
 PASSWORD = os.environ["CAPITAL_PASSWORD"]
 
-SIZE = float(os.getenv("TRADE_SIZE", "0.01"))
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 SCAN_SECONDS = 2
 MARKET_REFRESH_SECONDS = 2
@@ -17,21 +16,34 @@ TREND_RESOLUTION = "MINUTE_15"
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "720"))
 HISTORY_REFRESH_SECONDS = int(os.getenv("HISTORY_REFRESH_SECONDS", "60"))
 MAX_INITIAL_LOSS = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
-# Staged profit protection:
-# +0.25 AED = arm protection, +0.50 AED = raise the protected floor,
-# +1.00 AED = activate the normal trailing stage.
+
 PROFIT_PROTECT_TRIGGER = float(os.getenv("PROFIT_PROTECT_TRIGGER_AED", "0.25"))
 PROFIT_STAGE_2 = float(os.getenv("PROFIT_STAGE_2_AED", "0.50"))
 PROFIT_ARM = float(os.getenv("PROFIT_ARM_AED", "1.00"))
 PROFIT_FLOOR = float(os.getenv("PROFIT_FLOOR_AED", "0.05"))
 PROFIT_LOCK = float(os.getenv("PROFIT_LOCK_AED", "0.10"))
-TRAIL_GIVEBACK = float(os.getenv("TRAIL_GIVEBACK_AED", "0.75"))
 PROFIT_TRAIL_RATIO = float(os.getenv("PROFIT_TRAIL_RATIO", "0.30"))
-STRONG_RETRACE_RATIO = float(os.getenv("STRONG_RETRACE_RATIO", "0.35"))
 ADD_ON_MIN_PROFIT_AED = float(os.getenv("ADD_ON_MIN_PROFIT_AED", "0.20"))
 ADD_ON_MIN_MOVE_RATIO = float(os.getenv("ADD_ON_MIN_MOVE_RATIO", "0.25"))
-ORDER_COOLDOWN_SECONDS = int(os.getenv("ORDER_COOLDOWN_SECONDS", "60"))
+ORDER_COOLDOWN_SECONDS = int(os.getenv("ORDER_COOLDOWN_SECONDS", "120"))
 MARKET_RULES_REFRESH_SECONDS = int(os.getenv("MARKET_RULES_REFRESH_SECONDS", "3600"))
+
+# Only liquid, widely followed instruments. We intentionally do NOT trade
+# every currency offered by Capital.com.
+POPULAR_FX = {
+    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD",
+    "AUDUSD", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY",
+}
+POPULAR_NAMES = (
+    "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "USD/CAD",
+    "AUD/USD", "NZD/USD", "EUR/GBP", "EUR/JPY", "GBP/JPY",
+)
+POPULAR_NON_FX_EPICS = {"GOLD", "SILVER", "US500", "US100", "US1000"}
+POPULAR_NON_FX_NAMES = (
+    "GOLD", "XAU", "SILVER", "XAG", "S&P 500", "US 500",
+    "US TECH 100", "TECH 100", "NASDAQ 100",
+)
+
 STATE_FILE = Path("bot_state.json")
 
 log = logging.getLogger("hybrid")
@@ -66,10 +78,11 @@ class Capital:
             detail = r.text[:500].replace("\n", " ")
             raise RuntimeError(f"Capital GET {path} failed ({r.status_code}): {detail}")
         return r.json()
+
     def post(self, path, payload):
         r = self.s.post(BASE + path, json=payload, timeout=20)
         if r.status_code >= 400:
-            detail = r.text[:500].replace("\\n", " ")
+            detail = r.text[:500].replace("\n", " ")
             raise RuntimeError(f"Capital POST {path} failed ({r.status_code}): {detail}")
         return r.json()
 
@@ -106,9 +119,6 @@ class Capital:
         if DRY_RUN:
             log.info("DRY RUN | OPEN %s %s %.4f", direction, epic, size)
             return None
-        # Capital can reject a universal stopAmount because the valid
-        # stop-loss range is instrument/price/size dependent. Open first,
-        # then enforce the account-currency loss cap locally from live UPL.
         return self.post("/api/v1/positions", {
             "epic": epic,
             "direction": direction,
@@ -161,12 +171,7 @@ def mid_price(p):
 
 
 def candles(raw):
-    out = []
-    for x in raw.get("prices", []):
-        m = mid_price(x)
-        if m is not None:
-            out.append(m)
-    return out
+    return [m for x in raw.get("prices", []) if (m := mid_price(x)) is not None]
 
 
 def ema(xs, n):
@@ -179,15 +184,7 @@ def ema(xs, n):
     return e
 
 
-def atr_like(xs, n=14):
-    if len(xs) < n + 1:
-        return None
-    return sum(abs(xs[i] - xs[i - 1]) for i in range(len(xs) - n, len(xs))) / n
-
-
 def signal(m5, m15):
-    # Entry uses current M5 price action with M15 directional context.
-    # No fixed score threshold.
     if len(m5) < 16 or len(m15) < 16:
         return None
 
@@ -213,46 +210,44 @@ def signal(m5, m15):
         return "SELL"
     return None
 
+
 def tradable_markets(all_markets):
     out = []
     for m in all_markets:
         if str(m.get("marketStatus", "")).upper() != "TRADEABLE":
             continue
+
         instrument_type = str(m.get("instrumentType", "")).upper()
         epic = str(m.get("epic", "")).upper()
         name = str(m.get("instrumentName", m.get("name", ""))).upper()
-        is_fx = instrument_type == "CURRENCIES"
-        requested = (
-            epic in {"SILVER", "US500", "US100", "US1000"}
-            or "SILVER" in name
-            or "US TECH 100" in name
-            or "TECH 100" in name
-            or "S&P 500" in name
-            or "US 500" in name
-        )
-        if is_fx or requested:
-            if epic:
+        if not epic:
+            continue
+
+        if instrument_type == "CURRENCIES":
+            # Match known popular FX pairs by exact epic or readable market name.
+            if epic in POPULAR_FX or any(n in name for n in POPULAR_NAMES):
                 out.append(m)
+        elif (
+            epic in POPULAR_NON_FX_EPICS
+            or any(n in name for n in POPULAR_NON_FX_NAMES)
+        ):
+            out.append(m)
+
     return sorted(out, key=lambda x: x["epic"])
 
 
 def owned_open_positions(positions, state):
     owned = {}
     open_ids = set()
-
     for item in positions:
-        p = item.get("position", {})
-        deal_id = p.get("dealId")
-        if not deal_id:
-            continue
-        if deal_id in state["owned"]:
+        deal_id = item.get("position", {}).get("dealId")
+        if deal_id and deal_id in state["owned"]:
             owned[deal_id] = item
             open_ids.add(deal_id)
 
     for deal_id in list(state["owned"]):
         if deal_id not in open_ids:
             del state["owned"][deal_id]
-
     return owned
 
 
@@ -271,7 +266,6 @@ def value_per_price(position, current):
 
 
 def tighten_profit_stop(api, item, state_entry, market):
-    """Fast local profit protection with broker-stop as a second layer."""
     p = item.get("position", {})
     deal_id = p.get("dealId")
     direction = str(p.get("direction", "")).upper()
@@ -299,11 +293,9 @@ def tighten_profit_stop(api, item, state_entry, market):
 
     if peak >= PROFIT_PROTECT_TRIGGER:
         state_entry["protected_profit"] = True
-
     if not state_entry.get("protected_profit", False):
         return
 
-    # Dynamic floor: as peak profit grows, more of that profit is protected.
     if peak >= PROFIT_ARM:
         locked_profit = max(PROFIT_LOCK, peak * (1.0 - PROFIT_TRAIL_RATIO))
     elif peak >= PROFIT_STAGE_2:
@@ -311,21 +303,13 @@ def tighten_profit_stop(api, item, state_entry, market):
     else:
         locked_profit = PROFIT_FLOOR
 
-    # Local close is the authoritative fallback. It works even when Capital
-    # rejects a broker stop because of instrument-specific stop distances.
     if upl <= locked_profit:
         try:
             if DRY_RUN:
-                log.info(
-                    "DRY RUN | PROFIT CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f",
-                    deal_id, upl, peak, locked_profit
-                )
+                log.info("DRY RUN | PROFIT CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f", deal_id, upl, peak, locked_profit)
             else:
                 api.close_position(deal_id)
-                log.info(
-                    "PROFIT CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f",
-                    deal_id, upl, peak, locked_profit
-                )
+                log.info("PROFIT CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f", deal_id, upl, peak, locked_profit)
             state_entry["close_requested"] = True
         except Exception as e:
             log.warning("PROFIT CLOSE FAILED | %s | UPL=%.2f | %s", deal_id, upl, e)
@@ -335,43 +319,29 @@ def tighten_profit_stop(api, item, state_entry, market):
     if not vpp:
         return
 
-    target = (
-        entry + locked_profit / vpp
-        if direction == "BUY"
-        else entry - locked_profit / vpp
-    )
+    target = entry + locked_profit / vpp if direction == "BUY" else entry - locked_profit / vpp
     old = state_entry.get("stop_level")
     old = float(old) if old is not None else None
-    improve = (
-        old is None
-        or (direction == "BUY" and target > old)
-        or (direction == "SELL" and target < old)
-    )
+    improve = old is None or (direction == "BUY" and target > old) or (direction == "SELL" and target < old)
     if not improve:
         return
 
     if DRY_RUN:
         state_entry["stop_level"] = target
-        log.info(
-            "DRY RUN | PROFIT PROTECT | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f | STOP=%.8f",
-            deal_id, upl, peak, locked_profit, target
-        )
+        log.info("DRY RUN | PROFIT PROTECT | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f | STOP=%.8f", deal_id, upl, peak, locked_profit, target)
         return
 
     try:
         api.update_position(deal_id, target)
         state_entry["stop_level"] = target
         state_entry["last_stop_update_ok"] = True
-        log.info(
-            "PROFIT PROTECT | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f | STOP=%.8f",
-            deal_id, upl, peak, locked_profit, target
-        )
+        log.info("PROFIT PROTECT | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f | STOP=%.8f", deal_id, upl, peak, locked_profit, target)
     except Exception as e:
         state_entry["last_stop_update_ok"] = False
         log.warning("BROKER PROFIT STOP FAILED | %s | %s", deal_id, e)
 
 
-def normalize_size(api, epic, configured_size, rules_cache):
+def normalize_size(api, epic, rules_cache, desired_size):
     now = time.time()
     row = rules_cache.get(epic)
     if row and now - row.get("ts", 0) < MARKET_RULES_REFRESH_SECONDS:
@@ -381,19 +351,32 @@ def normalize_size(api, epic, configured_size, rules_cache):
         rules = details.get("dealingRules", {})
         rules_cache[epic] = {"ts": now, "rules": rules}
 
-    min_size = float(rules.get("minDealSize", {}).get("value", configured_size) or configured_size)
-    max_size = float(rules.get("maxDealSize", {}).get("value", configured_size) or configured_size)
+    min_size = float(rules.get("minDealSize", {}).get("value", 0) or 0)
+    max_size = float(rules.get("maxDealSize", {}).get("value", 0) or 0)
     increment = float(rules.get("minSizeIncrement", {}).get("value", 0) or 0)
 
-    size = max(float(configured_size), min_size)
+    if min_size <= 0:
+        min_size = 1.0
+    if max_size <= 0:
+        max_size = min_size * 100.0
+
+    # No fixed 0.01. The bot selects a size from the broker's valid range,
+    # based on current account balance and a small risk budget.
+    try:
+        balance = float(api.get("/api/v1/accounts").get("accounts", [{}])[0].get("balance", {}).get("balance", 0) or 0)
+    except Exception:
+        balance = 0.0
+
+    risk_budget = max(1.0, balance * 0.01)
+    # Start near the broker minimum and let profitable add-ons scale separately.
+    desired = min_size if risk_budget <= 0 else max(min_size, min(max_size, min_size * max(1.0, risk_budget / 10.0)))
+
     if increment > 0:
-        steps = round(size / increment)
-        size = steps * increment
-        if size < min_size:
-            size = min_size
-    if size > max_size:
-        raise RuntimeError(f"SIZE_TOO_LARGE configured={configured_size} max={max_size}")
-    return size
+        steps = max(1, round(desired / increment))
+        desired = steps * increment
+        desired = max(min_size, desired)
+
+    return min(desired, max_size)
 
 
 def open_bot_position(api, epic, direction, size, state, market):
@@ -406,7 +389,6 @@ def open_bot_position(api, epic, direction, size, state, market):
         log.warning("OPEN %s returned no dealReference", epic)
         return
 
-    # Capital.com requires confirmation to obtain the permanent dealId.
     confirmed = None
     for _ in range(5):
         try:
@@ -417,8 +399,7 @@ def open_bot_position(api, epic, direction, size, state, market):
             pass
         time.sleep(0.4)
 
-    affected = (confirmed or {}).get("affectedDeals", [])
-    for deal in affected:
+    for deal in (confirmed or {}).get("affectedDeals", []):
         deal_id = deal.get("dealId") or deal.get("dealReference")
         if deal_id:
             state["owned"][deal_id] = {
@@ -428,14 +409,10 @@ def open_bot_position(api, epic, direction, size, state, market):
                 "stop_level": None,
                 "protected_profit": False,
                 "last_stop_update_ok": False,
+                "add_on_count": 0,
             }
             log.info("OWNED POSITION | %s | %s", deal_id, epic)
 
-
-def reconcile_owned_state(positions, state):
-    # Intentionally do not adopt arbitrary live positions.
-    # Ownership is created only from this bot's own order confirmation.
-    return
 
 def refresh_history(api, epic, cache, resolution):
     now = time.time()
@@ -450,32 +427,16 @@ def refresh_history(api, epic, cache, resolution):
     return cache.get(key, {}).get("xs", [])
 
 
-def refresh_history_budget(api, markets, cache, budget=6):
+def refresh_history_budget(api, markets, cache, budget=12):
+    # Refresh the complete small popular universe instead of starving
+    # important assets behind a large FX list.
     refreshed = 0
-    # Never let the large FX universe starve metals/indices. Capital epics are
-    # not guaranteed to be literally GOLD/SILVER/US100, so classify by both
-    # epic and instrument name.
-    priority = []
-    other = []
     for market in markets:
-        epic = str(market.get("epic", "")).upper()
-        name = str(market.get("instrumentName", market.get("name", ""))).upper()
-        is_priority = (
-            epic in {"SILVER", "US500", "US100", "US1000"}
-            or "SILVER" in name
-            or "US TECH 100" in name
-            or "TECH 100" in name
-            or "S&P 500" in name
-            or "US 500" in name
-        )
-        (priority if is_priority else other).append(epic)
-    # Refresh every requested metal/index first; only then spend remaining
-    # budget on FX. This fixes the silent starvation where GOLD/SILVER could
-    # be tradable but never receive enough M5/M15 history to generate a signal.
-    ordered = priority + sorted(other)
-    for epic in ordered:
         if refreshed >= budget:
             break
+        epic = str(market.get("epic", "")).upper()
+        if not epic:
+            continue
         try:
             m5_key = f"{epic}:{PRICE_RESOLUTION}"
             m15_key = f"{epic}:{TREND_RESOLUTION}"
@@ -492,6 +453,7 @@ def refresh_history_budget(api, markets, cache, budget=6):
             log.warning("%s history refresh failed: %s", epic, e)
     return refreshed
 
+
 def run():
     api = Capital()
     api.session()
@@ -505,26 +467,21 @@ def run():
     pending_epics = {}
 
     log.info(
-        "HYBRID BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | PROFIT_PROTECT=+%.2f/+%.2f/+%.2f | FX+SILVER+US500+US100/US1000 | ADD_ON>=%.2f AED | MAX_LOSS=%.2f AED",
-        DRY_RUN,
-        PROFIT_PROTECT_TRIGGER,
-        PROFIT_STAGE_2,
-        PROFIT_ARM,
-        ADD_ON_MIN_PROFIT_AED,
-        MAX_INITIAL_LOSS,
+        "POPULAR-ASSET BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | DYNAMIC_SIZE | PROFIT_ADD_ON>=%.2f AED | MAX_LOSS=%.2f AED | ASSETS=POPULAR_ONLY",
+        DRY_RUN, ADD_ON_MIN_PROFIT_AED, MAX_INITIAL_LOSS
     )
 
     while True:
         try:
-            # One market snapshot covers all currency instruments and avoids
-            # hammering the REST API once per pair every 2 seconds.
             now = time.time()
             if now - market_cache["ts"] >= MARKET_REFRESH_SECONDS or not market_cache["markets"]:
                 try:
                     market_cache["markets"] = tradable_markets(api.markets())
                     market_cache["ts"] = now
+                    log.info("ASSET_UNIVERSE | %d popular tradeable markets", len(market_cache["markets"]))
                 except Exception as e:
                     log.warning("MARKETS SNAPSHOT FAILED | %s | using cached markets", e)
+
             markets = market_cache["markets"]
             market_by_epic = {m["epic"]: m for m in markets}
 
@@ -547,19 +504,15 @@ def run():
                 elif time.time() - pending_epics[locked_epic] > 120:
                     del pending_epics[locked_epic]
 
-            reconcile_owned_state(positions, state)
             owned = owned_open_positions(positions, state)
-            refresh_history_budget(api, list(market_by_epic.values()), history, budget=6)
+            refresh_history_budget(api, list(market_by_epic.values()), history, budget=12)
 
-            # Profit protection runs first, every 2 seconds.
+            # Manage existing bot-owned positions first.
             for deal_id, item in owned.items():
                 epic = item.get("market", {}).get("epic")
                 if epic in market_by_epic:
                     tighten_profit_stop(api, item, state["owned"][deal_id], market_by_epic[epic])
 
-            # Entries use the same M5+M15 signal for FX and the requested
-            # metals/indices. Existing positions on the same epic block a new
-            # entry, including manual/other-bot positions.
             for epic, market in market_by_epic.items():
                 try:
                     m5 = history.get(f"{epic}:{PRICE_RESOLUTION}", {}).get("xs", [])
@@ -571,15 +524,8 @@ def run():
                     if px is None:
                         continue
 
-                    # Inject the current quote into the minute history for a
-                    # fresh decision without requesting history every 2 sec.
-                    working_m5 = (m5 + [px])[-120:]
-                    sig = signal(working_m5, m15)
-
-                    same_epic = [
-                        x for x in positions
-                        if x.get("market", {}).get("epic") == epic
-                    ]
+                    sig = signal((m5 + [px])[-120:], m15)
+                    same_epic = [x for x in positions if x.get("market", {}).get("epic") == epic]
                     same_direction = [
                         x for x in same_epic
                         if str(x.get("position", {}).get("direction", "")).upper() == sig
@@ -592,43 +538,55 @@ def run():
                     can_open = not same_epic and epic not in pending_epics
                     add_on = False
 
-                    # Add only when the existing position is already profitable
-                    # and the live price has extended in the same direction.
+                    # Profitable trend continuation: each existing position can
+                    # unlock another entry when profit and price extension are
+                    # both present. No hard 0.01 size and no arbitrary add-on cap.
                     if same_direction and not opposite_direction:
                         profitable = [
                             x for x in same_direction
                             if float(x.get("position", {}).get("upl", 0) or 0) >= ADD_ON_MIN_PROFIT_AED
                         ]
-                        levels = [
-                            float(x.get("position", {}).get("level", 0) or 0)
-                            for x in profitable
-                            if x.get("position", {}).get("level") is not None
-                        ]
-                        if levels:
-                            avg_entry = sum(levels) / len(levels)
+                        if profitable:
+                            avg_entry = sum(
+                                float(x.get("position", {}).get("level", 0) or 0)
+                                for x in profitable
+                            ) / len(profitable)
                             recent = m5[-4:]
                             recent_range = max(max(recent) - min(recent), 1e-12)
                             extension = (px - avg_entry) if sig == "BUY" else (avg_entry - px)
                             add_on = extension >= recent_range * ADD_ON_MIN_MOVE_RATIO
-                            can_open = add_on
+                            # Prevent unlimited rapid-fire additions while still
+                            # allowing repeated additions as profit continues.
+                            if add_on:
+                                add_on_key = f"{epic}:{sig}"
+                                last_add = order_cooldown.get(add_on_key, 0.0)
+                                add_on = time.time() - last_add >= ORDER_COOLDOWN_SECONDS
+                                can_open = add_on
 
                     if sig and can_open:
-                        last_order = order_cooldown.get(epic, 0.0)
+                        cooldown_key = f"{epic}:{sig}" if add_on else epic
+                        last_order = order_cooldown.get(cooldown_key, 0.0)
                         if time.time() - last_order < ORDER_COOLDOWN_SECONDS:
                             continue
+
                         try:
-                            order_size = normalize_size(api, epic, SIZE, market_rules)
-                            if order_size != SIZE:
-                                log.info("SIZE NORMALIZED | %s | configured=%.4f -> broker_min=%.4f", epic, SIZE, order_size)
+                            order_size = normalize_size(api, epic, market_rules, desired_size=None)
+                            log.info("DYNAMIC SIZE | %s | selected=%.4f", epic, order_size)
+
                             pending_epics[epic] = time.time()
+                            before = len(position_cache["positions"])
                             open_bot_position(api, epic, sig, order_size, state, market)
+
                             try:
-                                position_cache["positions"] = api.positions()
+                                fresh_positions = api.positions()
+                                position_cache["positions"] = fresh_positions
                                 position_cache["ts"] = time.time()
-                                pending_epics.pop(epic, None)
+                                if any(x.get("market", {}).get("epic") == epic for x in fresh_positions):
+                                    pending_epics.pop(epic, None)
                             except Exception:
                                 pass
-                            order_cooldown[epic] = time.time()
+
+                            order_cooldown[cooldown_key] = time.time()
                             log.info(
                                 "ENTRY | %s -> %s | size=%.4f | mode=%s | existing=%d",
                                 epic, sig, order_size,
@@ -637,6 +595,7 @@ def run():
                             )
                         except Exception as e:
                             log.warning("%s ENTRY FAILED | %s", epic, e)
+
                 except Exception as e:
                     log.warning("%s scan failed: %s", epic, e)
 
