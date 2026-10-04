@@ -568,7 +568,7 @@ def run():
                             continue
 
                         try:
-                                            order_size = normalize_size(api, epic, market_rules)
+                            order_size = normalize_size(api, epic, market_rules)
                             log.info("DYNAMIC SIZE | %s | selected=%.4f", epic, order_size)
 
                             pending_epics[epic] = time.time()
