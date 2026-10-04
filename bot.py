@@ -544,7 +544,7 @@ def run():
             for locked_epic in list(pending_epics):
                 if locked_epic in live_epics:
                     pending_epics[locked_epic] = time.time()
-                elif time.time() - pending_epics[locked_epic] > 20:
+                elif time.time() - pending_epics[locked_epic] > 120:
                     del pending_epics[locked_epic]
 
             reconcile_owned_state(positions, state)
