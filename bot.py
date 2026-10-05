@@ -16,8 +16,9 @@ MAX_POSITIONS = 20
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 
 # Fast, but not an uncontrolled order burst.
-ENTRY_COOLDOWN = 1.50
-MIN_REENTRY_MOVE = 0.05
+ENTRY_COOLDOWN = 2.50
+MIN_REENTRY_MOVE = 0.08
+MAX_SAME_DIRECTION = 2
 
 # Micro-scalp exit.
 PROFIT_TARGET = 0.10
@@ -372,7 +373,7 @@ def run():
     stop = time.time() + RUN_SECONDS
 
     log.info(
-        "GOLD MICRO SCALPER | DRY_RUN=%s | EPIC=GOLD | LOTS=0.01 | TARGET=+0.10 AED | MAX_LOSS=-15 AED | MAX_POS=%d",
+        "GOLD MICRO SCALPER | DRY_RUN=%s | EPIC=GOLD | LOTS=0.01 | TARGET=+0.10 AED | MAX_LOSS=-15 AED | MAX_POS=%d | MAX_SAME_DIRECTION=%d",
         DRY_RUN, MAX_POSITIONS
     )
 
@@ -390,7 +391,7 @@ def run():
         try:
             # Position management runs independently of entry decisions.
             # This fixes the previous issue where exits could be missed.
-            if now - last_monitor >= 0.25:
+            if now - last_monitor >= 0.75:
                 manage_positions(api, state)
                 save_state(state)
                 last_monitor = now
@@ -407,6 +408,11 @@ def run():
                 return
 
             if last_dir == direction and last_px is not None and abs(px - last_px) < MIN_REENTRY_MOVE:
+                return
+
+            same_direction = sum(1 for x in positions if str(x.get("position", {}).get("direction", "")).upper() == direction)
+            if same_direction >= MAX_SAME_DIRECTION:
+                log.info("ENTRY BLOCKED | GOLD | direction=%s | same_direction=%d/%d", direction, same_direction, MAX_SAME_DIRECTION)
                 return
 
             log.info(
