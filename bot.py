@@ -19,6 +19,7 @@ RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 ENTRY_COOLDOWN = 2.50
 MIN_REENTRY_MOVE = 0.08
 MAX_SAME_DIRECTION = 2
+ORDER_CONFIRM_TIMEOUT = 5.0
 
 # Micro-scalp exit.
 PROFIT_TARGET = 0.10
@@ -203,7 +204,7 @@ def close_confirmed(api, deal_id, reason, state):
                     affected = c.get("affectedDeals") or []
                     log.info(
                         "CLOSE CONFIRM | deal=%s | ref=%s | status=%s | affected=%d | attempt=%d/8",
-                        deal_id, ref, status, len(affected), attempt + 1
+                        deal_id, ref, status, len(affected), attempt
                     )
                     if status in {"REJECTED", "CANCELLED", "ERROR"}:
                         log.error("CLOSE REJECTED | deal=%s | reason=%s", deal_id, c)
@@ -247,11 +248,10 @@ def manage_positions(api, state):
             close_confirmed(api, deal_id, f"MAX_LOSS upl={upl:.2f}", state)
             continue
 
-        # First protect the small profit.
+        # Protect profit with a trailing floor after the target is reached.
         if upl >= PROFIT_TARGET:
             peak = float(entry["peak"])
             floor = max(PROFIT_LOCK, peak - TRAIL_GIVEBACK)
-
             if upl <= floor:
                 close_confirmed(
                     api,
@@ -259,9 +259,6 @@ def manage_positions(api, state):
                     f"PROFIT_PROTECTION upl={upl:.2f} peak={peak:.2f} floor={floor:.2f}",
                     state,
                 )
-            else:
-                # Micro scalp: take the target immediately.
-                close_confirmed(api, deal_id, f"MICRO_TARGET upl={upl:.2f}", state)
 
         log.info(
             "POSITION MONITOR | GOLD | %s | dir=%s | upl=%+.2f | peak=%+.2f",
@@ -287,7 +284,10 @@ def open_confirmed(api, direction, size, state):
             log.error("ORDER REJECTED | GOLD | no dealReference | %s", result)
             return False
 
-        for attempt in range(12):
+        confirm_deadline = time.time() + ORDER_CONFIRM_TIMEOUT
+        attempt = 0
+        while time.time() < confirm_deadline:
+            attempt += 1
             c = api.confirm(ref)
             status = str(c.get("dealStatus", "")).upper()
             affected = c.get("affectedDeals") or []
@@ -314,7 +314,7 @@ def open_confirmed(api, direction, size, state):
                         log.info("OWNED POSITION | %s | GOLD | %s", did, direction)
                 return True
 
-            time.sleep(0.35)
+            time.sleep(0.25)
 
         # Recover an accepted order that did not expose affectedDeals immediately.
         for item in gold_positions(api):
