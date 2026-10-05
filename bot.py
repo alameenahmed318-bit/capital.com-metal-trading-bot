@@ -285,7 +285,7 @@ def manage_position(api, item, entry_state):
     peak = max(float(entry_state.get("peak_upl", 0) or 0), upl)
     entry_state["peak_upl"] = peak
 
-    # Hard maximum loss: close at -15 AED or worse.
+    # Hard maximum loss: close ANY live GOLD position at -15 AED or worse.
     if upl <= -MAX_LOSS_AED:
         api.close(deal_id)
         entry_state["close_requested"] = True
@@ -573,10 +573,30 @@ def run():
             last_position_refresh = now
             owned = owned_positions(positions, state)
 
-            for deal_id, item in list(owned.items()):
-                manage_position(api, item, state["owned"][deal_id])
+            # Manage EVERY live GOLD position, not only positions saved in bot_state.
+            # This guarantees the -15 AED hard-loss rule is applied after restarts
+            # or when Capital confirms a position asynchronously.
+            for item in list(positions):
+                item_epic = str(item.get("market", {}).get("epic", "")).upper()
+                if item_epic != epic:
+                    continue
+                p = item.get("position", {})
+                deal_id = p.get("dealId")
+                if not deal_id:
+                    continue
+                entry_state = state["owned"].setdefault(
+                    deal_id,
+                    {
+                        "epic": epic,
+                        "direction": str(p.get("direction", "")).upper(),
+                        "strong_signal": False,
+                        "peak_upl": 0.0,
+                        "opened_at": time.time(),
+                    },
+                )
+                manage_position(api, item, entry_state)
 
-            # Re-read after any profitable close, but never close a losing position.
+            # Re-read after any close request.
             positions = api.positions()
             owned = owned_positions(positions, state)
             gold_positions = [
