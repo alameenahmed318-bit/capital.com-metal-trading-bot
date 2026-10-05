@@ -16,14 +16,14 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 # GOLD-ONLY MICRO SCALPER
 EPIC_ALLOWLIST = {"GOLD", "XAUUSD"}
-SIZE = float(os.getenv("TRADE_SIZE", "0.10"))
-SCAN_SECONDS = float(os.getenv("SCAN_SECONDS", "1"))
+SIZE = 0.10  # fixed GOLD size; workflow variables cannot override it
+SCAN_SECONDS = 1.0  # fixed fast scan
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
-MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "10"))
-ENTRY_COOLDOWN_SECONDS = float(os.getenv("ORDER_COOLDOWN_SECONDS", "10"))
-MAX_INITIAL_LOSS_AED = float(os.getenv("MAX_INITIAL_LOSS_AED", "10"))
-PROFIT_TRIGGER_AED = float(os.getenv("PROFIT_PROTECT_TRIGGER_AED", "0.10"))
-PROFIT_FLOOR_AED = float(os.getenv("PROFIT_FLOOR_AED", "0.10"))
+MAX_POSITIONS = 10
+ENTRY_COOLDOWN_SECONDS = 10.0
+MAX_INITIAL_LOSS_AED = 10.0
+PROFIT_TRIGGER_AED = 0.10
+PROFIT_FLOOR_AED = 0.10
 PRICE_RESOLUTION = "MINUTE_1"
 PRICE_HISTORY = 2
 
