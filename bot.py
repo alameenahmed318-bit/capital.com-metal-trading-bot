@@ -28,9 +28,8 @@ PROFIT_TRIGGER_AED = 0.05
 PROFIT_FLOOR_AED = 0.05
 TRAIL_GIVEBACK_AED = 0.03
 
-# IMPORTANT: losing positions are NEVER closed by this bot.
-# There is deliberately no stop-loss/maximum-loss close in manage_position().
-# A position may only be closed by profit protection while it is still profitable.
+# Risk rule: close a losing position when UPL reaches -15 AED.
+MAX_LOSS_AED = 15.0
 
 STATE_FILE = Path("bot_state.json")
 WS_URL = "wss://api-streaming-capital.backend-capital.com/connect"
@@ -286,7 +285,13 @@ def manage_position(api, item, entry_state):
     peak = max(float(entry_state.get("peak_upl", 0) or 0), upl)
     entry_state["peak_upl"] = peak
 
-    # NEVER close a losing position. This guard is intentional.
+    # Hard maximum loss: close at -15 AED or worse.
+    if upl <= -MAX_LOSS_AED:
+        api.close(deal_id)
+        entry_state["close_requested"] = True
+        log.warning("MAX LOSS CLOSE | %s | UPL=%.2f | LIMIT=-%.2f AED", deal_id, upl, MAX_LOSS_AED)
+        return
+
     if upl <= 0:
         return
 
@@ -482,8 +487,8 @@ def run():
 
     log.info(
         "GOLD REALTIME SCALPER | DRY_RUN=%s | EPIC=%s | LOTS=%.2f | "
-        "SOURCE=WEBSOCKET | PROFIT=+%.2f | LOSING_CLOSE=DISABLED | MAX_POS=%d",
-        DRY_RUN, epic, DESIRED_LOTS, PROFIT_TRIGGER_AED, MAX_POSITIONS,
+        "SOURCE=WEBSOCKET | PROFIT=+%.2f | MAX_LOSS=-%.2f | MAX_POS=%d",
+        DRY_RUN, epic, DESIRED_LOTS, PROFIT_TRIGGER_AED, MAX_LOSS_AED, MAX_POSITIONS,
     )
 
     def on_quote(event_ts, px, bid, ask):
