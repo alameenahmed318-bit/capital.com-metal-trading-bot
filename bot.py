@@ -587,6 +587,8 @@ def run():
             signal, info = realtime_signal(list(samples))
             if not signal or len(gold_positions) >= MAX_POSITIONS:
                 return
+            # INVERT EXECUTION: BUY strategy signal becomes SELL order, and SELL becomes BUY.
+            signal = "SELL" if signal == "BUY" else "BUY"
 
             # Prevent repeated entries on the same impulse/price.
             if now - last_entry < ENTRY_COOLDOWN_SECONDS:
