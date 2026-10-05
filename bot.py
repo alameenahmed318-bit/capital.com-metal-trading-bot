@@ -42,24 +42,43 @@ class Capital:
         })
 
     def session(self):
-        r = self.s.post(
-            BASE + "/api/v1/session",
-            json={
-                "identifier": IDENTIFIER,
-                "password": PASSWORD,
-                "encryptedPassword": False,
-            },
-            timeout=20,
-        )
-        if r.status_code >= 400:
-            raise RuntimeError(f"Capital session failed ({r.status_code}): {r.text[:500]}")
-        self.s.headers.update({
-            "CST": r.headers.get("CST"),
-            "X-SECURITY-TOKEN": r.headers.get("X-SECURITY-TOKEN"),
-        })
+        # Capital can temporarily rate-limit session creation (HTTP 429).
+        # Back off instead of hammering the login endpoint.
+        delay = 5.0
+        for attempt in range(6):
+            r = self.s.post(
+                BASE + "/api/v1/session",
+                json={
+                    "identifier": IDENTIFIER,
+                    "password": PASSWORD,
+                    "encryptedPassword": False,
+                },
+                timeout=20,
+            )
+            if r.status_code == 429:
+                retry_after = r.headers.get("Retry-After")
+                try:
+                    wait = max(delay, float(retry_after))
+                except (TypeError, ValueError):
+                    wait = delay
+                wait = min(wait, 60.0)
+                log.warning("CAPITAL 429 SESSION | retrying in %.1fs | attempt=%d/6", wait, attempt + 1)
+                time.sleep(wait)
+                delay = min(delay * 2.0, 60.0)
+                continue
+            if r.status_code >= 400:
+                raise RuntimeError(f"Capital session failed ({r.status_code}): {r.text[:500]}")
+            self.s.headers.update({
+                "CST": r.headers.get("CST"),
+                "X-SECURITY-TOKEN": r.headers.get("X-SECURITY-TOKEN"),
+            })
+            return
+        raise RuntimeError("Capital session rate-limited after 6 attempts")
 
     def get(self, path, **params):
         r = self.s.get(BASE + path, params=params, timeout=15)
+        if r.status_code == 429:
+            raise RuntimeError(f"Capital GET {path} rate-limited (429)")
         if r.status_code >= 400:
             raise RuntimeError(f"Capital GET {path} failed ({r.status_code}): {r.text[:500]}")
         return r.json()
