@@ -7907,7 +7907,7 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.71,
+      "peak_upl": 1.45,
       "protected_profit": true,
       "stop_level": null
     },
@@ -7943,7 +7943,7 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.46,
+      "peak_upl": 1.2,
       "protected_profit": true,
       "stop_level": null
     },
@@ -7961,7 +7961,7 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.44,
+      "peak_upl": 1.18,
       "protected_profit": true,
       "stop_level": null
     },
@@ -7979,8 +7979,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.23,
-      "protected_profit": false,
+      "peak_upl": 0.97,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67dc-b447-0493-972c0004511e": {
@@ -7997,8 +7997,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.19,
-      "protected_profit": false,
+      "peak_upl": 0.93,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67dc-b7ff-0493-972c0004511e": {
@@ -8015,8 +8015,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.21,
-      "protected_profit": false,
+      "peak_upl": 0.95,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67dc-df36-0493-972c0004511e": {
@@ -8033,8 +8033,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.16,
-      "protected_profit": false,
+      "peak_upl": 0.9,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67dd-0560-0493-972c0004511e": {
@@ -8042,8 +8042,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.02,
-      "protected_profit": false,
+      "peak_upl": 0.76,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67dd-0568-0493-972c0004511e": {
@@ -8060,8 +8060,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.03,
-      "protected_profit": false,
+      "peak_upl": 0.77,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67dd-09a2-0493-972c0004511e": {
@@ -8095,6 +8095,33 @@
       "add_on_count": 0,
       "direction": "SELL",
       "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.72,
+      "protected_profit": true,
+      "stop_level": null
+    },
+    "00000000-67dd-4ed2-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "SELL",
+      "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.11,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-67dd-5381-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "SELL",
+      "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.1,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-67dd-575f-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "BUY",
+      "epic": "GOLD",
       "last_stop_update_ok": false,
       "peak_upl": 0.0,
       "protected_profit": false,
