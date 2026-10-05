@@ -304,12 +304,12 @@ def manage_position(api, item, entry_state):
         log.warning("MAX LOSS CLOSE | %s | UPL=%.2f | LIMIT=-%.2f AED", deal_id, upl, MAX_LOSS_AED)
         return
 
-    if upl <= 0:
+    if upl < 0.10:
         return
 
     strong = bool(entry_state.get("strong_signal", False))
 
-    # First profit target: +0.05 AED.
+    # First profit target: +0.10 AED.
     if not strong and upl >= PROFIT_TRIGGER_AED:
         api.close(deal_id)
         entry_state["close_requested"] = True
