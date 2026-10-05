@@ -8177,7 +8177,25 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.06,
+      "peak_upl": 0.25,
+      "protected_profit": true,
+      "stop_level": null
+    },
+    "00000000-67de-2771-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "SELL",
+      "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.11,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-67de-2b45-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "SELL",
+      "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.1,
       "protected_profit": false,
       "stop_level": null
     }
