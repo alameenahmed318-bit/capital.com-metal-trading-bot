@@ -16,7 +16,7 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 # GOLD-ONLY MICRO SCALPER
 EPIC_ALLOWLIST = {"GOLD", "XAUUSD"}
-SIZE = 0.10  # fixed GOLD size; workflow variables cannot override it
+DESIRED_LOTS = 0.10  # user-facing GOLD lot size
 SCAN_SECONDS = 1.0  # fixed fast scan
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 MAX_POSITIONS = 10
@@ -187,25 +187,42 @@ def gold_market(api):
 
 
 def validate_size(api, epic):
+    """Convert requested MT-style GOLD lots into Capital API deal size."""
     details = api.market_details(epic)
     rules = details.get("dealingRules", {})
+    market = details.get("market", details)
 
     minimum = float(rules.get("minDealSize", {}).get("value", 0) or 0)
     maximum = float(rules.get("maxDealSize", {}).get("value", 0) or 0)
     increment = float(rules.get("minSizeIncrement", {}).get("value", 0) or 0)
 
-    if minimum and SIZE < minimum:
-        raise RuntimeError(f"0.10 lot is below GOLD broker minimum {minimum}")
-    if maximum and SIZE > maximum:
-        raise RuntimeError(f"0.10 lot is above GOLD broker maximum {maximum}")
+    # Capital API /positions uses deal size, not necessarily MT5 lots.
+    # GOLD is commonly 100 units per 1.00 lot, so 0.10 lot becomes 10 units.
+    lot_size = market.get("lotSize") or details.get("lotSize") or details.get("contractSize") or 100
+    lot_size = float(lot_size)
+    size = DESIRED_LOTS * lot_size
+
+    if minimum and size < minimum:
+        raise RuntimeError(
+            f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f} API size, below broker minimum {minimum}"
+        )
+    if maximum and size > maximum:
+        raise RuntimeError(
+            f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f} API size, above broker maximum {maximum}"
+        )
     if increment:
-        steps = round(SIZE / increment)
+        steps = round(size / increment)
         normalized = steps * increment
-        if abs(normalized - SIZE) > 1e-9:
-            raise RuntimeError(f"0.10 lot is incompatible with GOLD increment {increment}")
+        if abs(normalized - size) > 1e-9:
+            raise RuntimeError(
+                f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f} API size, incompatible with broker increment {increment}"
+            )
 
-    return SIZE
-
+    log.info(
+        "GOLD SIZE CHECK | lots=%.2f | lot_size=%.4f | api_size=%.4f | min=%.4f | step=%.4f",
+        DESIRED_LOTS, lot_size, size, minimum, increment,
+    )
+    return size
 
 def owned_positions(positions, state):
     out = {}
@@ -305,8 +322,8 @@ def run():
     validate_size(api, epic)
 
     log.info(
-        "GOLD MICRO SCALPER | DRY_RUN=%s | EPIC=%s | SIZE=%.2f | SCAN=%.1fs | MAX_POS=%d | PROFIT=+%.2f | LOSS=-%.2f",
-        DRY_RUN, epic, SIZE, SCAN_SECONDS, MAX_POSITIONS,
+        "GOLD MICRO SCALPER | DRY_RUN=%s | EPIC=%s | LOTS=%.2f | SCAN=%.1fs | MAX_POS=%d | PROFIT=+%.2f | LOSS=-%.2f",
+        DRY_RUN, epic, DESIRED_LOTS, SCAN_SECONDS, MAX_POSITIONS,
         PROFIT_TRIGGER_AED, MAX_INITIAL_LOSS_AED,
     )
 
@@ -343,7 +360,7 @@ def run():
                     open_position(api, epic, signal, size, state)
                     last_entry = now
                     log.info(
-                        "ENTRY | %s | %s | size=%.2f | positions=%d/%d | move1=%.5f move3=%.5f move5=%.5f",
+                        "ENTRY | %s | %s | size=%.4f | positions=%d/%d | move1=%.5f move3=%.5f move5=%.5f",
                         epic, signal, size, len(gold_positions), MAX_POSITIONS,
                         moves.get("move1", 0), moves.get("move3", 0), moves.get("move5", 0),
                     )
