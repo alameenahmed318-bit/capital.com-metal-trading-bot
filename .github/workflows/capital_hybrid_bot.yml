@@ -15,7 +15,7 @@ permissions:
 jobs:
   bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
@@ -33,8 +33,16 @@ jobs:
           CAPITAL_EMAIL: ${{ secrets.CAPITAL_EMAIL }}
           CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
           DRY_RUN: "false"
-          RUN_SECONDS: "240"
-        run: python bot.py
+          RUN_SECONDS: "330"
+        run: |
+          # Keep the bot alive across short API/WebSocket interruptions.
+          # Each cycle is short enough to be restarted by the 5-minute scheduler.
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            echo "=== GOLD BOT CYCLE $i/12 ==="
+            python bot.py || true
+            echo "=== GOLD BOT CYCLE $i COMPLETE ==="
+            sleep 5
+          done
 
       - name: Save GOLD bot state
         if: always()
