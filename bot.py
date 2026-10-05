@@ -297,16 +297,38 @@ def open_position(api, epic, direction, size, state):
 
     deal_ref = result.get("dealReference")
     if not deal_ref:
-        log.warning("OPEN FAILED | no dealReference | response=%s", result)
+        log.error("OPEN REJECTED | no dealReference | response=%s", result)
         return False
 
     for attempt in range(8):
         try:
             confirmed = api.confirm(deal_ref)
             status = str(confirmed.get("dealStatus", "")).upper()
+
+            # Capital can return the rejection reason in different fields.
+            reason = (
+                confirmed.get("reason")
+                or confirmed.get("statusReason")
+                or confirmed.get("errorCode")
+                or confirmed.get("errorMessage")
+                or confirmed.get("rejectReason")
+                or confirmed.get("description")
+            )
             affected = confirmed.get("affectedDeals", [])
-            log.info("OPEN CONFIRM | ref=%s | status=%s | affected=%d",
-                     deal_ref, status, len(affected))
+
+            log.info(
+                "OPEN CONFIRM | ref=%s | status=%s | reason=%s | affected=%d",
+                deal_ref, status, reason or "NONE", len(affected),
+            )
+
+            if status in {"REJECTED", "CANCELLED", "ERROR"}:
+                log.error(
+                    "GOLD ORDER REJECTED | epic=%s | direction=%s | size=%.4f | "
+                    "status=%s | reason=%s | response=%s",
+                    epic, direction, size, status, reason or "UNKNOWN", confirmed,
+                )
+                return False
+
             if affected:
                 for deal in affected:
                     deal_id = deal.get("dealId") or deal.get("dealReference")
@@ -319,14 +341,23 @@ def open_position(api, epic, direction, size, state):
                         }
                         log.info("OWNED POSITION | %s | %s | %s", deal_id, epic, direction)
                 return True
+
+            if status in {"ACCEPTED", "OPEN"}:
+                time.sleep(0.25)
+                continue
+
         except Exception as e:
-            log.warning("OPEN CONFIRM RETRY | ref=%s | attempt=%d/8 | %s",
-                        deal_ref, attempt + 1, e)
+            log.warning(
+                "OPEN CONFIRM RETRY | ref=%s | attempt=%d/8 | %s",
+                deal_ref, attempt + 1, e,
+            )
         time.sleep(0.25)
 
-    log.warning("OPEN UNCONFIRMED | ref=%s | no affected deal returned", deal_ref)
+    log.error(
+        "OPEN UNCONFIRMED | ref=%s | epic=%s | direction=%s | size=%.4f",
+        deal_ref, epic, direction, size,
+    )
     return False
-
 
 def run():
     api = Capital()
