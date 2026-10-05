@@ -17,7 +17,7 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 # GOLD ONLY - REAL-TIME WEBSOCKET MICRO SCALPER
 EPIC_ALLOWLIST = {"GOLD", "XAUUSD"}
-DESIRED_LOTS = 0.30
+DESIRED_LOTS = 0.01
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 
 # Entry / exit rules
