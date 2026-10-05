@@ -28,23 +28,13 @@ ADD_ON_MIN_MOVE_RATIO = float(os.getenv("ADD_ON_MIN_MOVE_RATIO", "0.25"))
 ORDER_COOLDOWN_SECONDS = int(os.getenv("ORDER_COOLDOWN_SECONDS", "120"))
 MARKET_RULES_REFRESH_SECONDS = int(os.getenv("MARKET_RULES_REFRESH_SECONDS", "3600"))
 
-# Only liquid, widely followed instruments. We intentionally do NOT trade
-# every currency offered by Capital.com.
-POPULAR_FX = {
-    "EURUSD", "USDCHF", "USDCAD", "NZDUSD",
-}
-POPULAR_NAMES = (
-    "EUR/USD", "USD/CHF", "USD/CAD", "NZD/USD",
-)
-POPULAR_NON_FX_EPICS = {"GOLD", "SILVER", "US500", "US100", "US1000"}
-POPULAR_NON_FX_NAMES = (
-    "GOLD", "XAU", "SILVER", "XAG", "S&P 500", "US 500",
-    "US TECH 100", "TECH 100", "NASDAQ 100",
-)
+# GOLD ONLY. No FX, silver, indices, oil, crypto, or other instruments.
+GOLD_EPICS = {"GOLD", "XAUUSD"}
+GOLD_NAMES = ("GOLD", "XAU")
 
 STATE_FILE = Path("bot_state.json")
 
-log = logging.getLogger("hybrid")
+log = logging.getLogger("gold_only")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
@@ -183,28 +173,46 @@ def ema(xs, n):
 
 
 def signal(m5, m15):
-    if len(m5) < 16 or len(m15) < 16:
+    # Stronger GOLD setup: M15 trend + M5 trend alignment + pullback/reclaim
+    # + current momentum. This is intentionally selective rather than using
+    # a single EMA cross as the entry trigger.
+    if len(m5) < 30 or len(m15) < 30:
         return None
 
-    m5_fast, m5_slow = ema(m5, 5), ema(m5, 13)
-    p5_fast, p5_slow = ema(m5[:-1], 5), ema(m5[:-1], 13)
-    m15_fast, m15_slow = ema(m15, 5), ema(m15, 13)
-    if not all(v is not None for v in (m5_fast, m5_slow, p5_fast, p5_slow, m15_fast, m15_slow)):
+    m5_fast, m5_slow = ema(m5, 8), ema(m5, 21)
+    m15_fast, m15_slow = ema(m15, 9), ema(m15, 21)
+    p5_fast, p5_slow = ema(m5[:-1], 8), ema(m5[:-1], 21)
+    if not all(v is not None for v in (m5_fast, m5_slow, m15_fast, m15_slow, p5_fast, p5_slow)):
         return None
 
-    recent = m5[-4:]
-    move = recent[-1] - recent[0]
-    range_ref = max(max(recent) - min(recent), abs(move), 1e-12)
-    cross_up = p5_fast <= p5_slow and m5_fast > m5_slow
-    cross_dn = p5_fast >= p5_slow and m5_fast < m5_slow
-    momentum_up = move > 0 and move / range_ref >= 0.20
-    momentum_dn = move < 0 and abs(move) / range_ref >= 0.20
-    trend_up = m15_fast >= m15_slow
-    trend_dn = m15_fast <= m15_slow
+    last = m5[-1]
+    prev = m5[-2]
+    recent = m5[-6:]
+    recent_high = max(recent)
+    recent_low = min(recent)
+    recent_range = max(recent_high - recent_low, 1e-12)
 
-    if trend_up and (cross_up or momentum_up):
+    trend_up = m15_fast > m15_slow
+    trend_dn = m15_fast < m15_slow
+    m5_up = m5_fast > m5_slow
+    m5_dn = m5_fast < m5_slow
+
+    # Reclaim/pullback: price must be close enough to the fast EMA and then
+    # move away from it in the trend direction.
+    pullback_up = prev <= p5_fast * 1.0015 and last > m5_fast
+    pullback_dn = prev >= p5_fast * 0.9985 and last < m5_fast
+
+    # Strong current movement relative to the recent GOLD range.
+    momentum_up = (last - prev) > recent_range * 0.12
+    momentum_dn = (prev - last) > recent_range * 0.12
+
+    # Avoid entries in the middle of a dead/flat range.
+    expansion_up = last >= recent_low + recent_range * 0.58
+    expansion_dn = last <= recent_high - recent_range * 0.58
+
+    if trend_up and m5_up and (pullback_up or (last > m5_fast and prev < last)) and momentum_up and expansion_up:
         return "BUY"
-    if trend_dn and (cross_dn or momentum_dn):
+    if trend_dn and m5_dn and (pullback_dn or (last < m5_fast and prev > last)) and momentum_dn and expansion_dn:
         return "SELL"
     return None
 
@@ -214,23 +222,12 @@ def tradable_markets(all_markets):
     for m in all_markets:
         if str(m.get("marketStatus", "")).upper() != "TRADEABLE":
             continue
-
-        instrument_type = str(m.get("instrumentType", "")).upper()
         epic = str(m.get("epic", "")).upper()
         name = str(m.get("instrumentName", m.get("name", ""))).upper()
         if not epic:
             continue
-
-        if instrument_type == "CURRENCIES":
-            # Match known popular FX pairs by exact epic or readable market name.
-            if epic in POPULAR_FX or any(n in name for n in POPULAR_NAMES):
-                out.append(m)
-        elif (
-            epic in POPULAR_NON_FX_EPICS
-            or any(n in name for n in POPULAR_NON_FX_NAMES)
-        ):
+        if epic in GOLD_EPICS or any(n in name for n in GOLD_NAMES):
             out.append(m)
-
     return sorted(out, key=lambda x: x["epic"])
 
 
@@ -358,23 +355,20 @@ def normalize_size(api, epic, rules_cache):
     if max_size <= 0:
         max_size = min_size * 100.0
 
-    # No fixed 0.01. The bot selects a size from the broker's valid range,
-    # based on current account balance and a small risk budget.
-    try:
-        balance = float(api.get("/api/v1/accounts").get("accounts", [{}])[0].get("balance", {}).get("balance", 0) or 0)
-    except Exception:
-        balance = 0.0
-
-    risk_budget = max(1.0, balance * 0.01)
-    # Start near the broker minimum and let profitable add-ons scale separately.
-    desired = min_size if risk_budget <= 0 else max(min_size, min(max_size, min_size * max(1.0, risk_budget / 10.0)))
+    # Fixed user-requested GOLD size.
+    desired = 0.10
+    if desired < min_size:
+        raise RuntimeError(f"GOLD 0.10 lot is below broker minimum {min_size}")
+    if desired > max_size:
+        raise RuntimeError(f"GOLD 0.10 lot is above broker maximum {max_size}")
 
     if increment > 0:
-        steps = max(1, round(desired / increment))
+        steps = round(desired / increment)
         desired = steps * increment
-        desired = max(min_size, desired)
+        if abs(desired - 0.10) > 1e-9:
+            raise RuntimeError(f"GOLD 0.10 lot is incompatible with broker increment {increment}")
 
-    return min(desired, max_size)
+    return 0.10
 
 
 def open_bot_position(api, epic, direction, size, state, market):
@@ -426,8 +420,7 @@ def refresh_history(api, epic, cache, resolution):
 
 
 def refresh_history_budget(api, markets, cache, budget=12):
-    # Refresh the complete small popular universe instead of starving
-    # important assets behind a large FX list.
+    # Refresh the GOLD-only universe.
     refreshed = 0
     for market in markets:
         if refreshed >= budget:
@@ -465,7 +458,7 @@ def run():
     pending_epics = {}
 
     log.info(
-        "POPULAR-ASSET BOT | DRY_RUN=%s | SCAN=2s | ENTRY=M5+M15 | DYNAMIC_SIZE | PROFIT_ADD_ON>=%.2f AED | MAX_LOSS=%.2f AED | ASSETS=POPULAR_ONLY",
+        "GOLD-ONLY BOT | DRY_RUN=%s | SCAN=2s | ENTRY=STRONG_M5+M15 | FIXED_SIZE=0.10 | PROFIT_ADD_ON>=%.2f AED | MAX_LOSS=%.2f AED | ASSET=GOLD_ONLY",
         DRY_RUN, ADD_ON_MIN_PROFIT_AED, MAX_INITIAL_LOSS
     )
 
@@ -476,7 +469,7 @@ def run():
                 try:
                     market_cache["markets"] = tradable_markets(api.markets())
                     market_cache["ts"] = now
-                    log.info("ASSET_UNIVERSE | %d popular tradeable markets", len(market_cache["markets"]))
+                    log.info("ASSET_UNIVERSE | %d GOLD-only tradeable markets", len(market_cache["markets"]))
                 except Exception as e:
                     log.warning("MARKETS SNAPSHOT FAILED | %s | using cached markets", e)
 
@@ -512,6 +505,9 @@ def run():
                     tighten_profit_stop(api, item, state["owned"][deal_id], market_by_epic[epic])
 
             for epic, market in market_by_epic.items():
+                # Hard safety guard: this bot is GOLD-only even if the broker API returns other markets.
+                if str(epic).upper() not in GOLD_EPICS:
+                    continue
                 try:
                     m5 = history.get(f"{epic}:{PRICE_RESOLUTION}", {}).get("xs", [])
                     m15 = history.get(f"{epic}:{TREND_RESOLUTION}", {}).get("xs", [])
@@ -569,7 +565,7 @@ def run():
 
                         try:
                             order_size = normalize_size(api, epic, market_rules)
-                            log.info("DYNAMIC SIZE | %s | selected=%.4f", epic, order_size)
+                            log.info("FIXED GOLD SIZE | %s | selected=%.4f", epic, order_size)
 
                             pending_epics[epic] = time.time()
                             before = len(position_cache["positions"])
