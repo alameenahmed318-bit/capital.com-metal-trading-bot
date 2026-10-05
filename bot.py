@@ -364,10 +364,12 @@ def run():
             owned = owned_positions(positions, state)
 
             # Manage all bot-owned GOLD positions before looking for new entries.
-            for deal_id, item in owned.items():
+            for deal_id, item in list(owned.items()):
                 manage_position(api, item, state["owned"][deal_id], px)
 
-            signal, moves = micro_signal(list(recent))
+            # Re-fetch after management so closed positions are no longer counted.
+            positions = api.positions()
+            owned = owned_positions(positions, state)
             gold_positions = [
                 x for x in positions
                 if str(x.get("market", {}).get("epic", "")).upper() == epic
