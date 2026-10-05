@@ -293,17 +293,20 @@ def manage_position(api, item, entry_state, current_px):
 def open_position(api, epic, direction, size, state):
     result = api.open(epic, direction, size)
     if DRY_RUN or not result:
-        return
+        return True
 
     deal_ref = result.get("dealReference")
     if not deal_ref:
-        log.warning("OPEN returned no dealReference")
-        return
+        log.warning("OPEN FAILED | no dealReference | response=%s", result)
+        return False
 
-    for _ in range(5):
+    for attempt in range(8):
         try:
             confirmed = api.confirm(deal_ref)
+            status = str(confirmed.get("dealStatus", "")).upper()
             affected = confirmed.get("affectedDeals", [])
+            log.info("OPEN CONFIRM | ref=%s | status=%s | affected=%d",
+                     deal_ref, status, len(affected))
             if affected:
                 for deal in affected:
                     deal_id = deal.get("dealId") or deal.get("dealReference")
@@ -315,10 +318,14 @@ def open_position(api, epic, direction, size, state):
                             "opened_at": time.time(),
                         }
                         log.info("OWNED POSITION | %s | %s | %s", deal_id, epic, direction)
-                return
-        except Exception:
-            pass
-        time.sleep(0.4)
+                return True
+        except Exception as e:
+            log.warning("OPEN CONFIRM RETRY | ref=%s | attempt=%d/8 | %s",
+                        deal_ref, attempt + 1, e)
+        time.sleep(0.25)
+
+    log.warning("OPEN UNCONFIRMED | ref=%s | no affected deal returned", deal_ref)
+    return False
 
 
 def run():
@@ -380,19 +387,26 @@ def run():
 
             if signal and len(gold_positions) < MAX_POSITIONS:
                 if now - last_entry >= ENTRY_COOLDOWN_SECONDS:
-                    open_position(api, epic, signal, trade_size, state)
-                    last_entry = now
-                    # Count the just-opened deal after confirmation/refresh.
-                    positions = api.positions()
-                    gold_positions = [
-                        x for x in positions
-                        if str(x.get("market", {}).get("epic", "")).upper() == epic
-                    ]
-                    log.info(
-                        "ENTRY | %s | %s | size=%.4f | positions=%d/%d | move1=%.5f move3=%.5f move5=%.5f",
-                        epic, signal, trade_size, len(gold_positions), MAX_POSITIONS,
-                        moves.get("move1", 0), moves.get("move3", 0), moves.get("move5", 0),
-                    )
+                    opened = open_position(api, epic, signal, trade_size, state)
+                    if opened:
+                        last_entry = now
+                        # Poll briefly for the live position to appear in /positions.
+                        for _ in range(4):
+                            positions = api.positions()
+                            gold_positions = [
+                                x for x in positions
+                                if str(x.get("market", {}).get("epic", "")).upper() == epic
+                            ]
+                            if gold_positions:
+                                break
+                            time.sleep(0.25)
+                        log.info(
+                            "ENTRY | %s | %s | size=%.4f | positions=%d/%d | move1=%.5f move3=%.5f move5=%.5f",
+                            epic, signal, trade_size, len(gold_positions), MAX_POSITIONS,
+                            moves.get("move1", 0), moves.get("move3", 0), moves.get("move5", 0),
+                        )
+                    else:
+                        log.warning("ENTRY NOT CONFIRMED | %s | %s | size=%.4f", epic, signal, trade_size)
             elif not signal:
                 log.info(
                     "SIGNAL_NONE | %s | px=%.5f | positions=%d/%d",
