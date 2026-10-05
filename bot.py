@@ -221,7 +221,7 @@ def price_at_or_before(samples, age_seconds):
 
 
 def realtime_signal(samples):
-    """Price-action only. Uses actual WebSocket quote timestamps; no indicators."""
+    """Fast GOLD price-action strategy using live WebSocket quotes."""
     if len(samples) < 10:
         return None, {}
 
@@ -246,16 +246,27 @@ def realtime_signal(samples):
     low = min(recent)
     range_px = high - low
 
-    # Gold price must make a real short impulse, not a repeated/stale quote.
-    impulse = max(0.03, min(0.20, range_px * 0.35))
-    buy = m3 >= impulse and m1 > 0 and m1 >= max(m2, 0.0)
-    sell = m3 <= -impulse and m1 < 0 and m1 <= min(m2, 0.0)
+    # Faster entry: accept a smaller genuine impulse, but require
+    # multi-window agreement so a single noisy tick is not enough.
+    impulse = max(0.025, min(0.15, range_px * 0.22))
 
-    # Avoid chasing a one-sided spike at the extreme.
-    buy_confirm = px >= high - max(range_px * 0.45, 0.01)
-    sell_confirm = px <= low + max(range_px * 0.45, 0.01)
+    bullish = m1 > 0 and m3 > 0 and m5 > 0
+    bearish = m1 < 0 and m3 < 0 and m5 < 0
 
-    strength = max(abs(m1), abs(m3) * 0.6, abs(m5) * 0.35)
+    # Momentum acceleration: the newest 1-second move should support
+    # the 2-second move rather than immediately fading it.
+    buy_momentum = bullish and m1 >= max(0.005, m2 * 0.35)
+    sell_momentum = bearish and m1 <= min(-0.005, m2 * 0.35)
+
+    buy = m3 >= impulse and buy_momentum
+    sell = m3 <= -impulse and sell_momentum
+
+    # Do not require the quote to sit at the absolute extreme;
+    # allow entries through the current move for more frequent execution.
+    buy_confirm = px >= low + range_px * 0.45
+    sell_confirm = px <= high - range_px * 0.45
+
+    strength = max(abs(m1), abs(m3) * 0.55, abs(m5) * 0.30)
     strong = strength >= 0.10
 
     info = {
@@ -608,12 +619,12 @@ def run():
             if not strategy_signal or len(gold_positions) >= MAX_POSITIONS:
                 return
 
-            # EXECUTION INVERSION ONLY:
-            # strategy BUY -> execute SELL
-            # strategy SELL -> execute BUY
-            execution_signal = "SELL" if strategy_signal == "BUY" else "BUY"
+            # NORMAL EXECUTION:
+            # strategy BUY -> execute BUY
+            # strategy SELL -> execute SELL
+            execution_signal = strategy_signal
             log.info(
-                "DIRECTION INVERT | GOLD | strategy=%s | execution=%s",
+                "DIRECTION NORMAL | GOLD | strategy=%s | execution=%s",
                 strategy_signal, execution_signal,
             )
 
