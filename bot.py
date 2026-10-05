@@ -326,9 +326,22 @@ def open_position(api, epic, direction, size, state, strong_signal=False):
         log.error("OPEN REJECTED | no dealReference | response=%s", result)
         return False
 
-    for attempt in range(8):
+    # Snapshot positions before the order so an asynchronously-confirmed deal
+    # cannot become an unmanaged/orphaned GOLD position.
+    try:
+        before_ids = {
+            str(x.get("position", {}).get("dealId"))
+            for x in api.positions()
+            if x.get("position", {}).get("dealId")
+        }
+    except Exception:
+        before_ids = set()
+
+    last_confirm = None
+    for attempt in range(12):
         try:
             confirmed = api.confirm(deal_ref)
+            last_confirm = confirmed
             status = str(confirmed.get("dealStatus", "")).upper()
             reason = (
                 confirmed.get("reason")
@@ -340,10 +353,12 @@ def open_position(api, epic, direction, size, state, strong_signal=False):
             )
             affected = confirmed.get("affectedDeals", [])
 
-            log.info(
-                "OPEN CONFIRM | ref=%s | status=%s | reason=%s | affected=%d",
-                deal_ref, status, reason or "NONE", len(affected),
-            )
+            # Do not spam the log with the same ACCEPTED/affected=0 response.
+            if attempt == 0 or affected or status in {"REJECTED", "CANCELLED", "ERROR"}:
+                log.info(
+                    "OPEN CONFIRM | ref=%s | status=%s | reason=%s | affected=%d | attempt=%d/12",
+                    deal_ref, status, reason or "NONE", len(affected), attempt + 1,
+                )
 
             if status in {"REJECTED", "CANCELLED", "ERROR"}:
                 log.error(
@@ -367,11 +382,57 @@ def open_position(api, epic, direction, size, state, strong_signal=False):
                 return True
 
         except Exception as e:
-            log.warning("OPEN CONFIRM RETRY | ref=%s | attempt=%d/8 | %s", deal_ref, attempt + 1, e)
+            log.warning(
+                "OPEN CONFIRM RETRY | ref=%s | attempt=%d/12 | %s",
+                deal_ref, attempt + 1, e,
+            )
 
-        time.sleep(0.25)
+        time.sleep(0.35)
 
-    log.error("OPEN UNCONFIRMED | ref=%s | direction=%s | size=%.4f", deal_ref, direction, size)
+    # Capital can temporarily report ACCEPTED with affectedDeals=[].
+    # Before declaring failure, inspect live positions once and adopt a newly
+    # opened GOLD position that matches this order.
+    try:
+        live = api.positions()
+        candidates = []
+        for item in live:
+            p = item.get("position", {})
+            m = item.get("market", {})
+            deal_id = p.get("dealId")
+            live_epic = str(m.get("epic", "")).upper()
+            live_direction = str(p.get("direction", "")).upper()
+            live_size = float(p.get("size", 0) or 0)
+            if (
+                deal_id
+                and str(deal_id) not in before_ids
+                and live_epic == epic
+                and live_direction == direction
+                and abs(live_size - size) < max(0.0001, size * 0.01)
+            ):
+                candidates.append(deal_id)
+
+        if candidates:
+            for deal_id in candidates:
+                state["owned"][deal_id] = {
+                    "epic": epic,
+                    "direction": direction,
+                    "strong_signal": bool(strong_signal),
+                    "peak_upl": 0.0,
+                    "opened_at": time.time(),
+                }
+                log.info(
+                    "OWNED POSITION RECOVERED | %s | %s | %s | ref=%s",
+                    deal_id, epic, direction, deal_ref,
+                )
+            return True
+    except Exception as e:
+        log.warning("OPEN POSITION RECOVERY ERROR | ref=%s | %s", deal_ref, e)
+
+    final_status = str((last_confirm or {}).get("dealStatus", "UNKNOWN")).upper()
+    log.error(
+        "OPEN UNCONFIRMED | ref=%s | direction=%s | size=%.4f | final_status=%s",
+        deal_ref, direction, size, final_status,
+    )
     return False
 
 
