@@ -7907,8 +7907,8 @@
       "direction": "SELL",
       "epic": "EURUSD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.1,
-      "protected_profit": false,
+      "peak_upl": 0.25,
+      "protected_profit": true,
       "stop_level": null
     },
     "00000000-67da-8ec1-0493-972c0004511e": {
@@ -7934,7 +7934,43 @@
       "direction": "BUY",
       "epic": "GOLD",
       "last_stop_update_ok": false,
-      "peak_upl": 0.19,
+      "peak_upl": 0.33,
+      "protected_profit": true,
+      "stop_level": null
+    },
+    "00000000-67dc-8407-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "SELL",
+      "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-67dc-8635-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "BUY",
+      "epic": "GOLD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-67dc-8a16-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "SELL",
+      "epic": "EURUSD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.0,
+      "protected_profit": false,
+      "stop_level": null
+    },
+    "00000000-67dc-8c90-0493-972c0004511e": {
+      "add_on_count": 0,
+      "direction": "BUY",
+      "epic": "GOLD",
+      "last_stop_update_ok": false,
+      "peak_upl": 0.03,
       "protected_profit": false,
       "stop_level": null
     }
