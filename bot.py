@@ -584,37 +584,47 @@ def run():
                 if str(x.get("market", {}).get("epic", "")).upper() == epic
             ]
 
-            signal, info = realtime_signal(list(samples))
-            if not signal or len(gold_positions) >= MAX_POSITIONS:
+            strategy_signal, info = realtime_signal(list(samples))
+            if not strategy_signal or len(gold_positions) >= MAX_POSITIONS:
                 return
-            # INVERT EXECUTION: BUY strategy signal becomes SELL order, and SELL becomes BUY.
-            signal = "SELL" if signal == "BUY" else "BUY"
+
+            # EXECUTION INVERSION ONLY:
+            # strategy BUY -> execute SELL
+            # strategy SELL -> execute BUY
+            execution_signal = "SELL" if strategy_signal == "BUY" else "BUY"
+            log.info(
+                "DIRECTION INVERT | GOLD | strategy=%s | execution=%s",
+                strategy_signal, execution_signal,
+            )
 
             # Prevent repeated entries on the same impulse/price.
             if now - last_entry < ENTRY_COOLDOWN_SECONDS:
                 return
 
             if last_entry_px is not None:
-                same_direction = signal == last_entry_direction
+                same_direction = execution_signal == last_entry_direction
                 if same_direction and abs(px - last_entry_px) < MIN_REENTRY_MOVE:
                     return
 
             opened = open_position(
-                api, epic, signal, trade_size, state, bool(info.get("strong", False))
+                api, epic, execution_signal, trade_size, state, bool(info.get("strong", False))
             )
             if opened:
                 last_entry = now
                 last_entry_px = px
-                last_entry_direction = signal
+                last_entry_direction = execution_signal
                 log.info(
-                    "ENTRY | GOLD | %s | size=%.4f=0.01lot | px=%.5f | "
+                    "ENTRY | GOLD | strategy=%s | EXECUTION=%s | size=%.4f=0.01lot | px=%.5f | "
                     "move1=%.5f move3=%.5f move5=%.5f | strong=%s | positions=%d/%d",
-                    signal, trade_size, px,
+                    strategy_signal, execution_signal, trade_size, px,
                     info.get("move1", 0), info.get("move3", 0), info.get("move5", 0),
                     info.get("strong", False), len(gold_positions) + 1, MAX_POSITIONS,
                 )
             else:
-                log.warning("ENTRY NOT CONFIRMED | GOLD | %s | size=%.4f", signal, trade_size)
+                log.warning(
+                    "ENTRY NOT CONFIRMED | GOLD | strategy=%s | execution=%s | size=%.4f",
+                    strategy_signal, execution_signal, trade_size,
+                )
 
             save_state(state)
 
