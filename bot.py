@@ -170,33 +170,62 @@ def latest_price(api, epic):
 
 
 def micro_signal(samples):
-    # Price-action only. No EMA/RSI/MACD/ATR.
-    if len(samples) < 5:
+    """Fast GOLD price-action strategy; no EMA/RSI/MACD/ATR.
+
+    Requires a real directional impulse plus acceleration and a small
+    confirmation pullback/reclaim. This is intentionally selective enough
+    to avoid firing repeatedly on a flat/tick-noise market.
+    """
+    if len(samples) < 8:
         return None, {}
 
-    now_px = samples[-1][1]
-    moves = {}
-    for seconds, key in ((1, "move1"), (3, "move3"), (5, "move5")):
+    now_px = float(samples[-1][1])
+
+    def px_ago(seconds):
         target = samples[-1][0] - seconds
         prior = min(samples, key=lambda x: abs(x[0] - target))
-        moves[key] = now_px - prior[1]
+        return float(prior[1])
 
-    recent_deltas = [
-        abs(samples[i][1] - samples[i - 1][1])
-        for i in range(1, len(samples))
-    ]
-    typical = sum(recent_deltas) / max(len(recent_deltas), 1)
-    threshold = max(typical * 0.50, 1e-9)
-    strength = max(abs(moves["move1"]), abs(moves["move3"]), abs(moves["move5"])) / threshold
-    moves["strength"] = strength
-    moves["strong"] = strength >= 2.0
+    p1, p2, p3, p5, p7 = (px_ago(x) for x in (1, 2, 3, 5, 7))
+    m1 = now_px - p1
+    m2 = p1 - p2
+    m3 = now_px - p3
+    m5 = now_px - p5
+    m7 = now_px - p7
 
-    if moves["move1"] > threshold and moves["move3"] > threshold and moves["move5"] > threshold:
+    deltas = [abs(float(samples[i][1]) - float(samples[i - 1][1])) for i in range(1, len(samples))]
+    typical = sum(deltas[-6:]) / max(len(deltas[-6:]), 1)
+    threshold = max(typical * 1.25, 0.01)
+
+    # Require aligned movement over multiple horizons.
+    up = m1 > threshold and m3 > threshold * 1.5 and m5 > threshold * 2.0
+    down = m1 < -threshold and m3 < -threshold * 1.5 and m5 < -threshold * 2.0
+
+    # Acceleration: the latest 1-second move must not be fading.
+    accel_buy = m1 >= max(m2, 0.0)
+    accel_sell = m1 <= min(m2, 0.0)
+
+    # Avoid chasing a stretched move; require a small reclaim after a pullback.
+    recent = [float(x[1]) for x in samples[-5:]]
+    local_high, local_low = max(recent), min(recent)
+    range_px = max(local_high - local_low, 0.01)
+    pullback_buy = now_px >= local_high - range_px * 0.35
+    pullback_sell = now_px <= local_low + range_px * 0.35
+
+    strength = max(abs(m1), abs(m3) / 1.5, abs(m5) / 2.0) / threshold
+    strong = strength >= 2.5 and (abs(m7) >= threshold * 2.5)
+
+    moves = {
+        "move1": m1, "move3": m3, "move5": m5, "move7": m7,
+        "strength": strength, "strong": strong,
+        "threshold": threshold,
+    }
+
+    if up and accel_buy and pullback_buy:
         return "BUY", moves
-    if moves["move1"] < -threshold and moves["move3"] < -threshold and moves["move5"] < -threshold:
+    if down and accel_sell and pullback_sell:
         return "SELL", moves
     return None, moves
-
 
 def gold_market(api):
     for m in api.markets():
