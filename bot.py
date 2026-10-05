@@ -19,11 +19,11 @@ EPIC_ALLOWLIST = {"GOLD", "XAUUSD"}
 DESIRED_LOTS = 0.10  # user-facing GOLD lot size
 SCAN_SECONDS = 1.0  # fixed fast scan
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
-MAX_POSITIONS = 10
-ENTRY_COOLDOWN_SECONDS = 10.0
+MAX_POSITIONS = 20
+ENTRY_COOLDOWN_SECONDS = 1.0
 MAX_INITIAL_LOSS_AED = 10.0
-PROFIT_TRIGGER_AED = 0.10
-PROFIT_FLOOR_AED = 0.10
+PROFIT_TRIGGER_AED = 0.05
+PROFIT_FLOOR_AED = 0.05
 PRICE_RESOLUTION = "MINUTE"
 PRICE_HISTORY = 2
 
@@ -280,13 +280,22 @@ def manage_position(api, item, entry_state, current_px):
         log.warning("MAX LOSS CLOSE | %s | UPL=%.2f", deal_id, upl)
         return
 
-    # Once +0.10 AED has been reached, do not allow the trade to fall back
-    # below +0.10 AED. This is the requested small-profit protection.
+    # Fast exit: bank even a very small positive profit.
+    if upl >= PROFIT_TRIGGER_AED:
+        api.close(deal_id)
+        entry_state["close_requested"] = True
+        log.info(
+            "FAST PROFIT CLOSE | %s | UPL=%.2f | TARGET=%.2f",
+            deal_id, upl, PROFIT_TRIGGER_AED,
+        )
+        return
+
+    # If profit was reached and then slips, protect the small locked profit.
     if peak >= PROFIT_TRIGGER_AED and upl <= PROFIT_FLOOR_AED:
         api.close(deal_id)
         entry_state["close_requested"] = True
         log.info(
-            "PROFIT CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f",
+            "PROFIT PROTECTION CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f",
             deal_id, upl, peak, PROFIT_FLOOR_AED,
         )
 
@@ -374,6 +383,9 @@ def run():
                 x for x in positions
                 if str(x.get("market", {}).get("epic", "")).upper() == epic
             ]
+
+            # Generate the price-action signal immediately after the live refresh.
+            signal, moves = micro_signal(list(recent))
 
             if signal and len(gold_positions) < MAX_POSITIONS:
                 if now - last_entry >= ENTRY_COOLDOWN_SECONDS:
