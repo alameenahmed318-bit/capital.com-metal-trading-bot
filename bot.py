@@ -17,15 +17,15 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 # GOLD ONLY - REAL-TIME WEBSOCKET MICRO SCALPER
 EPIC_ALLOWLIST = {"GOLD", "XAUUSD"}
-DESIRED_LOTS = 0.01
+DESIRED_LOTS = 0.30
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 
 # Entry / exit rules
 MAX_POSITIONS = 20
 ENTRY_COOLDOWN_SECONDS = 1.0
 MIN_REENTRY_MOVE = 0.05
-PROFIT_TRIGGER_AED = 0.05
-PROFIT_FLOOR_AED = 0.05
+PROFIT_TRIGGER_AED = 0.10
+PROFIT_FLOOR_AED = 0.10
 TRAIL_GIVEBACK_AED = 0.03
 
 # Risk rule: close a losing position when UPL reaches -15 AED.
@@ -297,36 +297,34 @@ def manage_position(api, item, entry_state):
     peak = max(float(entry_state.get("peak_upl", 0) or 0), upl)
     entry_state["peak_upl"] = peak
 
-    # Hard maximum loss: close ANY live GOLD position at -15 AED or worse.
+    # HARD RULE: never send a close request while the LIVE UPL is below
+    # the configured maximum loss. Profit exits are completely blocked
+    # until the live UPL is at least +0.10 AED.
     if upl <= -MAX_LOSS_AED:
         api.close(deal_id)
         entry_state["close_requested"] = True
         log.warning("MAX LOSS CLOSE | %s | UPL=%.2f | LIMIT=-%.2f AED", deal_id, upl, MAX_LOSS_AED)
         return
 
-    if upl < 0.10:
+    if upl < PROFIT_TRIGGER_AED:
         return
 
     strong = bool(entry_state.get("strong_signal", False))
 
-    # First profit target: +0.10 AED.
-    if not strong and upl >= PROFIT_TRIGGER_AED:
+    if not strong:
         api.close(deal_id)
         entry_state["close_requested"] = True
         log.info("FAST PROFIT CLOSE | %s | UPL=+%.2f", deal_id, upl)
         return
 
-    # Strong trades: protect profit, but ONLY while UPL remains positive.
-    if strong and peak >= PROFIT_TRIGGER_AED:
-        floor = max(PROFIT_FLOOR_AED, peak - TRAIL_GIVEBACK_AED)
-        if upl >= PROFIT_FLOOR_AED and upl <= floor:
-            api.close(deal_id)
-            entry_state["close_requested"] = True
-            log.info(
-                "PROFIT PROTECTION CLOSE | %s | UPL=+%.2f | PEAK=+%.2f | FLOOR=+%.2f",
-                deal_id, upl, peak, floor,
-            )
-
+    floor = max(PROFIT_FLOOR_AED, peak - TRAIL_GIVEBACK_AED)
+    if upl >= PROFIT_FLOOR_AED and upl <= floor:
+        api.close(deal_id)
+        entry_state["close_requested"] = True
+        log.info(
+            "PROFIT PROTECTION CLOSE | %s | UPL=+%.2f | PEAK=+%.2f | FLOOR=+%.2f",
+            deal_id, upl, peak, floor,
+        )
 
 def open_position(api, epic, direction, size, state, strong_signal=False):
     result = api.open(epic, direction, size)
