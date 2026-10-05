@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.13"
 
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt websocket-client
 
       - name: Run hybrid FX bot
         env:
