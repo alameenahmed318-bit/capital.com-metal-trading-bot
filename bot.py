@@ -246,25 +246,26 @@ def realtime_signal(samples):
     low = min(recent)
     range_px = high - low
 
-    # Faster entry: accept a smaller genuine impulse, but require
-    # multi-window agreement so a single noisy tick is not enough.
-    impulse = max(0.025, min(0.15, range_px * 0.22))
+    # Early-entry momentum: detect the beginning of a real move instead
+    # of waiting for a large 3-second displacement.
+    impulse = max(0.018, min(0.12, range_px * 0.18))
 
-    bullish = m1 > 0 and m3 > 0 and m5 > 0
-    bearish = m1 < 0 and m3 < 0 and m5 < 0
+    bullish = m1 > 0 and m3 > 0
+    bearish = m1 < 0 and m3 < 0
 
-    # Momentum acceleration: the newest 1-second move should support
-    # the 2-second move rather than immediately fading it.
-    buy_momentum = bullish and m1 >= max(0.005, m2 * 0.35)
-    sell_momentum = bearish and m1 <= min(-0.005, m2 * 0.35)
+    # The 5-second window is confirmation, not a hard requirement.
+    # This allows earlier entries while still requiring directional agreement.
+    buy_momentum = bullish and m1 >= max(0.004, m2 * 0.20) and m3 >= impulse
+    sell_momentum = bearish and m1 <= min(-0.004, m2 * 0.20) and m3 <= -impulse
 
-    buy = m3 >= impulse and buy_momentum
-    sell = m3 <= -impulse and sell_momentum
+    # If the 5-second move strongly disagrees with the current direction,
+    # reject the signal instead of chasing a possible reversal.
+    buy = buy_momentum and m5 > -0.025
+    sell = sell_momentum and m5 < 0.025
 
-    # Do not require the quote to sit at the absolute extreme;
-    # allow entries through the current move for more frequent execution.
-    buy_confirm = px >= low + range_px * 0.45
-    sell_confirm = px <= high - range_px * 0.45
+    # Enter through the active move rather than waiting for the extreme.
+    buy_confirm = px >= low + range_px * 0.30
+    sell_confirm = px <= high - range_px * 0.30
 
     strength = max(abs(m1), abs(m3) * 0.55, abs(m5) * 0.30)
     strong = strength >= 0.10
