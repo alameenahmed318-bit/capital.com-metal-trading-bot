@@ -24,7 +24,7 @@ ENTRY_COOLDOWN_SECONDS = 10.0
 MAX_INITIAL_LOSS_AED = 10.0
 PROFIT_TRIGGER_AED = 0.10
 PROFIT_FLOOR_AED = 0.10
-PRICE_RESOLUTION = "MINUTE_1"
+PRICE_RESOLUTION = "MINUTE"
 PRICE_HISTORY = 2
 
 STATE_FILE = Path("bot_state.json")
@@ -200,7 +200,7 @@ def gold_market(api):
         epic = str(m.get("epic", "")).upper()
         status = str(m.get("marketStatus", "")).upper()
         name = str(m.get("instrumentName", m.get("name", ""))).upper()
-        if status == "TRADEABLE" and (epic in EPIC_ALLOWLIST or "GOLD" in name or "XAU" in name):
+        if status == "TRADEABLE" and epic in EPIC_ALLOWLIST:
             return m
     return None
 
