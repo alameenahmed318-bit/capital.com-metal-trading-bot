@@ -205,43 +205,33 @@ def gold_market(api):
     return None
 
 
-def validate_size(api, epic):
-    """Convert requested MT-style GOLD lots into Capital API deal size."""
+def validate_size(api, epic, cached=None):
+    """Convert requested GOLD lots to Capital API size; cache broker rules."""
+    if cached and cached.get("size"):
+        return float(cached["size"])
+
     details = api.market_details(epic)
     rules = details.get("dealingRules", {})
     market = details.get("market", details)
-
     minimum = float(rules.get("minDealSize", {}).get("value", 0) or 0)
     maximum = float(rules.get("maxDealSize", {}).get("value", 0) or 0)
     increment = float(rules.get("minSizeIncrement", {}).get("value", 0) or 0)
-
-    # Capital API /positions uses deal size, not necessarily MT5 lots.
-    # GOLD is commonly 100 units per 1.00 lot, so 0.10 lot becomes 10 units.
-    lot_size = market.get("lotSize") or details.get("lotSize") or details.get("contractSize") or 100
-    lot_size = float(lot_size)
+    lot_size = float(market.get("lotSize") or details.get("lotSize") or details.get("contractSize") or 100)
     size = DESIRED_LOTS * lot_size
 
     if minimum and size < minimum:
-        raise RuntimeError(
-            f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f} API size, below broker minimum {minimum}"
-        )
+        raise RuntimeError(f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f}, below minimum {minimum}")
     if maximum and size > maximum:
-        raise RuntimeError(
-            f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f} API size, above broker maximum {maximum}"
-        )
+        raise RuntimeError(f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f}, above maximum {maximum}")
     if increment:
-        steps = round(size / increment)
-        normalized = steps * increment
+        normalized = round(round(size / increment) * increment, 10)
         if abs(normalized - size) > 1e-9:
-            raise RuntimeError(
-                f"Requested {DESIRED_LOTS:.2f} GOLD lot = {size:.4f} API size, incompatible with broker increment {increment}"
-            )
+            raise RuntimeError(f"Requested GOLD size {size:.4f} incompatible with increment {increment}")
 
-    log.info(
-        "GOLD SIZE CHECK | lots=%.2f | lot_size=%.4f | api_size=%.4f | min=%.4f | step=%.4f",
-        DESIRED_LOTS, lot_size, size, minimum, increment,
-    )
-    return size
+    result = {"size": size, "lot_size": lot_size, "minimum": minimum, "maximum": maximum, "increment": increment}
+    log.info("GOLD SIZE CHECK | lots=%.2f | lot_size=%.4f | api_size=%.4f | min=%.4f | step=%.4f",
+             DESIRED_LOTS, lot_size, size, minimum, increment)
+    return result
 
 def owned_positions(positions, state):
     out = {}
@@ -347,7 +337,8 @@ def run():
         raise RuntimeError("No tradeable GOLD/XAUUSD market found")
 
     epic = str(market["epic"]).upper()
-    validate_size(api, epic)
+    size_info = validate_size(api, epic)
+    trade_size = float(size_info["size"])
 
     log.info(
         "GOLD MICRO SCALPER | DRY_RUN=%s | EPIC=%s | LOTS=%.2f | SCAN=%.1fs | MAX_POS=%d | PROFIT=+%.2f | LOSS=-%.2f",
@@ -389,12 +380,17 @@ def run():
 
             if signal and len(gold_positions) < MAX_POSITIONS:
                 if now - last_entry >= ENTRY_COOLDOWN_SECONDS:
-                    size = validate_size(api, epic)
-                    open_position(api, epic, signal, size, state)
+                    open_position(api, epic, signal, trade_size, state)
                     last_entry = now
+                    # Count the just-opened deal after confirmation/refresh.
+                    positions = api.positions()
+                    gold_positions = [
+                        x for x in positions
+                        if str(x.get("market", {}).get("epic", "")).upper() == epic
+                    ]
                     log.info(
                         "ENTRY | %s | %s | size=%.4f | positions=%d/%d | move1=%.5f move3=%.5f move5=%.5f",
-                        epic, signal, size, len(gold_positions), MAX_POSITIONS,
+                        epic, signal, trade_size, len(gold_positions), MAX_POSITIONS,
                         moves.get("move1", 0), moves.get("move3", 0), moves.get("move5", 0),
                     )
             elif not signal:
