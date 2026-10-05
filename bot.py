@@ -16,7 +16,7 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 # GOLD-ONLY MICRO SCALPER
 EPIC_ALLOWLIST = {"GOLD", "XAUUSD"}
-DESIRED_LOTS = 0.10  # user-facing GOLD lot size
+DESIRED_LOTS = 0.01  # user-facing GOLD lot size
 SCAN_SECONDS = 1.0  # fixed fast scan
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 MAX_POSITIONS = 20
@@ -187,6 +187,9 @@ def micro_signal(samples):
     ]
     typical = sum(recent_deltas) / max(len(recent_deltas), 1)
     threshold = max(typical * 0.50, 1e-9)
+    strength = max(abs(moves["move1"]), abs(moves["move3"]), abs(moves["move5"])) / threshold
+    moves["strength"] = strength
+    moves["strong"] = strength >= 2.0
 
     if moves["move1"] > threshold and moves["move3"] > threshold and moves["move5"] > threshold:
         return "BUY", moves
@@ -270,27 +273,30 @@ def manage_position(api, item, entry_state, current_px):
         log.warning("MAX LOSS CLOSE | %s | UPL=%.2f", deal_id, upl)
         return
 
-    # Fast exit: bank even a very small positive profit.
-    if upl >= PROFIT_TRIGGER_AED:
+    # Normal signals: bank the first +0.05 AED quickly.
+    # Strong price-action signals: let profit run and protect the peak.
+    strong = bool(entry_state.get("strong_signal", False))
+    if upl >= PROFIT_TRIGGER_AED and not strong:
         api.close(deal_id)
         entry_state["close_requested"] = True
         log.info(
-            "FAST PROFIT CLOSE | %s | UPL=%.2f | TARGET=%.2f",
+            "FAST PROFIT CLOSE | %s | UPL=%.2f | TARGET=%.2f | STRONG=False",
             deal_id, upl, PROFIT_TRIGGER_AED,
         )
         return
 
-    # If profit was reached and then slips, protect the small locked profit.
-    if peak >= PROFIT_TRIGGER_AED and upl <= PROFIT_FLOOR_AED:
-        api.close(deal_id)
-        entry_state["close_requested"] = True
-        log.info(
-            "PROFIT PROTECTION CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f",
-            deal_id, upl, peak, PROFIT_FLOOR_AED,
-        )
+    if strong and peak >= PROFIT_TRIGGER_AED:
+        trail_floor = max(PROFIT_FLOOR_AED, peak - 0.03)
+        if upl <= trail_floor:
+            api.close(deal_id)
+            entry_state["close_requested"] = True
+            log.info(
+                "STRONG PROFIT PROTECTION CLOSE | %s | UPL=%.2f | PEAK=%.2f | FLOOR=%.2f",
+                deal_id, upl, peak, trail_floor,
+            )
 
 
-def open_position(api, epic, direction, size, state):
+def open_position(api, epic, direction, size, state, strong_signal=False):
     result = api.open(epic, direction, size)
     if DRY_RUN or not result:
         return True
@@ -336,6 +342,7 @@ def open_position(api, epic, direction, size, state):
                         state["owned"][deal_id] = {
                             "epic": epic,
                             "direction": direction,
+                            "strong_signal": bool(strong_signal),
                             "peak_upl": 0.0,
                             "opened_at": time.time(),
                         }
@@ -418,7 +425,7 @@ def run():
 
             if signal and len(gold_positions) < MAX_POSITIONS:
                 if now - last_entry >= ENTRY_COOLDOWN_SECONDS:
-                    opened = open_position(api, epic, signal, trade_size, state)
+                    opened = open_position(api, epic, signal, trade_size, state, bool(moves.get("strong", False)))
                     if opened:
                         last_entry = now
                         # Poll briefly for the live position to appear in /positions.
