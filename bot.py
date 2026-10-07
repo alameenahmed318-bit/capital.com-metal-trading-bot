@@ -435,7 +435,8 @@ def run():
             if last_dir == direction and last_px is not None and abs(px - last_px) < MIN_REENTRY_MOVE:
                 return
 
-            same_direction = sum(1 for x in positions if str(x.get("position", {}).get("direction", "")).upper() == direction)
+            execution_direction = "SELL" if direction == "BUY" else "BUY"
+            same_direction = sum(1 for x in positions if str(x.get("position", {}).get("direction", "")).upper() == execution_direction)
             if same_direction >= MAX_SAME_DIRECTION:
                 log.info("ENTRY BLOCKED | GOLD | strategy=%s | execution=%s | same_direction=%d/%d", direction, execution_direction, same_direction, MAX_SAME_DIRECTION)
                 return
