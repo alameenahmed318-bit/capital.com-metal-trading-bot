@@ -298,9 +298,10 @@ def open_confirmed(api, direction, size, state):
             if x.get("position", {}).get("dealId")
         }
 
-        result = api.open(direction, size)
+        execution_direction = "SELL" if direction == "BUY" else "BUY"
+        result = api.open(execution_direction, size)
         if DRY_RUN:
-            log.info("DRY RUN ENTRY | GOLD | %s | %.4f", direction, size)
+            log.info("DRY RUN ENTRY | GOLD | strategy=%s | execution=%s | %.4f", direction, execution_direction, size)
             return True
 
         ref = result.get("dealReference")
@@ -332,10 +333,10 @@ def open_confirmed(api, direction, size, state):
                     if did:
                         state["owned"][str(did)] = {
                             "peak": 0.0,
-                            "direction": direction,
+                            "direction": execution_direction,
                             "opened_at": time.time(),
                         }
-                        log.info("OWNED POSITION | %s | GOLD | %s", did, direction)
+                        log.info("OWNED POSITION | %s | GOLD | strategy=%s | execution=%s", did, direction, execution_direction)
                 return True
 
             time.sleep(0.25)
@@ -354,17 +355,17 @@ def open_confirmed(api, direction, size, state):
             ):
                 state["owned"][str(did)] = {
                     "peak": 0.0,
-                    "direction": direction,
+                    "direction": execution_direction,
                     "opened_at": time.time(),
                 }
-                log.info("OWNED POSITION RECOVERED | %s | GOLD | %s | ref=%s", did, direction, ref)
+                log.info("OWNED POSITION RECOVERED | %s | GOLD | strategy=%s | execution=%s | ref=%s", did, direction, execution_direction, ref)
                 return True
 
-        log.error("OPEN UNCONFIRMED | GOLD | ref=%s | direction=%s | size=%.4f", ref, direction, size)
+        log.error("OPEN UNCONFIRMED | GOLD | ref=%s | strategy=%s | execution=%s | size=%.4f", ref, direction, execution_direction, size)
         return False
 
     except Exception as e:
-        log.error("OPEN ERROR | GOLD | %s | %s", direction, e)
+        log.error("OPEN ERROR | GOLD | strategy=%s | execution=%s | %s", direction, execution_direction, e)
         return False
 
 
@@ -436,12 +437,12 @@ def run():
 
             same_direction = sum(1 for x in positions if str(x.get("position", {}).get("direction", "")).upper() == direction)
             if same_direction >= MAX_SAME_DIRECTION:
-                log.info("ENTRY BLOCKED | GOLD | direction=%s | same_direction=%d/%d", direction, same_direction, MAX_SAME_DIRECTION)
+                log.info("ENTRY BLOCKED | GOLD | strategy=%s | execution=%s | same_direction=%d/%d", direction, execution_direction, same_direction, MAX_SAME_DIRECTION)
                 return
 
             log.info(
-                "DIRECTION NORMAL | GOLD | strategy=%s | execution=%s | m1=%.5f m2=%.5f",
-                direction, direction, info.get("m1", 0), info.get("m2", 0)
+                "DIRECTION REVERSED | GOLD | strategy=%s | execution=%s | m1=%.5f m2=%.5f",
+                direction, execution_direction, info.get("m1", 0), info.get("m2", 0)
             )
 
             if open_confirmed(api, direction, size, state):
