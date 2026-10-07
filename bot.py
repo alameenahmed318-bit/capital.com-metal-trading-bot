@@ -269,7 +269,10 @@ def manage_positions(api, state):
         peak = float(entry["peak"])
 
         # Protect immediately after a small profit appears.
-        if peak >= PROFIT_ARM:
+        # Profit protection starts only after +0.10 AED.
+        # IMPORTANT: this block can NEVER close a losing position.
+        # A losing position is closed only by MAX_LOSS below.
+        if peak >= PROFIT_ARM and upl > 0:
             floor = max(0.01, peak - TRAIL_GIVEBACK)
             if upl <= floor:
                 close_confirmed(
@@ -279,10 +282,8 @@ def manage_positions(api, state):
                 )
                 continue
 
-        # Small scalp target; no fixed large TP.
-        if upl >= PROFIT_TARGET:
-            close_confirmed(api, deal_id, f"QUICK_TAKE_PROFIT upl={upl:.2f}", state)
-            continue
+        # No fixed TP: if profit keeps rising, keep the position open.
+        # The trailing protection follows the highest profit reached.
 
         log.info(
             "POSITION MONITOR | GOLD | %s | dir=%s | upl=%+.2f | peak=%+.2f",
