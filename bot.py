@@ -186,17 +186,17 @@ def close_confirmed(api, deal_id, reason):
         return False
 
 
-def open_confirmed(api, size):
+def open_confirmed(api, direction, size):
     try:
-        result = api.open("BUY", size)
+        result = api.open(direction, size)
 
         if DRY_RUN:
-            log.info("DRY RUN ENTRY | GOLD | BUY | size=%.4f", size)
+            log.info("DRY RUN ENTRY | GOLD | %s | size=%.4f", direction, size)
             return True
 
         ref = result.get("dealReference")
         if not ref:
-            log.error("ORDER REJECTED | GOLD | no dealReference | %s", result)
+            log.error("ORDER REJECTED | GOLD | %s | no dealReference | %s", direction, result)
             return False
 
         deadline = time.time() + 5
@@ -205,12 +205,12 @@ def open_confirmed(api, size):
             status = str(c.get("dealStatus", "")).upper()
             affected = c.get("affectedDeals") or []
             log.info(
-                "OPEN CONFIRM | ref=%s | status=%s | affected=%d",
-                ref, status, len(affected)
+                "OPEN CONFIRM | ref=%s | direction=%s | status=%s | affected=%d",
+                ref, direction, status, len(affected)
             )
 
             if status in {"REJECTED", "CANCELLED", "ERROR"}:
-                log.error("BUY REJECTED | GOLD | raw=%s", c)
+                log.error("%s REJECTED | GOLD | raw=%s", direction, c)
                 return False
 
             if affected:
@@ -222,12 +222,30 @@ def open_confirmed(api, size):
         if gold_positions(api):
             return True
 
-        log.error("OPEN UNCONFIRMED | GOLD | ref=%s", ref)
+        log.error("OPEN UNCONFIRMED | GOLD | %s | ref=%s", direction, ref)
         return False
 
     except Exception as e:
-        log.error("OPEN ERROR | GOLD | BUY | %s", e)
+        log.error("OPEN ERROR | GOLD | %s | %s", direction, e)
         return False
+
+
+def current_sequence():
+    try:
+        data = json.loads(STATE_FILE.read_text()) if STATE_FILE.exists() else {}
+        return int(data.get("sequence_index", 0)) % 4
+    except Exception:
+        return 0
+
+def save_sequence(index):
+    try:
+        STATE_FILE.write_text(json.dumps({
+            "sequence_index": int(index) % 4,
+            "sequence": "BUY BUY SELL SELL",
+            "next_direction": ["BUY", "BUY", "SELL", "SELL"][int(index) % 4]
+        }, indent=2))
+    except Exception as e:
+        log.error("STATE SAVE ERROR | %s", e)
 
 
 def run():
@@ -243,8 +261,8 @@ def run():
         raise RuntimeError("GOLD is not tradeable")
 
     log.info(
-        "GOLD BOLLINGER SCALPER | DRY_RUN=%s | 1m | BB(20,2) | "
-        "BUY below lower band | TP=+0.30%% | SL=-0.50%% | CHECK=0.15s | SIZE=0.01",
+        "GOLD SEQUENCE SCALPER | DRY_RUN=%s | sequence=BUY BUY SELL SELL | "
+        "TP=+0.30%% | SL=-0.50%% | CHECK=0.15s | SIZE=0.01",
         DRY_RUN
     )
 
@@ -306,20 +324,14 @@ def run():
                         )
 
             else:
-                signal, last_close, bb_low, bb_high = bollinger_signal(api)
-
-                if last_close is not None:
-                    log.info(
-                        "BOLLINGER | GOLD | close=%.5f | lower=%.5f | upper=%.5f | signal=%s",
-                        last_close, bb_low, bb_high, signal or "NONE"
-                    )
-
-                if signal == "BUY":
-                    log.info(
-                        "BUY SIGNAL | GOLD | price=%.5f <= lower=%.5f",
-                        last_close, bb_low
-                    )
-                    open_confirmed(api, SIZE)
+                idx = current_sequence()
+                direction = ["BUY", "BUY", "SELL", "SELL"][idx]
+                log.info(
+                    "NEXT TRADE | GOLD | %s | sequence=BUY BUY SELL SELL | step=%d/4",
+                    direction, idx + 1
+                )
+                if open_confirmed(api, direction, SIZE):
+                    save_sequence((idx + 1) % 4)
 
             time.sleep(CHECK_SECONDS)
 
