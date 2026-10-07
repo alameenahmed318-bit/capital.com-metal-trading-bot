@@ -16,15 +16,15 @@ MAX_POSITIONS = 20
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "240"))
 
 # Fast, but not an uncontrolled order burst.
-ENTRY_COOLDOWN = 2.50
-MIN_REENTRY_MOVE = 0.08
-MAX_SAME_DIRECTION = 2
+ENTRY_COOLDOWN = 1.50
+MIN_REENTRY_MOVE = 0.05
+MAX_SAME_DIRECTION = 3
 ORDER_CONFIRM_TIMEOUT = 5.0
 
 # Micro-scalp exit.
-PROFIT_TARGET = 0.10
-PROFIT_LOCK = 0.05
-TRAIL_GIVEBACK = 0.04
+PROFIT_TARGET = 0.08
+PROFIT_LOCK = 0.04
+TRAIL_GIVEBACK = 0.03
 MAX_LOSS = 15.0
 
 STATE_FILE = Path("bot_state.json")
@@ -157,38 +157,56 @@ def price_at(samples, seconds):
 
 
 def signal(samples):
-    if len(samples) < 12:
+    if len(samples) < 30:
         return None, {}
 
-    px = samples[-1][1]
-    m05 = px - price_at(samples, 0.5)
-    m1 = px - price_at(samples, 1.0)
-    m2 = px - price_at(samples, 2.0)
-    m4 = px - price_at(samples, 4.0)
+    prices = [p for _, p in samples]
+    px = prices[-1]
 
-    recent = [p for t, p in samples if t >= samples[-1][0] - 3.0]
-    if len(recent) < 5:
-        return None, {}
+    def ema(period):
+        k = 2.0 / (period + 1.0)
+        value = prices[-period]
+        for p in prices[-period + 1:]:
+            value = p * k + value * (1.0 - k)
+        return value
 
+    def rsi(period=7):
+        window = prices[-(period + 1):]
+        gains = []
+        losses = []
+        for x, y in zip(window, window[1:]):
+            d = y - x
+            gains.append(max(d, 0.0))
+            losses.append(max(-d, 0.0))
+        ag = sum(gains) / period
+        al = sum(losses) / period
+        if al <= 1e-12:
+            return 100.0
+        return 100.0 - (100.0 / (1.0 + ag / al))
+
+    fast = ema(9)
+    slow = ema(21)
+    rv = rsi(7)
+    m05 = px - prices[-16]
+    m1 = px - prices[-30]
+    recent = prices[-20:]
     hi, lo = max(recent), min(recent)
     rng = hi - lo
-    if rng <= 0:
-        return None, {}
 
-    # Momentum + short liquidity-sweep confirmation.
-    buy = m05 > 0 and m1 > 0 and m2 > 0 and m1 >= 0.015 and m2 >= 0.025
-    sell = m05 < 0 and m1 < 0 and m2 < 0 and m1 <= -0.015 and m2 <= -0.025
+    # Fast Pulse: trend + RSI + immediate momentum.
+    buy = fast > slow and rv >= 53 and m05 > 0 and m1 > 0
+    sell = fast < slow and rv <= 47 and m05 < 0 and m1 < 0
 
-    sweep_buy = px > lo + rng * 0.35 and m05 > 0 and m1 > 0 and m4 > 0
-    sweep_sell = px < hi - rng * 0.35 and m05 < 0 and m1 < 0 and m4 < 0
+    # Early breakout path keeps entries frequent when momentum is strong.
+    breakout_buy = rng > 0 and px >= hi and m05 > 0
+    breakout_sell = rng > 0 and px <= lo and m05 < 0
 
-    info = {"m05": m05, "m1": m1, "m2": m2, "m4": m4}
-    if buy or sweep_buy:
+    info = {"ema9": fast, "ema21": slow, "rsi7": rv, "m05": m05, "m1": m1, "range": rng}
+    if buy or breakout_buy:
         return "BUY", info
-    if sell or sweep_sell:
+    if sell or breakout_sell:
         return "SELL", info
     return None, info
-
 
 def close_confirmed(api, deal_id, reason, state):
     try:
@@ -237,34 +255,39 @@ def manage_positions(api, state):
 
         deal_id = str(deal_id)
         upl = float(p.get("upl", 0) or 0)
+        direction = str(p.get("direction", "UNKNOWN")).upper()
         entry = state["owned"].setdefault(
             deal_id,
-            {"peak": 0.0, "direction": p.get("direction", "UNKNOWN"), "opened_at": time.time()},
+            {"peak": 0.0, "direction": direction, "opened_at": time.time()},
         )
         entry["peak"] = max(float(entry.get("peak", 0) or 0), upl)
 
-        # Hard loss cap.
         if upl <= -MAX_LOSS:
             close_confirmed(api, deal_id, f"MAX_LOSS upl={upl:.2f}", state)
             continue
 
-        # Protect profit with a trailing floor after the target is reached.
-        if upl >= PROFIT_TARGET:
-            peak = float(entry["peak"])
-            floor = max(PROFIT_LOCK, peak - TRAIL_GIVEBACK)
+        peak = float(entry["peak"])
+
+        # Protect immediately after a small profit appears.
+        if peak >= PROFIT_LOCK:
+            floor = max(0.02, peak - TRAIL_GIVEBACK)
             if upl <= floor:
                 close_confirmed(
-                    api,
-                    deal_id,
-                    f"PROFIT_PROTECTION upl={upl:.2f} peak={peak:.2f} floor={floor:.2f}",
+                    api, deal_id,
+                    f"QUICK_PROFIT_TRAIL upl={upl:.2f} peak={peak:.2f} floor={floor:.2f}",
                     state,
                 )
+                continue
+
+        # Small scalp target; no fixed large TP.
+        if upl >= PROFIT_TARGET:
+            close_confirmed(api, deal_id, f"QUICK_TAKE_PROFIT upl={upl:.2f}", state)
+            continue
 
         log.info(
             "POSITION MONITOR | GOLD | %s | dir=%s | upl=%+.2f | peak=%+.2f",
-            deal_id, p.get("direction", "?"), upl, entry["peak"]
+            deal_id, direction, upl, peak
         )
-
 
 def open_confirmed(api, direction, size, state):
     try:
@@ -373,7 +396,7 @@ def run():
     stop = time.time() + RUN_SECONDS
 
     log.info(
-        "GOLD MICRO SCALPER | DRY_RUN=%s | EPIC=GOLD | LOTS=0.01 | TARGET=+0.10 AED | MAX_LOSS=-15 AED | MAX_POS=%d | MAX_SAME_DIRECTION=%d",
+        "GOLD QUICK PULSE | DRY_RUN=%s | EPIC=GOLD | LOTS=0.01 | TARGET=+0.08 AED | LOCK=+0.04 AED | MAX_LOSS=-15 AED | MAX_POS=%d | MAX_SAME_DIRECTION=%d",
         DRY_RUN, MAX_POSITIONS
     )
 
