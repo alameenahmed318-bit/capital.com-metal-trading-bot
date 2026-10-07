@@ -23,8 +23,8 @@ ORDER_CONFIRM_TIMEOUT = 5.0
 
 # Micro-scalp exit.
 PROFIT_TARGET = 0.08
-PROFIT_LOCK = 0.04
-TRAIL_GIVEBACK = 0.03
+PROFIT_ARM = 0.01
+TRAIL_GIVEBACK = 0.01
 MAX_LOSS = 15.0
 
 STATE_FILE = Path("bot_state.json")
@@ -132,7 +132,7 @@ def trade_size(api):
     )
     minimum = float(rules.get("minDealSize", {}).get("value", 0) or 0)
     step = float(rules.get("minSizeIncrement", {}).get("value", 0) or 0)
-    size = LOTS * lot_size
+    size = LOTS
 
     if minimum and size < minimum:
         raise RuntimeError(f"GOLD 0.01 lot below minimum: {size} < {minimum}")
@@ -269,8 +269,8 @@ def manage_positions(api, state):
         peak = float(entry["peak"])
 
         # Protect immediately after a small profit appears.
-        if peak >= PROFIT_LOCK:
-            floor = max(0.02, peak - TRAIL_GIVEBACK)
+        if peak >= PROFIT_ARM:
+            floor = max(0.01, peak - TRAIL_GIVEBACK)
             if upl <= floor:
                 close_confirmed(
                     api, deal_id,
@@ -396,7 +396,7 @@ def run():
     stop = time.time() + RUN_SECONDS
 
     log.info(
-        "GOLD QUICK PULSE | DRY_RUN=%s | EPIC=GOLD | LOTS=0.01 | TARGET=+0.08 AED | LOCK=+0.04 AED | MAX_LOSS=-15 AED | MAX_POS=%d | MAX_SAME_DIRECTION=%d",
+        "GOLD QUICK PULSE | DRY_RUN=%s | EPIC=GOLD | LOTS=0.01 | TARGET=+0.08 AED | PROFIT_ARM=+0.01 AED | TRAIL=0.01 AED | MAX_LOSS=-15 AED | MAX_POS=%d | MAX_SAME_DIRECTION=%d",
         DRY_RUN, MAX_POSITIONS
     )
 
@@ -414,7 +414,7 @@ def run():
         try:
             # Position management runs independently of entry decisions.
             # This fixes the previous issue where exits could be missed.
-            if now - last_monitor >= 0.75:
+            if now - last_monitor >= 0.15:
                 manage_positions(api, state)
                 save_state(state)
                 last_monitor = now
@@ -448,7 +448,7 @@ def run():
                 last_px = px
                 last_dir = direction
                 log.info(
-                    "ENTRY | GOLD | %s | size=%.4f=0.01lot | px=%.5f | positions_before=%d/%d",
+                    "ENTRY | GOLD | %s | size=%.4f=0.01 | px=%.5f | positions_before=%d/%d",
                     direction, size, px, len(positions), MAX_POSITIONS
                 )
                 save_state(state)
