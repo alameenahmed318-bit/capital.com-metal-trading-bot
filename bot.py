@@ -23,7 +23,7 @@ BB_STD = 2.0
 
 TARGET_PROFIT_PCT = 0.003   # +0.30%
 STOP_LOSS_PCT = 0.005       # -0.50%
-CHECK_SECONDS = 10
+CHECK_SECONDS = 0.15
 RUN_SECONDS = int(os.getenv("RUN_SECONDS", "330"))
 
 STATE_FILE = Path("bot_state.json")
@@ -244,7 +244,7 @@ def run():
 
     log.info(
         "GOLD BOLLINGER SCALPER | DRY_RUN=%s | 1m | BB(20,2) | "
-        "BUY below lower band | TP=+0.30%% | SL=-0.50%% | CHECK=10s | SIZE=0.01",
+        "BUY below lower band | TP=+0.30%% | SL=-0.50%% | CHECK=0.15s | SIZE=0.01",
         DRY_RUN
     )
 
