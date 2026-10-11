@@ -1,0 +1,46 @@
+name: Build AL-ZOOL GOLD EX5
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "AL-ZOOL/AL_ZOOL_GOLD.mq5"
+      - ".github/workflows/al-zool-gold-ex5.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Get MetaTrader 5 compiler container
+        run: git clone --recurse-submodules --depth 1 https://github.com/YEBICHU/metatrader5-compiler.git compiler
+
+      - name: Build compiler image
+        run: docker build -t yebichu-mql5-compiler compiler/Development
+
+      - name: Copy EA source
+        run: |
+          mkdir -p compiler/MQ5/Experts/AL-ZOOL
+          cp AL-ZOOL/AL_ZOOL_GOLD.mq5 compiler/MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.mq5
+
+      - name: Compile MQ5 to EX5
+        run: |
+          cd compiler
+          chmod +x Development/compile.sh
+          ./Development/compile.sh \
+            --include MQ5/Include \
+            --libraries MQ5/Libraries \
+            --output MQ5/Experts \
+            MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.mq5
+
+      - name: Upload EX5 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AL-ZOOL-GOLD-EX5
+          path: compiler/MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.ex5
+          if-no-files-found: error
