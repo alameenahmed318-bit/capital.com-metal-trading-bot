@@ -15,7 +15,7 @@ input string InpEngineId = "";
 input string InpEngineToken = "";
 input string InpServerSymbol = "XAUUSD";
 input int    InpHttpTimeoutMs = 12000;
-input int    InpRequestEverySeconds = 5;
+input int    InpRequestEverySeconds = 2;
 input int    InpBarsToSend = 120;
 
 input group "Trading safety"
@@ -41,6 +41,7 @@ datetime g_last_bar_time = 0;
 ulong g_last_health_check_ms = 0;
 ulong g_last_market_poll_ms = 0;
 ulong g_last_control_poll_ms = 0;
+ulong g_last_terminal_state_ms = 0;
 bool g_trading_enabled = false;
 string g_last_decision_id = "";
 int g_atr_handle = INVALID_HANDLE;
@@ -350,7 +351,7 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
 bool CheckCentralHealth()
 {
    ulong now_ms=GetTickCount64();
-   ulong interval_ms=(ulong)InpRequestEverySeconds*1000;
+   ulong interval_ms=10000;
    if(g_last_health_check_ms>0 && now_ms-g_last_health_check_ms<interval_ms)
       return g_server_online;
    g_last_health_check_ms=now_ms;
@@ -530,11 +531,13 @@ void CancelOurPendingOrders()
    }
 }
 
-bool CheckTradingControl()
+bool CheckTradingControl(const bool force=false)
 {
    ulong now_ms=GetTickCount64();
-   // Always re-check the central permission before an entry. A cached ENABLED
-   // state must never authorize a new order after the dashboard has been stopped.
+   // Share the 1-second timer poll across all checks in the same cycle.
+   // Actual order placement always forces a fresh server permission check.
+   if(!force && g_last_control_poll_ms>0 && now_ms-g_last_control_poll_ms<1000)
+      return g_trading_enabled;
    g_last_control_poll_ms=now_ms;
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
    {
@@ -562,7 +565,7 @@ bool CheckTradingControl()
 bool PollCentralSettings()
 {
    ulong now_ms=GetTickCount64();
-   if(g_last_settings_poll_ms>0 && now_ms-g_last_settings_poll_ms<3000) return g_settings_loaded;
+   if(g_last_settings_poll_ms>0 && now_ms-g_last_settings_poll_ms<5000) return g_settings_loaded;
    g_last_settings_poll_ms=now_ms;
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) { g_settings_loaded=false; return false; }
    char data[],result[]; ArrayResize(data,0);
@@ -636,7 +639,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       g_status="Entry blocked / central server or signed decision not confirmed";
       return false;
    }
-   if(!CheckTradingControl())
+   if(!CheckTradingControl(true))
    {
       g_status="Trading disabled from dashboard / no new entries";
       return false;
@@ -1067,6 +1070,10 @@ string JsonSafe(string value)
 
 void SendTerminalState()
 {
+   ulong now_ms=GetTickCount64();
+   // Account/history payloads are larger; refresh every 5 seconds, not every timer tick.
+   if(g_last_terminal_state_ms>0 && now_ms-g_last_terminal_state_ms<5000) return;
+   g_last_terminal_state_ms=now_ms;
    if(InpEngineId=="" || InpEngineToken=="") return;
    string body="{\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+"\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+"\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+"\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
    int n=0;
@@ -1153,7 +1160,7 @@ int OnInit()
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
 
-   EventSetTimer(2);
+   EventSetTimer(1);
    g_status="Starting central server connection check";
    Print("AL-ZOOL Central Client initialized on ",_Symbol,
          ". Checking server connection...");
