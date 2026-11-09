@@ -12,8 +12,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compile engine and service
-        run: python -m py_compile server_engine/engine.py server_engine/service.py
+      - name: Compile web gateway and engine
+        run: python -m py_compile marketplace/backend/app.py server_engine/engine.py server_engine/service.py
       - name: Run engine tests
         working-directory: server_engine
         run: python -m unittest discover -s tests -v
