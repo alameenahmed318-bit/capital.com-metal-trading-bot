@@ -1,33 +1,4 @@
--- AL-ZOOL settings migration: preserve legacy EA values and current central-client values.
--- Apply once in Supabase SQL Editor.
+-- AL-ZOOL GOLD SNIPER: persistent basic settings copied from the user's
+-- AL-ZOOL-GOLD-SNIPER-SMART-PROFIT-SETTINGS-SCROLL-FIX(1).py source.
 alter table public.alzool_engine_clients
-  add column if not exists trading_settings jsonb not null default
-  '{
-    "start_lot":0.01,
-    "lot_multiplier":1.5,
-    "cap_martingale_lot":true,
-    "max_lot_cap":5.0,
-    "grid_distance_points":1400,
-    "max_grid_depth":14,
-    "volatility_tier_active":true,
-    "step_quiet":1200,
-    "step_volatile":1750,
-    "enable_visual_alerts":true,
-    "enable_sound_alerts":true,
-    "alert_sound_file":"alert.wav",
-    "magic_number":101101,
-    "show_az_dashboard":true,
-    "single_profit_target":null,
-    "basket_profit_target":null,
-    "daily_loss_limit":null,
-    "stop_loss_atr":1.8,
-    "take_profit_atr":1.2,
-    "trailing_enabled":true,
-    "trail_start_atr":1.0,
-    "trail_distance_atr":0.8,
-    "smart_loss_guard":null,
-    "cooling_enabled":null,
-    "cooling_distance_points":null,
-    "strategy_mode":"AUTO",
-    "selected_strategy_id":null
-  }'::jsonb;
+  add column if not exists trading_settings jsonb not null default '{"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":true,"per_trade_profit_enabled":true,"per_trade_profit_target":2,"smart_profit_enabled":false,"one_direction_only":true,"global_loss_enabled":true,"global_loss_amount":50,"ai_loss_guard_enabled":false,"max_positions":0,"fixed_sl_enabled":true,"fixed_sl_distance":3,"trailing_enabled":true,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":false,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":false,"candle_chase_sl_distance":3,"addon_enabled":false,"addon_step":2,"addon_multiplier_enabled":true,"addon_multiplier":1.2,"addon_max":3,"cooling_enabled":false,"cooling_step":3,"cooling_multiplier_enabled":true,"cooling_multiplier":1.2,"cooling_max":2,"strategy_mode":"AUTO — Best current fit"}'::jsonb;
