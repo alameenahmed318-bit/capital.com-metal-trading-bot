@@ -136,6 +136,11 @@ class Handler(SimpleHTTPRequestHandler):
             if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","outcome"]:
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
+            if self.path=="/api/owner/engine-credentials":
+                u=owner(token)
+                credentials=ENGINE.issue(u.get("id"))
+                return self.send_json(201,{"engine":credentials,"engine_server_url":PUBLIC_ENGINE_URL,
+                    "message":"تم إصدار بيانات ربط محرك المالك. احتفظ بها بسرية."})
             if self.path=="/api/access/check":
                 u=current_user(token)
                 try: fresh=admin_user(u["id"])
