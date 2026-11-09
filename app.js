@@ -145,6 +145,7 @@ async function loadDashboardWorkspace(){
  try{
   const d=await api("/api/engine/workspace"),a=d.analysis||{},x=a.context||{},z=a.adaptive||{},q=d.decision||{};
   const escv=v=>esc(v==null?"—":v),num=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
+  const liveTerminal=d.terminal_state&&d.terminal_state.payload?d.terminal_state.payload:{},liveAccount=liveTerminal.account||{},livePositions=liveTerminal.positions||[];
   const tile=(k,v)=>'<article><small>'+escv(k)+'</small><b>'+escv(v)+'</b></article>';
   const grid=arr=>'<div class="dash-cards">'+arr.join("")+'</div>';
   if(id==="settings"){
@@ -154,7 +155,7 @@ async function loadDashboardWorkspace(){
    return;
   }
   let body="";
-  if(id==="home"||id==="gold")body=grid([tile("حالة السوق",x.regime||"بانتظار البيانات"),tile("القرار",q.decision),tile("الاستراتيجية",q.strategy_name),tile("الثقة",q.confidence==null?"—":(Number(q.confidence)*100).toFixed(1)+"%"),tile("ATR",num(x.atr)),tile("قوة الاتجاه",num(x.trend_strength)),tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality))]);
+  if(id==="home"||id==="gold")body=grid([tile("الرصيد الفعلي",liveAccount.balance==null?"بانتظار بيانات MT5":liveAccount.balance),tile("حقوق الحساب",liveAccount.equity==null?"—":liveAccount.equity),tile("الصفقات المفتوحة",livePositions.length),tile("الربح العائم",liveAccount.profit==null?"—":liveAccount.profit),tile("حالة السوق",x.regime||"بانتظار البيانات"),tile("القرار",q.decision),tile("الاستراتيجية",q.strategy_name),tile("الثقة",q.confidence==null?"—":(Number(q.confidence)*100).toFixed(1)+"%"),tile("ATR",num(x.atr)),tile("قوة الاتجاه",num(x.trend_strength)),tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality))]);
   if(id==="analysis")body=grid([tile("نظام السوق",x.regime),tile("ATR Ratio",num(x.atr_ratio)),tile("ADX",num(x.adx)),tile("VWAP",num(x.vwap)),tile("الدعم",num(x.support)),tile("المقاومة",num(x.resistance)),tile("إعداد RSI",z.rsi_period),tile("التكيف",z.mode)])+'<p>'+escv(x.reason)+'</p>';
   if(id==="council"||id==="results")body=grid([tile("القرار المركزي",q.decision),tile("الاستراتيجية",q.strategy_name),tile("رقمها",q.strategy_id),tile("الثقة",q.confidence==null?"—":(Number(q.confidence)*100).toFixed(1)+"%")])+'<p>'+escv(q.reason_ar)+'</p>';
   if(id==="lab")body=grid([tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality)),tile("فخ شراء",x.buy_trap?"محتمل":"غير مرصود"),tile("فخ بيع",x.sell_trap?"محتمل":"غير مرصود")])+'<p>تحليل الشمعة الأخيرة؛ ليس اختباراً تاريخياً ولا ضماناً للربح.</p>';
