@@ -488,7 +488,7 @@ bool CheckTradingControl()
    }
    int value=colon+1;
    while(value<StringLen(response) && (StringGetCharacter(response,value)==' ' ||
-         StringGetCharacter(response,value)=='\t')) value++;
+         StringGetCharacter(response,value)==9)) value++;
    g_trading_enabled=(StringSubstr(response,value,4)=="true");
    return g_trading_enabled;
 }
