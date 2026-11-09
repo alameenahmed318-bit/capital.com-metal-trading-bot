@@ -84,7 +84,7 @@ class EngineGateway:
                 raise ValueError("invalid candle time or price")
             if c["high"]<max(c["open"],c["close"],c["low"]) or c["low"]>min(c["open"],c["close"],c["high"]):
                 raise ValueError("inconsistent OHLC candle")
-            if c.get("tick_volume",-1)<0: raise ValueError("invalid tick volume")
+            if "tick_volume" in c and c["tick_volume"]<0: raise ValueError("invalid tick volume")
             previous=c["time"]; normalized.append(c)
         try: bid,ask=float(data["bid"]),float(data["ask"])
         except (KeyError,TypeError,ValueError,OverflowError): raise ValueError("valid bid and ask are required") from None
