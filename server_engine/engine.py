@@ -252,16 +252,16 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strate
         selected_quality=context["buy_quality"] if selected_signal=="BUY" else context["sell_quality"] if selected_signal=="SELL" else 0.
         selected_trap=context["buy_trap"] if selected_signal=="BUY" else context["sell_trap"] if selected_signal=="SELL" else False
         if selected_signal in ("BUY","SELL") and selected_trap:
-            final="WAIT"; reason=f"الاستراتيجية المحددة {selected_id}: تم منع الدخول بسبب احتمال فخ سعري"
+            final="WAIT"; chosen=selected; agreement=max(0.,min(1.,float(selected_vote["adjusted_score"])/1.5)); reason=f"الاستراتيجية المحددة {selected_id}: تم منع الدخول بسبب احتمال فخ سعري"
         elif selected_signal in ("BUY","SELL"):
             final=selected_signal; chosen=next((x for x in candidates if x[1]["id"]==selected_id),None)
-            if chosen is None: final="WAIT"; reason=f"الاستراتيجية المحددة {selected_id}: لا توجد إشارة تنفيذ صالحة"
+            if chosen is None: final="WAIT"; chosen=selected; agreement=0.; reason=f"الاستراتيجية المحددة {selected_id}: لا توجد إشارة تنفيذ صالحة"
             else:
                 _,chosen,_,why=chosen
                 agreement=max(0.,min(1.,float(selected_vote["adjusted_score"])/1.5))
                 reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}؛ {why}؛ جودة نقطة الدخول {selected_quality:.0f}/100؛ السوق {context['regime']}"
         else:
-            final="WAIT"; reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}: لا توجد إشارة مؤكدة على الشمعة المغلقة"
+            final="WAIT"; agreement=0.; reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}: لا توجد إشارة مؤكدة على الشمعة المغلقة"
             chosen=selected
     if "chosen" not in locals():chosen=None
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
