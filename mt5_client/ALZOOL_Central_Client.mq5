@@ -219,7 +219,7 @@ bool VerifyDecisionSignature(const string response)
 
 bool JsonBool(const string source,const string key,bool fallback=false)
 {
-   string needle="\\\""+key+"\\\"";
+   string needle="\\"" + key + "\\"";
    int p=StringFind(source,needle);
    if(p<0) return fallback;
    p+=StringLen(needle);
@@ -922,6 +922,12 @@ void ManageSettingsProfitLoss()
    string today=TimeToString(TimeCurrent(),TIME_DATE);
    if(g_daily_loss_date!=today) { g_daily_loss_date=today; g_daily_loss_paused=false; }
    int count=0; double floating=CurrentOurFloatingPnl(count);
+   if(g_cfg_loss_limit>0.0 && TodayClosedPnl()+floating<=-MathAbs(g_cfg_loss_limit))
+   {
+      if(count>0) CloseOurPositions("Daily loss limit reached");
+      g_daily_loss_paused=true;
+      return;
+   }
    if(count<=0) return;
    if(g_cfg_global_loss_enabled && g_cfg_global_loss>0.0 && floating<=-MathAbs(g_cfg_global_loss))
    {
@@ -938,11 +944,6 @@ void ManageSettingsProfitLoss()
    {
       CloseOurPositions("Combined profit target reached");
       return;
-   }
-   if(g_cfg_loss_limit>0.0 && TodayClosedPnl()+floating<=-MathAbs(g_cfg_loss_limit))
-   {
-      CloseOurPositions("Daily loss limit reached");
-      g_daily_loss_paused=true;
    }
 }
 
