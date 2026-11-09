@@ -14,7 +14,7 @@ input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
 input string InpEngineId = "";
 input string InpEngineToken = "";
 input string InpServerSymbol = "XAUUSD";
-input int    InpHttpTimeoutMs = 5000;
+input int    InpHttpTimeoutMs = 12000;
 input int    InpRequestEverySeconds = 5;
 input int    InpBarsToSend = 120;
 
