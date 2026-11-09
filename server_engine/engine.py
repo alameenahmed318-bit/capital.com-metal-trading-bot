@@ -262,7 +262,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strate
                 reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}؛ {why}؛ جودة نقطة الدخول {selected_quality:.0f}/100؛ السوق {context['regime']}"
         else:
             final="WAIT"; reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}: لا توجد إشارة مؤكدة على الشمعة المغلقة"
-            chosen=None
+            chosen=selected
     if "chosen" not in locals():chosen=None
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
