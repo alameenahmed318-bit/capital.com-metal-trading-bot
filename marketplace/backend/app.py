@@ -56,7 +56,8 @@ def owner(token):
     return u
 
 def admin_user(uid):
-    return sb("GET","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),admin=True)
+    result=sb("GET","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),admin=True)
+    return result.get("user",result) if isinstance(result,dict) else result
 
 def banned(u):
     val=u.get("banned_until")
