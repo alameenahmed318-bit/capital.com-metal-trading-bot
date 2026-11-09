@@ -157,6 +157,9 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 result=ENGINE.market(client_id,token_of(self),data)
                 return self.send_json(200,result)
+            if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","terminal-state"]:
+                client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
+                return self.send_json(200,ENGINE.terminal_state(client_id,token_of(self),data))
             if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","outcome"]:
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
