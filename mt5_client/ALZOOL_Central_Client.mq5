@@ -234,10 +234,20 @@ bool JsonBool(const string source,const string key,bool fallback=false)
    int p=StringFind(source,needle);
    if(p<0) return fallback;
    p+=StringLen(needle);
-   while(p<StringLen(source) && StringGetCharacter(source,p)==' ') p++;
+   while(p<StringLen(source))
+   {
+      ushort ch=StringGetCharacter(source,p);
+      if(ch==' ' || ch=='\\t' || ch=='\\r' || ch=='\\n') p++;
+      else break;
+   }
    if(p>=StringLen(source) || StringGetCharacter(source,p)!=':') return fallback;
    p++;
-   while(p<StringLen(source) && StringGetCharacter(source,p)==' ') p++;
+   while(p<StringLen(source))
+   {
+      ushort ch=StringGetCharacter(source,p);
+      if(ch==' ' || ch=='\\t' || ch=='\\r' || ch=='\\n') p++;
+      else break;
+   }
    if(StringSubstr(source,p,4)=="true") return true;
    if(StringSubstr(source,p,5)=="false") return false;
    return fallback;
@@ -245,11 +255,24 @@ bool JsonBool(const string source,const string key,bool fallback=false)
 
 double JsonNumber(const string source,const string key,double fallback)
 {
-   string needle="\"" + key + "\":";
+   string needle="\"" + key + "\"";
    int p=StringFind(source,needle);
    if(p<0) return fallback;
    p+=StringLen(needle);
-   while(p<StringLen(source) && StringGetCharacter(source,p)==32) p++;
+   while(p<StringLen(source))
+   {
+      ushort ch=StringGetCharacter(source,p);
+      if(ch==' ' || ch=='\\t' || ch=='\\r' || ch=='\\n') p++;
+      else break;
+   }
+   if(p>=StringLen(source) || StringGetCharacter(source,p)!=':') return fallback;
+   p++;
+   while(p<StringLen(source))
+   {
+      ushort ch=StringGetCharacter(source,p);
+      if(ch==' ' || ch=='\\t' || ch=='\\r' || ch=='\\n') p++;
+      else break;
+   }
    int e=p;
    while(e<StringLen(source))
    {
