@@ -54,6 +54,20 @@ int g_last_strategy_id = 0;
 string g_last_decision = "WAIT";
 string g_global_bar_key = "";
 
+// Live dashboard settings, fetched through the authenticated central API.
+bool g_settings_loaded=false;
+ulong g_last_settings_poll_ms=0;
+double g_cfg_lot=0.01, g_cfg_profit_target=1.0, g_cfg_per_trade_target=2.0;
+double g_cfg_loss_limit=50.0, g_cfg_global_loss=50.0;
+double g_cfg_fixed_sl_distance=3.0, g_cfg_trail_start=3.0, g_cfg_trail_distance=3.0;
+double g_cfg_pending_distance=2.0;
+int g_cfg_max_positions=0;
+bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_enabled=true;
+bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true;
+string g_cfg_order_mode="Market Order", g_cfg_strategy_mode="AUTO — Best current fit";
+bool g_daily_loss_paused=false;
+string g_daily_loss_date="";
+
 string ServerBaseUrl()
 {
    string url=InpServerUrl;
@@ -203,6 +217,21 @@ bool VerifyDecisionSignature(const string response)
    return (expected==supplied);
 }
 
+bool JsonBool(const string source,const string key,bool fallback=false)
+{
+   string needle="\\\""+key+"\\\"";
+   int p=StringFind(source,needle);
+   if(p<0) return fallback;
+   p+=StringLen(needle);
+   while(p<StringLen(source) && (StringGetCharacter(source,p)==' ' || StringGetCharacter(source,p)=='\\t' || StringGetCharacter(source,p)=='\\r' || StringGetCharacter(source,p)=='\\n')) p++;
+   if(p>=StringLen(source) || StringGetCharacter(source,p)!=':') return fallback;
+   p++;
+   while(p<StringLen(source) && (StringGetCharacter(source,p)==' ' || StringGetCharacter(source,p)=='\\t' || StringGetCharacter(source,p)=='\\r' || StringGetCharacter(source,p)=='\\n')) p++;
+   if(StringSubstr(source,p,4)=="true") return true;
+   if(StringSubstr(source,p,5)=="false") return false;
+   return fallback;
+}
+
 double JsonNumber(const string source,const string key,double fallback)
 {
    string needle="\"" + key + "\":";
@@ -285,7 +314,14 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0 || tick.ask<tick.bid) return false;
 
+   string strategy_mode="AUTO";
+   int selected_strategy_id=0;
+   if(StringFind(g_cfg_strategy_mode,"HUNTER")==0) strategy_mode="HUNTER";
+   else if(StringFind(g_cfg_strategy_mode,"SNIPER")==0) strategy_mode="SNIPER";
+   else if(StringLen(g_cfg_strategy_mode)>0 && StringGetCharacter(g_cfg_strategy_mode,0)>='0' && StringGetCharacter(g_cfg_strategy_mode,0)<='9')
+      selected_strategy_id=(int)StringToInteger(g_cfg_strategy_mode);
    body="{\"symbol\":\""+InpServerSymbol+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
+   body+="\"strategy_mode\":\""+strategy_mode+"\",\"selected_strategy_id\":"+IntegerToString(selected_strategy_id)+",";
    body+="\"bid\":"+DoubleToString(tick.bid,_Digits)+",";
    body+="\"ask\":"+DoubleToString(tick.ask,_Digits)+",";
    body+="\"candles\":[";
@@ -493,11 +529,60 @@ bool CheckTradingControl()
    return g_trading_enabled;
 }
 
+bool PollCentralSettings()
+{
+   ulong now_ms=GetTickCount64();
+   if(g_last_settings_poll_ms>0 && now_ms-g_last_settings_poll_ms<3000) return g_settings_loaded;
+   g_last_settings_poll_ms=now_ms;
+   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) { g_settings_loaded=false; return false; }
+   char data[],result[]; ArrayResize(data,0);
+   string response_headers;
+   string headers="Accept: application/json\\r\\nAuthorization: Bearer "+InpEngineToken+"\\r\\n";
+   ResetLastError();
+   int http=WebRequest("GET",ServerBaseUrl()+"/v1/settings/"+InpEngineId,headers,InpHttpTimeoutMs,data,result,response_headers);
+   if(http!=200)
+   {
+      g_settings_loaded=false;
+      g_status="Settings unavailable / HTTP "+IntegerToString(http);
+      return false;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   double lot=JsonNumber(response,"lot",0.01);
+   double maxpos=JsonNumber(response,"max_positions",0);
+   if(lot<=0.0 || maxpos<0.0) { g_settings_loaded=false; g_status="Invalid dashboard settings"; return false; }
+   g_cfg_lot=lot; g_cfg_max_positions=(int)maxpos;
+   g_cfg_profit_target=JsonNumber(response,"profit_target",1.0);
+   g_cfg_per_trade_target=JsonNumber(response,"per_trade_profit_target",2.0);
+   g_cfg_loss_limit=JsonNumber(response,"loss_limit",50.0);
+   g_cfg_global_loss=JsonNumber(response,"global_loss_amount",50.0);
+   g_cfg_fixed_sl_distance=JsonNumber(response,"fixed_sl_distance",3.0);
+   g_cfg_trail_start=JsonNumber(response,"trail_start",3.0);
+   g_cfg_trail_distance=JsonNumber(response,"trail_distance",3.0);
+   g_cfg_pending_distance=JsonNumber(response,"pending_distance",2.0);
+   g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
+   g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
+   g_cfg_global_loss_enabled=JsonBool(response,"global_loss_enabled",true);
+   g_cfg_fixed_sl_enabled=JsonBool(response,"fixed_sl_enabled",true);
+   g_cfg_trailing=JsonBool(response,"trailing_enabled",true);
+   g_cfg_one_direction=JsonBool(response,"one_direction_only",true);
+   g_cfg_order_mode=JsonString(response,"order_mode");
+   if(g_cfg_order_mode=="") g_cfg_order_mode="Market Order";
+   g_cfg_strategy_mode=JsonString(response,"strategy_mode");
+   if(g_cfg_strategy_mode=="") g_cfg_strategy_mode="AUTO — Best current fit";
+   if(g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
+      g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0)
+   { g_settings_loaded=false; g_status="Invalid risk/protection settings"; return false; }
+   g_settings_loaded=true;
+   return true;
+}
+
 bool PlaceCentralTrade(const string direction,const string decision_id,
                        const string reason,const int strategy_id)
 {
    // Fail closed: a trade requires both a confirmed live health check and
    // a freshly verified, signed decision from the central engine.
+   if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; return false; }
+   if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; return false; }
    if(!g_server_online || !g_decision_verified)
    {
       g_status="Entry blocked / central server or signed decision not confirmed";
@@ -521,16 +606,17 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       g_status="Spread widened after server decision";
       return false;
    }
-   if(InpBlockOppositePositions && HasOppositePosition(direction))
+   if(g_cfg_one_direction && HasOppositePosition(direction))
    {
       g_status="Opposite position exists";
       return false;
    }
 
    int buys=0,sells=0;
-   if(CountOurPositions(buys,sells)>=InpMaxPositions)
+   int current_positions=CountOurPositions(buys,sells);
+   if(g_cfg_max_positions>0 && current_positions>=g_cfg_max_positions)
    {
-      g_status="Maximum positions reached";
+      g_status="Maximum positions reached (dashboard setting)";
       return false;
    }
 
@@ -539,14 +625,14 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return false;
 
-   double lots=NormalizeLots(InpLots);
+   double lots=NormalizeLots(g_cfg_lot);
    if(lots<=0.0) { g_status="Invalid lot size"; return false; }
 
-   double stop_distance=atr*InpStopLossATR;
-   double target_distance=atr*InpTakeProfitATR;
+   double stop_distance=g_cfg_fixed_sl_distance;
+   double target_distance=0.0;
    long stops_level=SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
    double min_distance=(double)stops_level*_Point;
-   if(InpRequireBrokerStops && (stop_distance<min_distance || target_distance<min_distance))
+   if(InpRequireBrokerStops && g_cfg_fixed_sl_enabled && stop_distance<min_distance)
    {
       g_status="Broker stop distance too small";
       return false;
@@ -562,15 +648,15 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(direction=="BUY")
    {
       price=tick.ask;
-      sl=NormalizeDouble(price-stop_distance,digits);
-      tp=NormalizeDouble(price+target_distance,digits);
+      sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
+      tp=0.0;
       sent=trade.Buy(lots,_Symbol,0.0,sl,tp,"AZS"+IntegerToString(strategy_id));
    }
    else
    {
       price=tick.bid;
-      sl=NormalizeDouble(price+stop_distance,digits);
-      tp=NormalizeDouble(price-target_distance,digits);
+      sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
+      tp=0.0;
       sent=trade.Sell(lots,_Symbol,0.0,sl,tp,"AZS"+IntegerToString(strategy_id));
    }
 
@@ -784,10 +870,84 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
 
 // This runs locally on the terminal timer even while the central server is offline.
 // The broker-side SL/TP placed at entry remain active if the terminal later closes.
+double CurrentOurFloatingPnl(int &count)
+{
+   double total=0.0; count=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      total+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      count++;
+   }
+   return total;
+}
+
+void CloseOurPositions(const string reason)
+{
+   trade.SetExpertMagicNumber(InpMagic);
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if(!trade.PositionClose(ticket)) Print("AL-ZOOL close failed: ",ticket," ",trade.ResultRetcodeDescription());
+   }
+   g_status=reason;
+}
+
+double TodayClosedPnl()
+{
+   datetime now=TimeCurrent();
+   datetime midnight=StringToTime(TimeToString(now,TIME_DATE));
+   if(!HistorySelect(midnight,now)) return 0.0;
+   double pnl=0.0;
+   for(int i=HistoryDealsTotal()-1;i>=0;i--)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0) continue;
+      if(HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol) continue;
+      if((ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=InpMagic) continue;
+      ENUM_DEAL_ENTRY entry=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
+      if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY) continue;
+      pnl+=HistoryDealGetDouble(deal,DEAL_PROFIT)+HistoryDealGetDouble(deal,DEAL_SWAP)+HistoryDealGetDouble(deal,DEAL_COMMISSION);
+   }
+   return pnl;
+}
+
+void ManageSettingsProfitLoss()
+{
+   if(!g_settings_loaded) return;
+   string today=TimeToString(TimeCurrent(),TIME_DATE);
+   if(g_daily_loss_date!=today) { g_daily_loss_date=today; g_daily_loss_paused=false; }
+   int count=0; double floating=CurrentOurFloatingPnl(count);
+   if(count<=0) return;
+   if(g_cfg_global_loss_enabled && g_cfg_global_loss>0.0 && floating<=-MathAbs(g_cfg_global_loss))
+   {
+      CloseOurPositions("Global loss protection reached / dashboard settings");
+      g_daily_loss_paused=true;
+      return;
+   }
+   if(count==1 && g_cfg_per_trade_profit && g_cfg_per_trade_target>0.0 && floating>=g_cfg_per_trade_target)
+   {
+      CloseOurPositions("Single-position profit target reached");
+      return;
+   }
+   if(count>=2 && g_cfg_global_profit && g_cfg_profit_target>0.0 && floating>=g_cfg_profit_target)
+   {
+      CloseOurPositions("Combined profit target reached");
+      return;
+   }
+   if(g_cfg_loss_limit>0.0 && TodayClosedPnl()+floating<=-MathAbs(g_cfg_loss_limit))
+   {
+      CloseOurPositions("Daily loss limit reached");
+      g_daily_loss_paused=true;
+   }
+}
+
 void ManageLocalProtection()
 {
-   double atr=0.0;
-   if(!GetATR(atr)) return;
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return;
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
@@ -807,18 +967,18 @@ void ManageLocalProtection()
       double tp=PositionGetDouble(POSITION_TP);
       double new_sl=old_sl;
 
-      if(!InpUseTrailing) continue;
+      if(!g_cfg_trailing) continue;
       if(type==POSITION_TYPE_BUY)
       {
-         if(tick.bid-open_price<atr*InpTrailStartATR) continue;
-         double candidate=NormalizeDouble(tick.bid-atr*InpTrailDistanceATR,digits);
+         if(tick.bid-open_price<g_cfg_trail_start) continue;
+         double candidate=NormalizeDouble(tick.bid-g_cfg_trail_distance,digits);
          if(tick.bid-candidate<min_distance) candidate=NormalizeDouble(tick.bid-min_distance,digits);
          if(old_sl==0.0 || candidate>old_sl+_Point) new_sl=candidate;
       }
       else if(type==POSITION_TYPE_SELL)
       {
-         if(open_price-tick.ask<atr*InpTrailStartATR) continue;
-         double candidate=NormalizeDouble(tick.ask+atr*InpTrailDistanceATR,digits);
+         if(open_price-tick.ask<g_cfg_trail_start) continue;
+         double candidate=NormalizeDouble(tick.ask+g_cfg_trail_distance,digits);
          if(candidate-tick.ask<min_distance) candidate=NormalizeDouble(tick.ask+min_distance,digits);
          if(old_sl==0.0 || candidate<old_sl-_Point) new_sl=candidate;
       }
@@ -883,6 +1043,7 @@ void PollCentralEngine()
    string decision,decision_id,reason;
    double confidence=0.0;
    int strategy_id=0;
+   if(!PollCentralSettings()) return;
    if(!RequestCentralDecision(decision,decision_id,reason,confidence,strategy_id)) return;
    if(decision=="WAIT")
    {
@@ -930,6 +1091,8 @@ void OnDeinit(const int reason)
 
 void OnTimer()
 {
+   PollCentralSettings();
+   ManageSettingsProfitLoss();
    ManageLocalProtection();
    FlushPendingOutcomes();
    SendTerminalState();
