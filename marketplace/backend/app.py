@@ -104,6 +104,14 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,result)
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
+        if self.path=="/api/engine/settings":
+            try:
+                u=current_user(token_of(self))
+                fresh=admin_user(u["id"])
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                return self.send_json(200,{"settings":ENGINE.settings_for_user(u["id"])})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
         if self.path=="/api/engine/workspace":
             try:
                 u=current_user(token_of(self))
@@ -163,6 +171,12 @@ class Handler(SimpleHTTPRequestHandler):
             if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","outcome"]:
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
+            if self.path=="/api/engine/settings":
+                u=current_user(token)
+                fresh=admin_user(u["id"])
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                saved=ENGINE.save_settings_for_user(u["id"],data)
+                return self.send_json(200,{"ok":True,"settings":saved})
             if self.path=="/api/engine/control":
                 u=current_user(token)
                 try: fresh=admin_user(u["id"])
