@@ -1083,11 +1083,17 @@ void SendTerminalState()
    }
    body+="],\"history\":[";
    datetime from_time=TimeCurrent()-86400*30; HistorySelect(from_time,TimeCurrent());
-   int deals=HistoryDealsTotal(),start=MathMax(0,deals-100); n=0;
-   for(int k=start;k<deals;k++){
+   int deals=HistoryDealsTotal(); n=0;
+   for(int k=deals-1;k>=0 && n<200;k--){
       ulong d=HistoryDealGetTicket(k); if(d==0) continue;
+      if((ulong)HistoryDealGetInteger(d,DEAL_MAGIC)!=InpMagic) continue;
+      if(HistoryDealGetString(d,DEAL_SYMBOL)!=_Symbol) continue;
       if(n++>0) body+=",";
-      body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+"\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+"\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+",\"profit\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PROFIT),2)+",\"commission\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_COMMISSION),2)+",\"swap\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_SWAP),2)+",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
+      double deal_profit=HistoryDealGetDouble(d,DEAL_PROFIT);
+      double deal_commission=HistoryDealGetDouble(d,DEAL_COMMISSION);
+      double deal_swap=HistoryDealGetDouble(d,DEAL_SWAP);
+      double deal_fee=HistoryDealGetDouble(d,DEAL_FEE);
+      body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+"\",\"order\":\""+(string)HistoryDealGetInteger(d,DEAL_ORDER)+"\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+"\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+",\"profit\":"+DoubleToString(deal_profit,2)+",\"commission\":"+DoubleToString(deal_commission,2)+",\"swap\":"+DoubleToString(deal_swap,2)+",\"fee\":"+DoubleToString(deal_fee,2)+",\"net_profit\":"+DoubleToString(deal_profit+deal_commission+deal_swap+deal_fee,2)+",\"magic\":\""+(string)InpMagic+"\",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
    }
    body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"lots\":"+DoubleToString(InpLots,2)+",\"magic\":\""+(string)InpMagic+"\",\"max_positions\":"+IntegerToString(InpMaxPositions)+",\"max_spread_points\":"+IntegerToString(InpMaxSpreadPoints)+",\"allow_buy\":"+(InpAllowBuy?"true":"false")+",\"allow_sell\":"+(InpAllowSell?"true":"false")+",\"block_opposite\":"+(InpBlockOppositePositions?"true":"false")+",\"require_broker_stops\":"+(InpRequireBrokerStops?"true":"false")+",\"atr_period\":"+IntegerToString(InpATRPeriod)+",\"sl_atr\":"+DoubleToString(InpStopLossATR,2)+",\"tp_atr\":"+DoubleToString(InpTakeProfitATR,2)+",\"trailing\":"+(InpUseTrailing?"true":"false")+",\"trail_start_atr\":"+DoubleToString(InpTrailStartATR,2)+",\"trail_distance_atr\":"+DoubleToString(InpTrailDistanceATR,2)+",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"trading_enabled\":"+(g_trading_enabled?"true":"false")+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(InpRequestEverySeconds)+",\"bars_to_send\":"+IntegerToString(InpBarsToSend)+"},\"events\":[]}";
    char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
