@@ -40,6 +40,8 @@ CTrade trade;
 datetime g_last_bar_time = 0;
 ulong g_last_health_check_ms = 0;
 ulong g_last_market_poll_ms = 0;
+ulong g_last_control_poll_ms = 0;
+bool g_trading_enabled = false;
 string g_last_decision_id = "";
 int g_atr_handle = INVALID_HANDLE;
 bool g_server_online = false;
@@ -453,6 +455,44 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    return true;
 }
 
+bool CheckTradingControl()
+{
+   ulong now_ms=GetTickCount64();
+   if(g_last_control_poll_ms>0 && now_ms-g_last_control_poll_ms<2000)
+      return g_trading_enabled;
+   g_last_control_poll_ms=now_ms;
+   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
+   {
+      g_trading_enabled=false;
+      return false;
+   }
+   char data[],result[];
+   ArrayResize(data,0);
+   string response_headers;
+   string headers="Accept: application/json\\r\\nAuthorization: Bearer "+InpEngineToken+"\\r\\n";
+   ResetLastError();
+   int http=WebRequest("GET",ServerBaseUrl()+"/v1/control/"+InpEngineId,headers,
+                       InpHttpTimeoutMs,data,result,response_headers);
+   if(http!=200)
+   {
+      g_trading_enabled=false;
+      return false;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   int key=StringFind(response,"\\\"trading_enabled\\\"");
+   int colon=(key>=0 ? StringFind(response,":",key) : -1);
+   if(colon<0)
+   {
+      g_trading_enabled=false;
+      return false;
+   }
+   int value=colon+1;
+   while(value<StringLen(response) && (StringGetCharacter(response,value)==' ' ||
+         StringGetCharacter(response,value)=='\\t')) value++;
+   g_trading_enabled=(StringSubstr(response,value,4)=="true");
+   return g_trading_enabled;
+}
+
 bool PlaceCentralTrade(const string direction,const string decision_id,
                        const string reason,const int strategy_id)
 {
@@ -461,6 +501,11 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(!g_server_online || !g_decision_verified)
    {
       g_status="Entry blocked / central server or signed decision not confirmed";
+      return false;
+   }
+   if(!CheckTradingControl())
+   {
+      g_status="Trading disabled from dashboard / no new entries";
       return false;
    }
    if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; return false; }
@@ -850,6 +895,7 @@ void OnTimer()
    ManageLocalProtection();
    FlushPendingOutcomes();
    CheckCentralHealth();
+   CheckTradingControl();
    PollCentralEngine();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
