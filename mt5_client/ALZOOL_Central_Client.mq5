@@ -285,7 +285,7 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0 || tick.ask<tick.bid) return false;
 
-   body="{\"symbol\":\""+InpServerSymbol+"\",";
+   body="{\"symbol\":\""+InpServerSymbol+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
    body+="\"bid\":"+DoubleToString(tick.bid,_Digits)+",";
    body+="\"ask\":"+DoubleToString(tick.ask,_Digits)+",";
    body+="\"candles\":[";
