@@ -4,7 +4,7 @@
 //| Strategy logic remains on the owner's central server.            |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.02"
+#property version   "1.03"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
