@@ -469,7 +469,7 @@ bool CheckTradingControl()
    char data[],result[];
    ArrayResize(data,0);
    string response_headers;
-   string headers="Accept: application/json\\r\\nAuthorization: Bearer "+InpEngineToken+"\\r\\n";
+   string headers="Accept: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
    ResetLastError();
    int http=WebRequest("GET",ServerBaseUrl()+"/v1/control/"+InpEngineId,headers,
                        InpHttpTimeoutMs,data,result,response_headers);
@@ -479,7 +479,7 @@ bool CheckTradingControl()
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
-   int key=StringFind(response,"\\\"trading_enabled\\\"");
+   int key=StringFind(response,"\\"trading_enabled\\"");
    int colon=(key>=0 ? StringFind(response,":",key) : -1);
    if(colon<0)
    {
@@ -488,7 +488,7 @@ bool CheckTradingControl()
    }
    int value=colon+1;
    while(value<StringLen(response) && (StringGetCharacter(response,value)==' ' ||
-         StringGetCharacter(response,value)=='\\t')) value++;
+         StringGetCharacter(response,value)=='\t')) value++;
    g_trading_enabled=(StringSubstr(response,value,4)=="true");
    return g_trading_enabled;
 }
