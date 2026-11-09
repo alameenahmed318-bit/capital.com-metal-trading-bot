@@ -33,6 +33,10 @@ class EngineGateway:
     def _hash(token):
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+    def health(self):
+        self._request("GET","alzool_engine_clients?select=client_id&limit=1")
+        return {"service":"AL-ZOOL central engine","status":"online","storage":"supabase","trading_execution":"local_mt5_client"}
+
     def issue(self, user_id, days=3650):
         client_id=uuid.uuid4().hex
         token=secrets.token_urlsafe(40)
