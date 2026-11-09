@@ -22,13 +22,13 @@ document.querySelector(".wrap").insertBefore(dashboardRoot,document.querySelecto
 const navPages=[
  ["home","الرئيسية","⌂"],["control","التحكم بالتداول","◉"],["gold","الذهب والاستراتيجيات","◆"],["candles","الشموع","▥"],["council","مجلس التصويت","◎"],["analysis","التحليل الذكي","⌁"],["lab","مختبر الفرص","⌕"],["families","عائلات الاستراتيجيات","▦"],["strategies","الاستراتيجيات والتركيبات","▤"],["trades","الصفقات والأداء","↗"],["open","الصفقات المفتوحة","◫"],["pending","الأوامر المعلقة والسجل","◷"],["daily","الأداء اليومي","▧"],["results","نتائج الذكاء الاصطناعي","✧"],["learning","التعلم والتكيف","⟳"],["logs","السجلات","≡"],["blackbox","AZ BLACK BOX","⬡"],["settings","الإعدادات","⚙"]];
 const strategyFamilies=["EMA Trend","RSI Momentum","MACD Momentum","Bollinger Reversion","Donchian Breakout","ATR Expansion","Candle Momentum","EMA Pullback","Range Reversion","Hybrid Confluence","Stochastic Reversal","CCI Momentum","Williams %R Reversal","ROC Momentum","Adaptive Swing Trend","VWAP Deviation","Pivot Breakout","Inside Bar Breakout","Engulfing Reversal","Volume Pressure"];
-let activeDashboardPage="home",dashboardRole="client",dashboardStatusTimer=null;
+let activeDashboardPage="home",dashboardRole="client",dashboardStatusTimer=null,tradingEnabled=false,mt5Connected=false;
 function dashboardPageBody(id){
  const wait='<div class="engine-wait"><span class="wait-icon">⌁</span><b>بانتظار ربط محرك التداول</b><p>هذه الصفحة جاهزة ضمن لوحة التحكم. ستظهر البيانات الحقيقية بعد نشر المحرك المركزي وربط موصل MT5 والتحقق منه.</p><small>لا توجد بيانات سوق أو صفقات تجريبية معروضة على أنها حقيقية.</small></div>';
- if(id==="home")return '<div class="dash-cards"><article><small>اتصال المحرك</small><b id="engineHomeStatus" class="state-off">بانتظار الإعداد</b></article><article><small>اتصال MT5</small><b id="mt5HomeStatus" class="state-off">جارٍ التحقق...</b></article><article><small>الرمز</small><b>XAUUSD</b></article><article><small>حالة التداول</small><b class="state-off">متوقف</b></article></div><div class="dash-panel"><h3>ملخص المنصة</h3><p>تم تجهيز صفحات البوت داخل حسابك. لم يتم تفعيل أوامر شراء أو بيع من الويب بعد.</p>'+wait+'</div>';
+ if(id==="home")return '<div class="dash-cards"><article><small>اتصال المحرك</small><b id="engineHomeStatus" class="state-off">بانتظار الإعداد</b></article><article><small>اتصال MT5</small><b id="mt5HomeStatus" class="state-off">جارٍ التحقق...</b></article><article><small>الرمز</small><b>XAUUSD</b></article><article><small>حالة التداول</small><b id="tradeHomeStatus" class="state-off">متوقف</b></article></div><div class="dash-panel"><h3>ملخص المنصة</h3><p>تم تجهيز صفحات البوت داخل حسابك. لم يتم تفعيل أوامر شراء أو بيع من الويب بعد.</p>'+wait+'</div>';
  if(id==="families")return '<div class="dash-panel"><h3>عائلات الاستراتيجيات الأساسية</h3><p>يتم تحميل القائمة مباشرة من محرك الاستراتيجيات الأصلي.</p><div id="familyCatalog" class="family-grid"><p class="muted">جاري تحميل العائلات...</p></div><p class="muted">وجود العائلة في الكتالوج لا يعني أنها اجتازت اختبار ربحية.</p></div>';
  if(id==="strategies")return '<div class="dash-panel"><h3>كتالوج المحرك الأصلي</h3><div id="catalogStats" class="dash-cards"><article><small>الاستراتيجيات</small><b>—</b></article><article><small>التركيبات</small><b>—</b></article><article><small>العائلات</small><b>—</b></article></div><h4>الاستراتيجيات الـ200</h4><div id="strategyCatalog" class="catalog-list">جاري تحميل الاستراتيجيات...</div><details class="combo-details"><summary>عرض التركيبات الـ1000</summary><div id="combinationCatalog" class="catalog-list">جاري تحميل التركيبات...</div></details><p class="muted">هذا كتالوج المحرك الحقيقي. التقييم الحي يحتاج بيانات شموع من MT5.</p></div>';
- if(id==="control")return '<div class="dash-panel"><h3>التحكم بالتداول</h3><div class="trade-lock"><b>التداول الآلي غير متاح حالياً</b><p>لن يتم تفعيل زر تشغيل التداول قبل نشر المحرك، توثيق اتصال MT5، واختبار أوامر Demo ووقف الخسارة وجني الربح والتريلينغ.</p><button class="dash-btn" disabled>بدء التداول — مقفل حتى الاختبار</button></div>'+wait+'</div>';
+ if(id==="control")return '<div class="dash-panel"><h3>التحكم بالتداول</h3><div class="trade-lock"><b id="tradeControlStatus">التداول متوقف افتراضياً</b><p>التشغيل يسمح لموصل MT5 بتنفيذ إشارات BUY/SELL الجديدة. إعدادات الإكسبرت الحالية: لوت 0.01، صفقة واحدة كحد أقصى، وقف 1.8 ATR، هدف 1.2 ATR، والتريلينغ مفعّل. لا تضغط تشغيل قبل التأكد من نوع الحساب ومخاطره.</p><div class="trade-actions"><button id="enableTradingBtn" class="dash-btn" disabled>بدء التداول</button><button id="disableTradingBtn" class="dash-btn" disabled>إيقاف التداول</button></div><small id="tradeControlNote">جارٍ التحقق من اتصال MT5...</small></div></div>';
  if(id==="settings")return '<div class="dash-panel"><h3>إعدادات التداول والحماية</h3><div class="settings-grid">'+["حجم اللوت","حد الصفقات المفتوحة","هدف ربح الصفقة","هدف الربح الإجمالي","حد الخسارة اليومي","وقف الخسارة","جني الربح","Trailing Stop","حارس الخسارة الذكي","منع الصفقات العكسية","فريم التحليل","وضع الاستراتيجية"].map(x=>'<label>'+x+'<input disabled placeholder="سيتم تفعيله بعد ربط المحرك"></label>').join("")+'</div>'+wait+'</div>';
  const titles={gold:"الذهب والاستراتيجيات",candles:"الشموع وحركة السوق",council:"مجلس التصويت",analysis:"التحليل الذكي",lab:"مختبر الفرص",trades:"الصفقات والأداء",open:"الصفقات المفتوحة",pending:"الأوامر المعلقة والسجل",daily:"الأداء اليومي",results:"نتائج الذكاء الاصطناعي",learning:"التعلم والتكيف",logs:"السجلات",blackbox:"AZ BLACK BOX"};
  return '<div class="dash-panel"><h3>'+titles[id]+'</h3>'+wait+'</div>';
@@ -36,6 +36,8 @@ function dashboardPageBody(id){
 function renderDashboard(){
  dashboardRoot.innerHTML='<div class="dash-top"><div><div class="dash-brand">AL-ZOOL <span>GOLD SNIPER</span></div><small>مركز التداول الذكي • XAUUSD</small></div><div class="dash-top-actions"><span class="engine-pill">المحرك: غير مربوط</span><button id="dashLogout" class="btn ghost">تسجيل الخروج</button></div></div><div class="dash-layout"><aside class="dash-side"><div class="dash-user">'+(dashboardRole==="owner"?"OWNER CONTROL":"CLIENT WORKSPACE")+'</div>'+navPages.map(p=>'<button class="dash-nav '+(p[0]===activeDashboardPage?"selected":"")+'" data-page="'+p[0]+'"><span>'+p[2]+'</span>'+p[1]+'</button>').join("")+(dashboardRole==="owner"?'<button class="dash-nav back-admin" data-page="admin">↩ إدارة العملاء</button>':"")+'</aside><main class="dash-main"><div class="dash-heading"><div><small>لوحة التحكم</small><h1>'+navPages.find(p=>p[0]===activeDashboardPage)[1]+'</h1></div><span id="engineMarketTag" class="market-tag">XAUUSD • بانتظار تهيئة المحرك</span></div>'+dashboardPageBody(activeDashboardPage)+'</main></div>';
  $("dashLogout").addEventListener("click",logout);
+ if($("enableTradingBtn"))$("enableTradingBtn").addEventListener("click",()=>setTradingEnabled(true));
+ if($("disableTradingBtn"))$("disableTradingBtn").addEventListener("click",()=>setTradingEnabled(false));
  dashboardRoot.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.page==="admin"){show("adminView");return}activeDashboardPage=b.dataset.page;renderDashboard()}));
  if(activeDashboardPage==="families"||activeDashboardPage==="strategies")loadEngineCatalog();
  if(dashboardStatusTimer)clearInterval(dashboardStatusTimer);
@@ -57,6 +59,13 @@ async function refreshEngineStatus(){
   }
   const s=await api("/api/engine/status");
   const connected=s.mt5_connected===true;
+  mt5Connected=connected;tradingEnabled=s.trading_enabled===true;
+  const tradeHome=$("tradeHomeStatus"),tradeStatus=$("tradeControlStatus"),enableBtn=$("enableTradingBtn"),disableBtn=$("disableTradingBtn"),note=$("tradeControlNote");
+  if(tradeHome){tradeHome.textContent=tradingEnabled?"مفعّل":"متوقف";tradeHome.className=tradingEnabled?"state-on":"state-off"}
+  if(tradeStatus)tradeStatus.textContent=tradingEnabled?"التداول الآلي مفعّل":"التداول الآلي متوقف";
+  if(enableBtn)enableBtn.disabled=!connected||tradingEnabled;
+  if(disableBtn)disableBtn.disabled=!tradingEnabled;
+  if(note)note.textContent=connected?"MT5 متصل — التشغيل يرسل إذن التنفيذ إلى الإكسبرت":"يلزم اتصال MT5 حديث قبل بدء التداول";
   if(pill)pill.textContent=connected?"المحرك وMT5: متصلان":"المحرك متصل • MT5 غير متصل";
   if(mt5){mt5.textContent=connected?"متصل":"بانتظار بيانات MT5";mt5.className=connected?"state-on":"state-off"}
   if(tag){
@@ -68,6 +77,12 @@ async function refreshEngineStatus(){
   if(mt5){mt5.textContent="تعذر التحقق";mt5.className="state-off"}
   if(tag)tag.textContent="XAUUSD • حالة الاتصال غير مؤكدة";
  }
+}
+async function setTradingEnabled(enabled){
+ if(enabled&&!mt5Connected){alert("لا يمكن بدء التداول قبل تأكيد اتصال MT5.");return}
+ if(enabled&&!confirm("تنبيه: قد ينفذ MT5 صفقات حقيقية فور ظهور إشارة جديدة. الإعداد الحالي 0.01 لوت، صفقة واحدة، وقف 1.8 ATR وهدف 1.2 ATR. هل تؤكد أنك راجعت نوع الحساب وإعدادات المخاطرة وتريد بدء التداول؟"))return;
+ if(!enabled&&!confirm("تأكيد إيقاف فتح صفقات جديدة؟ ستظل حماية الصفقات المفتوحة (SL/TP/Trailing) تعمل محلياً."))return;
+ try{await api("/api/engine/control","POST",{enabled});tradingEnabled=enabled;await refreshEngineStatus()}catch(e){alert("تعذر تغيير حالة التداول: "+e.message)}
 }
 async function loadEngineCatalog(){
  try{
