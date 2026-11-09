@@ -61,6 +61,11 @@ double g_cfg_lot=0.01, g_cfg_profit_target=1.0, g_cfg_per_trade_target=2.0;
 double g_cfg_loss_limit=50.0, g_cfg_global_loss=50.0;
 double g_cfg_fixed_sl_distance=3.0, g_cfg_trail_start=3.0, g_cfg_trail_distance=3.0;
 double g_cfg_pending_distance=2.0;
+double g_cfg_addon_step=2.0,g_cfg_addon_multiplier=1.2,g_cfg_cooling_step=3.0,g_cfg_cooling_multiplier=1.2;
+int g_cfg_addon_max=3,g_cfg_cooling_max=2;
+bool g_cfg_addon_enabled=false,g_cfg_addon_multiplier_enabled=true,g_cfg_cooling_enabled=false,g_cfg_cooling_multiplier_enabled=true;
+double g_last_addon_buy_price=0.0,g_last_addon_sell_price=0.0,g_last_cooling_buy_price=0.0,g_last_cooling_sell_price=0.0;
+double g_decision_expires_at=0.0;
 int g_cfg_max_positions=0;
 bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_enabled=true;
 bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true;
@@ -466,6 +471,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    strategy_id=(int)JsonNumber(response,"strategy_id",0);
    g_last_strategy_name=JsonString(response,"strategy_name");
    g_last_confidence=confidence;
+   g_decision_expires_at=JsonNumber(response,"expires_at",0.0);
    g_last_strategy_id=strategy_id;
    g_last_decision=decision;
    if(decision!="BUY" && decision!="SELL" && decision!="WAIT")
@@ -489,6 +495,31 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    g_status="Server online / "+decision;
    g_last_reason=reason;
    return true;
+}
+
+int CountOurPendingOrders()
+{
+   int total=0;
+   for(int i=OrdersTotal()-1;i>=0;i--)
+   {
+      ulong ticket=OrderGetTicket(i);
+      if(ticket==0) continue;
+      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=InpMagic) continue;
+      total++;
+   }
+   return total;
+}
+
+void CancelOurPendingOrders()
+{
+   trade.SetExpertMagicNumber(InpMagic);
+   for(int i=OrdersTotal()-1;i>=0;i--)
+   {
+      ulong ticket=OrderGetTicket(i);
+      if(ticket==0) continue;
+      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=InpMagic) continue;
+      if(!trade.OrderDelete(ticket)) Print("AL-ZOOL pending cancellation failed: ",ticket," ",trade.ResultRetcodeDescription());
+   }
 }
 
 bool CheckTradingControl()
@@ -516,6 +547,7 @@ bool CheckTradingControl()
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    g_trading_enabled=JsonBool(response,"trading_enabled",false);
+   if(!g_trading_enabled) CancelOurPendingOrders();
    return g_trading_enabled;
 }
 
@@ -549,6 +581,16 @@ bool PollCentralSettings()
    g_cfg_trail_start=JsonNumber(response,"trail_start",3.0);
    g_cfg_trail_distance=JsonNumber(response,"trail_distance",3.0);
    g_cfg_pending_distance=JsonNumber(response,"pending_distance",2.0);
+   g_cfg_addon_step=JsonNumber(response,"addon_step",2.0);
+   g_cfg_addon_multiplier=JsonNumber(response,"addon_multiplier",1.2);
+   g_cfg_addon_max=(int)JsonNumber(response,"addon_max",3);
+   g_cfg_cooling_step=JsonNumber(response,"cooling_step",3.0);
+   g_cfg_cooling_multiplier=JsonNumber(response,"cooling_multiplier",1.2);
+   g_cfg_cooling_max=(int)JsonNumber(response,"cooling_max",2);
+   g_cfg_addon_enabled=JsonBool(response,"addon_enabled",false);
+   g_cfg_addon_multiplier_enabled=JsonBool(response,"addon_multiplier_enabled",true);
+   g_cfg_cooling_enabled=JsonBool(response,"cooling_enabled",false);
+   g_cfg_cooling_multiplier_enabled=JsonBool(response,"cooling_multiplier_enabled",true);
    g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
    g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
    g_cfg_global_loss_enabled=JsonBool(response,"global_loss_enabled",true);
@@ -560,7 +602,9 @@ bool PollCentralSettings()
    g_cfg_strategy_mode=JsonString(response,"strategy_mode");
    if(g_cfg_strategy_mode=="") g_cfg_strategy_mode="AUTO — Best current fit";
    if(g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
-      g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0)
+      g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0 ||
+      g_cfg_addon_step<=0 || g_cfg_cooling_step<=0 || g_cfg_addon_multiplier<1 || g_cfg_cooling_multiplier<1 ||
+      g_cfg_addon_max<0 || g_cfg_cooling_max<0)
    { g_settings_loaded=false; g_status="Invalid risk/protection settings"; return false; }
    g_settings_loaded=true;
    return true;
@@ -573,6 +617,11 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    // a freshly verified, signed decision from the central engine.
    if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; return false; }
    if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; return false; }
+   if(g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
+   {
+      g_status="Entry blocked / signed decision expired";
+      return false;
+   }
    if(!g_server_online || !g_decision_verified)
    {
       g_status="Entry blocked / central server or signed decision not confirmed";
@@ -603,7 +652,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    }
 
    int buys=0,sells=0;
-   int current_positions=CountOurPositions(buys,sells);
+   int current_positions=CountOurPositions(buys,sells)+CountOurPendingOrders();
    if(g_cfg_max_positions>0 && current_positions>=g_cfg_max_positions)
    {
       g_status="Maximum positions reached (dashboard setting)";
@@ -638,16 +687,32 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(direction=="BUY")
    {
       price=tick.ask;
-      sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-      tp=0.0;
-      sent=trade.Buy(lots,_Symbol,0.0,sl,tp,"AZS"+IntegerToString(strategy_id));
+      if(g_cfg_order_mode=="Pending Order")
+      {
+         price=NormalizeDouble(tick.ask+MathMax(g_cfg_pending_distance,min_distance),digits);
+         sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
+         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,"AZS"+IntegerToString(strategy_id));
+      }
+      else
+      {
+         sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
+         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,"AZS"+IntegerToString(strategy_id));
+      }
    }
    else
    {
       price=tick.bid;
-      sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
-      tp=0.0;
-      sent=trade.Sell(lots,_Symbol,0.0,sl,tp,"AZS"+IntegerToString(strategy_id));
+      if(g_cfg_order_mode=="Pending Order")
+      {
+         price=NormalizeDouble(tick.bid-MathMax(g_cfg_pending_distance,min_distance),digits);
+         sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
+         sent=trade.SellStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,"AZS"+IntegerToString(strategy_id));
+      }
+      else
+      {
+         sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
+         sent=trade.Sell(lots,_Symbol,0.0,sl,0.0,"AZS"+IntegerToString(strategy_id));
+      }
    }
 
    uint rc=trade.ResultRetcode();
@@ -1080,6 +1145,72 @@ void OnDeinit(const int reason)
    Comment("");
 }
 
+void ManageAddonCooling()
+{
+   if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
+      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at) return;
+   if(g_last_decision!="BUY" && g_last_decision!="SELL") return;
+   if(!g_cfg_addon_enabled && !g_cfg_cooling_enabled) return;
+   if(!CheckTradingControl()) return;
+   int buys=0,sells=0;
+   CountOurPositions(buys,sells);
+   string direction=g_last_decision;
+   int group_count=(direction=="BUY" ? buys : sells);
+   if(group_count<=0)
+   {
+      if(direction=="BUY") { g_last_addon_buy_price=0; g_last_cooling_buy_price=0; }
+      else { g_last_addon_sell_price=0; g_last_cooling_sell_price=0; }
+      return;
+   }
+   double latest_price=0.0; datetime latest_time=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if((direction=="BUY" && type!=POSITION_TYPE_BUY) || (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
+      datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
+      if(opened>=latest_time) { latest_time=opened; latest_price=PositionGetDouble(POSITION_PRICE_OPEN); }
+   }
+   MqlTick tick; if(!SymbolInfoTick(_Symbol,tick)) return;
+   double quote=(direction=="BUY" ? tick.bid : tick.ask);
+   double addon_anchor=(direction=="BUY" ? g_last_addon_buy_price : g_last_addon_sell_price);
+   double cooling_anchor=(direction=="BUY" ? g_last_cooling_buy_price : g_last_cooling_sell_price);
+   if(addon_anchor<=0.0) addon_anchor=latest_price;
+   if(cooling_anchor<=0.0) cooling_anchor=latest_price;
+   int existing_adds=MathMax(0,group_count-1);
+   if(g_cfg_addon_enabled && existing_adds<g_cfg_addon_max)
+   {
+      double favorable=(direction=="BUY" ? quote-addon_anchor : addon_anchor-quote);
+      if(favorable>=g_cfg_addon_step)
+      {
+         double lot=g_cfg_lot*(g_cfg_addon_multiplier_enabled ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
+         string unique_id=g_last_decision_id+"_ADD_"+IntegerToString((long)TimeCurrent());
+         if(PlaceCentralTrade(direction,unique_id,"تعزيز آلي: حركة لصالح الاتجاه "+DoubleToString(favorable,2),g_last_strategy_id))
+         {
+            if(direction=="BUY") g_last_addon_buy_price=quote; else g_last_addon_sell_price=quote;
+            g_status="Add-on opened / "+direction;
+            return;
+         }
+      }
+   }
+   if(g_cfg_cooling_enabled && existing_adds<g_cfg_cooling_max)
+   {
+      double adverse=(direction=="BUY" ? cooling_anchor-quote : quote-cooling_anchor);
+      if(adverse>=g_cfg_cooling_step)
+      {
+         double lot=g_cfg_lot*(g_cfg_cooling_multiplier_enabled ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
+         string unique_id=g_last_decision_id+"_COOL_"+IntegerToString((long)TimeCurrent());
+         if(PlaceCentralTrade(direction,unique_id,"تبريد آلي: حركة ضد الاتجاه "+DoubleToString(adverse,2),g_last_strategy_id))
+         {
+            if(direction=="BUY") g_last_cooling_buy_price=quote; else g_last_cooling_sell_price=quote;
+            g_status="Cooling opened / "+direction;
+         }
+      }
+   }
+}
+
 void OnTimer()
 {
    PollCentralSettings();
@@ -1090,6 +1221,7 @@ void OnTimer()
    CheckCentralHealth();
    CheckTradingControl();
    PollCentralEngine();
+   ManageAddonCooling();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
