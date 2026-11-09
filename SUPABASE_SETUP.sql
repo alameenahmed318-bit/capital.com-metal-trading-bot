@@ -1,0 +1,3 @@
+-- Supabase Auth is used for owner and client accounts.
+-- Set OWNER_EMAIL=Meenosvn1@gmail.com and OWNER_PASSWORD as server secrets.
+-- Keep SUPABASE_SERVICE_ROLE_KEY on the server only. Never expose it in the browser.
