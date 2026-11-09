@@ -94,6 +94,10 @@ class Handler(SimpleHTTPRequestHandler):
             try: return self.send_json(200,ENGINE.health())
             except Exception as e: return self.send_json(503,{"service":"AL-ZOOL central engine","status":"setup_required","error":str(e)[:180]})
         parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
+        if len(parts)==3 and parts[0]=="v1" and parts[1]=="control":
+            try: return self.send_json(200,ENGINE.trading_control(parts[2],token_of(self)))
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(503,{"error":str(e)[:200]})
         if len(parts)==3 and parts[0]=="v1" and parts[1] in ("decision","analysis"):
             try:
                 result=ENGINE.latest(parts[2],token_of(self),"analysis" if parts[1]=="analysis" else "decision")
@@ -147,6 +151,15 @@ class Handler(SimpleHTTPRequestHandler):
             if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","outcome"]:
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
+            if self.path=="/api/engine/control":
+                u=current_user(token)
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                enabled=data.get("enabled")
+                if not isinstance(enabled,bool): return self.send_json(400,{"error":"enabled must be true or false"})
+                ENGINE.set_user_trading_enabled(u["id"],enabled)
+                return self.send_json(200,{"ok":True,"trading_enabled":enabled})
             if self.path=="/api/owner/engine-credentials":
                 u=owner(token)
                 credentials=ENGINE.issue(u.get("id"))
