@@ -1189,7 +1189,7 @@ void ManageAddonCooling()
       {
          double lot=g_cfg_lot*(g_cfg_addon_multiplier_enabled ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
          string unique_id=g_last_decision_id+"_ADD_"+IntegerToString((long)TimeCurrent());
-         if(PlaceCentralTrade(direction,unique_id,"تعزيز آلي: حركة لصالح الاتجاه "+DoubleToString(favorable,2),g_last_strategy_id))
+         if(PlaceCentralTrade(direction,unique_id,"تعزيز آلي: حركة لصالح الاتجاه "+DoubleToString(favorable,2),g_last_strategy_id,lot))
          {
             if(direction=="BUY") g_last_addon_buy_price=quote; else g_last_addon_sell_price=quote;
             g_status="Add-on opened / "+direction;
@@ -1204,7 +1204,7 @@ void ManageAddonCooling()
       {
          double lot=g_cfg_lot*(g_cfg_cooling_multiplier_enabled ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
          string unique_id=g_last_decision_id+"_COOL_"+IntegerToString((long)TimeCurrent());
-         if(PlaceCentralTrade(direction,unique_id,"تبريد آلي: حركة ضد الاتجاه "+DoubleToString(adverse,2),g_last_strategy_id))
+         if(PlaceCentralTrade(direction,unique_id,"تبريد آلي: حركة ضد الاتجاه "+DoubleToString(adverse,2),g_last_strategy_id,lot))
          {
             if(direction=="BUY") g_last_cooling_buy_price=quote; else g_last_cooling_sell_price=quote;
             g_status="Cooling opened / "+direction;
