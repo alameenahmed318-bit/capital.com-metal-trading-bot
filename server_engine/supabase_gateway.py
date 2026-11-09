@@ -193,3 +193,35 @@ class EngineGateway:
                 {"client_id":client_id,"strategy_id":sid,"weight":new},
                 "resolution=merge-duplicates,return=minimal")
         return {"accepted":True,"duplicate":not bool(result)}
+
+
+    def workspace_for_user(self, user_id, limit=100):
+        """Return persisted engine intelligence for the authenticated dashboard user."""
+        clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
+        if not clients:
+            return {"connected":False,"reason":"credentials_not_issued","analysis":None,"decisions":[],"outcomes":[],"weights":[]}
+        client=clients[0]
+        cid=urllib.parse.quote(client["client_id"],safe="")
+        decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+"&select=payload,created_at&order=created_at.desc&limit=1")
+        outcomes=self._request("GET","alzool_engine_outcomes?client_id=eq."+cid+"&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit="+str(max(1,min(int(limit),200))))
+        weights=self._request("GET","alzool_engine_weights?client_id=eq."+cid+"&select=strategy_id,weight&order=strategy_id.asc")
+        payload=(decisions[0].get("payload") or {}) if decisions else None
+        stamp=decisions[0].get("created_at") if decisions else None
+        try:
+            seen=datetime.fromisoformat(stamp.replace("Z","+00:00")).timestamp() if stamp else 0
+        except Exception:
+            seen=float((payload or {}).get("created_at",0) or 0)
+        age=max(0,time.time()-seen) if seen else None
+        return {
+            "connected":bool(age is not None and age<=30 and not client.get("revoked")),
+            "reason":"market_data_recent" if age is not None and age<=30 else ("no_market_data" if not payload else "market_data_stale"),
+            "trading_enabled":bool(client.get("trading_enabled",False)) and not bool(client.get("revoked")),
+            "last_seen_at":stamp,
+            "seconds_since_last_data":round(age,1) if age is not None else None,
+            "analysis":(payload or {}).get("analysis"),
+            "decision":{k:(payload or {}).get(k) for k in ("decision_id","decision","strategy_id","strategy_name","reason_ar","confidence","created_at","expires_at")} if payload else None,
+            "outcomes":outcomes,
+            "weights":weights,
+            "outcome_count":len(outcomes),
+            "client_revoked":bool(client.get("revoked"))
+        }
