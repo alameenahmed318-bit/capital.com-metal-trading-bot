@@ -68,7 +68,10 @@ double g_last_addon_buy_price=0.0,g_last_addon_sell_price=0.0,g_last_cooling_buy
 double g_decision_expires_at=0.0;
 int g_cfg_max_positions=0;
 bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_enabled=true;
-bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true;
+bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true,g_cfg_ai_loss_guard=false;
+double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
+bool g_context_buy_trap=false,g_context_sell_trap=false;
+string g_context_regime="";
 string g_cfg_order_mode="Market Order", g_cfg_strategy_mode="AUTO — Best current fit";
 bool g_daily_loss_paused=false;
 string g_daily_loss_date="";
@@ -472,6 +475,11 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    g_last_strategy_name=JsonString(response,"strategy_name");
    g_last_confidence=confidence;
    g_decision_expires_at=JsonNumber(response,"expires_at",0.0);
+   g_context_buy_quality=JsonNumber(response,"buy_quality",0.0);
+   g_context_sell_quality=JsonNumber(response,"sell_quality",0.0);
+   g_context_buy_trap=JsonBool(response,"buy_trap",false);
+   g_context_sell_trap=JsonBool(response,"sell_trap",false);
+   g_context_regime=JsonString(response,"regime");
    g_last_strategy_id=strategy_id;
    g_last_decision=decision;
    if(decision!="BUY" && decision!="SELL" && decision!="WAIT")
@@ -597,6 +605,7 @@ bool PollCentralSettings()
    g_cfg_fixed_sl_enabled=JsonBool(response,"fixed_sl_enabled",true);
    g_cfg_trailing=JsonBool(response,"trailing_enabled",true);
    g_cfg_one_direction=JsonBool(response,"one_direction_only",true);
+   g_cfg_ai_loss_guard=JsonBool(response,"ai_loss_guard_enabled",false);
    g_cfg_order_mode=JsonString(response,"order_mode");
    if(g_cfg_order_mode=="") g_cfg_order_mode="Market Order";
    g_cfg_strategy_mode=JsonString(response,"strategy_mode");
@@ -1147,6 +1156,35 @@ void OnDeinit(const int reason)
    Comment("");
 }
 
+void ManageAiLossGuard()
+{
+   if(!g_settings_loaded || !g_cfg_ai_loss_guard || !g_decision_verified ||
+      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at || g_last_confidence<0.72) return;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      double pnl=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      if(pnl>=0.0) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      bool is_buy=(type==POSITION_TYPE_BUY);
+      string opposite=(is_buy ? "SELL" : "BUY");
+      double same_quality=(is_buy ? g_context_buy_quality : g_context_sell_quality);
+      double opposite_quality=(is_buy ? g_context_sell_quality : g_context_buy_quality);
+      bool trap_against=(is_buy ? g_context_buy_trap : g_context_sell_trap);
+      bool regime_opposes=(is_buy ? g_context_regime=="اتجاه هابط" : g_context_regime=="اتجاه صاعد");
+      bool evidence=(g_last_decision==opposite && opposite_quality>same_quality &&
+                     g_last_confidence>=0.72 && (trap_against || regime_opposes));
+      if(!evidence) continue;
+      trade.SetExpertMagicNumber(InpMagic);
+      if(trade.PositionClose(ticket))
+         Print("AL-ZOOL AI loss guard closed losing position ",ticket,"; pnl=",DoubleToString(pnl,2),"; opposite quality=",DoubleToString(opposite_quality,1));
+      else
+         Print("AL-ZOOL AI loss guard close failed ",ticket,"; ",trade.ResultRetcodeDescription());
+   }
+}
+
 void ManageAddonCooling()
 {
    if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
@@ -1224,6 +1262,7 @@ void OnTimer()
    if(!g_server_online) CancelOurPendingOrders();
    CheckTradingControl();
    PollCentralEngine();
+   ManageAiLossGuard();
    ManageAddonCooling();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
