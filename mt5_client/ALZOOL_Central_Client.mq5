@@ -11,8 +11,8 @@
 
 input group "Central server"
 input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
-input string InpClientId = "";
-input string InpClientToken = "";
+input string InpEngineId = "";
+input string InpEngineToken = "";
 input string InpServerSymbol = "XAUUSD";
 input int    InpHttpTimeoutMs = 5000;
 input int    InpRequestEverySeconds = 5;
@@ -139,7 +139,7 @@ bool VerifyDecisionSignature(const string response)
    int strategy_id=(int)JsonNumber(response,"strategy_id",-1.0);
    double confidence=JsonNumber(response,"confidence",-1.0);
    double expires_at=JsonNumber(response,"expires_at",0.0);
-   if(signed_payload=="" || supplied=="" || client_id!=InpClientId ||
+   if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
       decision_id=="" || (decision!="BUY" && decision!="SELL" && decision!="WAIT") ||
       strategy_id<0 || confidence<0.0 || expires_at<=0.0 || TimeGMT()>=(datetime)expires_at)
       return false;
@@ -154,7 +154,7 @@ bool VerifyDecisionSignature(const string response)
       return false;
 
    string expected="";
-   if(!HMAC_SHA256_HEX(signed_payload,InpClientToken,expected)) return false;
+   if(!HMAC_SHA256_HEX(signed_payload,InpEngineToken,expected)) return false;
    if(StringLen(expected)!=StringLen(supplied)) return false;
    StringToLower(expected);
    StringToLower(supplied);
@@ -318,9 +318,9 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
       g_status="Set server URL";
       return false;
    }
-   if(InpClientId=="" || InpClientToken=="")
+   if(InpEngineId=="" || InpEngineToken=="")
    {
-      g_status="Set client credentials";
+      g_status="Set owner engine credentials";
       return false;
    }
 
@@ -347,8 +347,8 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
       return false;
    }
 
-   string url=ServerBaseUrl()+"/v1/market/"+InpClientId;
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpClientToken+"\r\n";
+   string url=ServerBaseUrl()+"/v1/market/"+InpEngineId;
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
    char data[];
    char result[];
    StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
@@ -539,10 +539,10 @@ void QueueClosedDealOutcome(const ulong deal,const int strategy_id,const double 
 
 void FlushPendingOutcomes()
 {
-   if(InpServerUrl=="" || InpClientId=="" || InpClientToken=="") return;
+   if(InpServerUrl=="" || InpEngineId=="" || InpEngineToken=="") return;
    string prefix=PendingOutcomePrefix();
-   string url=ServerBaseUrl()+"/v1/outcome/"+InpClientId;
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpClientToken+"\r\n";
+   string url=ServerBaseUrl()+"/v1/outcome/"+InpEngineId;
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
    int outcome_timeout=(int)MathMin(InpHttpTimeoutMs,1000);
 
    // Send at most one queued result per timer cycle so a backlog cannot
