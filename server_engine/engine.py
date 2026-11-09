@@ -196,7 +196,7 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strategy_id=0):
     weights=weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
@@ -243,6 +243,26 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
             pool=[x for x in candidates if x[2]==direction];pool.sort(key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),reverse=True)
             if pool:_,chosen,final,why=pool[0];reason=f"{policy} | AZ MASTER BRAIN: توافق العائلات {famagree:.0%}؛ العائلات المؤيدة {breadth}/20؛ توافق التركيبات {combo_share:.0%}؛ الثقة {agreement:.0%}؛ الجودة {quality:.0f}/100؛ الفريمات {aligned}/{len(mtf_bias)}؛ السوق {context['regime']}؛ {context['reason']}؛ {why}"
             else:final="WAIT";chosen=None;reason="لا توجد استراتيجية أصلية متوافقة"
+    if selected_strategy_id:
+        selected_id=int(selected_strategy_id)
+        if not 1<=selected_id<=len(STRATEGIES): raise ValueError("selected_strategy_id must be 1..200")
+        selected=STRATEGIES[selected_id-1]
+        selected_vote=next(v for v in votes if v["id"]==selected_id)
+        selected_signal=selected_vote["signal"]
+        selected_quality=context["buy_quality"] if selected_signal=="BUY" else context["sell_quality"] if selected_signal=="SELL" else 0.
+        selected_trap=context["buy_trap"] if selected_signal=="BUY" else context["sell_trap"] if selected_signal=="SELL" else False
+        if selected_signal in ("BUY","SELL") and selected_trap:
+            final="WAIT"; reason=f"الاستراتيجية المحددة {selected_id}: تم منع الدخول بسبب احتمال فخ سعري"
+        elif selected_signal in ("BUY","SELL"):
+            final=selected_signal; chosen=next((x for x in candidates if x[1]["id"]==selected_id),None)
+            if chosen is None: final="WAIT"; reason=f"الاستراتيجية المحددة {selected_id}: لا توجد إشارة تنفيذ صالحة"
+            else:
+                _,chosen,_,why=chosen
+                agreement=max(0.,min(1.,float(selected_vote["adjusted_score"])/1.5))
+                reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}؛ {why}؛ جودة نقطة الدخول {selected_quality:.0f}/100؛ السوق {context['regime']}"
+        else:
+            final="WAIT"; reason=f"الاستراتيجية المحددة #{selected_id} — {selected['name']}: لا توجد إشارة مؤكدة على الشمعة المغلقة"
+            chosen=None
     if "chosen" not in locals():chosen=None
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
