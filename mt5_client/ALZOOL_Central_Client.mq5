@@ -219,14 +219,14 @@ bool VerifyDecisionSignature(const string response)
 
 bool JsonBool(const string source,const string key,bool fallback=false)
 {
-   string needle="\\"" + key + "\\"";
+   string needle="\"" + key + "\"";
    int p=StringFind(source,needle);
    if(p<0) return fallback;
    p+=StringLen(needle);
-   while(p<StringLen(source) && (StringGetCharacter(source,p)==' ' || StringGetCharacter(source,p)=='\\t' || StringGetCharacter(source,p)=='\\r' || StringGetCharacter(source,p)=='\\n')) p++;
+   while(p<StringLen(source) && StringGetCharacter(source,p)==' ') p++;
    if(p>=StringLen(source) || StringGetCharacter(source,p)!=':') return fallback;
    p++;
-   while(p<StringLen(source) && (StringGetCharacter(source,p)==' ' || StringGetCharacter(source,p)=='\\t' || StringGetCharacter(source,p)=='\\r' || StringGetCharacter(source,p)=='\\n')) p++;
+   while(p<StringLen(source) && StringGetCharacter(source,p)==' ') p++;
    if(StringSubstr(source,p,4)=="true") return true;
    if(StringSubstr(source,p,5)=="false") return false;
    return fallback;
@@ -537,7 +537,7 @@ bool PollCentralSettings()
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) { g_settings_loaded=false; return false; }
    char data[],result[]; ArrayResize(data,0);
    string response_headers;
-   string headers="Accept: application/json\\r\\nAuthorization: Bearer "+InpEngineToken+"\\r\\n";
+   string response_headers;
    ResetLastError();
    int http=WebRequest("GET",ServerBaseUrl()+"/v1/settings/"+InpEngineId,headers,InpHttpTimeoutMs,data,result,response_headers);
    if(http!=200)
