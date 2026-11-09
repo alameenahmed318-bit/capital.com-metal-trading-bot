@@ -77,7 +77,9 @@ class Handler(SimpleHTTPRequestHandler):
         body=json.dumps(data,ensure_ascii=False).encode()
         self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8")
         self.send_header("Cache-Control","no-store"); self.send_header("X-Content-Type-Options","nosniff")
-        self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
+        self.send_header("Content-Length",str(len(body))); self.end_headers()
+        try: self.wfile.write(body)
+        except (BrokenPipeError,ConnectionResetError): print("CLIENT_DISCONNECTED_BEFORE_RESPONSE: "+str(self.path))
     def read_json(self):
         n=int(self.headers.get("Content-Length","0"))
         if n>1000000: raise ValueError("حجم الطلب كبير")
@@ -98,6 +100,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,result)
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
+        if self.path=="/api/engine/status":
+            try:
+                u=current_user(token_of(self))
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                return self.send_json(200,ENGINE.status_for_user(u["id"],stale_after=30))
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
         if self.path=="/api/config":
             return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
         if self.path=="/api/engine/catalog":
