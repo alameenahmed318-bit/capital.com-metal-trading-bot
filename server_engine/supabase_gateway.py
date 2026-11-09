@@ -202,7 +202,7 @@ class EngineGateway:
 
 
 
-    BASIC_SETTINGS_DEFAULTS = {"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":True,"per_trade_profit_enabled":True,"per_trade_profit_target":2,"smart_profit_enabled":False,"one_direction_only":True,"global_loss_enabled":True,"global_loss_amount":50,"ai_loss_guard_enabled":False,"max_positions":0,"fixed_sl_enabled":True,"fixed_sl_distance":3,"trailing_enabled":True,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":False,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":False,"candle_chase_sl_distance":3,"addon_enabled":False,"addon_step":2,"addon_multiplier_enabled":True,"addon_multiplier":1.2,"addon_max":3,"cooling_enabled":False,"cooling_step":3,"cooling_multiplier_enabled":True,"cooling_multiplier":1.2,"cooling_max":2,"strategy_mode":"AUTO — Best current fit"}
+    BASIC_SETTINGS_DEFAULTS = {"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":True,"per_trade_profit_enabled":True,"per_trade_profit_target":2,"smart_profit_enabled":False,"one_direction_only":True,"global_loss_enabled":True,"global_loss_amount":50,"ai_loss_guard_enabled":False,"max_positions":0,"fixed_sl_enabled":True,"fixed_sl_distance":3,"trailing_enabled":True,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":False,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":False,"candle_chase_sl_distance":3,"addon_enabled":False,"addon_smart_enabled":False,"addon_step":2,"addon_multiplier_enabled":True,"addon_multiplier":1.2,"addon_max":3,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_smart_enabled":False,"cooling_step":3,"cooling_multiplier_enabled":True,"cooling_multiplier":1.2,"cooling_max":2,"cooling_max_lot":0.05,"strategy_mode":"AUTO — Best current fit"}
 
     def settings_for_client(self, client_id, token):
         client=self._client(client_id,token)
@@ -224,6 +224,13 @@ class EngineGateway:
         if not values or any(k not in allowed for k in values): raise ValueError("unknown or empty setting")
         current=self.settings_for_user(user_id)
         merged={**current,**values}
+        # Normalize Arabic-Indic/Persian digits and Arabic decimal separators.
+        for key,default in self.BASIC_SETTINGS_DEFAULTS.items():
+            if isinstance(default,(int,float)) and not isinstance(default,bool) and isinstance(merged.get(key),str):
+                raw=merged[key].strip().translate(str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹","01234567890123456789"))
+                raw=raw.replace("٫",".").replace("٬","").replace("،","").replace(" ","")
+                try: merged[key]=float(raw)
+                except (TypeError,ValueError): raise ValueError(key+" must be a valid number") from None
         for key,default in self.BASIC_SETTINGS_DEFAULTS.items():
             value=merged.get(key)
             if isinstance(default,bool):
@@ -238,7 +245,7 @@ class EngineGateway:
         if not 0.05<=merged["ai_risk_percent"]<=2.0 or merged["ai_max_lot"]<=0: raise ValueError("AI risk must be 0.05..2% and AI max lot must be positive")
         if merged["max_positions"]<0 or merged["addon_max"]<0 or merged["cooling_max"]<0: raise ValueError("maximum counts cannot be negative")
         if merged["fixed_sl_distance"]<=0 or merged["trail_start"]<0 or merged["trail_distance"]<=0 or merged["pending_distance"]<=0 or merged["reverse_trigger"]<=0 or merged["reverse_continue"]<=0: raise ValueError("stop, trailing, pending and reversal distances are invalid")
-        if merged["addon_step"]<=0 or merged["cooling_step"]<=0 or merged["addon_multiplier"]<1 or merged["cooling_multiplier"]<1: raise ValueError("add-on/cooling distances and multipliers are invalid")
+        if merged["addon_step"]<=0 or merged["cooling_step"]<=0 or merged["addon_multiplier"]<1 or merged["cooling_multiplier"]<1 or merged["addon_max_lot"]<=0 or merged["cooling_max_lot"]<=0: raise ValueError("add-on/cooling distances, multipliers and lot caps are invalid")
         if merged["candle_chase_min_move"]<=0 or merged["candle_chase_cooldown"]<0 or merged["candle_chase_buy_target"]<0 or merged["candle_chase_sell_target"]<0 or merged["candle_chase_single_target"]<0 or merged["candle_chase_sl_distance"]<=0: raise ValueError("candle-follow settings are invalid")
         if merged["strategy_mode"] not in ("AUTO — Best current fit","HUNTER — Frequent opportunities","SNIPER — Selective entries") and not merged["strategy_mode"].isdigit():
             raise ValueError("invalid strategy_mode")
