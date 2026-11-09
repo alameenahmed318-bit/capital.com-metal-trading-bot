@@ -135,7 +135,7 @@ class EngineGateway:
         payload={"decision_id":decision_id,"client_id":client_id,"decision":result["decision"],
                  "strategy_id":result["strategy_id"],"strategy_name":result["strategy_name"],
                  "reason_ar":result["reason_ar"],"confidence":confidence,"context":result["context"],
-                 "analysis":result,"created_at":now,"expires_at":expires,"signed_payload":signed,
+                 "analysis":result,"candles":rates,"symbol":data.get("symbol"),"bid":float(data.get("bid")),"ask":float(data.get("ask")),"timeframe":data.get("timeframe","CURRENT"),"created_at":now,"expires_at":expires,"signed_payload":signed,
                  "signature":hmac.new(token.encode(),signed.encode(),hashlib.sha256).hexdigest()}
         self._request("POST","alzool_engine_decisions",{"client_id":client_id,"payload":payload,
                       "created_at":datetime.fromtimestamp(now,timezone.utc).isoformat()},
@@ -195,6 +195,17 @@ class EngineGateway:
         return {"accepted":True,"duplicate":not bool(result)}
 
 
+    def terminal_state(self, client_id, token, data):
+        if not self._client(client_id,token): raise PermissionError("client authorization failed")
+        if not isinstance(data,dict): raise ValueError("terminal state must be an object")
+        keys=("account","positions","orders","history","settings","events")
+        payload={k:data.get(k) for k in keys}
+        if not isinstance(payload.get("positions"),list) or not isinstance(payload.get("orders"),list): raise ValueError("positions and orders arrays are required")
+        if len(payload["positions"])>200 or len(payload["orders"])>200: raise ValueError("too many terminal records")
+        row={"client_id":client_id,"payload":payload,"updated_at":datetime.now(timezone.utc).isoformat()}
+        self._request("POST","alzool_engine_terminal_state",row,"resolution=merge-duplicates,return=minimal")
+        return {"accepted":True,"positions":len(payload["positions"]),"orders":len(payload["orders"])}
+
     def workspace_for_user(self, user_id, limit=100):
         """Return persisted engine intelligence for the authenticated dashboard user."""
         clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
@@ -223,5 +234,6 @@ class EngineGateway:
             "outcomes":outcomes,
             "weights":weights,
             "outcome_count":len(outcomes),
+            "terminal_state":(self._request("GET","alzool_engine_terminal_state?client_id=eq."+cid+"&select=payload,updated_at&limit=1") or [None])[0],
             "client_revoked":bool(client.get("revoked"))
         }
