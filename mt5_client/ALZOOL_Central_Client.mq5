@@ -62,13 +62,52 @@ string ServerBaseUrl()
 //--- small JSON reader for the flat fields returned by service.py
 string JsonString(const string source,const string key)
 {
-   string needle="\"" + key + "\":\"";
+   // Accept standard JSON whitespace around the colon (Python json.dumps
+   // emits ": " by default). The old exact-match parser rejected valid
+   // server responses and caused "Decision signature invalid".
+   string needle="\"" + key + "\"";
    int p=StringFind(source,needle);
    if(p<0) return "";
    p+=StringLen(needle);
-   int e=StringFind(source,"\"",p);
-   if(e<0) return "";
-   return StringSubstr(source,p,e-p);
+
+   while(p<StringLen(source))
+   {
+      ushort ch=StringGetCharacter(source,p);
+      if(ch==' ' || ch=='\t' || ch=='\r' || ch=='\n') p++;
+      else break;
+   }
+   if(p>=StringLen(source) || StringGetCharacter(source,p)!=':') return "";
+   p++;
+
+   while(p<StringLen(source))
+   {
+      ushort ch=StringGetCharacter(source,p);
+      if(ch==' ' || ch=='\t' || ch=='\r' || ch=='\n') p++;
+      else break;
+   }
+   if(p>=StringLen(source) || StringGetCharacter(source,p)!='"') return "";
+   p++;
+
+   string value="";
+   bool escaped=false;
+   for(int i=p;i<StringLen(source);i++)
+   {
+      ushort ch=StringGetCharacter(source,i);
+      if(escaped)
+      {
+         if(ch=='"' || ch=='\\' || ch=='/') value+=ShortToString(ch);
+         else if(ch=='n') value+="\n";
+         else if(ch=='r') value+="\r";
+         else if(ch=='t') value+="\t";
+         else value+=ShortToString(ch);
+         escaped=false;
+         continue;
+      }
+      if(ch=='\\') { escaped=true; continue; }
+      if(ch=='"') return value;
+      value+=ShortToString(ch);
+   }
+   return "";
 }
 
 string BytesToHex(const uchar &bytes[])
