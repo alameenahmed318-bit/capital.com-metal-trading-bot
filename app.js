@@ -144,6 +144,12 @@ async function loadDashboardWorkspace(){
   const escv=v=>esc(v==null?"—":v),num=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
   const tile=(k,v)=>'<article><small>'+escv(k)+'</small><b>'+escv(v)+'</b></article>';
   const grid=arr=>'<div class="dash-cards">'+arr.join("")+'</div>';
+  if(id==="settings"){
+   const terminal=d.terminal_state&&d.terminal_state.payload?d.terminal_state.payload:{},liveSettings=terminal.settings||{},account=terminal.account||{},yes=v=>v===true?"مفعّل":v===false?"متوقف":"—",stamp=terminal.updated_at?new Date(terminal.updated_at).toLocaleString("ar-AE"):"لم تصل بعد";
+   const live=$("engineSettingsLive");
+   if(live)live.innerHTML=grid([tile("حالة MT5",d.connected?"متصل":"غير متصل"),tile("السيرفر",yes(liveSettings.server_online)),tile("إذن التداول",yes(liveSettings.trading_enabled)),tile("رقم الحساب",account.login),tile("السيرفر الوسيط",account.server),tile("الرصيد",account.balance),tile("حقوق الحساب",account.equity),tile("الربح العائم",account.profit),tile("آخر تحديث",stamp)]);
+   return;
+  }
   let body="";
   if(id==="home"||id==="gold")body=grid([tile("حالة السوق",x.regime||"بانتظار البيانات"),tile("القرار",q.decision),tile("الاستراتيجية",q.strategy_name),tile("الثقة",q.confidence==null?"—":(Number(q.confidence)*100).toFixed(1)+"%"),tile("ATR",num(x.atr)),tile("قوة الاتجاه",num(x.trend_strength)),tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality))]);
   if(id==="analysis")body=grid([tile("نظام السوق",x.regime),tile("ATR Ratio",num(x.atr_ratio)),tile("ADX",num(x.adx)),tile("VWAP",num(x.vwap)),tile("الدعم",num(x.support)),tile("المقاومة",num(x.resistance)),tile("إعداد RSI",z.rsi_period),tile("التكيف",z.mode)])+'<p>'+escv(x.reason)+'</p>';
