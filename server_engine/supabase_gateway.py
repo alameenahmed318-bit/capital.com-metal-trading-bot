@@ -195,6 +195,40 @@ class EngineGateway:
         return {"accepted":True,"duplicate":not bool(result)}
 
 
+
+    BASIC_SETTINGS_DEFAULTS = {"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":true,"per_trade_profit_enabled":true,"per_trade_profit_target":2,"smart_profit_enabled":false,"one_direction_only":true,"global_loss_enabled":true,"global_loss_amount":50,"ai_loss_guard_enabled":false,"max_positions":0,"fixed_sl_enabled":true,"fixed_sl_distance":3,"trailing_enabled":true,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":false,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":false,"candle_chase_sl_distance":3,"addon_enabled":false,"addon_step":2,"addon_multiplier_enabled":true,"addon_multiplier":1.2,"addon_max":3,"cooling_enabled":false,"cooling_step":3,"cooling_multiplier_enabled":true,"cooling_multiplier":1.2,"cooling_max":2,"strategy_mode":"AUTO — Best current fit"}
+
+    def settings_for_user(self, user_id):
+        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=trading_settings&limit=1")
+        if not rows: return dict(self.BASIC_SETTINGS_DEFAULTS)
+        saved=rows[0].get("trading_settings") or {}
+        return {**self.BASIC_SETTINGS_DEFAULTS,**saved}
+
+    def save_settings_for_user(self, user_id, values):
+        if not isinstance(values,dict): raise ValueError("settings must be an object")
+        allowed=set(self.BASIC_SETTINGS_DEFAULTS)
+        if not values or any(k not in allowed for k in values): raise ValueError("unknown or empty setting")
+        current=self.settings_for_user(user_id)
+        merged={**current,**values}
+        for key,default in self.BASIC_SETTINGS_DEFAULTS.items():
+            value=merged.get(key)
+            if isinstance(default,bool):
+                if not isinstance(value,bool): raise ValueError(key+" must be boolean")
+            elif isinstance(default,(int,float)):
+                if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(float(value)):
+                    raise ValueError(key+" must be a finite number")
+            elif not isinstance(value,str):
+                raise ValueError(key+" must be text")
+        if merged["order_mode"] not in ("Market Order","Pending Order"): raise ValueError("invalid order_mode")
+        if merged["lot"]<=0 or merged["profit_target"]<0 or merged["per_trade_profit_target"]<0 or merged["loss_limit"]<0 or merged["global_loss_amount"]<0: raise ValueError("invalid risk/lot values")
+        if merged["max_positions"]<0 or merged["addon_max"]<0 or merged["cooling_max"]<0: raise ValueError("maximum counts cannot be negative")
+        if merged["addon_multiplier"]<1 or merged["cooling_multiplier"]<1: raise ValueError("multipliers must be >= 1")
+        if merged["strategy_mode"] not in ("AUTO — Best current fit","HUNTER — Frequent opportunities","SNIPER — Selective entries") and not merged["strategy_mode"].isdigit():
+            raise ValueError("invalid strategy_mode")
+        self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
+                      {"trading_settings":merged},"return=minimal")
+        return merged
+
     def terminal_state(self, client_id, token, data):
         if not self._client(client_id,token): raise PermissionError("client authorization failed")
         if not isinstance(data,dict): raise ValueError("terminal state must be an object")
