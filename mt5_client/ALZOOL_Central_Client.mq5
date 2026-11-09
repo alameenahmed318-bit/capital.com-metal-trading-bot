@@ -611,7 +611,7 @@ bool PollCentralSettings()
 }
 
 bool PlaceCentralTrade(const string direction,const string decision_id,
-                       const string reason,const int strategy_id)
+                       const string reason,const int strategy_id,const double lot_override=0.0)
 {
    // Fail closed: a trade requires both a confirmed live health check and
    // a freshly verified, signed decision from the central engine.
@@ -664,7 +664,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return false;
 
-   double lots=NormalizeLots(g_cfg_lot);
+   double lots=NormalizeLots(lot_override>0.0 ? lot_override : g_cfg_lot);
    if(lots<=0.0) { g_status="Invalid lot size"; return false; }
 
    double stop_distance=g_cfg_fixed_sl_distance;
@@ -981,6 +981,7 @@ void ManageSettingsProfitLoss()
    if(g_cfg_loss_limit>0.0 && TodayClosedPnl()+floating<=-MathAbs(g_cfg_loss_limit))
    {
       if(count>0) CloseOurPositions("Daily loss limit reached");
+      else CancelOurPendingOrders();
       g_daily_loss_paused=true;
       return;
    }
