@@ -72,8 +72,9 @@ class EngineGateway:
     def trading_control(self, client_id, token):
         client=self._client(client_id,token)
         if not client: raise PermissionError("client authorization failed")
-        rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=trading_enabled")
-        return {"trading_enabled":bool(rows and rows[0].get("trading_enabled",False))}
+        # _client already loaded the authoritative client row; reuse it instead
+        # of making a second sequential Supabase round trip on every control poll.
+        return {"trading_enabled":bool(client.get("trading_enabled",False))}
 
     def _client(self, client_id, token):
         rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
