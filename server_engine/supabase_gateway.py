@@ -126,9 +126,14 @@ class EngineGateway:
             raise ValueError("mtf_bias must contain only M5/M15/H1 BUY/SELL/WAIT values")
         mode=str(data.get("strategy_mode","AUTO")).upper()
         if mode not in ("AUTO","HUNTER","SNIPER"): raise ValueError("invalid strategy_mode")
+        selected_raw=data.get("selected_strategy_id",0)
+        if isinstance(selected_raw,bool): raise ValueError("selected_strategy_id must be 0..200")
+        try: selected_id=int(selected_raw or 0)
+        except (TypeError,ValueError,OverflowError): raise ValueError("selected_strategy_id must be 0..200") from None
+        if not 0<=selected_id<=200: raise ValueError("selected_strategy_id must be 0..200")
         rows=self._request("GET","alzool_engine_weights?client_id=eq."+client_id+"&select=strategy_id,weight")
         weights={str(r["strategy_id"]):float(r["weight"]) for r in rows}
-        result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode)
+        result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode,selected_strategy_id=selected_id)
         now=time.time(); expires=now+TTL_SECONDS; decision_id=str(uuid.uuid4())
         confidence=float(result.get("confidence",0.0))
         signed=f"{client_id}|{decision_id}|{result['decision']}|{int(result['strategy_id'])}|{confidence:.8f}|{expires:.6f}"
