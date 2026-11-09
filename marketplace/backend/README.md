@@ -1,14 +1,14 @@
-# UAE Market Backend
+# AL-ZOOL GOLD SNIPER — Web Access
 
-واجهة API أولية للطلبات، مبنية ببايثون وSQLite بدون اعتماد خارجي.
+This branch replaces the storefront entry point with a private login portal and owner-managed customer access.
 
-## Endpoints
-- GET /api/health
-- GET /api/products
-- POST /api/orders
-- GET /api/orders/<order_id>
+Configure hosting environment variables:
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY (server secret only; never expose it in browser code)
+- OWNER_EMAIL (defaults to Meenosvn1@gmail.com)
+- OWNER_PASSWORD (strong secret; creates the owner account if it does not exist)
 
-الـAPI يعيد حساب الأسعار من كتالوج الخادم ولا يثق بسعر المتصفح.
+The owner signs in, enters a client's existing email address, creates an account, downloads its generated password, and shares the credentials privately. The owner can suspend/reactivate or permanently delete client accounts. Deleted accounts are removed from Supabase Auth.
 
-## الإنتاج
-قبل فتحه للعامة يجب تشغيله خلف HTTPS، إضافة مصادقة/حدود طلبات، قاعدة بيانات مُدارة، وStripe Checkout + webhook للتحقق من الدفع.
+This portal currently implements login and customer administration only. It does not claim that MT5 trading is connected. The original AL-ZOOL MT5 engine repository and files are not modified. Disable public sign-ups in Supabase Auth.
