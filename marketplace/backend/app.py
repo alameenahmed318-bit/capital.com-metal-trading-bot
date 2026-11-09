@@ -107,7 +107,8 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path=="/api/engine/settings":
             try:
                 u=current_user(token_of(self))
-                fresh=admin_user(u["id"])
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 return self.send_json(200,{"settings":ENGINE.settings_for_user(u["id"])})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
@@ -173,7 +174,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
             if self.path=="/api/engine/settings":
                 u=current_user(token)
-                fresh=admin_user(u["id"])
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 saved=ENGINE.save_settings_for_user(u["id"],data)
                 return self.send_json(200,{"ok":True,"settings":saved})
