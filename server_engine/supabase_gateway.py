@@ -63,6 +63,16 @@ class EngineGateway:
         self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
                       {"revoked":bool(revoked)},"return=minimal")
 
+    def set_user_trading_enabled(self, user_id, enabled):
+        self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
+                      {"trading_enabled":bool(enabled)},"return=minimal")
+
+    def trading_control(self, client_id, token):
+        client=self._client(client_id,token)
+        if not client: raise PermissionError("client authorization failed")
+        rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=trading_enabled")
+        return {"trading_enabled":bool(rows and rows[0].get("trading_enabled",False))}
+
     def _client(self, client_id, token):
         rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                            "&select=user_id,token_hash,expires_at,revoked")
@@ -140,12 +150,12 @@ class EngineGateway:
 
     def status_for_user(self, user_id, stale_after=30):
         """Report MT5 connected only when fresh market data reached the engine."""
-        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at&limit=1")
+        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
         if not rows:
-            return {"mt5_connected":False,"reason":"credentials_not_issued","last_seen_at":None}
+            return {"mt5_connected":False,"trading_enabled":False,"reason":"credentials_not_issued","last_seen_at":None}
         client=rows[0]
         if client.get("revoked"):
-            return {"mt5_connected":False,"reason":"client_revoked","last_seen_at":None}
+            return {"mt5_connected":False,"trading_enabled":False,"reason":"client_revoked","last_seen_at":None}
         decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+urllib.parse.quote(client["client_id"],safe="")+"&select=created_at,payload&order=created_at.desc&limit=1")
         if not decisions:
             return {"mt5_connected":False,"reason":"no_market_data","last_seen_at":None}
@@ -158,7 +168,7 @@ class EngineGateway:
             except Exception: seen=0
         age=max(0,time.time()-seen) if seen else None
         online=age is not None and age<=stale_after
-        return {"mt5_connected":online,"reason":"market_data_recent" if online else "market_data_stale",
+        return {"mt5_connected":online,"trading_enabled":bool(client.get("trading_enabled",False)),"reason":"market_data_recent" if online else "market_data_stale",
                 "last_seen_at":stamp,"seconds_since_last_data":round(age,1) if age is not None else None,
                 "client_id":client["client_id"]}
 
