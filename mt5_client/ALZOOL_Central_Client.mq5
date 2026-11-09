@@ -670,7 +670,7 @@ bool PollCentralSettings()
       g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0 ||
       g_cfg_addon_step<=0 || g_cfg_cooling_step<=0 || g_cfg_addon_multiplier<1 || g_cfg_cooling_multiplier<1 ||
       g_cfg_addon_max<0 || g_cfg_cooling_max<0 ||
-      g_cfg_addon_max_lot<g_cfg_lot || g_cfg_cooling_max_lot<g_cfg_lot)
+      g_cfg_addon_max_lot<=0 || g_cfg_cooling_max_lot<=0)
    { g_settings_loaded=false; g_status="Invalid risk/protection settings"; return false; }
    g_settings_loaded=true;
    return true;
