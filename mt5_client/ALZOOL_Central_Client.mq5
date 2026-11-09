@@ -515,17 +515,7 @@ bool CheckTradingControl()
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
-   int key=StringFind(response,"\\"trading_enabled\\"");
-   int colon=(key>=0 ? StringFind(response,":",key) : -1);
-   if(colon<0)
-   {
-      g_trading_enabled=false;
-      return false;
-   }
-   int value=colon+1;
-   while(value<StringLen(response) && (StringGetCharacter(response,value)==' ' ||
-         StringGetCharacter(response,value)==9)) value++;
-   g_trading_enabled=(StringSubstr(response,value,4)=="true");
+   g_trading_enabled=JsonBool(response,"trading_enabled",false);
    return g_trading_enabled;
 }
 
