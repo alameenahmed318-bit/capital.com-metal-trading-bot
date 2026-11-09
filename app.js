@@ -43,7 +43,7 @@ function renderDashboard(){
  if(dashboardStatusTimer)clearInterval(dashboardStatusTimer);
  refreshEngineStatus();
  loadDashboardWorkspace();
- dashboardStatusTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden"))refreshEngineStatus()},5000);
+ dashboardStatusTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden")){refreshEngineStatus();loadDashboardWorkspace()}},5000);
 }
 async function refreshEngineStatus(){
  const pill=document.querySelector(".engine-pill"),home=$("engineHomeStatus"),mt5=$("mt5HomeStatus"),tag=$("engineMarketTag");
@@ -112,7 +112,7 @@ async function loadDashboardWorkspace(){
  const panel=document.querySelector(".dash-main .dash-panel");
  if(!panel)return;
  const id=activeDashboardPage;
- if(!["home","gold","analysis","council","lab","results","learning","daily","logs","blackbox"].includes(id))return;
+ if(!["home","gold","analysis","council","lab","results","learning","daily","logs","blackbox","candles","trades","open","pending","settings"].includes(id))return;
  try{
   const d=await api("/api/engine/workspace"),a=d.analysis||{},x=a.context||{},z=a.adaptive||{},q=d.decision||{};
   const escv=v=>esc(v==null?"—":v),num=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
@@ -125,6 +125,14 @@ async function loadDashboardWorkspace(){
   if(id==="lab")body=grid([tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality)),tile("فخ شراء",x.buy_trap?"محتمل":"غير مرصود"),tile("فخ بيع",x.sell_trap?"محتمل":"غير مرصود")])+'<p>تحليل الشمعة الأخيرة؛ ليس اختباراً تاريخياً ولا ضماناً للربح.</p>';
   if(id==="learning")body=grid([tile("نتائج تعلم محفوظة",d.outcome_count),tile("أوزان الاستراتيجيات",Array.isArray(d.weights)?d.weights.length:0)])+'<div class="catalog-list">'+(d.outcomes||[]).map(v=>'<div class="catalog-row"><b>Strategy #'+escv(v.strategy_id)+'</b><small>Deal '+escv(v.deal_id)+' • P/L '+num(v.pnl)+'</small></div>').join("")+'</div>';
   if(id==="daily")body=grid([tile("نتائج مرسلة",d.outcome_count),tile("صافي النتائج المحفوظة",(d.outcomes||[]).reduce((s,v)=>s+Number(v.pnl||0),0).toFixed(2)),tile("بيانات السوق",d.connected?"حديثة":"غير حديثة")])+'<p>هذه النتائج المرسلة للتعلم فقط، وليست كشف حساب MT5 كاملاً.</p>';
+  const terminal=d.terminal_state&&d.terminal_state.payload?d.terminal_state.payload:{};
+  const positions=terminal.positions||[],orders=terminal.orders||[],history=terminal.history||[],settings=terminal.settings||{},candles=d.candles||[];
+  const rows=(arr,cols)=>arr.length?`<div class="catalog-list">${arr.map(v=>`<div class="catalog-row"><b>${cols.map(k=>escv(v[k])).join(" • ")}</b><small>${escv(v.symbol||"")} ${v.ticket?"• #"+escv(v.ticket):""}</small></div>`).join("")}</div>`:"<p class=\"muted\">لا توجد سجلات مستلمة من MT5 بعد.</p>";
+  if(id==="open")body=grid([tile("الصفقات المفتوحة",positions.length),tile("الربح العائم",positions.reduce((s,v)=>s+Number(v.profit||0),0).toFixed(2)),tile("رصيد الحساب",terminal.account?.balance),tile("حقوق الحساب",terminal.account?.equity)])+rows(positions,["type","volume","open_price","price_current","profit","sl","tp"]);
+  if(id==="pending")body="<h4>الأوامر المعلقة</h4>"+rows(orders,["type","state","volume","price","sl","tp"])+"<h4>آخر الصفقات المنفذة (30 يوم)</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit","commission","swap"]);
+  if(id==="trades")body=grid([tile("مفتوحة",positions.length),tile("أوامر معلقة",orders.length),tile("سجلات تنفيذ",history.length),tile("ربح عائم",positions.reduce((s,v)=>s+Number(v.profit||0),0).toFixed(2)),tile("ربح محقق في العينة",history.reduce((s,v)=>s+Number(v.profit||0)+Number(v.commission||0)+Number(v.swap||0),0).toFixed(2))])+"<h4>آخر التنفيذات</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit"]);
+  if(id==="settings")body="<h4>إعدادات الإكسبرت المستلمة من MT5</h4>"+grid([tile("رمز الشارت",settings.chart_symbol),tile("الفريم",settings.timeframe),tile("اللوت",settings.lots),tile("الحد الأقصى للصفقات",settings.max_positions),tile("أقصى سبريد",settings.max_spread_points),tile("ATR period",settings.atr_period),tile("وقف ATR",settings.sl_atr),tile("هدف ATR",settings.tp_atr),tile("Trailing",settings.trailing?"مفعّل":"متوقف"),tile("بدء التريلينغ ATR",settings.trail_start_atr),tile("مسافة التريلينغ ATR",settings.trail_distance_atr)])+"<p class=\"muted\">هذه قراءة مباشرة لإعدادات الإكسبرت الحالي. تعديلها عن بُعد غير مفعّل بعد؛ لا أغيّر إعدادات المخاطرة تلقائياً.</p>";
+  if(id==="candles"){const vals=candles.slice(-60);if(vals.length){const lo=Math.min(...vals.map(v=>Number(v.low))),hi=Math.max(...vals.map(v=>Number(v.high))),span=Math.max(hi-lo,1e-9);const bars=vals.map((v,i)=>{const x=10+i*9,w=5,y1=10+(hi-Number(v.high))/span*180,y2=10+(hi-Number(v.low))/span*180,yo=10+(hi-Number(v.open))/span*180,yc=10+(hi-Number(v.close))/span*180;const up=Number(v.close)>=Number(v.open);return `<g stroke="${up?"#16a34a":"#dc2626"}" fill="${up?"#16a34a":"#dc2626"}"><path d="M${x+2.5} ${y1}V${y2}"/><rect x="${x}" y="${Math.min(yo,yc)}" width="${w}" height="${Math.max(1,Math.abs(yc-yo))}"/></g>`}).join("");body=`<p>آخر ${vals.length} شمعة مغلقة • ${escv(settings.timeframe||"الفريم الحالي")}</p><svg viewBox="0 0 ${Math.max(550,vals.length*9+20)} 205" width="100%" role="img">${bars}</svg><p>آخر إغلاق: ${escv(vals[vals.length-1].close)} • أعلى: ${escv(hi)} • أدنى: ${escv(lo)}</p>`}else body="<p class=\"muted\">بانتظار وصول بيانات الشموع من MT5.</p>"}
   if(id==="logs"||id==="blackbox")body=grid([tile("Decision ID",q.decision_id),tile("القرار",q.decision),tile("الاستراتيجية",q.strategy_name),tile("آخر وصول",d.last_seen_at)])+'<pre>'+esc(JSON.stringify({reason:q.reason_ar,context:x,adaptive:z},null,2))+'</pre>';
   if(!d.connected)body='<p class="muted">لا توجد بيانات سوق حديثة من MT5. '+escv(d.reason)+'</p>'+body;
   panel.innerHTML='<h3>بيانات المحرك الفعلية</h3>'+body;
