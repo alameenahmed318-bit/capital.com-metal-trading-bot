@@ -1267,6 +1267,8 @@ void OnTimer()
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
+           "Settings: ",(g_settings_loaded ? "LOADED FROM DASHBOARD" : "WAITING / INVALID"),"\n",
+           "Trading control: ",(g_trading_enabled ? "ENABLED" : "DISABLED"),"\n",
            "Symbol: ",_Symbol," | TF: ",EnumToString((ENUM_TIMEFRAMES)_Period),"\n",
            "Magic: ",(string)InpMagic,"\n",
            "AI Decision: ",g_last_decision," | Confidence: ",DoubleToString(g_last_confidence*100.0,1),"%\n",
