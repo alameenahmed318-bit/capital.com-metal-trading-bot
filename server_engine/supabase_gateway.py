@@ -38,16 +38,25 @@ class EngineGateway:
         return {"service":"AL-ZOOL central engine","status":"online","storage":"supabase","trading_execution":"local_mt5_client"}
 
     def issue(self, user_id, days=3650):
-        client_id=uuid.uuid4().hex
+        if not user_id:
+            raise ValueError("A valid Supabase user is required")
         token=secrets.token_urlsafe(40)
         expires=datetime.now(timezone.utc)+timedelta(days=days)
-        self._request("POST","alzool_engine_clients",{
-            "client_id":client_id,"user_id":user_id,"token_hash":self._hash(token),
-            "expires_at":expires.isoformat(),"revoked":False
-        },"return=representation")
-        self._request("POST","alzool_engine_weights",
-            [{"client_id":client_id,"strategy_id":i,"weight":1.0} for i in range(1,201)],
-            "resolution=ignore-duplicates,return=minimal")
+        existing=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id")
+        if existing:
+            client_id=existing[0]["client_id"]
+            self._request("PATCH","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe=""),{
+                "token_hash":self._hash(token),"expires_at":expires.isoformat(),"revoked":False
+            },"return=minimal")
+        else:
+            client_id=uuid.uuid4().hex
+            self._request("POST","alzool_engine_clients",{
+                "client_id":client_id,"user_id":user_id,"token_hash":self._hash(token),
+                "expires_at":expires.isoformat(),"revoked":False
+            },"return=representation")
+            self._request("POST","alzool_engine_weights",
+                [{"client_id":client_id,"strategy_id":i,"weight":1.0} for i in range(1,201)],
+                "resolution=ignore-duplicates,return=minimal")
         return {"client_id":client_id,"client_token":token,"expires_at":expires.isoformat()}
 
     def set_user_revoked(self, user_id, revoked):
