@@ -36,7 +36,7 @@ function renderBasicSettings(cfg){
  ["متابعة الشموع والانعكاس",["candle_chase_enabled","candle_chase_min_move","candle_chase_cooldown","candle_chase_buy_target","candle_chase_sell_target","candle_chase_single_target","candle_chase_sl_enabled","candle_chase_sl_distance","reverse_trigger","reverse_continue"]],
  ["الاستراتيجيات",["strategy_mode"]]];
  const fieldMap=Object.fromEntries(BASIC_SETTING_FIELDS.map(x=>[x[0],x]));
- host.innerHTML=groups.map(([title,keys])=>'<section class="basic-setting-group"><h4>'+esc(title)+'</h4><div class="basic-setting-grid">'+keys.map(k=>{const f=fieldMap[k],v=cfg[k]??BASIC_SETTING_DEFAULTS[k];if(f[2]==="bool")return '<label class="basic-setting-toggle"><input type="checkbox" data-setting="'+k+'" '+(v===true?'checked':'')+'><span>'+esc(f[1])+'</span></label>';if(f[2]==="strategy"){const opts=[{value:'AUTO — Best current fit',label:'AUTO — Best current fit'},{value:'HUNTER — Frequent opportunities',label:'HUNTER — Frequent opportunities'},{value:'SNIPER — Selective entries',label:'SNIPER — Selective entries'},...(basicStrategyCatalog.length?basicStrategyCatalog:Array.from({length:200},(_,i)=>({value:String(i+1).padStart(3,"0"),label:'#'+String(i+1).padStart(3,"0")})))];return '<label class="basic-setting-field"><span>'+esc(f[1])+'</span><select data-setting="'+k+'">'+opts.map(o=>'<option value="'+esc(o.value)+'" '+(String(v)===o.value?'selected':'')+'>'+esc(o.label)+'</option>').join('')+'</select></label>';}if(f[2]==="select")return '<label class="basic-setting-field"><span>'+esc(f[1])+'</span><select data-setting="'+k+'"><option '+(v==="Market Order"?"selected":"")+' value="Market Order">Market Order</option><option '+(v==="Pending Order"?"selected":"")+' value="Pending Order">Pending Order</option></select></label>';return '<label class="basic-setting-field"><span>'+esc(f[1])+'</span><input type="number" step="any" data-setting="'+k+'" value="'+esc(v)+'"></label>'}).join('')+'</div></section>').join('')+'<div class="basic-setting-actions"><button id="saveBasicSettings" class="dash-btn">حفظ الإعدادات الأساسية</button><span id="basicSettingsMessage" class="muted"></span></div>';
+ host.innerHTML=groups.map(([title,keys])=>'<section class="basic-setting-group"><h4>'+esc(title)+'</h4><div class="basic-setting-grid">'+keys.map(k=>{const f=fieldMap[k],v=cfg[k]??BASIC_SETTING_DEFAULTS[k];if(f[2]==="bool")return '<label class="basic-setting-toggle"><input type="checkbox" data-setting="'+k+'" '+(v===true?'checked':'')+'><span>'+esc(f[1])+'</span></label>';if(f[2]==="strategy"){const opts=[{value:'AUTO — Best current fit',label:'AUTO — Best current fit'},{value:'HUNTER — Frequent opportunities',label:'HUNTER — Frequent opportunities'},{value:'SNIPER — Selective entries',label:'SNIPER — Selective entries'},...(basicStrategyCatalog.length?basicStrategyCatalog:Array.from({length:200},(_,i)=>({value:String(i+1).padStart(3,"0"),label:'#'+String(i+1).padStart(3,"0")})))];return '<label class="basic-setting-field"><span>'+esc(f[1])+'</span><select data-setting="'+k+'">'+opts.map(o=>'<option value="'+esc(o.value)+'" '+(String(v)===o.value?'selected':'')+'>'+esc(o.label)+'</option>').join('')+'</select></label>';}if(f[2]==="select")return '<label class="basic-setting-field"><span>'+esc(f[1])+'</span><select data-setting="'+k+'"><option '+(v==="Market Order"?"selected":"")+' value="Market Order">Market Order</option><option '+(v==="Pending Order"?"selected":"")+' value="Pending Order">Pending Order</option></select></label>';return '<label class="basic-setting-field"><span>'+esc(f[1])+'</span><input type="text" inputmode="decimal" dir="ltr" autocomplete="off" data-setting="'+k+'" value="'+esc(v)+'"></label>'}).join('')+'</div></section>').join('')+'<div class="basic-setting-actions"><button id="saveBasicSettings" class="dash-btn">حفظ الإعدادات الأساسية</button><span id="basicSettingsMessage" class="muted"></span></div>';
  $("saveBasicSettings").addEventListener("click",saveBasicSettings);
 }
 async function loadBasicSettings(){
@@ -44,9 +44,28 @@ async function loadBasicSettings(){
  basicStrategyCatalog=(c.strategies||[]).map(x=>({value:String(x.id).padStart(3,"0"),label:'#'+String(x.id).padStart(3,"0")+' '+x.name+' — '+x.family}));
  renderBasicSettings({...BASIC_SETTING_DEFAULTS,...(d.settings||{})});
 }
-async function saveBasicSettings(){
+async function normalizeNumericInput(raw){
+ let value=String(raw??"").trim();
+ value=value.replace(/[٠-٩]/g,ch=>String(ch.charCodeAt(0)-1632));
+ value=value.replace(/[۰-۹]/g,ch=>String(ch.charCodeAt(0)-1776));
+ value=value.replace(/[٫]/g,".").replace(/[٬،]/g,"");
+ value=value.replace(/\s+/g,"");
+ if(value.includes(",")&&!value.includes("."))value=value.replace(",",".");
+ else value=value.replace(/,/g,"");
+ return value;
+}
+function saveBasicSettings(){
  const host=$("basicSettingsForm"),msg=$("basicSettingsMessage");if(!host)return;
- const values={};host.querySelectorAll("[data-setting]").forEach(el=>{const k=el.dataset.setting;values[k]=el.type==="checkbox"?el.checked:(el.type==="number"?Number(el.value):el.value)});
+ const values={};let invalid=null;
+ host.querySelectorAll("[data-setting]").forEach(el=>{
+  const k=el.dataset.setting;
+  if(el.type==="checkbox"){values[k]=el.checked;return}
+  if(el.tagName==="SELECT"){values[k]=el.value;return}
+  const normalized=normalizeNumericInput(el.value),number=Number(normalized);
+  if(normalized===""||!Number.isFinite(number)){invalid=el;return}
+  values[k]=number;
+ });
+ if(invalid){msg.textContent="أدخل رقماً صحيحاً في الحقل المحدد.";invalid.focus();return}
  msg.textContent="جارٍ الحفظ...";
  try{const d=await api("/api/engine/settings","POST",values);renderBasicSettings({...BASIC_SETTING_DEFAULTS,...d.settings});$("basicSettingsMessage").textContent="تم حفظ الإعدادات الأساسية."; }catch(e){msg.textContent=e.message;}
 }
