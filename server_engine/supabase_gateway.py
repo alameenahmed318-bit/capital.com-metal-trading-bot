@@ -233,9 +233,12 @@ class EngineGateway:
             elif not isinstance(value,str):
                 raise ValueError(key+" must be text")
         if merged["order_mode"] not in ("Market Order","Pending Order"): raise ValueError("invalid order_mode")
-        if merged["lot"]<=0 or merged["profit_target"]<0 or merged["per_trade_profit_target"]<0 or merged["loss_limit"]<0 or merged["global_loss_amount"]<0: raise ValueError("invalid risk/lot values")
+        if merged["lot"]<=0 or merged["profit_target"]<=0 or merged["per_trade_profit_target"]<=0 or merged["loss_limit"]<=0 or merged["global_loss_amount"]<=0: raise ValueError("risk, lot and profit/loss targets must be greater than zero")
+        if not 0.05<=merged["ai_risk_percent"]<=2.0 or merged["ai_max_lot"]<=0: raise ValueError("AI risk must be 0.05..2% and AI max lot must be positive")
         if merged["max_positions"]<0 or merged["addon_max"]<0 or merged["cooling_max"]<0: raise ValueError("maximum counts cannot be negative")
-        if merged["addon_multiplier"]<1 or merged["cooling_multiplier"]<1: raise ValueError("multipliers must be >= 1")
+        if merged["fixed_sl_distance"]<=0 or merged["trail_start"]<0 or merged["trail_distance"]<=0 or merged["pending_distance"]<=0 or merged["reverse_trigger"]<=0 or merged["reverse_continue"]<=0: raise ValueError("stop, trailing, pending and reversal distances are invalid")
+        if merged["addon_step"]<=0 or merged["cooling_step"]<=0 or merged["addon_multiplier"]<1 or merged["cooling_multiplier"]<1: raise ValueError("add-on/cooling distances and multipliers are invalid")
+        if merged["candle_chase_min_move"]<=0 or merged["candle_chase_cooldown"]<0 or merged["candle_chase_buy_target"]<0 or merged["candle_chase_sell_target"]<0 or merged["candle_chase_single_target"]<0 or merged["candle_chase_sl_distance"]<=0: raise ValueError("candle-follow settings are invalid")
         if merged["strategy_mode"] not in ("AUTO — Best current fit","HUNTER — Frequent opportunities","SNIPER — Selective entries") and not merged["strategy_mode"].isdigit():
             raise ValueError("invalid strategy_mode")
         self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
