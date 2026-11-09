@@ -1109,11 +1109,12 @@ void PollCentralEngine()
    if(g_last_market_poll_ms>0 && now_ms-g_last_market_poll_ms<interval_ms) return;
    g_last_market_poll_ms=now_ms;
 
-   // Fail closed before requesting a signal: dashboard OFF or an unreachable
-   // control endpoint means no new market or pending orders.
-   if(!CheckTradingControl()) return;
+   // Keep market data and AI analysis flowing even while dashboard trading is OFF.
+   // The actual order path re-checks CheckTradingControl() inside PlaceCentralTrade(),
+   // so analysis remains live without allowing new orders while trading is disabled.
+   CheckTradingControl();
 
-   // Do not even request or execute a new entry while health is offline.
+   // Do not request a signal while health is offline.
    // The health check is throttled internally and returns the last confirmed state.
    if(!CheckCentralHealth()) return;
 
