@@ -7,11 +7,14 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
 from server_engine.engine import FAMILIES, STRATEGIES, COMBINATIONS
+from server_engine.supabase_gateway import EngineGateway
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
 SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 OWNER_PASSWORD=os.getenv("OWNER_PASSWORD","")
+PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
+ENGINE=EngineGateway(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY)
 
 def sb(method,path,payload=None,bearer=None,admin=False):
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
@@ -85,6 +88,14 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"AL-ZOOL Web"})
+        if self.path=="/health": return self.send_json(200,{"service":"AL-ZOOL central engine","status":"online","trading_execution":"local_mt5_client"})
+        parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
+        if len(parts)==3 and parts[0]=="v1" and parts[1] in ("decision","analysis"):
+            try:
+                result=ENGINE.latest(parts[2],token_of(self),"analysis" if parts[1]=="analysis" else "decision")
+                return self.send_json(200,result)
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
         if self.path=="/api/config":
             return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
         if self.path=="/api/engine/catalog":
@@ -116,6 +127,13 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         try:
             data=self.read_json(); token=token_of(self)
+            if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","market"]:
+                client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
+                result=ENGINE.market(client_id,token_of(self),data)
+                return self.send_json(200,result)
+            if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","outcome"]:
+                client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
+                return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
             if self.path=="/api/access/check":
                 u=current_user(token)
                 try: fresh=admin_user(u["id"])
@@ -129,7 +147,13 @@ class Handler(SimpleHTTPRequestHandler):
                 if email==OWNER_EMAIL: return self.send_json(400,{"error":"لا يمكن إنشاء العميل ببريد المالك"})
                 password=secrets.token_urlsafe(12)+"A7!"
                 u=sb("POST","/auth/v1/admin/users",{"email":email,"password":password,"email_confirm":True,"user_metadata":{"name":name,"role":"client"}},admin=True)
-                return self.send_json(201,{"id":u.get("id"),"email":email,"name":name,"password":password,"message":"تم إنشاء الحساب. احفظ بيانات الدخول الآن."})
+                try:
+                    engine_credentials=ENGINE.issue(u.get("id"))
+                except Exception:
+                    try: sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(u.get("id",""),safe=""),admin=True)
+                    except Exception: pass
+                    raise
+                return self.send_json(201,{"id":u.get("id"),"email":email,"name":name,"password":password,"engine":engine_credentials,"engine_server_url":PUBLIC_ENGINE_URL,"message":"تم إنشاء الحساب وصلاحية محرك التداول. احفظ بيانات الدخول والربط الآن."})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:300]})
@@ -141,6 +165,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not re.fullmatch(r"[0-9a-fA-F-]{20,}",uid): return self.send_json(400,{"error":"معرّف الحساب غير صحيح"})
             active=bool(self.read_json().get("active"))
             sb("PUT","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),{"ban_duration":"none" if active else "876000h"},admin=True)
+            ENGINE.set_user_revoked(uid,not active)
             return self.send_json(200,{"ok":True,"active":active})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:300]})
@@ -152,6 +177,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not re.fullmatch(r"[0-9a-fA-F-]{20,}",uid): return self.send_json(400,{"error":"معرّف الحساب غير صحيح"})
             target=admin_user(uid)
             if (target.get("email") or "").lower()==OWNER_EMAIL: return self.send_json(403,{"error":"لا يمكن حذف حساب المالك"})
+            ENGINE.set_user_revoked(uid,True)
             sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),admin=True)
             return self.send_json(200,{"ok":True,"deleted":True})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
