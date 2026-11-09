@@ -831,6 +831,36 @@ void ManageLocalProtection()
    }
 }
 
+string JsonSafe(string value)
+{
+   StringReplace(value,"\\","\\\\"); StringReplace(value,"\"","\\\"");
+   StringReplace(value,"\r"," "); StringReplace(value,"\n"," ");
+   return value;
+}
+
+void SendTerminalState()
+{
+   if(InpEngineId=="" || InpEngineToken=="") return;
+   string body="{\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+"\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+"\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+"\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
+   int n=0;
+   for(int i=PositionsTotal()-1;i>=0 && n<200;i--){
+      ulong t=PositionGetTicket(i); if(t==0 || !PositionSelectByTicket(t)) continue;
+      if(n++>0) body+=",";
+      body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(PositionGetString(POSITION_SYMBOL))+"\",\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE))+",\"volume\":"+DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+",\"open_price\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN),_Digits)+",\"price_current\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT),_Digits)+",\"sl\":"+DoubleToString(PositionGetDouble(POSITION_SL),_Digits)+",\"tp\":"+DoubleToString(PositionGetDouble(POSITION_TP),_Digits)+",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+"\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
+   }
+   body+="],\"orders\":["; n=0;
+   for(int j=OrdersTotal()-1;j>=0 && n<200;j--){
+      ulong t=OrderGetTicket(j); if(t==0) continue;
+      if(n++>0) body+=",";
+      body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(OrderGetString(ORDER_SYMBOL))+"\",\"type\":"+IntegerToString((int)OrderGetInteger(ORDER_TYPE))+",\"state\":"+IntegerToString((int)OrderGetInteger(ORDER_STATE))+",\"volume\":"+DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT),2)+",\"price\":"+DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN),_Digits)+",\"sl\":"+DoubleToString(OrderGetDouble(ORDER_SL),_Digits)+",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+",\"magic\":\""+(string)OrderGetInteger(ORDER_MAGIC)+"\",\"time_setup\":"+IntegerToString((long)OrderGetInteger(ORDER_TIME_SETUP))+"}";
+   }
+   body+="],\"history\":[],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"lots\":"+DoubleToString(InpLots,2)+",\"max_positions\":"+IntegerToString(InpMaxPositions)+",\"max_spread_points\":"+IntegerToString(InpMaxSpreadPoints)+",\"atr_period\":"+IntegerToString(InpATRPeriod)+",\"sl_atr\":"+DoubleToString(InpStopLossATR,2)+",\"tp_atr\":"+DoubleToString(InpTakeProfitATR,2)+",\"trailing\":"+(InpUseTrailing?"true":"false")+",\"trail_start_atr\":"+DoubleToString(InpTrailStartATR,2)+",\"trail_distance_atr\":"+DoubleToString(InpTrailDistanceATR,2)+"},\"events\":[]}";
+   char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string headers="Content-Type: application/json\\r\\nAuthorization: Bearer "+InpEngineToken+"\\r\\n",response_headers;
+   int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
+   if(http!=200) Print("AL-ZOOL telemetry upload failed. HTTP=",http," err=",GetLastError());
+}
+
 void PollCentralEngine()
 {
    ulong now_ms=GetTickCount64();
@@ -894,6 +924,7 @@ void OnTimer()
 {
    ManageLocalProtection();
    FlushPendingOutcomes();
+   SendTerminalState();
    CheckCentralHealth();
    CheckTradingControl();
    PollCentralEngine();
