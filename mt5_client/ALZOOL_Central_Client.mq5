@@ -43,6 +43,7 @@ ulong g_last_market_poll_ms = 0;
 string g_last_decision_id = "";
 int g_atr_handle = INVALID_HANDLE;
 bool g_server_online = false;
+bool g_decision_verified = false;
 string g_status = "Starting";
 string g_last_reason = "";
 string g_last_strategy_name = "";
@@ -311,6 +312,7 @@ bool CheckCentralHealth()
    if(StringLen(InpServerUrl)<10 || StringFind(InpServerUrl,"YOUR-SERVER")>=0)
    {
       g_server_online=false;
+      g_decision_verified=false;
       g_status="Set server URL";
       return false;
    }
@@ -325,15 +327,17 @@ bool CheckCentralHealth()
    if(http!=200)
    {
       g_server_online=false;
+      g_decision_verified=false;
       g_status=(http==-1 ? "Health check failed / WebRequest error "+IntegerToString(GetLastError())
                          : "Health check HTTP "+IntegerToString(http));
       return false;
    }
 
    string response=CharArrayToString(result,0,-1,CP_UTF8);
-   if(StringFind(response,"\"status\":\"online\"")<0)
+   if(JsonString(response,"status")!="online")
    {
       g_server_online=false;
+      g_decision_verified=false;
       g_status="Health response invalid";
       return false;
    }
@@ -346,6 +350,7 @@ bool CheckCentralHealth()
 bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
                              double &confidence,int &strategy_id)
 {
+   g_decision_verified=false;
    decision="";
    decision_id="";
    reason="";
@@ -438,6 +443,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
       return false;
    }
    g_server_online=true;
+   g_decision_verified=true;
    g_last_bar_time=bar_time;
    // Persist as soon as a fresh server decision is received. This favors
    // duplicate prevention over retrying a rejected order on the same candle.
@@ -450,6 +456,13 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
 bool PlaceCentralTrade(const string direction,const string decision_id,
                        const string reason,const int strategy_id)
 {
+   // Fail closed: a trade requires both a confirmed live health check and
+   // a freshly verified, signed decision from the central engine.
+   if(!g_server_online || !g_decision_verified)
+   {
+      g_status="Entry blocked / central server or signed decision not confirmed";
+      return false;
+   }
    if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; return false; }
    if(direction=="SELL" && !InpAllowSell) { g_status="SELL disabled"; return false; }
    if(direction!="BUY" && direction!="SELL") return false;
@@ -779,6 +792,10 @@ void PollCentralEngine()
    ulong interval_ms=(ulong)InpRequestEverySeconds*1000;
    if(g_last_market_poll_ms>0 && now_ms-g_last_market_poll_ms<interval_ms) return;
    g_last_market_poll_ms=now_ms;
+
+   // Do not even request or execute a new entry while health is offline.
+   // The health check is throttled internally and returns the last confirmed state.
+   if(!CheckCentralHealth()) return;
 
    string decision,decision_id,reason;
    double confidence=0.0;
