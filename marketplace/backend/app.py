@@ -94,6 +94,10 @@ class Handler(SimpleHTTPRequestHandler):
             try: return self.send_json(200,ENGINE.health())
             except Exception as e: return self.send_json(503,{"service":"AL-ZOOL central engine","status":"setup_required","error":str(e)[:180]})
         parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
+        if len(parts)==3 and parts[0]=="v1" and parts[1]=="settings":
+            try: return self.send_json(200,{"settings":ENGINE.settings_for_client(parts[2],token_of(self))})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
         if len(parts)==3 and parts[0]=="v1" and parts[1]=="control":
             try: return self.send_json(200,ENGINE.trading_control(parts[2],token_of(self)))
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
