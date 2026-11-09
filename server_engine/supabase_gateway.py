@@ -198,6 +198,14 @@ class EngineGateway:
 
     BASIC_SETTINGS_DEFAULTS = {"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":True,"per_trade_profit_enabled":True,"per_trade_profit_target":2,"smart_profit_enabled":False,"one_direction_only":True,"global_loss_enabled":True,"global_loss_amount":50,"ai_loss_guard_enabled":False,"max_positions":0,"fixed_sl_enabled":True,"fixed_sl_distance":3,"trailing_enabled":True,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":False,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":False,"candle_chase_sl_distance":3,"addon_enabled":False,"addon_step":2,"addon_multiplier_enabled":True,"addon_multiplier":1.2,"addon_max":3,"cooling_enabled":False,"cooling_step":3,"cooling_multiplier_enabled":True,"cooling_multiplier":1.2,"cooling_max":2,"strategy_mode":"AUTO — Best current fit"}
 
+    def settings_for_client(self, client_id, token):
+        client=self._client(client_id,token)
+        if not client: raise PermissionError("client authorization failed")
+        rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=trading_settings&limit=1")
+        if not rows: raise PermissionError("client settings unavailable")
+        saved=rows[0].get("trading_settings") or {}
+        return {**self.BASIC_SETTINGS_DEFAULTS,**saved}
+
     def settings_for_user(self, user_id):
         rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=trading_settings&limit=1")
         if not rows: return dict(self.BASIC_SETTINGS_DEFAULTS)
