@@ -14,3 +14,38 @@ $("clientsList").addEventListener("click",async e=>{const b=e.target.closest("bu
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();err("createError","");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials=d;$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("credentialBox").classList.remove("hidden");$("clientName").value="";$("clientEmail").value="";await loadClients()}catch(x){err("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const t="AL-ZOOL GOLD SNIPER\nبيانات دخول العميل\nالبريد الإلكتروني: "+latestCredentials.email+"\nكلمة المرور: "+latestCredentials.password+"\n\nاحتفظ بهذه البيانات بسرية.";const blob=new Blob(["\ufeff"+t],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="AL-ZOOL-client-access.txt";a.click();URL.revokeObjectURL(url)});
 start();
+
+/* AL-ZOOL web trading workspace — navigation shell; live execution remains locked until engine/MT5 validation. */
+const dashboardRoot=document.createElement("section");
+dashboardRoot.id="dashboardView";dashboardRoot.className="hidden";
+document.querySelector(".wrap").insertBefore(dashboardRoot,document.querySelector("footer"));
+const navPages=[
+ ["home","الرئيسية","⌂"],["control","التحكم بالتداول","◉"],["gold","الذهب والاستراتيجيات","◆"],["candles","الشموع","▥"],["council","مجلس التصويت","◎"],["analysis","التحليل الذكي","⌁"],["lab","مختبر الفرص","⌕"],["families","عائلات الاستراتيجيات","▦"],["strategies","الاستراتيجيات والتركيبات","▤"],["trades","الصفقات والأداء","↗"],["open","الصفقات المفتوحة","◫"],["pending","الأوامر المعلقة والسجل","◷"],["daily","الأداء اليومي","▧"],["results","نتائج الذكاء الاصطناعي","✧"],["learning","التعلم والتكيف","⟳"],["logs","السجلات","≡"],["blackbox","AZ BLACK BOX","⬡"],["settings","الإعدادات","⚙"]];
+const strategyFamilies=["EMA Trend","RSI Momentum","MACD Momentum","Bollinger Reversion","Donchian Breakout","ATR Expansion","Candle Momentum","EMA Pullback","Range Reversion","Hybrid Confluence","Stochastic Reversal","CCI Momentum","Williams %R Reversal","ROC Momentum","Adaptive Swing Trend","VWAP Deviation","Pivot Breakout","Inside Bar Breakout","Engulfing Reversal","Volume Pressure"];
+let activeDashboardPage="home",dashboardRole="client";
+function dashboardPageBody(id){
+ const wait='<div class="engine-wait"><span class="wait-icon">⌁</span><b>بانتظار ربط محرك التداول</b><p>هذه الصفحة جاهزة ضمن لوحة التحكم. ستظهر البيانات الحقيقية بعد نشر المحرك المركزي وربط موصل MT5 والتحقق منه.</p><small>لا توجد بيانات سوق أو صفقات تجريبية معروضة على أنها حقيقية.</small></div>';
+ if(id==="home")return '<div class="dash-cards"><article><small>اتصال المحرك</small><b class="state-off">غير مربوط</b></article><article><small>اتصال MT5</small><b class="state-off">غير متصل</b></article><article><small>الرمز</small><b>XAUUSD</b></article><article><small>حالة التداول</small><b class="state-off">متوقف</b></article></div><div class="dash-panel"><h3>ملخص المنصة</h3><p>تم تجهيز صفحات البوت داخل حسابك. لم يتم تفعيل أوامر شراء أو بيع من الويب بعد.</p>'+wait+'</div>';
+ if(id==="families")return '<div class="dash-panel"><h3>عائلات الاستراتيجيات الأساسية</h3><p>20 عائلة معرفة في محرك الاستراتيجيات.</p><div class="family-grid">'+strategyFamilies.map((x,i)=>'<div class="family-item"><span>'+String(i+1).padStart(2,"0")+'</span>'+x+'</div>').join("")+'</div><p class="muted">وجود العائلة في الكتالوج لا يعني أنها اجتازت اختبار ربحية.</p></div>';
+ if(id==="strategies")return '<div class="dash-cards"><article><small>إعدادات الاستراتيجية في المحرك</small><b>200</b></article><article><small>تركيبات الاستراتيجيات</small><b>1,000</b></article><article><small>العائلات</small><b>20</b></article></div><div class="dash-panel"><h3>كتالوج الاستراتيجيات</h3><p>الأعداد أعلاه موجودة في كود المحرك الأصلي. لم يتم بعد تشغيل تقييم السوق المباشر داخل هذه اللوحة.</p>'+wait+'</div>';
+ if(id==="control")return '<div class="dash-panel"><h3>التحكم بالتداول</h3><div class="trade-lock"><b>التداول الآلي غير متاح حالياً</b><p>لن يتم تفعيل زر تشغيل التداول قبل نشر المحرك، توثيق اتصال MT5، واختبار أوامر Demo ووقف الخسارة وجني الربح والتريلينغ.</p><button class="dash-btn" disabled>بدء التداول — مقفل حتى الاختبار</button></div>'+wait+'</div>';
+ if(id==="settings")return '<div class="dash-panel"><h3>إعدادات التداول والحماية</h3><div class="settings-grid">'+["حجم اللوت","حد الصفقات المفتوحة","هدف ربح الصفقة","هدف الربح الإجمالي","حد الخسارة اليومي","وقف الخسارة","جني الربح","Trailing Stop","حارس الخسارة الذكي","منع الصفقات العكسية","فريم التحليل","وضع الاستراتيجية"].map(x=>'<label>'+x+'<input disabled placeholder="سيتم تفعيله بعد ربط المحرك"></label>').join("")+'</div>'+wait+'</div>';
+ const titles={gold:"الذهب والاستراتيجيات",candles:"الشموع وحركة السوق",council:"مجلس التصويت",analysis:"التحليل الذكي",lab:"مختبر الفرص",trades:"الصفقات والأداء",open:"الصفقات المفتوحة",pending:"الأوامر المعلقة والسجل",daily:"الأداء اليومي",results:"نتائج الذكاء الاصطناعي",learning:"التعلم والتكيف",logs:"السجلات",blackbox:"AZ BLACK BOX"};
+ return '<div class="dash-panel"><h3>'+titles[id]+'</h3>'+wait+'</div>';
+}
+function renderDashboard(){
+ dashboardRoot.innerHTML='<div class="dash-top"><div><div class="dash-brand">AL-ZOOL <span>GOLD SNIPER</span></div><small>مركز التداول الذكي • XAUUSD</small></div><div class="dash-top-actions"><span class="engine-pill">المحرك: غير مربوط</span><button id="dashLogout" class="btn ghost">تسجيل الخروج</button></div></div><div class="dash-layout"><aside class="dash-side"><div class="dash-user">'+(dashboardRole==="owner"?"OWNER CONTROL":"CLIENT WORKSPACE")+'</div>'+navPages.map(p=>'<button class="dash-nav '+(p[0]===activeDashboardPage?"selected":"")+'" data-page="'+p[0]+'"><span>'+p[2]+'</span>'+p[1]+'</button>').join("")+(dashboardRole==="owner"?'<button class="dash-nav back-admin" data-page="admin">↩ إدارة العملاء</button>':"")+'</aside><main class="dash-main"><div class="dash-heading"><div><small>لوحة التحكم</small><h1>'+navPages.find(p=>p[0]===activeDashboardPage)[1]+'</h1></div><span class="market-tag">XAUUSD • LIVE DATA غير متصل</span></div>'+dashboardPageBody(activeDashboardPage)+'</main></div>';
+ $("dashLogout").addEventListener("click",logout);
+ dashboardRoot.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>{if(b.dataset.page==="admin"){show("adminView");return}activeDashboardPage=b.dataset.page;renderDashboard()}));
+}
+function show(v){["loginView","adminView","clientView","dashboardView"].forEach(id=>{const el=$(id);if(el)el.classList.toggle("hidden",id!==v)})}
+async function afterLogin(){
+ try{
+  const a=await api("/api/access/check","POST",{});
+  if(a.role==="owner"){
+   dashboardRole="owner";show("adminView");$("ownerLabel").textContent=a.email;await loadClients();
+   let btn=$("openOwnerDashboard");if(!btn){btn=document.createElement("button");btn.id="openOwnerDashboard";btn.className="btn primary";btn.textContent="فتح لوحة التداول";$("adminView").querySelector(".welcome").appendChild(btn)}
+   btn.onclick=()=>{activeDashboardPage="home";renderDashboard();show("dashboardView")};
+  }else{dashboardRole="client";activeDashboardPage="home";renderDashboard();show("dashboardView")}
+ }catch(e){await sb.auth.signOut();session=null;show("loginView");err("loginError",e.message)}
+}
