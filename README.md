@@ -1,23 +1,14 @@
-# Capital Hybrid Cloud Bot
+# AL-ZOOL GOLD SNIPER — Web Access
 
-تم استبدال ملفات EA القديمة بـPython Bot يعمل مع Capital.com Public API عبر GitHub Actions.
+This branch replaces the storefront entry point with a private login portal and owner-managed customer access.
 
-## الحالة الحالية
-- التشغيل: GitHub Actions.
-- الفحص داخل الدورة: كل 10 ثوانٍ.
-- دورة GitHub: 13 دقيقة كل 15 دقيقة.
-- الوضع الافتراضي: `DRY_RUN=true`.
-- لا MT5 Desktop.
-- لا Grid / Martingale / Averaging.
-- لا يتم تعديل صفقات مجهولة من هذا البوت.
+Configure hosting environment variables:
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY (server secret only; never expose it in browser code)
+- OWNER_EMAIL (defaults to Meenosvn1@gmail.com)
+- OWNER_PASSWORD (strong secret; creates the owner account if it does not exist)
 
-## قبل التشغيل
-ضع Secrets:
-`CAPITAL_BASE_URL`, `CAPITAL_API_KEY`, `CAPITAL_IDENTIFIER`, `CAPITAL_PASSWORD`, `TRADE_SIZE`, `DRY_RUN`.
+The owner signs in, enters a client's existing email address, creates an account, downloads its generated password, and shares the credentials privately. The owner can suspend/reactivate or permanently delete client accounts. Deleted accounts are removed from Supabase Auth.
 
-ابدأ على Demo فقط.
-
-## ملاحظة
-طبقة حماية الأرباح المتقدمة قيد الإضافة ولم تُفعّل في النسخة الحالية؛ لا تشغّل Live قبل اكتمال اختبارها.
-
-Capital.com توثق REST/WebSocket API وإمكانية فتح وتعديل وإغلاق المراكز عبر API. 
+This portal currently implements login and customer administration only. It does not claim that MT5 trading is connected. The original AL-ZOOL MT5 engine repository and files are not modified. Disable public sign-ups in Supabase Auth.
