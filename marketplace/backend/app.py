@@ -1,10 +1,12 @@
 """AL-ZOOL web gateway: static portal + Supabase Auth customer administration."""
-import json, os, re, secrets, urllib.parse, urllib.request, urllib.error
+import json, os, re, secrets, sys, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
+from server_engine.engine import FAMILIES, STRATEGIES, COMBINATIONS
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
 SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
@@ -85,6 +87,19 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"AL-ZOOL Web"})
         if self.path=="/api/config":
             return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
+        if self.path=="/api/engine/catalog":
+            try:
+                u=current_user(token_of(self))
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                return self.send_json(200,{
+                    "families":[{"name":name,"kind":kind} for name,kind in FAMILIES],
+                    "strategies":[{"id":s["id"],"name":s["name"],"family":s["family"],"fast":s["fast"],"slow":s["slow"],"period":s["period"]} for s in STRATEGIES],
+                    "combinations":[{"id":x["id"],"name":x["name"],"members":list(x["members"])} for x in COMBINATIONS]
+                })
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
         if self.path=="/api/admin/clients":
             try:
                 owner(token_of(self))
