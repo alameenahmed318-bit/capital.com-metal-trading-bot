@@ -138,6 +138,30 @@ class EngineGateway:
         if time.time()-float(payload.get("created_at",0))>TTL_SECONDS: return {kind:None,"reason":"expired"}
         return {"analysis":payload.get("analysis"),"decision_id":payload.get("decision_id")} if kind=="analysis" else payload
 
+    def status_for_user(self, user_id, stale_after=30):
+        """Report MT5 connected only when fresh market data reached the engine."""
+        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at&limit=1")
+        if not rows:
+            return {"mt5_connected":False,"reason":"credentials_not_issued","last_seen_at":None}
+        client=rows[0]
+        if client.get("revoked"):
+            return {"mt5_connected":False,"reason":"client_revoked","last_seen_at":None}
+        decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+urllib.parse.quote(client["client_id"],safe="")+"&select=created_at,payload&order=created_at.desc&limit=1")
+        if not decisions:
+            return {"mt5_connected":False,"reason":"no_market_data","last_seen_at":None}
+        row=decisions[0]
+        stamp=row.get("created_at")
+        try:
+            seen=datetime.fromisoformat(stamp.replace("Z","+00:00")).timestamp()
+        except Exception:
+            try: seen=float((row.get("payload") or {}).get("created_at",0))
+            except Exception: seen=0
+        age=max(0,time.time()-seen) if seen else None
+        online=age is not None and age<=stale_after
+        return {"mt5_connected":online,"reason":"market_data_recent" if online else "market_data_stale",
+                "last_seen_at":stamp,"seconds_since_last_data":round(age,1) if age is not None else None,
+                "client_id":client["client_id"]}
+
     def outcome(self, client_id, token, data):
         if not self._client(client_id,token): raise PermissionError("client authorization failed")
         deal=data.get("deal_id"); sid=data.get("strategy_id"); pnl=data.get("pnl")
