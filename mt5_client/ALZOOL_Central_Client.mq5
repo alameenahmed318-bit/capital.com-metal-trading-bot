@@ -533,8 +533,8 @@ void CancelOurPendingOrders()
 bool CheckTradingControl()
 {
    ulong now_ms=GetTickCount64();
-   if(g_last_control_poll_ms>0 && now_ms-g_last_control_poll_ms<2000)
-      return g_trading_enabled;
+   // Always re-check the central permission before an entry. A cached ENABLED
+   // state must never authorize a new order after the dashboard has been stopped.
    g_last_control_poll_ms=now_ms;
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
    {
@@ -1097,7 +1097,7 @@ void SendTerminalState()
    }
    body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"lots\":"+DoubleToString(InpLots,2)+",\"magic\":\""+(string)InpMagic+"\",\"max_positions\":"+IntegerToString(InpMaxPositions)+",\"max_spread_points\":"+IntegerToString(InpMaxSpreadPoints)+",\"allow_buy\":"+(InpAllowBuy?"true":"false")+",\"allow_sell\":"+(InpAllowSell?"true":"false")+",\"block_opposite\":"+(InpBlockOppositePositions?"true":"false")+",\"require_broker_stops\":"+(InpRequireBrokerStops?"true":"false")+",\"atr_period\":"+IntegerToString(InpATRPeriod)+",\"sl_atr\":"+DoubleToString(InpStopLossATR,2)+",\"tp_atr\":"+DoubleToString(InpTakeProfitATR,2)+",\"trailing\":"+(InpUseTrailing?"true":"false")+",\"trail_start_atr\":"+DoubleToString(InpTrailStartATR,2)+",\"trail_distance_atr\":"+DoubleToString(InpTrailDistanceATR,2)+",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"trading_enabled\":"+(g_trading_enabled?"true":"false")+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(InpRequestEverySeconds)+",\"bars_to_send\":"+IntegerToString(InpBarsToSend)+"},\"events\":[]}";
    char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
-   string headers="Content-Type: application/json\\r\\nAuthorization: Bearer "+InpEngineToken+"\\r\\n",response_headers;
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n",response_headers;
    int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
    if(http!=200) Print("AL-ZOOL telemetry upload failed. HTTP=",http," err=",GetLastError());
 }
@@ -1108,6 +1108,10 @@ void PollCentralEngine()
    ulong interval_ms=(ulong)InpRequestEverySeconds*1000;
    if(g_last_market_poll_ms>0 && now_ms-g_last_market_poll_ms<interval_ms) return;
    g_last_market_poll_ms=now_ms;
+
+   // Fail closed before requesting a signal: dashboard OFF or an unreachable
+   // control endpoint means no new market or pending orders.
+   if(!CheckTradingControl()) return;
 
    // Do not even request or execute a new entry while health is offline.
    // The health check is throttled internally and returns the last confirmed state.
