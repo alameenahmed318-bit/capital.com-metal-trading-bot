@@ -63,8 +63,10 @@ double g_cfg_loss_limit=50.0, g_cfg_global_loss=50.0;
 double g_cfg_fixed_sl_distance=3.0, g_cfg_trail_start=3.0, g_cfg_trail_distance=3.0;
 double g_cfg_pending_distance=2.0;
 double g_cfg_addon_step=2.0,g_cfg_addon_multiplier=1.2,g_cfg_cooling_step=3.0,g_cfg_cooling_multiplier=1.2;
+double g_cfg_addon_max_lot=0.05,g_cfg_cooling_max_lot=0.05;
 int g_cfg_addon_max=3,g_cfg_cooling_max=2;
-bool g_cfg_addon_enabled=false,g_cfg_addon_multiplier_enabled=true,g_cfg_cooling_enabled=false,g_cfg_cooling_multiplier_enabled=true;
+bool g_cfg_addon_enabled=false,g_cfg_addon_smart=false,g_cfg_addon_multiplier_enabled=true;
+bool g_cfg_cooling_enabled=false,g_cfg_cooling_smart=false,g_cfg_cooling_multiplier_enabled=true;
 double g_last_addon_buy_price=0.0,g_last_addon_sell_price=0.0,g_last_cooling_buy_price=0.0,g_last_cooling_sell_price=0.0;
 double g_decision_expires_at=0.0;
 int g_cfg_max_positions=0;
@@ -282,6 +284,53 @@ double NormalizeLots(double lots)
    if(step<0.01) digits=3;
    if(step<0.001) digits=4;
    return NormalizeDouble(lots,digits);
+}
+
+double NormalizeCappedLots(const double requested,const double cap)
+{
+   if(requested<=0.0 || cap<=0.0) return 0.0;
+   double bounded=MathMin(requested,cap);
+   double normalized=NormalizeLots(bounded);
+   if(normalized<=0.0 || normalized>cap+1e-8) return 0.0;
+   return normalized;
+}
+
+bool GetSmartCandleMetrics(const string direction,double &strength,double &volatility,
+                           bool &trend_support,bool &reversal_confirmed)
+{
+   strength=0.0; volatility=1.0; trend_support=false; reversal_confirmed=false;
+   MqlRates rates[];
+   ArraySetAsSeries(rates,true);
+   if(CopyRates(_Symbol,PERIOD_CURRENT,1,3,rates)<3) return false;
+   double atr=0.0;
+   if(!GetATR(atr)) return false;
+   double range_sum=0.0,body_ratio_sum=0.0;
+   int aligned=0;
+   for(int i=0;i<3;i++)
+   {
+      double range=rates[i].high-rates[i].low;
+      if(range<=0.0) continue;
+      double body=MathAbs(rates[i].close-rates[i].open);
+      double body_ratio=body/range;
+      range_sum+=range;
+      body_ratio_sum+=body_ratio;
+      bool candle_buy=(rates[i].close>rates[i].open);
+      if((direction=="BUY" && candle_buy) || (direction=="SELL" && !candle_buy && rates[i].close<rates[i].open))
+         aligned++;
+      if(i==0)
+      {
+         double directional_wick=(direction=="BUY"
+            ? MathMin(rates[i].open,rates[i].close)-rates[i].low
+            : rates[i].high-MathMax(rates[i].open,rates[i].close));
+         bool body_reversal=(direction=="BUY" ? rates[i].close>rates[i].open : rates[i].close<rates[i].open);
+         reversal_confirmed=body_reversal && (body_ratio>=0.30 || directional_wick>=body*0.50);
+      }
+   }
+   strength=body_ratio_sum/3.0;
+   double average_range=range_sum/3.0;
+   volatility=MathMax(0.75,MathMin(1.50,average_range/atr));
+   trend_support=(aligned>=2 && strength>=0.25);
+   return true;
 }
 
 int CountOurPositions(int &buy_count,int &sell_count)
@@ -595,12 +644,16 @@ bool PollCentralSettings()
    g_cfg_addon_step=JsonNumber(response,"addon_step",2.0);
    g_cfg_addon_multiplier=JsonNumber(response,"addon_multiplier",1.2);
    g_cfg_addon_max=(int)JsonNumber(response,"addon_max",3);
+   g_cfg_addon_max_lot=JsonNumber(response,"addon_max_lot",0.05);
    g_cfg_cooling_step=JsonNumber(response,"cooling_step",3.0);
    g_cfg_cooling_multiplier=JsonNumber(response,"cooling_multiplier",1.2);
    g_cfg_cooling_max=(int)JsonNumber(response,"cooling_max",2);
+   g_cfg_cooling_max_lot=JsonNumber(response,"cooling_max_lot",0.05);
    g_cfg_addon_enabled=JsonBool(response,"addon_enabled",false);
+   g_cfg_addon_smart=JsonBool(response,"addon_smart_enabled",false);
    g_cfg_addon_multiplier_enabled=JsonBool(response,"addon_multiplier_enabled",true);
    g_cfg_cooling_enabled=JsonBool(response,"cooling_enabled",false);
+   g_cfg_cooling_smart=JsonBool(response,"cooling_smart_enabled",false);
    g_cfg_cooling_multiplier_enabled=JsonBool(response,"cooling_multiplier_enabled",true);
    g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
    g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
@@ -616,7 +669,8 @@ bool PollCentralSettings()
    if(g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
       g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0 ||
       g_cfg_addon_step<=0 || g_cfg_cooling_step<=0 || g_cfg_addon_multiplier<1 || g_cfg_cooling_multiplier<1 ||
-      g_cfg_addon_max<0 || g_cfg_cooling_max<0)
+      g_cfg_addon_max<0 || g_cfg_cooling_max<0 ||
+      g_cfg_addon_max_lot<g_cfg_lot || g_cfg_cooling_max_lot<g_cfg_lot)
    { g_settings_loaded=false; g_status="Invalid risk/protection settings"; return false; }
    g_settings_loaded=true;
    return true;
@@ -1238,32 +1292,46 @@ void ManageAddonCooling()
    if(addon_anchor<=0.0) addon_anchor=latest_price;
    if(cooling_anchor<=0.0) cooling_anchor=latest_price;
    int existing_adds=MathMax(0,group_count-1);
+   double candle_strength=0.0,volatility_factor=1.0;
+   bool candle_trend_support=false,candle_reversal=false;
+   bool candle_data_ok=GetSmartCandleMetrics(direction,candle_strength,volatility_factor,
+                                              candle_trend_support,candle_reversal);
    if(g_cfg_addon_enabled && existing_adds<g_cfg_addon_max)
    {
+      double step=g_cfg_addon_step*(g_cfg_addon_smart && candle_data_ok ? volatility_factor : 1.0);
       double favorable=(direction=="BUY" ? quote-addon_anchor : addon_anchor-quote);
-      if(favorable>=g_cfg_addon_step)
+      bool smart_ok=!g_cfg_addon_smart || (candle_data_ok && candle_trend_support && g_last_confidence>=0.60);
+      if(favorable>=step && smart_ok)
       {
-         double lot=g_cfg_lot*(g_cfg_addon_multiplier_enabled ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
+         double lot_factor=(g_cfg_addon_multiplier_enabled ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
+         if(g_cfg_addon_smart)
+            lot_factor*=((0.80+0.40*g_last_confidence)*(0.85+0.30*candle_strength));
+         double lot=NormalizeCappedLots(g_cfg_lot*lot_factor,g_cfg_addon_max_lot);
          string unique_id=g_last_decision_id+"_ADD_"+IntegerToString((long)TimeCurrent());
-         if(PlaceCentralTrade(direction,unique_id,"تعزيز آلي: حركة لصالح الاتجاه "+DoubleToString(favorable,2),g_last_strategy_id,lot))
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,"تعزيز ذكي: توافق الشموع والاستراتيجية، قوة "+DoubleToString(candle_strength,2),g_last_strategy_id,lot))
          {
             if(direction=="BUY") g_last_addon_buy_price=quote; else g_last_addon_sell_price=quote;
-            g_status="Add-on opened / "+direction;
+            g_status="Smart add-on opened / "+direction+" / lot "+DoubleToString(lot,2);
             return;
          }
       }
    }
    if(g_cfg_cooling_enabled && existing_adds<g_cfg_cooling_max)
    {
+      double step=g_cfg_cooling_step*(g_cfg_cooling_smart && candle_data_ok ? volatility_factor : 1.0);
       double adverse=(direction=="BUY" ? cooling_anchor-quote : quote-cooling_anchor);
-      if(adverse>=g_cfg_cooling_step)
+      bool smart_ok=!g_cfg_cooling_smart || (candle_data_ok && candle_reversal && g_last_confidence>=0.68);
+      if(adverse>=step && smart_ok)
       {
-         double lot=g_cfg_lot*(g_cfg_cooling_multiplier_enabled ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
+         double lot_factor=(g_cfg_cooling_multiplier_enabled ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
+         if(g_cfg_cooling_smart)
+            lot_factor*=((0.75+0.35*g_last_confidence)*(0.85+0.30*candle_strength));
+         double lot=NormalizeCappedLots(g_cfg_lot*lot_factor,g_cfg_cooling_max_lot);
          string unique_id=g_last_decision_id+"_COOL_"+IntegerToString((long)TimeCurrent());
-         if(PlaceCentralTrade(direction,unique_id,"تبريد آلي: حركة ضد الاتجاه "+DoubleToString(adverse,2),g_last_strategy_id,lot))
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,"تبريد ذكي: شمعة انعكاس وتأكيد الاستراتيجية، قوة "+DoubleToString(candle_strength,2),g_last_strategy_id,lot))
          {
             if(direction=="BUY") g_last_cooling_buy_price=quote; else g_last_cooling_sell_price=quote;
-            g_status="Cooling opened / "+direction;
+            g_status="Smart cooling opened / "+direction+" / lot "+DoubleToString(lot,2);
          }
       }
    }
