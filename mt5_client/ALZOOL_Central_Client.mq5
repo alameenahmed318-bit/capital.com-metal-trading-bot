@@ -949,6 +949,7 @@ void CloseOurPositions(const string reason)
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
       if(!trade.PositionClose(ticket)) Print("AL-ZOOL close failed: ",ticket," ",trade.ResultRetcodeDescription());
    }
+   CancelOurPendingOrders();
    g_status=reason;
 }
 
@@ -1219,6 +1220,7 @@ void OnTimer()
    FlushPendingOutcomes();
    SendTerminalState();
    CheckCentralHealth();
+   if(!g_server_online) CancelOurPendingOrders();
    CheckTradingControl();
    PollCentralEngine();
    ManageAddonCooling();
