@@ -10,7 +10,7 @@
 #include <Trade/Trade.mqh>
 
 input group "Central server"
-input string InpServerUrl = "https://friendly-trout-5vrv4wwrv7qw2pxvg-8765.app.github.dev";
+input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
 input string InpClientId = "";
 input string InpClientToken = "";
 input string InpServerSymbol = "XAUUSD";
