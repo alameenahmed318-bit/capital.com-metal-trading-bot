@@ -88,7 +88,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
         if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"AL-ZOOL Web"})
-        if self.path=="/health": return self.send_json(200,{"service":"AL-ZOOL central engine","status":"online","trading_execution":"local_mt5_client"})
+        if self.path=="/health":
+            try: return self.send_json(200,ENGINE.health())
+            except Exception as e: return self.send_json(503,{"service":"AL-ZOOL central engine","status":"setup_required","error":str(e)[:180]})
         parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
         if len(parts)==3 and parts[0]=="v1" and parts[1] in ("decision","analysis"):
             try:
