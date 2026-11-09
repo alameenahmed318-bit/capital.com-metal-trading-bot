@@ -80,7 +80,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length",str(len(body))); self.end_headers(); self.wfile.write(body)
     def read_json(self):
         n=int(self.headers.get("Content-Length","0"))
-        if n>16000: raise ValueError("حجم الطلب كبير")
+        if n>1000000: raise ValueError("حجم الطلب كبير")
         return json.loads(self.rfile.read(n) or b"{}")
     def do_OPTIONS(self):
         self.send_response(204); self.send_header("Allow","GET, POST, PATCH, DELETE, OPTIONS")
