@@ -30,8 +30,8 @@ class EngineTests(unittest.TestCase):
         result=evaluate_market(sample_candles())
         self.assertIn(result["decision"],("BUY","SELL","WAIT"))
         self.assertIn("context",result)
-        self.assertIn("strategy_counts",result)
-        self.assertIn("combination_counts",result)
+        self.assertEqual(result["strategy_count"],200)
+        self.assertEqual(result["combination_count"],1000)
 
 
 if __name__ == "__main__":
