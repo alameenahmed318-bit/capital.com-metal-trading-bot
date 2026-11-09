@@ -536,7 +536,7 @@ bool PollCentralSettings()
    g_last_settings_poll_ms=now_ms;
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) { g_settings_loaded=false; return false; }
    char data[],result[]; ArrayResize(data,0);
-   string response_headers;
+   string headers="Accept: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
    string response_headers;
    ResetLastError();
    int http=WebRequest("GET",ServerBaseUrl()+"/v1/settings/"+InpEngineId,headers,InpHttpTimeoutMs,data,result,response_headers);
