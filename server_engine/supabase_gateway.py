@@ -46,13 +46,13 @@ class EngineGateway:
         if existing:
             client_id=existing[0]["client_id"]
             self._request("PATCH","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe=""),{
-                "token_hash":self._hash(token),"expires_at":expires.isoformat(),"revoked":False
+                "token_hash":self._hash(token),"expires_at":expires.isoformat(),"revoked":False,"trading_enabled":False
             },"return=minimal")
         else:
             client_id=uuid.uuid4().hex
             self._request("POST","alzool_engine_clients",{
                 "client_id":client_id,"user_id":user_id,"token_hash":self._hash(token),
-                "expires_at":expires.isoformat(),"revoked":False
+                "expires_at":expires.isoformat(),"revoked":False,"trading_enabled":False
             },"return=representation")
             self._request("POST","alzool_engine_weights",
                 [{"client_id":client_id,"strategy_id":i,"weight":1.0} for i in range(1,201)],
@@ -61,7 +61,7 @@ class EngineGateway:
 
     def set_user_revoked(self, user_id, revoked):
         self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
-                      {"revoked":bool(revoked)},"return=minimal")
+                      {"revoked":bool(revoked),"trading_enabled":False if revoked else None},"return=minimal")
 
     def set_user_trading_enabled(self, user_id, enabled):
         self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
