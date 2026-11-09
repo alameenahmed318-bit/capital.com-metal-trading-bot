@@ -78,7 +78,7 @@ class EngineGateway:
 
     def _client(self, client_id, token):
         rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                           "&select=user_id,token_hash,expires_at,revoked")
+                           "&select=user_id,token_hash,expires_at,revoked,trading_enabled")
         if not rows:
             return None
         row=rows[0]
