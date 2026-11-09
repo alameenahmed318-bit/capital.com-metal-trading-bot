@@ -250,8 +250,8 @@ class EngineGateway:
         if not isinstance(data,dict): raise ValueError("terminal state must be an object")
         keys=("account","positions","orders","history","settings","events")
         payload={k:data.get(k) for k in keys}
-        if not isinstance(payload.get("positions"),list) or not isinstance(payload.get("orders"),list): raise ValueError("positions and orders arrays are required")
-        if len(payload["positions"])>200 or len(payload["orders"])>200: raise ValueError("too many terminal records")
+        if not isinstance(payload.get("positions"),list) or not isinstance(payload.get("orders"),list) or not isinstance(payload.get("history"),list): raise ValueError("positions, orders and history arrays are required")
+        if len(payload["positions"])>200 or len(payload["orders"])>200 or len(payload["history"])>200: raise ValueError("too many terminal records")
         row={"client_id":client_id,"payload":payload,"updated_at":datetime.now(timezone.utc).isoformat()}
         self._request("POST","alzool_engine_terminal_state",row,"resolution=merge-duplicates,return=minimal")
         return {"accepted":True,"positions":len(payload["positions"]),"orders":len(payload["orders"])}
