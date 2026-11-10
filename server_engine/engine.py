@@ -173,6 +173,48 @@ def analyze_market_context(rates):
     sq=max(0.,min(100.,100*(.42*ts+.33*ms+.25*cs)-penalty*100-(25 if sell_trap else 0)))
     return {"regime":regime,"atr":atr,"atr_ratio":ratio,"trend_strength":strength,"adx":adx,"vwap":vw,"buy_quality":bq,"sell_quality":sq,"buy_trap":buy_trap,"sell_trap":sell_trap,"support":min(l[-40:-1]),"resistance":max(h[-40:-1]),"reason":f"ATR ratio={ratio:.2f}; RSI={mom:.1f}; ADX={adx:.1f}; trend strength={strength:.2f}; candle close position={pos:.2f}"}
 
+def build_synthetic_indicator(rates, forming_candle=None, tick=None):
+    """Live advisory indicator. It annotates strategy agreement but never changes trade signals."""
+    rates = rates if isinstance(rates, list) else []
+    if len(rates) < 20:
+        return {"ready":False,"direction":"WAIT","strength":0.0,"buy_score":0.0,"sell_score":0.0,
+                "reason_ar":"البيانات غير كافية لحساب المؤشر الصناعي؛ يلزم 20 شمعة على الأقل"}
+    closes=[float(x["close"]) for x in rates[-100:]]
+    fast=ema(closes,9); slow=ema(closes,21); momentum=rsi(closes,14)
+    context=analyze_market_context(rates) if len(rates)>=65 else {"atr":0.0,"atr_ratio":1.0}
+    atr=float(context.get("atr") or 0.0)
+    trend=max(-1.0,min(1.0,((fast-slow)/atr))) if atr>0 and fast is not None and slow is not None else 0.0
+    momentum_score=max(-1.0,min(1.0,((float(momentum or 50.0)-50.0)/25.0)))
+    candle=forming_candle if isinstance(forming_candle,dict) else rates[-1]
+    try:
+        op=float(candle.get("open",closes[-1])); hi=float(candle.get("high",op))
+        lo=float(candle.get("low",op)); fallback=float(candle.get("close",closes[-1]))
+        bid=float((tick or {}).get("bid") or 0.0)
+        ask=float((tick or {}).get("ask") or 0.0)
+        price=(bid+ask)/2.0 if bid>0 and ask>=bid else (bid if bid>0 else fallback)
+        span=max(hi-lo,1e-9)
+        position=max(0.0,min(1.0,(price-lo)/span))
+        candle_score=max(-1.0,min(1.0,2.0*position-1.0))
+        if abs(price-op)>span*0.03:
+            candle_score=0.75*candle_score+0.25*(1.0 if price>op else -1.0)
+    except (TypeError,ValueError,OverflowError):
+        candle_score=0.0
+    raw=max(-1.0,min(1.0,0.45*trend+0.25*momentum_score+0.30*candle_score))
+    data_quality=min(1.0,len(rates)/80.0)
+    volatility=float(context.get("atr_ratio") or 1.0)
+    volatility_factor=0.85 if volatility>=2.2 else 1.0
+    strength=round(abs(raw)*100.0*data_quality*volatility_factor,1)
+    direction="BUY" if raw>=0.18 else "SELL" if raw<=-0.18 else "WAIT"
+    buy_score=round(max(0.0,min(100.0,50.0+raw*50.0)),1)
+    sell_score=round(max(0.0,min(100.0,50.0-raw*50.0)),1)
+    reason=("ضغط لحظي يميل للشراء" if direction=="BUY" else "ضغط لحظي يميل للبيع" if direction=="SELL" else "القوى متقاربة؛ لا يوجد ميل واضح")
+    return {"ready":True,"direction":direction,"strength":strength,"buy_score":buy_score,"sell_score":sell_score,
+            "components":{"trend":round(trend,3),"momentum":round(momentum_score,3),
+                          "forming_candle":round(candle_score,3),"rsi":round(float(momentum or 50.0),1),
+                          "volatility_ratio":round(volatility,2)},
+            "reason_ar":reason+"؛ المؤشر للمساندة والتحليل فقط ولا يغيّر إشارة الاستراتيجية أو شروط الدخول"}
+
+
 def adaptive_gold_parameters(rates,context=None):
     context=context or analyze_market_context(rates); ratio=float(context.get("atr_ratio",1.) or 1.); regime=context.get("regime","غير محدد")
     if ratio>=1.8: rp,ef,es,mode=9,8,21,"استجابة أسرع للتقلب المرتفع"
@@ -196,8 +238,10 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strategy_id=0):
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strategy_id=0,forming_candle=None,tick=None):
     weights=weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
+    indicator=build_synthetic_indicator(rates,forming_candle,tick)
+    indicator_side=indicator.get('direction','WAIT')
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
@@ -207,7 +251,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strate
         elif context["regime"]=="تقلب مرتفع" and fam in ("Donchian Breakout","ATR Expansion","Candle Momentum"):bonus=1.15
         aligned=sum(b==sig for b in mtf_bias.values()) if sig!="WAIT" else 0; opposed=sum(b in ("BUY","SELL") and b!=sig for b in mtf_bias.values()) if sig!="WAIT" else 0
         score=weight*bonus*(1+.06*aligned-.04*opposed); counts[sig]+=1
-        votes.append({"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason})
+        votes.append({"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason,
+                      "indicator_alignment":"مؤيد" if sig==indicator_side and sig!="WAIT" else "معارض" if sig in ("BUY","SELL") and indicator_side in ("BUY","SELL") else "محايد"})
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
     byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}
     for combo in COMBINATIONS:
@@ -217,7 +262,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strate
             win="BUY" if directional["BUY"]>directional["SELL"] else "SELL" if directional["SELL"]>directional["BUY"] else "WAIT"; conf=max(directional.values())/total
             if win=="WAIT" or conf<.55:cs,why="WAIT","تضارب الأصوات أو توافق أقل من 55%"
             else:cs,why=win,f"{sum(m['signal']==win for m in members)} من 5 أعضاء يؤيدون الاتجاه"
-        cc[cs]+=1; combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"reason":why})
+        cc[cs]+=1; combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"reason":why,
+            "indicator_alignment":"مؤيد" if cs==indicator_side and cs!="WAIT" else "معارض" if cs in ("BUY","SELL") and indicator_side in ("BUY","SELL") else "محايد"})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -267,4 +313,4 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strate
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"decision":final,"strategy_id":sid,"strategy_name":name,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+    return {"decision":final,"strategy_id":sid,"strategy_name":name,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"indicator":indicator,"strategy_count":200,"combination_count":1000}
