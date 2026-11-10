@@ -2,7 +2,7 @@
 from __future__ import annotations
 import hashlib, hmac, json, math, secrets, time, urllib.parse, urllib.request, urllib.error, uuid
 from datetime import datetime, timezone, timedelta
-from .engine import evaluate_market
+from .engine import evaluate_market, build_synthetic_indicator
 
 TTL_SECONDS = 12
 
@@ -140,7 +140,8 @@ class EngineGateway:
         weights_ms=(time.perf_counter()-weights_started)*1000
         weights={str(r["strategy_id"]):float(r["weight"]) for r in rows}
         strategy_started=time.perf_counter()
-        result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode,selected_strategy_id=selected_id)
+        result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode,selected_strategy_id=selected_id,
+                               forming_candle=data.get("forming_candle"),tick=data.get("tick"))
         strategy_ms=(time.perf_counter()-strategy_started)*1000
         now=time.time(); expires=now+TTL_SECONDS; decision_id=str(uuid.uuid4())
         confidence=float(result.get("confidence",0.0))
@@ -353,6 +354,12 @@ class EngineGateway:
         rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
                            "&select=payload,sequence,source_time,received_at&limit=1")
         row=rows[0] if rows else None
+        live_payload=(row or {}).get("payload") or {}
+        decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+
+                                "&select=payload&order=created_at.desc&limit=1")
+        decision_payload=(decisions[0].get("payload") or {}) if decisions else {}
+        candles=decision_payload.get("candles") or []
+        indicator=build_synthetic_indicator(candles,live_payload.get("forming_candle"),live_payload.get("tick"))
         stamp=(row or {}).get("received_at")
         try: received=datetime.fromisoformat(stamp.replace("Z","+00:00")).timestamp() if stamp else 0
         except Exception: received=0
@@ -362,7 +369,7 @@ class EngineGateway:
         return {"connected":fresh,"reason":"live_data_recent" if fresh else ("no_live_data" if not row else "live_data_stale"),
                 "trading_enabled":bool(client.get("trading_enabled",False)) and not revoked,
                 "sequence":(row or {}).get("sequence"),"source_time":(row or {}).get("source_time"),
-                "received_at":stamp,"age_ms":age_ms,"live_state":(row or {}).get("payload")}
+                "received_at":stamp,"age_ms":age_ms,"live_state":live_payload,"indicator":indicator}
 
     def workspace_for_user(self, user_id, limit=100):
         """Return live MT5 state and persisted intelligence for the authenticated dashboard user."""
