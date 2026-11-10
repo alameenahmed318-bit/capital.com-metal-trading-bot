@@ -166,17 +166,26 @@ async function refreshLiveTelemetry(){
  liveTelemetryBusy=true;
  try{
   const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},positions=state.positions||[];
-  const host=$("liveTelemetryStrip");if(!host)return;
+  const host=$("liveTelemetryStrip"),settingsHost=$("engineSettingsLive");
   const money=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
   const floating=positions.reduce((sum,p)=>sum+Number(p.profit||0)+Number(p.swap||0),0);
   const received=d.received_at?new Date(d.received_at).toLocaleTimeString("ar-AE"):"لم يصل بعد";
   const status=d.connected?(Number(d.age_ms)<=1500?"لحظي":"متصل"):"بيانات قديمة / لا يوجد اتصال";
   const current=candle.time?"الشمعة الحالية O "+money(candle.open)+" • H "+money(candle.high)+" • L "+money(candle.low)+" • C "+money(candle.close):"لا توجد شمعة حالية";
   const values=[["حالة البيانات",status],["الرصيد",money(account.balance)+" "+(account.currency||"")],["Equity",money(account.equity)],["الربح العائم",money(floating)+" "+(account.currency||"")],["الصفقات المفتوحة",positions.length],["Bid / Ask",money(tick.bid)+" / "+money(tick.ask)],["آخر وصول من MT5",received],["عمر البيانات",d.age_ms==null?"—":d.age_ms+" ms"]];
-  host.innerHTML='<div class="dash-cards">'+values.map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div><p class="muted">'+esc(current)+' • Spread: '+esc(money(tick.spread_points))+' • تسلسل: '+esc(d.sequence??"—")+'</p>';
-  host.dataset.sequence=String(d.sequence??"");
- }catch(e){const host=$("liveTelemetryStrip");if(host)host.innerHTML='<p class="muted">تعذر تحديث البيانات الحية: '+esc(e.message)+'</p>'}
- finally{liveTelemetryBusy=false}
+  const cards='<div class="dash-cards">'+values.map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>';
+  const positionRows=positions.length?'<div class="catalog-list">'+positions.map(p=>{
+   const pnl=Number(p.profit||0)+Number(p.swap||0),tone=pnl>0?"open-pnl-positive":pnl<0?"open-pnl-negative":"open-pnl-zero";
+   const side=Number(p.type)===0?"شراء":"بيع";
+   return '<div class="catalog-row"><b>'+esc(p.symbol||state.symbol||"XAUUSD")+' • '+side+' • '+esc(p.volume)+' لوت</b><small>#'+esc(p.ticket)+' • دخول '+esc(p.open_price)+' • السعر الحالي '+esc(p.price_current)+'</small><small>الربح / الخسارة: <strong class="'+tone+'">'+esc(money(pnl))+' '+esc(account.currency||"")+'</strong> • SL '+esc(p.sl)+' • TP '+esc(p.tp)+'</small></div>';
+  }).join("")+'</div>':'<p class="muted">لا توجد صفقات مفتوحة حالياً.</p>';
+  if(host)host.innerHTML=cards+'<p class="muted">'+esc(current)+' • Spread: '+esc(money(tick.spread_points))+' • تسلسل: '+esc(d.sequence??"—")+'</p>'+positionRows;
+  if(settingsHost)settingsHost.innerHTML=cards;
+  if(host)host.dataset.sequence=String(d.sequence??"");
+ }catch(e){
+  const host=$("liveTelemetryStrip");
+  if(host)host.innerHTML='<p class="muted">تعذر تحديث البيانات الحية: '+esc(e.message)+'</p>';
+ }finally{liveTelemetryBusy=false}
 }
 
 async function loadDashboardWorkspace(){
