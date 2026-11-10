@@ -238,8 +238,61 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
+
+def detect_false_reversal(rates, context=None):
+    """Advisory-only failed-breakout diagnostics; never changes the trading decision."""
+    context = context or {}
+    if len(rates) < 22:
+        return {"ready":False,"buy_trap":False,"sell_trap":False,"strength":0.0,
+                "status":"بيانات غير كافية لتقييم الاختراق الكاذب"}
+    candle = rates[-1]
+    op, hi, lo, cl = (float(candle[k]) for k in ("open","high","low","close"))
+    prior_high = max(float(x["high"]) for x in rates[-21:-1])
+    prior_low = min(float(x["low"]) for x in rates[-21:-1])
+    span = max(hi-lo, 1e-12)
+    upper_wick = (hi-max(op,cl))/span
+    lower_wick = (min(op,cl)-lo)/span
+    buy_trap = bool(context.get("buy_trap")) and hi > prior_high and cl < prior_high and upper_wick >= .35
+    sell_trap = bool(context.get("sell_trap")) and lo < prior_low and cl > prior_low and lower_wick >= .35
+    strength = max(upper_wick if buy_trap else 0.0, lower_wick if sell_trap else 0.0)
+    status = "احتمال فخ شراء بعد اختراق فاشل" if buy_trap else "احتمال فخ بيع بعد كسر فاشل" if sell_trap else "لا يوجد اختراق كاذب واضح في آخر شمعة مغلقة"
+    return {"ready":True,"buy_trap":buy_trap,"sell_trap":sell_trap,
+            "upper_wick_ratio":round(upper_wick,3),"lower_wick_ratio":round(lower_wick,3),
+            "breakout_high":prior_high,"breakout_low":prior_low,
+            "strength":round(strength,3),"status":status,
+            "advisory_only":True}
+
+
+def build_strategy_compatibility(votes, combo_votes, context):
+    """Live snapshot of strategy/family agreement, not a historical profitability claim."""
+    regime = context.get("regime","غير محدد")
+    expected = "BUY" if regime == "اتجاه صاعد" else "SELL" if regime == "اتجاه هابط" else "WAIT"
+    families = {}
+    for vote in votes:
+        name = vote.get("family","غير معروف")
+        item = families.setdefault(name,{"BUY":0,"SELL":0,"WAIT":0,"total":0})
+        signal = vote.get("signal","WAIT")
+        item[signal] = item.get(signal,0)+1
+        item["total"] += 1
+    rows=[]
+    for name,item in families.items():
+        directional=item["BUY"]+item["SELL"]
+        aligned=item.get(expected,0) if expected in ("BUY","SELL") else item["WAIT"]
+        rows.append({"family":name,"buy":item["BUY"],"sell":item["SELL"],"wait":item["WAIT"],
+                     "agreement_pct":round(100*max(item["BUY"],item["SELL"])/max(1,directional),1),
+                     "regime_alignment_pct":round(100*aligned/max(1,item["total"]),1)})
+    rows.sort(key=lambda x:(x["regime_alignment_pct"],x["agreement_pct"]),reverse=True)
+    active_combos=[x for x in combo_votes if x.get("signal") in ("BUY","SELL")]
+    combo_aligned=sum(x.get("signal")==expected for x in active_combos) if expected in ("BUY","SELL") else 0
+    return {"basis":"live_market_snapshot","regime":regime,"expected_direction":expected,
+            "families":rows,"active_combinations":len(active_combos),
+            "combination_regime_alignment_pct":round(100*combo_aligned/max(1,len(active_combos)),1),
+            "historical_performance_included":False,
+            "note_ar":"هذا توافق لحظي بين الإشارات وحالة السوق، وليس اختبار ربحية تاريخياً"}
+
+
 def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strategy_id=0,forming_candle=None,tick=None):
-    weights=weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
+    weights=weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context); false_reversal=detect_false_reversal(rates,context)
     indicator=build_synthetic_indicator(rates,forming_candle,tick)
     indicator_side=indicator.get('direction','WAIT')
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
@@ -313,4 +366,4 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',selected_strate
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"decision":final,"strategy_id":sid,"strategy_name":name,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"indicator":indicator,"strategy_count":200,"combination_count":1000}
+    return {"decision":final,"strategy_id":sid,"strategy_name":name,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"indicator":indicator,"false_reversal":false_reversal,"strategy_compatibility":build_strategy_compatibility(votes,combo_votes,context),"strategy_count":200,"combination_count":1000}
