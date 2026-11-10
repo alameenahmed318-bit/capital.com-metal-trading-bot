@@ -939,6 +939,20 @@ int ResolveEntryStrategy(const ulong deal,const ulong order)
    return StrategyFromDealComment(deal);
 }
 
+void SendSignalEvent(const string event_id,const string event_type,const string payload)
+{
+   if(InpEngineId=="" || InpEngineToken=="") return;
+   string body="{\"events\":[{\"event_id\":\""+JsonSafe(event_id)+
+               "\",\"event_type\":\""+JsonSafe(event_type)+
+               "\",\"payload\":"+payload+"}]}";
+   char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n",response_headers;
+   int http=WebRequest("POST",ServerBaseUrl()+"/v1/signals/events/"+InpEngineId,
+                       headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
+   if(http!=200) Print("AL-ZOOL signal event upload failed. HTTP=",http," err=",GetLastError());
+}
+
 void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeRequest &request,
                         const MqlTradeResult &result)
@@ -964,10 +978,33 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
          GlobalVariableSet(position_key,(double)entry_strategy);
       else
          Print("AL-ZOOL: entry deal has no valid strategy mapping. deal=",trans.deal);
+      string side=(HistoryDealGetInteger(trans.deal,DEAL_TYPE)==DEAL_TYPE_BUY ? "BUY" : "SELL");
+      string opened_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"ticket\":\""+(string)trans.deal+
+         "\",\"position_id\":\""+(string)position_id+"\",\"order\":\""+(string)order+
+         "\",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"side\":\""+side+
+         "\",\"volume\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_VOLUME),2)+
+         ",\"price\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_PRICE),_Digits)+
+         ",\"strategy_id\":"+IntegerToString(entry_strategy)+
+         ",\"strategy_name\":\""+JsonSafe(g_last_strategy_name)+
+         "\",\"confidence\":"+DoubleToString(g_last_confidence,4)+
+         ",\"reason_ar\":\"تأكيد فتح الصفقة من سجل تنفيذ الوسيط MT5\"}";
+      SendSignalEvent("mt5-deal-"+(string)trans.deal+"-opened","TRADE_OPENED",opened_payload);
       return;
    }
 
    if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) return;
+   if(deal_magic==InpMagic)
+   {
+      double closed_net=HistoryDealGetDouble(trans.deal,DEAL_PROFIT)+HistoryDealGetDouble(trans.deal,DEAL_COMMISSION)+
+                        HistoryDealGetDouble(trans.deal,DEAL_SWAP)+HistoryDealGetDouble(trans.deal,DEAL_FEE);
+      string close_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"position_id\":\""+(string)position_id+
+         "\",\"order\":\""+(string)order+"\",\"symbol\":\""+JsonSafe(_Symbol)+
+         "\",\"volume\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_VOLUME),2)+
+         ",\"price\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_PRICE),_Digits)+
+         ",\"net_profit\":"+DoubleToString(closed_net,2)+
+         ",\"reason_ar\":\"تأكيد إغلاق الصفقة من سجل تنفيذ الوسيط MT5\"}";
+      SendSignalEvent("mt5-deal-"+(string)trans.deal+"-closed","TRADE_CLOSED",close_payload);
+   }
 
    int closing_strategy=0;
    if(GlobalVariableCheck(position_key))
