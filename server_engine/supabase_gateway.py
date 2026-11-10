@@ -1,6 +1,7 @@
 """Supabase-backed authentication and persistence for the AL-ZOOL central engine."""
 from __future__ import annotations
 import hashlib, hmac, json, math, secrets, time, urllib.parse, urllib.request, urllib.error, uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from .engine import evaluate_market, build_synthetic_indicator
 
@@ -15,6 +16,8 @@ class EngineGateway:
         # Supabase remains the durable fallback after restarts or on other instances.
         self._live_cache = {}
         self._decision_cache = {}
+        # Keep a small bounded pool for independent durable writes.
+        self._persist_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="alzool-persist")
 
     def _request(self, method, path, payload=None, prefer=None):
         if not self.url or not self.key:
@@ -157,16 +160,25 @@ class EngineGateway:
                  "analysis":result,"candles":rates,"symbol":data.get("symbol"),"bid":float(data.get("bid")),"ask":float(data.get("ask")),"timeframe":data.get("timeframe","CURRENT"),"created_at":now,"expires_at":expires,"signed_payload":signed,
                  "signature":hmac.new(token.encode(),signed.encode(),hashlib.sha256).hexdigest()}
         persist_started=time.perf_counter()
-        self._request("POST","alzool_engine_decisions",{"client_id":client_id,"payload":payload,
-                      "created_at":datetime.fromtimestamp(now,timezone.utc).isoformat()},
-                      "resolution=merge-duplicates,return=minimal")
+        decision_row={"client_id":client_id,"payload":payload,
+                      "created_at":datetime.fromtimestamp(now,timezone.utc).isoformat()}
         signal_type = "WAIT" if result["decision"] == "WAIT" else ("BLOCKED" if not bool(client.get("trading_enabled", False)) else "SIGNAL_CREATED")
         signal_reason = result.get("reason_ar", "")
         if signal_type == "BLOCKED":
             signal_reason = "إشارة " + result["decision"] + " متاحة، لكن التداول الآلي متوقف من لوحة التحكم؛ لم يُرسل أمر."
         event_payload = {k: payload.get(k) for k in ("decision_id","decision","strategy_id","strategy_name","reason_ar","confidence","symbol","timeframe","bid","ask","expires_at")}
         event_payload["reason_ar"] = signal_reason
-        self._store_signal_event(client_id, decision_id + ":decision", signal_type, event_payload, now)
+        # The decision and its matching signal-log event are independent durable
+        # writes. Run them concurrently, but wait for BOTH before returning a
+        # signed decision to MT5 or publishing the hot cache.
+        decision_future=self._persist_executor.submit(
+            self._request,"POST","alzool_engine_decisions",decision_row,
+            "resolution=merge-duplicates,return=minimal")
+        event_future=self._persist_executor.submit(
+            self._store_signal_event,client_id,decision_id + ":decision",
+            signal_type,event_payload,now)
+        decision_future.result()
+        event_future.result()
         persist_ms=(time.perf_counter()-persist_started)*1000
         # Publish the same evaluated snapshot to the local hot path only after
         # durable persistence succeeds; never expose an uncommitted decision.
