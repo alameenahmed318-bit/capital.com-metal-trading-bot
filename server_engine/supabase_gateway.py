@@ -10,6 +10,11 @@ class EngineGateway:
     def __init__(self, supabase_url: str, service_key: str):
         self.url = (supabase_url or "").rstrip("/")
         self.key = service_key or ""
+        # Per-process hot snapshots avoid re-reading the same latest tick and
+        # decision from PostgREST on every 500 ms dashboard refresh.
+        # Supabase remains the durable fallback after restarts or on other instances.
+        self._live_cache = {}
+        self._decision_cache = {}
 
     def _request(self, method, path, payload=None, prefer=None):
         if not self.url or not self.key:
@@ -163,6 +168,9 @@ class EngineGateway:
         event_payload["reason_ar"] = signal_reason
         self._store_signal_event(client_id, decision_id + ":decision", signal_type, event_payload, now)
         persist_ms=(time.perf_counter()-persist_started)*1000
+        # Publish the same evaluated snapshot to the local hot path only after
+        # durable persistence succeeds; never expose an uncommitted decision.
+        self._decision_cache[client_id] = payload
         total_ms=(time.perf_counter()-request_started)*1000
         print("AL-ZOOL LATENCY market_total_ms=%.1f auth_ms=%.1f weights_ms=%.1f strategy_ms=%.1f persist_ms=%.1f" %
               (total_ms,auth_ms,weights_ms,strategy_ms,persist_ms),flush=True)
@@ -343,6 +351,8 @@ class EngineGateway:
         row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
              "received_at":received,"updated_at":received}
         self._request("POST","alzool_engine_live_state",row,"resolution=merge-duplicates,return=minimal")
+        self._live_cache[client_id] = {"payload":payload,"sequence":sequence,
+                                       "source_time":source_time,"received_at":received}
         return {"accepted":True,"sequence":sequence,"received_at":received}
 
     def live_state_for_user(self, user_id):
@@ -350,14 +360,19 @@ class EngineGateway:
                               "&select=client_id,revoked,trading_enabled&limit=1")
         if not clients: return {"connected":False,"reason":"credentials_not_issued","live_state":None}
         client=clients[0]
-        cid=urllib.parse.quote(client["client_id"],safe="")
-        rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
-                           "&select=payload,sequence,source_time,received_at&order=received_at.desc&limit=1")
-        row=rows[0] if rows else None
+        client_id=client["client_id"]
+        cid=urllib.parse.quote(client_id,safe="")
+        row=self._live_cache.get(client_id)
+        if row is None:
+            rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
+                               "&select=payload,sequence,source_time,received_at&order=received_at.desc&limit=1")
+            row=rows[0] if rows else None
         live_payload=(row or {}).get("payload") or {}
-        decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+
-                                "&select=payload&order=created_at.desc&limit=1")
-        decision_payload=(decisions[0].get("payload") or {}) if decisions else {}
+        decision_payload=self._decision_cache.get(client_id)
+        if decision_payload is None:
+            decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+
+                                    "&select=payload&order=created_at.desc&limit=1")
+            decision_payload=(decisions[0].get("payload") or {}) if decisions else {}
         candles=decision_payload.get("candles") or []
         indicator=build_synthetic_indicator(candles,live_payload.get("forming_candle"),live_payload.get("tick"))
         stamp=(row or {}).get("received_at")
