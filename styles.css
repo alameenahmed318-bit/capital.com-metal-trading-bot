@@ -134,3 +134,30 @@ body.client-theme .btn.ghost{background:#f3effb;color:#5a4388;border-color:#e1d7
  body.owner-theme #adminView .welcome:after{display:none}
  body.owner-theme #adminView .stats{grid-template-columns:1fr 1fr}
 }
+
+/* AL-ZOOL dedicated workspace pages */
+.dash-side{scrollbar-width:thin;scrollbar-color:#7650d5 transparent}
+.dash-nav{transition:background .18s ease,transform .18s ease}
+.dash-nav:active{transform:scale(.985)}
+.dash-nav[data-page^="settings_"]{font-size:11px;padding-top:9px;padding-bottom:9px}
+.dash-nav[data-page="licenses"]{border-top:1px solid var(--line);margin-top:12px;padding-top:14px}
+.basic-setting-group{border:1px solid var(--line);border-radius:16px;padding:18px;background:#191728;margin:12px 0}
+.basic-setting-group h4{margin:0 0 14px;font-size:16px;color:#d9ccff}
+.basic-setting-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
+.basic-setting-field{display:block;min-width:0;margin:4px 0 10px;font-size:12px;color:#d9d6e8}
+.basic-setting-field input,.basic-setting-field select{width:100%;box-sizing:border-box;margin-top:7px;padding:11px 12px;border:1px solid #484064;border-radius:10px;background:#11101d;color:inherit;font:inherit}
+.basic-setting-toggle{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#171526;font-size:12px;color:#d9d6e8}
+.basic-setting-toggle input{width:17px;height:17px;margin:0;accent-color:#8b68e8}
+.basic-setting-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:15px}
+.basic-setting-actions .dash-btn{background:#7650d5;color:white;border-color:#7650d5;cursor:pointer}
+#licenseClientsList .catalog-row{align-items:center}
+#licenseClientsList .dash-btn{flex-shrink:0;cursor:pointer;background:#7650d5;color:white;border-color:#7650d5}
+body.client-theme .basic-setting-group{background:#fff;border-color:#e7e0f4}
+body.client-theme .basic-setting-group h4{color:#4b3280}
+body.client-theme .basic-setting-toggle{background:#faf8ff;color:#51466d;border-color:#e8e1f3}
+body.client-theme .basic-setting-field{color:#51466d}
+body.client-theme .basic-setting-field input,body.client-theme .basic-setting-field select{background:#faf8ff;border-color:#e2d9f0;color:#30204f}
+body.client-theme .dash-nav[data-page^="settings_"]{color:#51466d}
+body.owner-theme .basic-setting-group{background:linear-gradient(145deg,#1d1730,#13101f);border-color:#39295f}
+body.owner-theme .basic-setting-toggle{background:#171329;border-color:#39295f}
+@media(max-width:600px){.basic-setting-grid{grid-template-columns:1fr}.basic-setting-actions{align-items:flex-start;flex-direction:column}#licenseClientsList .catalog-row{align-items:flex-start}}
