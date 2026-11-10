@@ -790,7 +790,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       RecordBlockedSignal(decision_id,"spread","اتسع السبريد بعد صدور الإشارة وتجاوز الحد المسموح");
       return false;
    }
-   if(g_cfg_one_direction && HasOppositePosition(direction))
+   if(!recovery_order && g_cfg_one_direction && HasOppositePosition(direction))
    {
       g_status="Opposite position exists";
       RecordBlockedSignal(decision_id,"opposite","توجد صفقة في الاتجاه المعاكس؛ تم منع الدخول");
@@ -1511,193 +1511,143 @@ void RecoveryWait(const string reason)
    g_status=message;
 }
 
+bool SendRecoveryVolume(const string direction,const double requested_lots,const string base_id,const string reason)
+{
+   double vmax=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+   double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   if(vmax<=0.0 || vmin<=0.0 || step<=0.0) return false;
+   double remaining=requested_lots;
+   bool sent_any=false;
+   int leg=0,digits=(step<0.001 ? 4 : (step<0.01 ? 3 : 2));
+   while(remaining>=vmin-1e-8)
+   {
+      double part=MathFloor(MathMin(remaining,vmax)/step+1e-8)*step;
+      part=NormalizeDouble(part,digits);
+      if(part<vmin-1e-8) break;
+      MqlTick q;
+      if(!SymbolInfoTick(_Symbol,q)) break;
+      double margin=0.0;
+      ENUM_ORDER_TYPE ot=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+      double px=(direction=="BUY" ? q.ask : q.bid);
+      if(!OrderCalcMargin(ot,_Symbol,part,px,margin) || margin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+      {
+         RecoveryWait("الهامش الحر لا يكفي لإكمال حجم التعافي المحسوب");
+         break;
+      }
+      if(!PlaceCentralTrade(direction,base_id+"_LEG_"+IntegerToString(leg),reason,g_last_strategy_id,part,true))
+         break;
+      sent_any=true; leg++; remaining-=part;
+      if(remaining<step*0.5) remaining=0.0;
+   }
+   if(remaining>0.0) Print("AL-ZOOL recovery volume not fully filled; residual=",DoubleToString(remaining,digits));
+   return sent_any;
+}
+
 void ManageSmartRecovery()
 {
    if(!g_cfg_recovery_enabled) return;
-
    int buys=0,sells=0;
    int total=CountOurPositions(buys,sells);
-   if(total<=0)
-   {
-      g_last_recovery_bar_time=0;
-      return;
-   }
+   if(total<=0) { g_last_recovery_bar_time=0; return; }
 
    int recovery_open=0;
-   double floating=0.0;
+   double floating=0.0,losing_lots=0.0;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
-         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
-      floating+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      double pnl=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      floating+=pnl;
+      if(pnl<0.0) losing_lots+=PositionGetDouble(POSITION_VOLUME);
       if(StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) recovery_open++;
    }
 
-   // Close the complete basket whenever its configured net target is reached,
-   // even if the recovery leg itself has already closed.
    if(g_cfg_recovery_target_profit>0.0 && floating>=g_cfg_recovery_target_profit)
    {
-      Print("AL-ZOOL SMART RECOVERY: basket target reached; floating=",DoubleToString(floating,2));
+      Print("AL-ZOOL recovery basket target reached: ",DoubleToString(floating,2));
       CloseOurPositions("Smart recovery basket target reached");
       return;
    }
-
    if(!g_settings_loaded) { RecoveryWait("إعدادات اللوحة لم تصل"); return; }
    if(!g_trading_enabled) { RecoveryWait("التداول متوقف من اللوحة"); return; }
-   if(!g_server_online || !g_decision_verified)
-   {
-      RecoveryWait("لا يوجد قرار مركزي موثّق");
-      return;
-   }
+   if(!g_server_online || !g_decision_verified) { RecoveryWait("لا يوجد قرار مركزي موثّق"); return; }
    if(!CheckTradingControl()) { RecoveryWait("تعذر تأكيد صلاحية التداول"); return; }
-   if(buys>0 && sells>0) { RecoveryWait("السلة مختلطة الاتجاهات"); return; }
+   if(total<g_cfg_recovery_min_positions) { RecoveryWait("عدد صفقات السلة أقل من الحد الأدنى"); return; }
+   if(floating>-g_cfg_recovery_trigger_loss) { RecoveryWait("الخسارة لم تصل إلى حد التفعيل"); return; }
+   if(losing_lots<=0.0) { RecoveryWait("لا توجد صفقات خاسرة لحساب لوت التعافي"); return; }
 
-   string direction=(buys>0 ? "BUY" : "SELL");
-   int group_count=(direction=="BUY" ? buys : sells);
-   if(group_count<g_cfg_recovery_min_positions)
-   {
-      RecoveryWait("عدد الصفقات أقل من الحد الأدنى: "+IntegerToString(group_count)+
-                   "/"+IntegerToString(g_cfg_recovery_min_positions));
-      return;
-   }
-   if(recovery_open>=g_cfg_recovery_max_entries)
-   {
-      RecoveryWait("وصل لحد صفقات التعافي المفتوحة");
-      return;
-   }
-   if(floating>-g_cfg_recovery_trigger_loss)
-   {
-      RecoveryWait("الخسارة الحالية لم تصل إلى حد التفعيل: "+DoubleToString(floating,2));
-      return;
-   }
-   // Read the forming candle for recovery only; ordinary strategy entries
-   // continue to use their existing closed-candle rules.
-   double candle_strength=0.0,volatility=1.0;
-   bool trend_support=false,reversal_confirmed=false;
-   if(!GetSmartCandleMetrics(direction,candle_strength,volatility,
-                             trend_support,reversal_confirmed,true) ||
-      !reversal_confirmed)
-   {
-      RecoveryWait("لم يتأكد الارتداد اللحظي بعد");
-      return;
-   }
+   // Recovery follows the current market direction, independently of basket side.
+   string direction=g_last_decision;
+   if(direction!="BUY" && direction!="SELL")
+      direction=(g_context_buy_quality>=g_context_sell_quality ? "BUY" : "SELL");
 
-   // A strong live reversal can qualify even when the previous server
-   // confidence/quality snapshot is slightly below its normal threshold.
-   bool strong_live_reversal=(candle_strength>=0.45);
-   if(g_last_decision!=direction && !strong_live_reversal)
-   {
-      RecoveryWait("القرار المركزي لا يطابق السلة والارتداد اللحظي ليس قوياً بما يكفي");
-      return;
-   }
-   double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
-   double opposite_quality=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
-   if(g_last_confidence<g_cfg_recovery_min_confidence && !strong_live_reversal)
-   {
-      RecoveryWait("ثقة القرار منخفضة ولم تصل الشمعة لقوة الارتداد المطلوبة");
-      return;
-   }
-   if(same_quality<=opposite_quality && !strong_live_reversal)
-   {
-      RecoveryWait("جودة الاتجاه لا تؤيد التعافي بعد");
-      return;
-   }
+   double strength=0.0,volatility=1.0;
+   bool trend=false,reversal=false;
+   if(!GetSmartCandleMetrics(direction,strength,volatility,trend,reversal,true) || !reversal)
+   { RecoveryWait("شمعة السوق لم تؤكد اتجاه التعافي"); return; }
+   bool strong=(strength>=0.45);
+   double quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
+   double other=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
+   if(g_last_decision!=direction && !strong && quality<=other)
+   { RecoveryWait("اتجاه السوق غير مؤكد للتعافي"); return; }
+   if(g_last_confidence<g_cfg_recovery_min_confidence && !strong)
+   { RecoveryWait("ثقة السوق منخفضة"); return; }
 
-   // Allow multiple recovery opportunities inside one candle, but enforce a
-   // short cooldown and the configured maximum number of simultaneous legs.
-   ulong now_ms=GetTickCount64();
-   if(g_last_recovery_entry_ms>0 && now_ms-g_last_recovery_entry_ms<3000)
-   {
-      RecoveryWait("فترة تهدئة قصيرة بين محاولات التعافي");
-      return;
-   }
+   ulong now=GetTickCount64();
+   if(g_last_recovery_entry_ms>0 && now-g_last_recovery_entry_ms<3000)
+   { RecoveryWait("فترة تهدئة قصيرة بين أوامر التعافي"); return; }
 
    MqlTick tick;
-   if(!SymbolInfoTick(_Symbol,tick)) { RecoveryWait("لا توجد أسعار حية"); return; }
    double atr=0.0;
-   if(!GetATR(atr) || atr<=0.0) { RecoveryWait("بيانات ATR غير جاهزة"); return; }
+   if(!SymbolInfoTick(_Symbol,tick) || !GetATR(atr) || atr<=0.0)
+   { RecoveryWait("السعر أو ATR غير جاهز"); return; }
+   double dist=MathMin(g_cfg_recovery_atr_distance,0.75);
+   double target=(direction=="BUY" ? tick.bid+atr*dist : tick.ask-atr*dist);
+   ENUM_ORDER_TYPE recovery_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
 
-   double recovery_distance=MathMin(g_cfg_recovery_atr_distance,0.75);
-   double target_price=(direction=="BUY"
-      ? tick.bid+atr*recovery_distance
-      : tick.ask-atr*recovery_distance);
-   ENUM_ORDER_TYPE order_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+   // Project the whole basket, including positions in the opposite direction.
    double projected_existing=0.0;
-
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
-         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
-      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      if((direction=="BUY" && type!=POSITION_TYPE_BUY) ||
-         (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
-      double projected=0.0;
-      ENUM_ORDER_TYPE existing_type=(type==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
-      if(!OrderCalcProfit(existing_type,_Symbol,PositionGetDouble(POSITION_VOLUME),
-                          PositionGetDouble(POSITION_PRICE_OPEN),target_price,projected))
-      {
-         RecoveryWait("تعذر حساب ربح السلة المتوقع");
-         return;
-      }
-      projected_existing+=projected+PositionGetDouble(POSITION_SWAP);
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      ENUM_POSITION_TYPE pt=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      ENUM_ORDER_TYPE et=(pt==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+      double p=0.0;
+      if(!OrderCalcProfit(et,_Symbol,PositionGetDouble(POSITION_VOLUME),PositionGetDouble(POSITION_PRICE_OPEN),target,p))
+      { RecoveryWait("تعذر حساب الربح المتوقع لكل السلة"); return; }
+      projected_existing+=p+PositionGetDouble(POSITION_SWAP);
    }
+   double entry=(direction=="BUY" ? tick.ask : tick.bid),one_lot=0.0;
+   if(!OrderCalcProfit(recovery_type,_Symbol,1.0,entry,target,one_lot) || one_lot<=0.0)
+   { RecoveryWait("الحركة المتوقعة لا تحقق ربحاً في اتجاه التعافي"); return; }
 
-   double entry_price=(direction=="BUY" ? tick.ask : tick.bid);
-   double one_lot_profit=0.0;
-   if(!OrderCalcProfit(order_type,_Symbol,1.0,entry_price,target_price,one_lot_profit) ||
-      one_lot_profit<=0.0)
-   {
-      RecoveryWait("هدف الحركة لا يعطي ربحاً موجباً للوت");
-      return;
-   }
+   double deficit=g_cfg_recovery_target_profit-projected_existing;
+   double calculated=(deficit>0.0 ? deficit/one_lot : 0.0);
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   if(step<=0.0 || vmin<=0.0) { RecoveryWait("خطوة اللوت غير صالحة"); return; }
+   // No EA recovery lot ceiling and no recovery-leg count cap.
+   double requested=MathMax(calculated,losing_lots+step);
+   requested=MathMax(requested,vmin);
+   int vd=(step<0.001 ? 4 : (step<0.01 ? 3 : 2));
+   requested=NormalizeDouble(MathCeil(requested/step-1e-8)*step,vd);
 
-   double requested_lot=g_cfg_recovery_manual_lot;
-   if(g_cfg_recovery_mode=="AUTO")
-   {
-      double needed=(g_cfg_recovery_target_profit-projected_existing)/one_lot_profit;
-      if(needed<=0.0)
-      {
-         RecoveryWait("السلة متوقع أن تصل للهدف دون صفقة تعافٍ إضافية");
-         return;
-      }
-      requested_lot=needed;
-   }
-
-   double lots=NormalizeCappedLots(requested_lot,g_cfg_recovery_max_lot);
-   if(lots<=0.0)
-   {
-      RecoveryWait("اللوت المحسوب أقل من الحد الأدنى أو سقف اللوت غير صالح");
-      return;
-   }
-
-   double recovery_profit=0.0;
-   if(!OrderCalcProfit(order_type,_Symbol,lots,entry_price,target_price,recovery_profit))
-   {
-      RecoveryWait("تعذر حساب ربح صفقة التعافي");
-      return;
-   }
-   double projected_basket=projected_existing+recovery_profit;
-   if(projected_basket<g_cfg_recovery_target_profit)
-      Print("AL-ZOOL SMART RECOVERY: using capped lot ",DoubleToString(lots,2),
-            "; projected basket=",DoubleToString(projected_basket,2),
-            "; target=",DoubleToString(g_cfg_recovery_target_profit,2));
-
-   string unique_id=g_last_decision_id+"_REC_"+IntegerToString((long)TimeCurrent());
-   string reason="تعافٍ ذكي آلي: ارتداد لحظي مؤكد؛ لوت "+
-                 DoubleToString(lots,2)+"؛ قوة الشمعة "+
-                 DoubleToString(candle_strength,2)+"؛ صافي متوقع "+
-                 DoubleToString(projected_basket,2);
-   if(PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lots,true))
+   string id=g_last_decision_id+"_REC_"+IntegerToString((long)TimeCurrent())+"_"+
+             IntegerToString((long)GetTickCount64());
+   string why="تعافٍ مستقل "+direction+"؛ لوت الخاسر="+DoubleToString(losing_lots,2)+
+              "؛ لوت الإنقاذ="+DoubleToString(requested,2)+
+              "؛ الصافي المتوقع="+DoubleToString(projected_existing+requested*one_lot,2);
+   if(SendRecoveryVolume(direction,requested,id,why))
    {
       g_last_recovery_entry_ms=GetTickCount64();
       g_last_recovery_bar_time=iTime(_Symbol,PERIOD_CURRENT,0);
-      g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(lots,2);
-      Print("AL-ZOOL SMART RECOVERY OPENED: ",direction," lot=",DoubleToString(lots,2),
-            " projected_basket=",DoubleToString(projected_basket,2));
+      g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(requested,2);
+      Print("AL-ZOOL recovery opened ",direction," losing=",DoubleToString(losing_lots,2),
+            " recovery=",DoubleToString(requested,2)," projected=",DoubleToString(projected_existing+requested*one_lot,2));
    }
 }
 int CountOurManagementPositions(const string tag)
