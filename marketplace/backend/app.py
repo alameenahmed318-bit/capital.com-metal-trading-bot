@@ -131,6 +131,18 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,ENGINE.workspace_for_user(u["id"],limit=100))
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
+        if urllib.parse.urlparse(self.path).path=="/api/engine/signals":
+            try:
+                u=current_user(token_of(self))
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                query=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                try: limit=int(query.get("limit",["100"])[0])
+                except (TypeError,ValueError): limit=100
+                return self.send_json(200,ENGINE.signal_events_for_user(u["id"],limit=limit))
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if self.path=="/api/engine/status":
             try:
                 u=current_user(token_of(self))
@@ -171,6 +183,9 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         try:
             data=self.read_json(); token=token_of(self)
+            event_parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
+            if len(event_parts)==4 and event_parts[:3]==["v1","signals","events"]:
+                return self.send_json(200,ENGINE.ingest_signal_events(event_parts[3],token_of(self),data.get("events",[])))
             if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","market"]:
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 result=ENGINE.market(client_id,token_of(self),data)
