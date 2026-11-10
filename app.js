@@ -83,7 +83,7 @@ function dashboardPageBody(id){
  return '<div class="dash-panel"><h3>'+titles[id]+'</h3>'+wait+'</div>';
 }
 function renderDashboard(){
- dashboardRoot.innerHTML='<div class="dash-top"><div><div class="dash-brand">AL-ZOOL <span>GOLD SNIPER</span></div><small>مركز التداول الذكي • XAUUSD</small></div><div class="dash-top-actions"><span class="engine-pill">المحرك: غير مربوط</span><button id="dashLogout" class="btn ghost">تسجيل الخروج</button></div></div><div class="dash-layout"><aside class="dash-side"><div class="dash-user">'+(dashboardRole==="owner"?"OWNER CONTROL":"CLIENT WORKSPACE")+'</div>'+navPages.map(p=>'<button class="dash-nav '+(p[0]===activeDashboardPage?"selected":"")+'" data-page="'+p[0]+'"><span>'+p[2]+'</span>'+p[1]+'</button>').join("")+(dashboardRole==="owner"?'<button class="dash-nav back-admin" data-page="admin">↩ إدارة العملاء</button>':"")+'</aside><main class="dash-main"><div class="dash-heading"><div><small>لوحة التحكم</small><h1>'+navPages.find(p=>p[0]===activeDashboardPage)[1]+'</h1></div><span id="engineMarketTag" class="market-tag">XAUUSD • بانتظار تهيئة المحرك</span></div>'+dashboardPageBody(activeDashboardPage)+'</main></div>';
+ dashboardRoot.innerHTML='<div class="dash-top"><div><div class="dash-brand">AL-ZOOL <span>GOLD SNIPER</span></div><small>مركز التداول الذكي • XAUUSD</small></div><div class="dash-top-actions"><span class="engine-pill">المحرك: غير مربوط</span><button id="dashLogout" class="btn ghost">تسجيل الخروج</button></div></div><div class="dash-layout"><aside class="dash-side"><div class="dash-user">'+(dashboardRole==="owner"?"OWNER CONTROL":"CLIENT WORKSPACE")+'</div>'+navPages.map(p=>'<button class="dash-nav '+(p[0]===activeDashboardPage?"selected":"")+'" data-page="'+p[0]+'"><span>'+p[2]+'</span>'+p[1]+'</button>').join("")+(dashboardRole==="owner"?'<button class="dash-nav back-admin" data-page="admin">↩ إدارة العملاء</button>':"")+'</aside><main class="dash-main"><div class="dash-heading"><div><small>لوحة التحكم</small><h1>'+navPages.find(p=>p[0]===activeDashboardPage)[1]+'</h1></div><span id="engineMarketTag" class="market-tag">XAUUSD • بانتظار تهيئة المحرك</span></div><section id="liveTelemetryStrip" class="live-telemetry"><p class="muted">جارٍ استقبال بيانات MT5 الحية...</p></section><section id="livePageData" class="live-page-data"></section>'+dashboardPageBody(activeDashboardPage)+'</main></div>';
  $("dashLogout").addEventListener("click",logout);
  if($("enableTradingBtn"))$("enableTradingBtn").addEventListener("click",()=>setTradingEnabled(true));
  if($("disableTradingBtn"))$("disableTradingBtn").addEventListener("click",()=>setTradingEnabled(false));
@@ -93,7 +93,7 @@ function renderDashboard(){
  if(dashboardStatusTimer)clearInterval(dashboardStatusTimer);
  refreshEngineStatus();
  loadDashboardWorkspace();
- dashboardStatusTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden")){refreshEngineStatus();loadDashboardWorkspace()}},10000);
+ dashboardStatusTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden")){refreshEngineStatus();loadDashboardWorkspace()}},5000);
  if(liveTelemetryTimer)clearInterval(liveTelemetryTimer);
  refreshLiveTelemetry();
  liveTelemetryTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden"))refreshLiveTelemetry()},1000);
@@ -165,7 +165,7 @@ async function refreshLiveTelemetry(){
  if(liveTelemetryBusy || !session)return;
  liveTelemetryBusy=true;
  try{
-  const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},positions=state.positions||[];
+  const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},positions=state.positions||[],orders=state.orders||[];
   const host=$("liveTelemetryStrip"),settingsHost=$("engineSettingsLive");
   const money=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
   const floating=positions.reduce((sum,p)=>sum+Number(p.profit||0)+Number(p.swap||0),0);
@@ -181,6 +181,23 @@ async function refreshLiveTelemetry(){
   }).join("")+'</div>':'<p class="muted">لا توجد صفقات مفتوحة حالياً.</p>';
   if(host)host.innerHTML=cards+'<p class="muted">'+esc(current)+' • Spread: '+esc(money(tick.spread_points))+' • تسلسل: '+esc(d.sequence??"—")+'</p>'+positionRows;
   if(settingsHost)settingsHost.innerHTML=cards;
+  const pageHost=$("livePageData");
+  if(pageHost){
+   const orderRows=orders.length?'<div class="catalog-list">'+orders.map(o=>'<div class="catalog-row"><b>'+esc(o.symbol||state.symbol||"XAUUSD")+' • أمر '+esc(o.type)+' • '+esc(o.volume)+' لوت</b><small>#'+esc(o.ticket)+' • السعر '+esc(o.price)+' • SL '+esc(o.sl)+' • TP '+esc(o.tp)+' • الحالة '+esc(o.state)+'</small></div>').join("")+'</div>':'<p class="muted">لا توجد أوامر معلقة حالياً.</p>';
+   const liveStats='<div class="dash-cards">'+[["Bid",money(tick.bid)],["Ask",money(tick.ask)],["السبريد",money(tick.spread_points)],["الفريم",state.timeframe||"—"],["آخر Tick",tick.time_msc?new Date(Number(tick.time_msc)).toLocaleTimeString("ar-AE"):"—"],["تسلسل MT5",d.sequence??"—"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>';
+   const candleCard=candle.time?'<div class="dash-cards">'+[["افتتاح",money(candle.open)],["أعلى",money(candle.high)],["أدنى",money(candle.low)],["السعر الحالي",money(candle.close)],["حجم التيك",candle.tick_volume??"—"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>':'<p class="muted">لا توجد شمعة حالية مستلمة.</p>';
+   const accountLive='<div class="dash-cards">'+[["الرصيد",money(account.balance)+" "+(account.currency||"")],["Equity",money(account.equity)+" "+(account.currency||"")],["الهامش المستخدم",money(account.margin)],["الهامش المتاح",money(account.free_margin)],["الربح العائم",money(floating)+" "+(account.currency||"")],["عدد الصفقات",positions.length]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>';
+   let pageContent=liveStats;
+   if(activeDashboardPage==="open")pageContent=accountLive+positionRows;
+   else if(activeDashboardPage==="pending")pageContent='<h4>الأوامر المعلقة — تحديث مباشر من MT5</h4>'+orderRows;
+   else if(activeDashboardPage==="trades")pageContent=accountLive+'<h4>الصفقات المفتوحة الآن</h4>'+positionRows+'<h4>الأوامر المعلقة الآن</h4>'+orderRows;
+   else if(activeDashboardPage==="candles")pageContent='<h4>الشمعة الحالية — تتحدث مع كل إرسال من MT5</h4>'+candleCard+liveStats;
+   else if(activeDashboardPage==="settings")pageContent=accountLive;
+   else if(activeDashboardPage==="control")pageContent='<div class="dash-cards">'+[["حالة MT5",d.connected?"متصل":"غير متصل / بيانات قديمة"],["إذن التداول",d.trading_enabled?"مفعّل":"متوقف"],["آخر وصول",received],["عمر البيانات",d.age_ms==null?"—":d.age_ms+" ms"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>'+liveStats;
+   else if(activeDashboardPage==="signals")pageContent=liveStats;
+   else pageContent='<h4>بيانات السوق الحالية من MT5</h4>'+liveStats+candleCard;
+   pageHost.innerHTML=pageContent;
+  }
   if(host)host.dataset.sequence=String(d.sequence??"");
  }catch(e){
   const host=$("liveTelemetryStrip");
@@ -239,17 +256,9 @@ async function loadDashboardWorkspace(){
    body=grid([tile("صافي الربح / الخسارة",money(total)),tile("الصفقات المغلقة",count),tile("أيام بها تنفيذ",days.length),tile("رابحة / خاسرة",wins+" / "+losses),tile("آخر تحديث MT5",terminal.updated_at?new Date(terminal.updated_at).toLocaleString("ar-AE"):"لم تصل بيانات MT5")])+'<h4>الأداء اليومي الفعلي — آخر 30 يوماً</h4><p class="muted">الحساب من صفقات MT5 المغلقة للإكسبرت والرمز الحالي، شاملاً الربح والعمولة والسواب والرسوم. لا تُستخدم نتائج التعلّم بدلاً من سجل الحساب.</p>'+table;
   }
   const rows=(arr,cols)=>arr.length?`<div class="catalog-list">${arr.map(v=>`<div class="catalog-row"><b>${cols.map(k=>escv(v[k])).join(" • ")}</b><small>${escv(v.symbol||"")} ${v.ticket?"• #"+escv(v.ticket):""}</small></div>`).join("")}</div>`:"<p class=\"muted\">لا توجد سجلات مستلمة من MT5 بعد.</p>";
-  if(id==="open"){
-   const money=v=>Number(v||0).toFixed(2)+" "+escv(terminal.account?.currency||"");
-   const cards=positions.length?'<div class="catalog-list">'+positions.map(v=>{
-    const pnl=Number(v.profit||0)+Number(v.swap||0),tone=pnl>0?"#2563eb":pnl<0?"#dc2626":"#64748b";
-    const side=Number(v.type)===0?"شراء":Number(v.type)===1?"بيع":escv(v.type);
-    return '<div class="catalog-row open-position"><b>'+escv(v.symbol||settings.chart_symbol||"XAUUSD")+' • '+side+' • '+escv(v.volume)+' لوت</b><small>تذكرة #'+escv(v.ticket)+' • دخول: '+escv(v.open_price)+' • السعر الحالي: '+escv(v.price_current)+'</small><div class="open-pnl-line">الربح / الخسارة: <strong class="'+(pnl>0?"open-pnl-positive":pnl<0?"open-pnl-negative":"open-pnl-zero")+'">'+money(pnl)+'</strong><span> • SL: '+escv(v.sl)+' • TP: '+escv(v.tp)+'</span></div></div>';
-   }).join("")+'</div>':'<p class="muted">لا توجد صفقات مفتوحة مستلمة من MT5 حالياً.</p>';
-   body=grid([tile("الصفقات المفتوحة",positions.length),tile("الربح العائم",money(positions.reduce((s,v)=>s+Number(v.profit||0)+Number(v.swap||0),0))),tile("رصيد الحساب",terminal.account?.balance),tile("حقوق الحساب",terminal.account?.equity)])+cards;
-  }
-  if(id==="pending")body="<h4>الأوامر المعلقة</h4>"+rows(orders,["type","state","volume","price","sl","tp"])+"<h4>آخر الصفقات المنفذة (30 يوم)</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit","commission","swap"]);
-  if(id==="trades")body=grid([tile("مفتوحة",positions.length),tile("أوامر معلقة",orders.length),tile("سجلات تنفيذ",history.length),tile("ربح عائم",positions.reduce((s,v)=>s+Number(v.profit||0)+Number(v.swap||0),0).toFixed(2)),tile("ربح محقق في العينة",history.reduce((s,v)=>s+Number(v.profit||0)+Number(v.commission||0)+Number(v.swap||0),0).toFixed(2))])+"<h4>آخر التنفيذات</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit"]);
+  if(id==="open")body='<h4>الصفقات المفتوحة — بيانات مباشرة من MT5</h4>';
+  if(id==="pending")body="<h4>آخر الصفقات المنفذة (30 يوم)</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit","commission","swap"]);
+  if(id==="trades")body="<h4>سجل التنفيذات المستلمة من MT5</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit"]);
   if(id==="history"){
    const sorted=history.slice().sort((a,b)=>Number(b.time||0)-Number(a.time||0));
    const net=sorted.reduce((sum,v)=>sum+Number(v.net_profit??(Number(v.profit||0)+Number(v.commission||0)+Number(v.swap||0)+Number(v.fee||0))),0);
@@ -266,7 +275,7 @@ async function loadDashboardWorkspace(){
   if(id==="candles"){const vals=candles.slice(-60);if(vals.length){const lo=Math.min(...vals.map(v=>Number(v.low))),hi=Math.max(...vals.map(v=>Number(v.high))),span=Math.max(hi-lo,1e-9);const bars=vals.map((v,i)=>{const x=10+i*9,w=5,y1=10+(hi-Number(v.high))/span*180,y2=10+(hi-Number(v.low))/span*180,yo=10+(hi-Number(v.open))/span*180,yc=10+(hi-Number(v.close))/span*180;const up=Number(v.close)>=Number(v.open);return `<g stroke="${up?"#16a34a":"#dc2626"}" fill="${up?"#16a34a":"#dc2626"}"><path d="M${x+2.5} ${y1}V${y2}"/><rect x="${x}" y="${Math.min(yo,yc)}" width="${w}" height="${Math.max(1,Math.abs(yc-yo))}"/></g>`}).join("");body=`<p>آخر ${vals.length} شمعة مغلقة • ${escv(settings.timeframe||"الفريم الحالي")}</p><svg viewBox="0 0 ${Math.max(550,vals.length*9+20)} 205" width="100%" role="img">${bars}</svg><p>آخر إغلاق: ${escv(vals[vals.length-1].close)} • أعلى: ${escv(hi)} • أدنى: ${escv(lo)}</p>`}else body="<p class=\"muted\">بانتظار وصول بيانات الشموع من MT5.</p>"}
   if(id==="logs"||id==="blackbox")body=grid([tile("Decision ID",q.decision_id),tile("القرار",q.decision),tile("الاستراتيجية",q.strategy_name),tile("آخر وصول",d.last_seen_at)])+'<pre>'+esc(JSON.stringify({reason:q.reason_ar,context:x,adaptive:z},null,2))+'</pre>';
   if(!d.connected && id!=="settings")body='<p class="muted">لا توجد بيانات سوق حديثة من MT5. '+escv(d.reason)+'</p>'+body;
-  panel.innerHTML='<h3>بيانات المحرك الفعلية</h3><section id="liveTelemetryStrip" class="live-telemetry"><p class="muted">جارٍ استقبال بيانات MT5 الحية...</p></section>'+body;
+  panel.innerHTML='<h3>بيانات المحرك الفعلية</h3>'+body;
   refreshLiveTelemetry();
  }catch(e){panel.innerHTML='<h3>بيانات المحرك</h3><p class="error">'+esc(e.message)+'</p>'}
 }
