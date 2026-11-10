@@ -207,7 +207,15 @@ async function loadDashboardWorkspace(){
    body=grid([tile("صافي الربح / الخسارة",money(total)),tile("الصفقات المغلقة",count),tile("أيام بها تنفيذ",days.length),tile("رابحة / خاسرة",wins+" / "+losses),tile("آخر تحديث MT5",terminal.updated_at?new Date(terminal.updated_at).toLocaleString("ar-AE"):"لم تصل بيانات MT5")])+'<h4>الأداء اليومي الفعلي — آخر 30 يوماً</h4><p class="muted">الحساب من صفقات MT5 المغلقة للإكسبرت والرمز الحالي، شاملاً الربح والعمولة والسواب والرسوم. لا تُستخدم نتائج التعلّم بدلاً من سجل الحساب.</p>'+table;
   }
   const rows=(arr,cols)=>arr.length?`<div class="catalog-list">${arr.map(v=>`<div class="catalog-row"><b>${cols.map(k=>escv(v[k])).join(" • ")}</b><small>${escv(v.symbol||"")} ${v.ticket?"• #"+escv(v.ticket):""}</small></div>`).join("")}</div>`:"<p class=\"muted\">لا توجد سجلات مستلمة من MT5 بعد.</p>";
-  if(id==="open")body=grid([tile("الصفقات المفتوحة",positions.length),tile("الربح العائم",positions.reduce((s,v)=>s+Number(v.profit||0),0).toFixed(2)),tile("رصيد الحساب",terminal.account?.balance),tile("حقوق الحساب",terminal.account?.equity)])+rows(positions,["type","volume","open_price","price_current","profit","sl","tp"]);
+  if(id==="open"){
+   const money=v=>Number(v||0).toFixed(2)+" "+escv(terminal.account?.currency||"");
+   const cards=positions.length?'<div class="catalog-list">'+positions.map(v=>{
+    const pnl=Number(v.profit||0)+Number(v.swap||0),tone=pnl>0?"#2563eb":pnl<0?"#dc2626":"#64748b";
+    const side=Number(v.type)===0?"شراء":Number(v.type)===1?"بيع":escv(v.type);
+    return '<div class="catalog-row open-position"><b>'+escv(v.symbol||settings.chart_symbol||"XAUUSD")+' • '+side+' • '+escv(v.volume)+' لوت</b><small>تذكرة #'+escv(v.ticket)+' • دخول: '+escv(v.open_price)+' • السعر الحالي: '+escv(v.price_current)+'</small><small>الربح / الخسارة: <strong style="color:'+tone+';font-weight:800">'+money(pnl)+'</strong> • SL: '+escv(v.sl)+' • TP: '+escv(v.tp)+'</small></div>';
+   }).join("")+'</div>':'<p class="muted">لا توجد صفقات مفتوحة مستلمة من MT5 حالياً.</p>';
+   body=grid([tile("الصفقات المفتوحة",positions.length),tile("الربح العائم",money(positions.reduce((s,v)=>s+Number(v.profit||0)+Number(v.swap||0),0))),tile("رصيد الحساب",terminal.account?.balance),tile("حقوق الحساب",terminal.account?.equity)])+cards;
+  }
   if(id==="pending")body="<h4>الأوامر المعلقة</h4>"+rows(orders,["type","state","volume","price","sl","tp"])+"<h4>آخر الصفقات المنفذة (30 يوم)</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit","commission","swap"]);
   if(id==="trades")body=grid([tile("مفتوحة",positions.length),tile("أوامر معلقة",orders.length),tile("سجلات تنفيذ",history.length),tile("ربح عائم",positions.reduce((s,v)=>s+Number(v.profit||0),0).toFixed(2)),tile("ربح محقق في العينة",history.reduce((s,v)=>s+Number(v.profit||0)+Number(v.commission||0)+Number(v.swap||0),0).toFixed(2))])+"<h4>آخر التنفيذات</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit"]);
   if(id==="history"){
