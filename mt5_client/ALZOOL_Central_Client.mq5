@@ -1530,7 +1530,6 @@ void OnTimer()
    ManageSettingsProfitLoss();
    ManageLocalProtection();
    FlushPendingOutcomes();
-   SendLiveState();
    SendTerminalState();
    CheckCentralHealth();
    if(!g_server_online) CancelOurPendingOrders();
@@ -1538,6 +1537,7 @@ void OnTimer()
    PollCentralEngine();
    ManageAiLossGuard();
    ManageAddonCooling();
+   SendLiveState();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
