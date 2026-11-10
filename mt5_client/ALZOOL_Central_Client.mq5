@@ -820,12 +820,12 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       {
          price=NormalizeDouble(tick.ask+MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,"AZS"+IntegerToString(strategy_id));
+         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
       }
       else
       {
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,"AZS"+IntegerToString(strategy_id));
+         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
       }
    }
    else
@@ -835,12 +835,12 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       {
          price=NormalizeDouble(tick.bid-MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
-         sent=trade.SellStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,"AZS"+IntegerToString(strategy_id));
+         sent=trade.SellStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
       }
       else
       {
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
-         sent=trade.Sell(lots,_Symbol,0.0,sl,0.0,"AZS"+IntegerToString(strategy_id));
+         sent=trade.Sell(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
       }
    }
 
@@ -1516,18 +1516,17 @@ void ManageSmartRecovery()
       if(!OrderCalcProfit(existing_type,_Symbol,PositionGetDouble(POSITION_VOLUME),
                           PositionGetDouble(POSITION_PRICE_OPEN),target_price,projected))
          return;
-      projected_existing+=projected+PositionGetDouble(POSITION_SWAP)+PositionGetDouble(POSITION_COMMISSION);
+      projected_existing+=projected+PositionGetDouble(POSITION_SWAP);
    }
 
    // Once a recovery entry exists, close the whole basket together at its net target.
-   if(recovery_open>0)
+   if(recovery_open>0 && floating>=g_cfg_recovery_target_profit)
    {
-      if(floating>=g_cfg_recovery_target_profit)
-         CloseOurPositions("Smart recovery basket target reached");
+      CloseOurPositions("Smart recovery basket target reached");
       return;
    }
-   if(floating>-g_cfg_recovery_trigger_loss) return;
    if(recovery_open>=g_cfg_recovery_max_entries) return;
+   if(floating>-g_cfg_recovery_trigger_loss) return;
    if(g_last_decision!=direction || g_last_confidence<g_cfg_recovery_min_confidence) return;
    double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
    double opposite_quality=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
