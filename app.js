@@ -187,9 +187,25 @@ async function loadDashboardWorkspace(){
   if(id==="council"||id==="results")body=grid([tile("القرار المركزي",q.decision),tile("الاستراتيجية",q.strategy_name),tile("رقمها",q.strategy_id),tile("الثقة",q.confidence==null?"—":(Number(q.confidence)*100).toFixed(1)+"%")])+'<p>'+escv(q.reason_ar)+'</p>';
   if(id==="lab")body=grid([tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality)),tile("فخ شراء",x.buy_trap?"محتمل":"غير مرصود"),tile("فخ بيع",x.sell_trap?"محتمل":"غير مرصود")])+'<p>تحليل الشمعة الأخيرة؛ ليس اختباراً تاريخياً ولا ضماناً للربح.</p>';
   if(id==="learning")body=grid([tile("نتائج تعلم محفوظة",d.outcome_count),tile("أوزان الاستراتيجيات",Array.isArray(d.weights)?d.weights.length:0)])+'<div class="catalog-list">'+(d.outcomes||[]).map(v=>'<div class="catalog-row"><b>Strategy #'+escv(v.strategy_id)+'</b><small>Deal '+escv(v.deal_id)+' • P/L '+num(v.pnl)+'</small></div>').join("")+'</div>';
-  if(id==="daily")body=grid([tile("نتائج مرسلة",d.outcome_count),tile("صافي النتائج المحفوظة",(d.outcomes||[]).reduce((s,v)=>s+Number(v.pnl||0),0).toFixed(2)),tile("بيانات السوق",d.connected?"حديثة":"غير حديثة")])+'<p>هذه النتائج المرسلة للتعلم فقط، وليست كشف حساب MT5 كاملاً.</p>';
   const terminal=d.terminal_state&&d.terminal_state.payload?d.terminal_state.payload:{};
   const positions=terminal.positions||[],orders=terminal.orders||[],history=terminal.history||[],settings=terminal.settings||{},candles=d.candles||[];
+  if(id==="daily"){
+   const closed=history.filter(v=>[1,2,3].includes(Number(v.entry))).sort((a,b)=>Number(b.time||0)-Number(a.time||0));
+   const byDay=new Map();
+   closed.forEach(v=>{
+    const t=Number(v.time||0);if(!t)return;
+    const dt=new Date(t*1000),day=dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");
+    const pnl=Number(v.net_profit??(Number(v.profit||0)+Number(v.commission||0)+Number(v.swap||0)+Number(v.fee||0)));
+    const row=byDay.get(day)||{day,pnl:0,count:0,wins:0,losses:0};
+    row.pnl+=pnl;row.count++;if(pnl>0)row.wins++;else if(pnl<0)row.losses++;
+    byDay.set(day,row);
+   });
+   const days=[...byDay.values()].sort((a,b)=>b.day.localeCompare(a.day));
+   const total=days.reduce((s,v)=>s+v.pnl,0),count=days.reduce((s,v)=>s+v.count,0),wins=days.reduce((s,v)=>s+v.wins,0),losses=days.reduce((s,v)=>s+v.losses,0);
+   const money=v=>Number(v||0).toFixed(2)+" "+escv(terminal.account?.currency||"");
+   const table=days.length?'<div class="catalog-list">'+days.map(v=>'<div class="catalog-row"><b>'+escv(v.day)+' • صافي '+money(v.pnl)+'</b><small>صفقات مغلقة: '+v.count+' • رابحة: '+v.wins+' • خاسرة: '+v.losses+'</small></div>').join("")+'</div>':'<p class="muted">لا توجد صفقات مغلقة مستلمة من MT5 خلال آخر 30 يوماً. تأكد من تشغيل AL-ZOOL Central Client وانتظر تحديث سجل الصفقات.</p>';
+   body=grid([tile("صافي الربح / الخسارة",money(total)),tile("الصفقات المغلقة",count),tile("أيام بها تنفيذ",days.length),tile("رابحة / خاسرة",wins+" / "+losses),tile("آخر تحديث MT5",terminal.updated_at?new Date(terminal.updated_at).toLocaleString("ar-AE"):"لم تصل بيانات MT5")])+'<h4>الأداء اليومي الفعلي — آخر 30 يوماً</h4><p class="muted">الحساب من صفقات MT5 المغلقة للإكسبرت والرمز الحالي، شاملاً الربح والعمولة والسواب والرسوم. لا تُستخدم نتائج التعلّم بدلاً من سجل الحساب.</p>'+table;
+  }
   const rows=(arr,cols)=>arr.length?`<div class="catalog-list">${arr.map(v=>`<div class="catalog-row"><b>${cols.map(k=>escv(v[k])).join(" • ")}</b><small>${escv(v.symbol||"")} ${v.ticket?"• #"+escv(v.ticket):""}</small></div>`).join("")}</div>`:"<p class=\"muted\">لا توجد سجلات مستلمة من MT5 بعد.</p>";
   if(id==="open")body=grid([tile("الصفقات المفتوحة",positions.length),tile("الربح العائم",positions.reduce((s,v)=>s+Number(v.profit||0),0).toFixed(2)),tile("رصيد الحساب",terminal.account?.balance),tile("حقوق الحساب",terminal.account?.equity)])+rows(positions,["type","volume","open_price","price_current","profit","sl","tp"]);
   if(id==="pending")body="<h4>الأوامر المعلقة</h4>"+rows(orders,["type","state","volume","price","sl","tp"])+"<h4>آخر الصفقات المنفذة (30 يوم)</h4>"+rows(history.slice().reverse().slice(0,100),["entry","type","volume","price","profit","commission","swap"]);
