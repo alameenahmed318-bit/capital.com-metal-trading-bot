@@ -154,11 +154,54 @@ class EngineGateway:
         self._request("POST","alzool_engine_decisions",{"client_id":client_id,"payload":payload,
                       "created_at":datetime.fromtimestamp(now,timezone.utc).isoformat()},
                       "resolution=merge-duplicates,return=minimal")
+        signal_type = "WAIT" if result["decision"] == "WAIT" else ("BLOCKED" if not bool(client.get("trading_enabled", False)) else "SIGNAL_CREATED")
+        signal_reason = result.get("reason_ar", "")
+        if signal_type == "BLOCKED":
+            signal_reason = "إشارة " + result["decision"] + " متاحة، لكن التداول الآلي متوقف من لوحة التحكم؛ لم يُرسل أمر."
+        event_payload = {k: payload.get(k) for k in ("decision_id","decision","strategy_id","strategy_name","reason_ar","confidence","symbol","timeframe","bid","ask","expires_at")}
+        event_payload["reason_ar"] = signal_reason
+        self._store_signal_event(client_id, decision_id + ":decision", signal_type, event_payload, now)
         persist_ms=(time.perf_counter()-persist_started)*1000
         total_ms=(time.perf_counter()-request_started)*1000
         print("AL-ZOOL LATENCY market_total_ms=%.1f auth_ms=%.1f weights_ms=%.1f strategy_ms=%.1f persist_ms=%.1f" %
               (total_ms,auth_ms,weights_ms,strategy_ms,persist_ms),flush=True)
         return {k:v for k,v in payload.items() if k!="analysis"}
+
+    def _store_signal_event(self, client_id, event_id, event_type, payload, created_at=None):
+        stamp = datetime.fromtimestamp(created_at, timezone.utc).isoformat() if created_at else datetime.now(timezone.utc).isoformat()
+        row = {"event_id": str(event_id)[:180], "client_id": client_id, "event_type": str(event_type)[:40],
+               "payload": payload if isinstance(payload, dict) else {}, "created_at": stamp}
+        self._request("POST", "alzool_engine_signal_events", row, "resolution=ignore-duplicates,return=minimal")
+
+    def ingest_signal_events(self, client_id, token, events):
+        if not self._client(client_id, token):
+            raise PermissionError("client authorization failed")
+        if not isinstance(events, list) or len(events) > 50:
+            raise ValueError("events must be an array with at most 50 records")
+        allowed = {"ORDER_SENT","TRADE_OPENED","TRADE_CLOSED","ORDER_REJECTED","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED"}
+        accepted = 0
+        for item in events:
+            if not isinstance(item, dict):
+                continue
+            event_id = str(item.get("event_id") or "").strip()
+            event_type = str(item.get("event_type") or "").strip().upper()
+            payload = item.get("payload") or {}
+            if not event_id or len(event_id) > 180 or event_type not in allowed or not isinstance(payload, dict):
+                continue
+            self._store_signal_event(client_id, event_id, event_type, payload)
+            accepted += 1
+        return {"accepted": accepted}
+
+    def signal_events_for_user(self, user_id, limit=100):
+        clients = self._request("GET", "alzool_engine_clients?user_id=eq." + urllib.parse.quote(user_id, safe="") +
+                                "&select=client_id,revoked&limit=1")
+        if not clients or clients[0].get("revoked"):
+            return {"events": []}
+        cid = urllib.parse.quote(clients[0]["client_id"], safe="")
+        safe_limit = max(1, min(int(limit), 200))
+        rows = self._request("GET", "alzool_engine_signal_events?client_id=eq." + cid +
+                             "&select=event_id,event_type,payload,created_at&order=created_at.desc&limit=" + str(safe_limit))
+        return {"events": rows}
 
     def latest(self, client_id, token, kind="decision"):
         if not self._client(client_id,token): raise PermissionError("client authorization failed")
