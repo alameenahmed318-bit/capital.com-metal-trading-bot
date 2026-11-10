@@ -81,6 +81,7 @@ string g_daily_loss_date="";
 
 void SendSignalEvent(const string event_id,const string event_type,const string payload);
 void RecordBlockedSignal(const string decision_id,const string key,const string reason);
+string JsonSafe(string value);
 
 string ServerBaseUrl()
 {
