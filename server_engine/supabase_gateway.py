@@ -211,6 +211,206 @@ class EngineGateway:
         if time.time()-float(payload.get("created_at",0))>TTL_SECONDS: return {kind:None,"reason":"expired"}
         return {"analysis":payload.get("analysis"),"decision_id":payload.get("decision_id")} if kind=="analysis" else payload
 
+    def status_for_user(self, user_id, stale_after=5):
+        """Report MT5 connected from one-second terminal telemetry, not candle decisions."""
+        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
+        if not rows:
+            return {"mt5_connected":False,"trading_enabled":False,"reason":"credentials_not_issued","last_seen_at":None,"seconds_since_last_data":None}
+        client=rows[0]
+        if client.get("revoked"):
+            return {"mt5_connected":False,"trading_enabled":False,"reason":"client_revoked","last_seen_at":None,"seconds_since_last_data":None}
+        cid=urllib.parse.quote(client["client_id"],safe="")
+        live=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=sequence,received_at&limit=1")
+        row=live[0] if live else None
+        stamp=(row or {}).get("received_at")
+        try:
+            seen=datetime.fromisoformat(stamp.replace("Z","+00:00")).timestamp() if stamp else 0
+        except Exception:
+            seen=0
+        age=max(0,time.time()-seen) if seen else None
+        threshold=min(max(float(stale_after),1.0),5.0)
+        online=age is not None and age<=threshold
+        return {"mt5_connected":online,"trading_enabled":bool(client.get("trading_enabled",False)),
+                "reason":"live_data_recent" if online else ("no_live_data" if not row else "live_data_stale"),
+                "last_seen_at":stamp,"seconds_since_last_data":round(age,2) if age is not None else None,
+                "live_age_ms":int(age*1000) if age is not None else None,"sequence":(row or {}).get("sequence"),
+                "client_id":client["client_id"]}
+
+    def outcome(self, client_id, token, data):
+        if not self._client(client_id,token): raise PermissionError("client authorization failed")
+        deal=data.get("deal_id"); sid=data.get("strategy_id"); pnl=data.get("pnl")
+        if not isinstance(deal,str) or not deal.strip() or len(deal)>120 or isinstance(sid,bool) or not isinstance(sid,int) or isinstance(pnl,bool):
+            raise ValueError("valid deal_id, integer strategy_id and numeric pnl required")
+        try: pnl=float(pnl)
+        except (TypeError,ValueError,OverflowError): raise ValueError("pnl must be finite") from None
+        if not 1<=sid<=200 or not math.isfinite(pnl) or abs(pnl)>=1e9: raise ValueError("invalid strategy_id or pnl")
+        result=self._request("POST","alzool_engine_outcomes",
+            {"client_id":client_id,"deal_id":deal.strip(),"strategy_id":sid,"pnl":pnl},
+            "resolution=ignore-duplicates,return=representation")
+        if result:
+            rows=self._request("GET","alzool_engine_weights?client_id=eq."+client_id+"&strategy_id=eq."+str(sid)+"&select=weight")
+            old=float(rows[0]["weight"]) if rows else 1.0
+            new=max(.25,min(4.0,old*(1.04 if pnl>0 else .96 if pnl<0 else 1.0)))
+            self._request("POST","alzool_engine_weights",
+                {"client_id":client_id,"strategy_id":sid,"weight":new},
+                "resolution=merge-duplicates,return=minimal")
+        return {"accepted":True,"duplicate":not bool(result)}
+
+
+
+    BASIC_SETTINGS_DEFAULTS = {"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":True,"per_trade_profit_enabled":True,"per_trade_profit_target":2,"smart_profit_enabled":False,"one_direction_only":True,"global_loss_enabled":True,"global_loss_amount":50,"ai_loss_guard_enabled":False,"max_positions":0,"fixed_sl_enabled":True,"fixed_sl_distance":3,"trailing_enabled":True,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":False,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":False,"candle_chase_sl_distance":3,"addon_enabled":False,"addon_smart_enabled":False,"addon_step":2,"addon_multiplier_enabled":True,"addon_multiplier":1.2,"addon_max":3,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_smart_enabled":False,"cooling_step":3,"cooling_multiplier_enabled":True,"cooling_multiplier":1.2,"cooling_max":2,"cooling_max_lot":0.05,"strategy_mode":"AUTO — Best current fit"}
+
+    def settings_for_client(self, client_id, token):
+        client=self._client(client_id,token)
+        if not client: raise PermissionError("client authorization failed")
+        rows=self._request("GET","alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=trading_settings&limit=1")
+        if not rows: raise PermissionError("client settings unavailable")
+        saved=rows[0].get("trading_settings") or {}
+        return {**self.BASIC_SETTINGS_DEFAULTS,**saved}
+
+    def settings_for_user(self, user_id):
+        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=trading_settings&limit=1")
+        if not rows: return dict(self.BASIC_SETTINGS_DEFAULTS)
+        saved=rows[0].get("trading_settings") or {}
+        return {**self.BASIC_SETTINGS_DEFAULTS,**saved}
+
+    def save_settings_for_user(self, user_id, values):
+        if not isinstance(values,dict): raise ValueError("settings must be an object")
+        allowed=set(self.BASIC_SETTINGS_DEFAULTS)
+        if not values or any(k not in allowed for k in values): raise ValueError("unknown or empty setting")
+        current=self.settings_for_user(user_id)
+        merged={**current,**values}
+        # Normalize Arabic-Indic/Persian digits and Arabic decimal separators.
+        for key,default in self.BASIC_SETTINGS_DEFAULTS.items():
+            if isinstance(default,(int,float)) and not isinstance(default,bool) and isinstance(merged.get(key),str):
+                raw=merged[key].strip().translate(str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹","01234567890123456789"))
+                raw=raw.replace("٫",".").replace("٬","").replace("،","").replace(" ","")
+                try: merged[key]=float(raw)
+                except (TypeError,ValueError): raise ValueError(key+" must be a valid number") from None
+        for key,default in self.BASIC_SETTINGS_DEFAULTS.items():
+            value=merged.get(key)
+            if isinstance(default,bool):
+                if not isinstance(value,bool): raise ValueError(key+" must be boolean")
+            elif isinstance(default,(int,float)):
+                if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(float(value)):
+                    raise ValueError(key+" must be a finite number")
+            elif not isinstance(value,str):
+                raise ValueError(key+" must be text")
+        if merged["order_mode"] not in ("Market Order","Pending Order"): raise ValueError("invalid order_mode")
+        if merged["lot"]<=0 or merged["profit_target"]<=0 or merged["per_trade_profit_target"]<=0 or merged["loss_limit"]<=0 or merged["global_loss_amount"]<=0: raise ValueError("risk, lot and profit/loss targets must be greater than zero")
+        if not 0.05<=merged["ai_risk_percent"]<=2.0 or merged["ai_max_lot"]<=0: raise ValueError("AI risk must be 0.05..2% and AI max lot must be positive")
+        if merged["max_positions"]<0 or merged["addon_max"]<0 or merged["cooling_max"]<0: raise ValueError("maximum counts cannot be negative")
+        if merged["fixed_sl_distance"]<=0 or merged["trail_start"]<0 or merged["trail_distance"]<=0 or merged["pending_distance"]<=0 or merged["reverse_trigger"]<=0 or merged["reverse_continue"]<=0: raise ValueError("stop, trailing, pending and reversal distances are invalid")
+        if merged["addon_step"]<=0 or merged["cooling_step"]<=0 or merged["addon_multiplier"]<1 or merged["cooling_multiplier"]<1 or merged["addon_max_lot"]<=0 or merged["cooling_max_lot"]<=0: raise ValueError("add-on/cooling distances, multipliers and lot caps are invalid")
+        if merged["candle_chase_min_move"]<=0 or merged["candle_chase_cooldown"]<0 or merged["candle_chase_buy_target"]<0 or merged["candle_chase_sell_target"]<0 or merged["candle_chase_single_target"]<0 or merged["candle_chase_sl_distance"]<=0: raise ValueError("candle-follow settings are invalid")
+        if merged["strategy_mode"] not in ("AUTO — Best current fit","HUNTER — Frequent opportunities","SNIPER — Selective entries") and not merged["strategy_mode"].isdigit():
+            raise ValueError("invalid strategy_mode")
+        self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
+                      {"trading_settings":merged},"return=minimal")
+        return merged
+
+    def terminal_state(self, client_id, token, data):
+        if not self._client(client_id,token): raise PermissionError("client authorization failed")
+        if not isinstance(data,dict): raise ValueError("terminal state must be an object")
+        keys=("account","positions","orders","history","settings","events")
+        payload={k:data.get(k) for k in keys}
+        if not isinstance(payload.get("positions"),list) or not isinstance(payload.get("orders"),list) or not isinstance(payload.get("history"),list): raise ValueError("positions, orders and history arrays are required")
+        if len(payload["positions"])>200 or len(payload["orders"])>200 or len(payload["history"])>200: raise ValueError("too many terminal records")
+        row={"client_id":client_id,"payload":payload,"updated_at":datetime.now(timezone.utc).isoformat()}
+        self._request("POST","alzool_engine_terminal_state",row,"resolution=merge-duplicates,return=minimal")
+        return {"accepted":True,"positions":len(payload["positions"]),"orders":len(payload["orders"])}
+
+    def terminal_state_live(self, client_id, token, data):
+        client=self._client(client_id,token)
+        if not client: raise PermissionError("client authorization failed")
+        if not isinstance(data,dict): raise ValueError("live state must be an object")
+        account=data.get("account") or {}
+        positions=data.get("positions",[])
+        orders=data.get("orders",[])
+        if not isinstance(account,dict) or not isinstance(positions,list) or not isinstance(orders,list):
+            raise ValueError("invalid live account or trade arrays")
+        if len(positions)>200 or len(orders)>200: raise ValueError("too many live trade records")
+        try: sequence=int(data.get("sequence",0))
+        except (TypeError,ValueError,OverflowError): raise ValueError("invalid sequence") from None
+        if sequence<0: raise ValueError("invalid sequence")
+        try:
+            epoch=float(data.get("source_time",0) or 0)
+            source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
+        except (TypeError,ValueError,OverflowError,OSError): source_time=None
+        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence")}
+        received=datetime.now(timezone.utc).isoformat()
+        row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
+             "received_at":received,"updated_at":received}
+        self._request("POST","alzool_engine_live_state",row,"resolution=merge-duplicates,return=minimal")
+        return {"accepted":True,"sequence":sequence,"received_at":received}
+
+    def live_state_for_user(self, user_id):
+        clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+
+                              "&select=client_id,revoked,trading_enabled&limit=1")
+        if not clients: return {"connected":False,"reason":"credentials_not_issued","live_state":None}
+        client=clients[0]
+        cid=urllib.parse.quote(client["client_id"],safe="")
+        rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
+                           "&select=payload,sequence,source_time,received_at&limit=1")
+        row=rows[0] if rows else None
+        stamp=(row or {}).get("received_at")
+        try: received=datetime.fromisoformat(stamp.replace("Z","+00:00")).timestamp() if stamp else 0
+        except Exception: received=0
+        age_ms=max(0,int((time.time()-received)*1000)) if received else None
+        revoked=bool(client.get("revoked"))
+        fresh=age_ms is not None and age_ms<=5000 and not revoked
+        return {"connected":fresh,"reason":"live_data_recent" if fresh else ("no_live_data" if not row else "live_data_stale"),
+                "trading_enabled":bool(client.get("trading_enabled",False)) and not revoked,
+                "sequence":(row or {}).get("sequence"),"source_time":(row or {}).get("source_time"),
+                "received_at":stamp,"age_ms":age_ms,"live_state":(row or {}).get("payload")}
+
+    def workspace_for_user(self, user_id, limit=100):
+        """Return live MT5 state and persisted intelligence for the authenticated dashboard user."""
+        clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
+        if not clients:
+            return {"connected":False,"reason":"credentials_not_issued","analysis":None,"decisions":[],"outcomes":[],"weights":[],"terminal_state":None,"live_state":None}
+        client=clients[0]
+        cid=urllib.parse.quote(client["client_id"],safe="")
+        decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+"&select=payload,created_at&order=created_at.desc&limit=1")
+        outcomes=self._request("GET","alzool_engine_outcomes?client_id=eq."+cid+"&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit="+str(max(1,min(int(limit),200))))
+        weights=self._request("GET","alzool_engine_weights?client_id=eq."+cid+"&select=strategy_id,weight&order=strategy_id.asc")
+        terminal_rows=self._request("GET","alzool_engine_terminal_state?client_id=eq."+cid+"&select=payload,updated_at&limit=1")
+        live_rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=payload,sequence,source_time,received_at&limit=1")
+        payload=(decisions[0].get("payload") or {}) if decisions else None
+        live_row=live_rows[0] if live_rows else None
+        live_stamp=(live_row or {}).get("received_at")
+        try:
+            live_seen=datetime.fromisoformat(live_stamp.replace("Z","+00:00")).timestamp() if live_stamp else 0
+        except Exception:
+            live_seen=0
+        live_age=max(0,time.time()-live_seen) if live_seen else None
+        revoked=bool(client.get("revoked"))
+        terminal_row=terminal_rows[0] if terminal_rows else None
+        terminal_payload=dict((terminal_row or {}).get("payload") or {})
+        live_payload=(live_row or {}).get("payload") or {}
+        for key in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence"):
+            if key in live_payload:
+                terminal_payload[key]=live_payload[key]
+        terminal_state={"payload":terminal_payload,"updated_at":(terminal_row or {}).get("updated_at"),
+                        "live_updated_at":live_stamp,"live_sequence":(live_row or {}).get("sequence")}
+        fresh=live_age is not None and live_age<=5 and not revoked
+        return {
+            "connected":fresh,
+            "reason":"live_data_recent" if fresh else ("client_revoked" if revoked else ("no_live_data" if not live_row else "live_data_stale")),
+            "trading_enabled":bool(client.get("trading_enabled",False)) and not revoked,
+            "last_seen_at":live_stamp,"seconds_since_last_data":round(live_age,2) if live_age is not None else None,
+            "live_age_ms":int(live_age*1000) if live_age is not None else None,
+            "live_sequence":(live_row or {}).get("sequence"),"live_state":live_payload,
+            "analysis":(payload or {}).get("analysis"),"candles":(payload or {}).get("candles",[]),
+            "symbol":(payload or {}).get("symbol"),"timeframe":(payload or {}).get("timeframe"),
+            "decision":{"decision_id":(payload or {}).get("decision_id"),"decision":(payload or {}).get("decision"),
+                        "strategy_id":(payload or {}).get("strategy_id"),"strategy_name":(payload or {}).get("strategy_name"),
+                        "reason_ar":(payload or {}).get("reason_ar"),"confidence":(payload or {}).get("confidence"),
+                        "created_at":(payload or {}).get("created_at"),"expires_at":(payload or {}).get("expires_at")} if payload else None,
+            "outcomes":outcomes,"weights":weights,"outcome_count":len(outcomes),
+            "terminal_state":terminal_state,"client_revoked":revoked
+        }
+
     def status_for_user(self, user_id, stale_after=30):
         """Report MT5 connected only when fresh market data reached the engine."""
         rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
