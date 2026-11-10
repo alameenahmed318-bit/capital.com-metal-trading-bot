@@ -151,6 +151,36 @@ class EngineGateway:
         result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode,selected_strategy_id=selected_id,
                                forming_candle=data.get("forming_candle"),tick=data.get("tick"))
         strategy_ms=(time.perf_counter()-strategy_started)*1000
+        # Keep a short, client-isolated market-regime history. It is advisory only
+        # and is stored inside the decision payload; it never changes the signal.
+        previous_payload=self._decision_cache.get(client_id)
+        if previous_payload is None:
+            previous_rows=self._request("GET","alzool_engine_decisions?client_id=eq."+client_id+
+                                        "&select=payload&order=created_at.desc&limit=1")
+            previous_payload=(previous_rows[0].get("payload") or {}) if previous_rows else {}
+        previous_analysis=(previous_payload or {}).get("analysis") or {}
+        previous_context=previous_analysis.get("context") or {}
+        previous_memory=previous_analysis.get("market_memory") or {}
+        history=list(previous_memory.get("history") or [])
+        current_regime=(result.get("context") or {}).get("regime","غير محدد")
+        previous_regime=previous_context.get("regime")
+        state_changed=bool(previous_regime and previous_regime!=current_regime)
+        if not history and previous_regime:
+            history.append({"regime":previous_regime,"at":(previous_payload or {}).get("created_at")})
+        history.append({"regime":current_regime,"at":time.time()})
+        history=history[-12:]
+        consecutive=0
+        for item in reversed(history):
+            if item.get("regime")!=current_regime: break
+            consecutive+=1
+        transitions=[]
+        for idx,item in enumerate(history):
+            if idx and item.get("regime")!=history[idx-1].get("regime"):
+                transitions.append({"from":history[idx-1].get("regime"),"to":item.get("regime"),"at":item.get("at")})
+        result["market_memory"]={"current_regime":current_regime,"previous_regime":previous_regime,
+                                 "state_changed":state_changed,"consecutive_decisions":consecutive,
+                                 "history":history,"transitions":transitions[-6:],
+                                 "note_ar":"ذاكرة حالة السوق مستقلة لكل عميل؛ لا تغيّر شروط الدخول أو الصفقات المفتوحة"}
         now=time.time(); expires=now+TTL_SECONDS; decision_id=str(uuid.uuid4())
         confidence=float(result.get("confidence",0.0))
         signed=f"{client_id}|{decision_id}|{result['decision']}|{int(result['strategy_id'])}|{confidence:.8f}|{expires:.6f}"
