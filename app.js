@@ -23,6 +23,7 @@ const navPages=[
  ["home","الرئيسية","⌂"],["control","التحكم بالتداول","◉"],["gold","الذهب والاستراتيجيات","◆"],["candles","الشموع","▥"],["council","مجلس التصويت","◎"],["analysis","التحليل الذكي","⌁"],["lab","مختبر الفرص","⌕"],["families","عائلات الاستراتيجيات","▦"],["strategies","الاستراتيجيات والتركيبات","▤"],["trades","الصفقات والأداء","↗"],["history","سجل الصفقات","▤"],["open","الصفقات المفتوحة","◫"],["pending","الأوامر المعلقة والسجل","◷"],["daily","الأداء اليومي","▧"],["results","نتائج الذكاء الاصطناعي","✧"],["learning","التعلم والتكيف","⟳"],["logs","السجلات","≡"],["signals","سجل الإشارات","◉"],["blackbox","AZ BLACK BOX","⬡"],["settings","الإعدادات الأساسية","⚙"]];
 const strategyFamilies=["EMA Trend","RSI Momentum","MACD Momentum","Bollinger Reversion","Donchian Breakout","ATR Expansion","Candle Momentum","EMA Pullback","Range Reversion","Hybrid Confluence","Stochastic Reversal","CCI Momentum","Williams %R Reversal","ROC Momentum","Adaptive Swing Trend","VWAP Deviation","Pivot Breakout","Inside Bar Breakout","Engulfing Reversal","Volume Pressure"];
 let activeDashboardPage="home",dashboardRole="client",dashboardStatusTimer=null,tradingEnabled=false,mt5Connected=false;
+let liveTelemetryTimer=null,liveTelemetryBusy=false;
 
 const BASIC_SETTING_DEFAULTS={"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":true,"per_trade_profit_enabled":true,"per_trade_profit_target":2,"smart_profit_enabled":false,"one_direction_only":true,"global_loss_enabled":true,"global_loss_amount":50,"ai_loss_guard_enabled":false,"max_positions":0,"fixed_sl_enabled":true,"fixed_sl_distance":3,"trailing_enabled":true,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":false,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":false,"candle_chase_sl_distance":3,"addon_enabled":false,"addon_smart_enabled":false,"addon_step":2,"addon_multiplier_enabled":true,"addon_multiplier":1.2,"addon_max":3,"addon_max_lot":0.05,"cooling_enabled":false,"cooling_smart_enabled":false,"cooling_step":3,"cooling_multiplier_enabled":true,"cooling_multiplier":1.2,"cooling_max":2,"cooling_max_lot":0.05,"strategy_mode":"AUTO — Best current fit"};
 const BASIC_SETTING_FIELDS=[["lot","حجم اللوت","number"],["ai_risk_percent","مخاطرة AI %","number"],["ai_max_lot","أقصى لوت AI","number"],["profit_target","هدف الربح الجماعي","number"],["per_trade_profit_target","هدف ربح الصفقة الواحدة","number"],["global_profit_enabled","تفعيل جني الربح الجماعي","bool"],["per_trade_profit_enabled","تفعيل جني ربح الصفقة الواحدة","bool"],["smart_profit_enabled","جني الأرباح الذكي","bool"],["loss_limit","حد الخسارة اليومي","number"],["global_loss_enabled","تفعيل حد الخسارة العام","bool"],["global_loss_amount","قيمة حد الخسارة العام","number"],["ai_loss_guard_enabled","حارس الخسارة الذكي","bool"],["one_direction_only","اتجاه واحد فقط","bool"],["max_positions","الحد الأقصى للصفقات (0 = بلا حد)","number"],["fixed_sl_enabled","تفعيل وقف الخسارة الثابت","bool"],["fixed_sl_distance","مسافة وقف الخسارة الثابت","number"],["trailing_enabled","تفعيل التريلينغ","bool"],["trail_start","بداية التريلينغ","number"],["trail_distance","مسافة التريلينغ","number"],["order_mode","طريقة الأوامر","select"],["pending_distance","مسافة الأمر المعلق","number"],["reverse_trigger","مسافة تفعيل الانعكاس","number"],["reverse_continue","تأكيد استمرار الانعكاس","number"],["addon_enabled","تفعيل التعزيز","bool"],["addon_smart_enabled","التعزيز الذكي حسب الشموع والاستراتيجية","bool"],["addon_step","مسافة التعزيز الأساسية","number"],["addon_multiplier_enabled","تفعيل مضاعف لوت التعزيز","bool"],["addon_multiplier","مضاعف لوت التعزيز","number"],["addon_max","الحد الأقصى للتعزيز","number"],["addon_max_lot","أقصى لوت للتعزيز","number"],["cooling_enabled","تفعيل التبريد","bool"],["cooling_smart_enabled","التبريد الذكي حسب الشموع والاستراتيجية","bool"],["cooling_step","مسافة التبريد الأساسية","number"],["cooling_multiplier_enabled","تفعيل مضاعف لوت التبريد","bool"],["cooling_multiplier","مضاعف لوت التبريد","number"],["cooling_max","الحد الأقصى للتبريد","number"],["cooling_max_lot","أقصى لوت للتبريد","number"],["candle_chase_enabled","تفعيل متابعة الشموع","bool"],["candle_chase_min_move","أقل حركة لمتابعة الشمعة","number"],["candle_chase_cooldown","فترة تهدئة متابعة الشموع","number"],["candle_chase_buy_target","هدف متابعة الشراء","number"],["candle_chase_sell_target","هدف متابعة البيع","number"],["candle_chase_single_target","هدف الصفقة الواحدة لمتابعة الشموع","number"],["candle_chase_sl_enabled","وقف خسارة متابعة الشموع","bool"],["candle_chase_sl_distance","مسافة وقف متابعة الشموع","number"],["strategy_mode","اختيار الاستراتيجية","strategy"]];
@@ -92,7 +93,10 @@ function renderDashboard(){
  if(dashboardStatusTimer)clearInterval(dashboardStatusTimer);
  refreshEngineStatus();
  loadDashboardWorkspace();
- dashboardStatusTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden")){refreshEngineStatus();loadDashboardWorkspace()}},5000);
+ dashboardStatusTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden")){refreshEngineStatus();loadDashboardWorkspace()}},10000);
+ if(liveTelemetryTimer)clearInterval(liveTelemetryTimer);
+ refreshLiveTelemetry();
+ liveTelemetryTimer=setInterval(()=>{if(!$("dashboardView")?.classList.contains("hidden"))refreshLiveTelemetry()},1000);
 }
 async function refreshEngineStatus(){
  const pill=document.querySelector(".engine-pill"),home=$("engineHomeStatus"),mt5=$("mt5HomeStatus"),tag=$("engineMarketTag");
@@ -155,6 +159,24 @@ async function afterLogin(){
    ownerEngineBtn.onclick=async()=>{if(!confirm("سيتم إصدار/تجديد بيانات ربط محرك حساب المالك. أي بيانات مالك سابقة ستتوقف. هل تتابع؟"))return;ownerEngineBtn.disabled=true;try{const d=await api("/api/owner/engine-credentials","POST",{});const e=d.engine||{};const t="AL-ZOOL GOLD SNIPER\nبيانات ربط محرك حساب المالك\nServer URL: "+d.engine_server_url+"\nOwner Engine ID: "+e.client_id+"\nOwner Engine Token: "+e.client_token+"\n\nاحتفظ بهذا الملف بسرية. أدخل القيم في InpEngineId و InpEngineToken داخل MT5.";const blob=new Blob(["\ufeff"+t],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="AL-ZOOL-owner-engine-access.txt";a.click();URL.revokeObjectURL(url);alert("تم إصدار بيانات ربط المالك وتنزيل الملف. أدخلها في MT5.");}catch(e){alert(e.message)}finally{ownerEngineBtn.disabled=false}};
   }else{dashboardRole="client";activeDashboardPage="home";renderDashboard();show("dashboardView")}
  }catch(e){await sb.auth.signOut();session=null;show("loginView");err("loginError",e.message)}
+}
+
+async function refreshLiveTelemetry(){
+ if(liveTelemetryBusy || !session || dashboardRole!=="client")return;
+ liveTelemetryBusy=true;
+ try{
+  const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},positions=state.positions||[];
+  const host=$("liveTelemetryStrip");if(!host)return;
+  const money=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
+  const floating=positions.reduce((sum,p)=>sum+Number(p.profit||0)+Number(p.swap||0),0);
+  const received=d.received_at?new Date(d.received_at).toLocaleTimeString("ar-AE"):"لم يصل بعد";
+  const status=d.connected?(Number(d.age_ms)<=1500?"لحظي":"متصل"):"بيانات قديمة / لا يوجد اتصال";
+  const current=candle.time?"الشمعة الحالية O "+money(candle.open)+" • H "+money(candle.high)+" • L "+money(candle.low)+" • C "+money(candle.close):"لا توجد شمعة حالية";
+  const values=[["حالة البيانات",status],["الرصيد",money(account.balance)+" "+(account.currency||"")],["Equity",money(account.equity)],["الربح العائم",money(floating)+" "+(account.currency||"")],["الصفقات المفتوحة",positions.length],["Bid / Ask",money(tick.bid)+" / "+money(tick.ask)],["آخر وصول من MT5",received],["عمر البيانات",d.age_ms==null?"—":d.age_ms+" ms"]];
+  host.innerHTML='<div class="dash-cards">'+values.map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div><p class="muted">'+esc(current)+' • Spread: '+esc(money(tick.spread_points))+' • تسلسل: '+esc(d.sequence??"—")+'</p>';
+  host.dataset.sequence=String(d.sequence??"");
+ }catch(e){const host=$("liveTelemetryStrip");if(host)host.innerHTML='<p class="muted">تعذر تحديث البيانات الحية: '+esc(e.message)+'</p>'}
+ finally{liveTelemetryBusy=false}
 }
 
 async function loadDashboardWorkspace(){
@@ -235,6 +257,7 @@ async function loadDashboardWorkspace(){
   if(id==="candles"){const vals=candles.slice(-60);if(vals.length){const lo=Math.min(...vals.map(v=>Number(v.low))),hi=Math.max(...vals.map(v=>Number(v.high))),span=Math.max(hi-lo,1e-9);const bars=vals.map((v,i)=>{const x=10+i*9,w=5,y1=10+(hi-Number(v.high))/span*180,y2=10+(hi-Number(v.low))/span*180,yo=10+(hi-Number(v.open))/span*180,yc=10+(hi-Number(v.close))/span*180;const up=Number(v.close)>=Number(v.open);return `<g stroke="${up?"#16a34a":"#dc2626"}" fill="${up?"#16a34a":"#dc2626"}"><path d="M${x+2.5} ${y1}V${y2}"/><rect x="${x}" y="${Math.min(yo,yc)}" width="${w}" height="${Math.max(1,Math.abs(yc-yo))}"/></g>`}).join("");body=`<p>آخر ${vals.length} شمعة مغلقة • ${escv(settings.timeframe||"الفريم الحالي")}</p><svg viewBox="0 0 ${Math.max(550,vals.length*9+20)} 205" width="100%" role="img">${bars}</svg><p>آخر إغلاق: ${escv(vals[vals.length-1].close)} • أعلى: ${escv(hi)} • أدنى: ${escv(lo)}</p>`}else body="<p class=\"muted\">بانتظار وصول بيانات الشموع من MT5.</p>"}
   if(id==="logs"||id==="blackbox")body=grid([tile("Decision ID",q.decision_id),tile("القرار",q.decision),tile("الاستراتيجية",q.strategy_name),tile("آخر وصول",d.last_seen_at)])+'<pre>'+esc(JSON.stringify({reason:q.reason_ar,context:x,adaptive:z},null,2))+'</pre>';
   if(!d.connected && id!=="settings")body='<p class="muted">لا توجد بيانات سوق حديثة من MT5. '+escv(d.reason)+'</p>'+body;
-  panel.innerHTML='<h3>بيانات المحرك الفعلية</h3>'+body;
+  panel.innerHTML='<h3>بيانات المحرك الفعلية</h3><section id="liveTelemetryStrip" class="live-telemetry"><p class="muted">جارٍ استقبال بيانات MT5 الحية...</p></section>'+body;
+  refreshLiveTelemetry();
  }catch(e){panel.innerHTML='<h3>بيانات المحرك</h3><p class="error">'+esc(e.message)+'</p>'}
 }
