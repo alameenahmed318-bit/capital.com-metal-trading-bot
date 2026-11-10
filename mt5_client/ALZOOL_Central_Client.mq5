@@ -835,7 +835,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(direction=="BUY")
    {
       price=tick.ask;
-      if(!recovery_order && g_cfg_order_mode=="Pending Order")
+      if(!recovery_order && !management_order && g_cfg_order_mode=="Pending Order")
       {
          price=NormalizeDouble(tick.ask+MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
