@@ -238,6 +238,12 @@ async function loadDashboardWorkspace(){
   if(id==="analysis")body=grid([tile("نظام السوق",x.regime),tile("ATR Ratio",num(x.atr_ratio)),tile("ADX",num(x.adx)),tile("VWAP",num(x.vwap)),tile("الدعم",num(x.support)),tile("المقاومة",num(x.resistance)),tile("إعداد RSI",z.rsi_period),tile("التكيف",z.mode)])+'<p>'+escv(x.reason)+'</p>';
   if(id==="council"||id==="results")body=grid([tile("القرار المركزي",q.decision),tile("الاستراتيجية",q.strategy_name),tile("رقمها",q.strategy_id),tile("الثقة",q.confidence==null?"—":(Number(q.confidence)*100).toFixed(1)+"%")])+'<p>'+escv(q.reason_ar)+'</p>';
   if(id==="lab")body=grid([tile("جودة الشراء",num(x.buy_quality)),tile("جودة البيع",num(x.sell_quality)),tile("فخ شراء",x.buy_trap?"محتمل":"غير مرصود"),tile("فخ بيع",x.sell_trap?"محتمل":"غير مرصود")])+'<p>تحليل الشمعة الأخيرة؛ ليس اختباراً تاريخياً ولا ضماناً للربح.</p>';
+  if(id==="gold"||id==="council"){
+   const activeVotes=(a.votes||[]).filter(v=>v.signal!=="WAIT");
+   const activeCombos=(a.combination_votes||[]).filter(v=>v.signal!=="WAIT");
+   const alignment=v=>v.indicator_alignment||"غير متاح";
+   body+='<h4>توافق المؤشر الصناعي مع الاستراتيجيات</h4><div class="catalog-list">'+(activeVotes.length?activeVotes.slice(0,30).map(v=>'<div class="catalog-row"><b>#'+escv(v.id)+' '+escv(v.name)+' • '+escv(v.signal)+'</b><small>توافق المؤشر: '+escv(alignment(v))+' • '+escv(v.reason)+'</small></div>').join(""):'<p class="muted">لا توجد استراتيجية ذات إشارة اتجاهية في آخر تحليل محفوظ.</p>')+'</div><h4>توافق المؤشر مع التركيبات</h4><div class="catalog-list">'+(activeCombos.length?activeCombos.slice(0,30).map(v=>'<div class="catalog-row"><b>#'+escv(v.id)+' '+escv(v.name)+' • '+escv(v.signal)+'</b><small>توافق المؤشر: '+escv(alignment(v))+' • '+escv(v.reason)+'</small></div>').join(""):'<p class="muted">لا توجد تركيبة ذات إشارة اتجاهية في آخر تحليل محفوظ.</p>')+'</div>';
+  }
   if(id==="learning")body=grid([tile("نتائج تعلم محفوظة",d.outcome_count),tile("أوزان الاستراتيجيات",Array.isArray(d.weights)?d.weights.length:0)])+'<div class="catalog-list">'+(d.outcomes||[]).map(v=>'<div class="catalog-row"><b>Strategy #'+escv(v.strategy_id)+'</b><small>Deal '+escv(v.deal_id)+' • P/L '+num(v.pnl)+'</small></div>').join("")+'</div>';
   const terminal=d.terminal_state&&d.terminal_state.payload?d.terminal_state.payload:{};
   const positions=terminal.positions||[],orders=terminal.orders||[],history=terminal.history||[],settings=terminal.settings||{},candles=d.candles||[];
