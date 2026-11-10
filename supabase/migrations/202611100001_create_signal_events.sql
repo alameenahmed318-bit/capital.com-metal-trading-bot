@@ -10,3 +10,4 @@ create index if not exists alzool_signal_events_client_created_idx on public.alz
 alter table public.alzool_engine_signal_events enable row level security;
 revoke all on public.alzool_engine_signal_events from anon, authenticated;
 grant all on public.alzool_engine_signal_events to service_role;
+grant usage, select on sequence public.alzool_engine_signal_events_id_seq to service_role;
