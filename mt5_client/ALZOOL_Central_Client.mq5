@@ -750,14 +750,14 @@ bool PollCentralSettings()
 
 bool PlaceCentralTrade(const string direction,const string decision_id,
                        const string reason,const int strategy_id,const double lot_override=0.0,
-                       const bool recovery_order=false)
+                       const bool recovery_order=false,const bool management_order=false)
 {
    // All orders require live server health, dashboard permission and a
    // previously verified signed decision. Ordinary entries also require that
    // decision to be unexpired; recovery additionally requires a live reversal.
    if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; RecordBlockedSignal(decision_id,"settings","إعدادات لوحة التحكم لم تصل بعد"); return false; }
    if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; RecordBlockedSignal(decision_id,"daily-loss","تم بلوغ حد الخسارة اليومي"); return false; }
-   if(!recovery_order && (g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at))
+   if(!recovery_order && !management_order && (g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at))
    {
       g_status="Entry blocked / signed decision expired";
       RecordBlockedSignal(decision_id,"expired","انتهت صلاحية الإشارة الموقعة قبل التنفيذ");
@@ -778,7 +778,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل في إعدادات MT5"); return false; }
    if(direction=="SELL" && !InpAllowSell) { g_status="SELL disabled"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل في إعدادات MT5"); return false; }
    if(direction!="BUY" && direction!="SELL") return false;
-   if((strategy_id<1 || strategy_id>200) && !recovery_order) { g_status="Invalid strategy id"; return false; }
+   if((strategy_id<1 || strategy_id>200) && !recovery_order && !management_order) { g_status="Invalid strategy id"; return false; }
    if(decision_id=="" || decision_id==g_last_decision_id) return false;
    MqlTick fresh_tick;
    if(!SymbolInfoTick(_Symbol,fresh_tick)) return false;
@@ -839,7 +839,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       {
          price=NormalizeDouble(tick.ask+MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
+         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : (management_order ? "AZS_MANAGEMENT" : "AZS"+IntegerToString(strategy_id))));
       }
       else
       {
@@ -1695,95 +1695,135 @@ void ManageSmartRecovery()
             " projected_basket=",DoubleToString(projected_basket,2));
    }
 }
+void AddonCoolingWait(const string reason)
+{
+   string message="تعزيز/تبريد ينتظر: "+reason;
+   if(g_status!=message) Print("AL-ZOOL ADDON/COOLING: ",reason);
+   g_status=message;
+}
+
 void ManageAddonCooling()
 {
-   if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
-      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at) return;
-   if(g_last_decision!="BUY" && g_last_decision!="SELL") return;
+   if(!g_settings_loaded) { AddonCoolingWait("إعدادات اللوحة غير محمّلة"); return; }
+   if(!g_trading_enabled) { AddonCoolingWait("التداول الآلي متوقف من اللوحة"); return; }
+   if(!g_server_online || !g_decision_verified)
+   { AddonCoolingWait("السيرفر أو آخر قرار موثّق غير متاح"); return; }
    if(!g_cfg_addon_enabled && !g_cfg_cooling_enabled) return;
-   if(!CheckTradingControl()) return;
+   if(!CheckTradingControl()) { AddonCoolingWait("صلاحية التداول غير مؤكدة"); return; }
+
    int buys=0,sells=0;
-   CountOurPositions(buys,sells);
-   if(g_cfg_recovery_enabled)
-   {
-      for(int r=PositionsTotal()-1;r>=0;r--)
-      {
-         ulong recovery_ticket=PositionGetTicket(r);
-         if(recovery_ticket==0 || !PositionSelectByTicket(recovery_ticket)) continue;
-         if(PositionGetString(POSITION_SYMBOL)==_Symbol &&
-            (ulong)PositionGetInteger(POSITION_MAGIC)==InpMagic &&
-            StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) return;
-      }
-   }
-   string direction=g_last_decision;
-   int group_count=(direction=="BUY" ? buys : sells);
+   int group_count=CountOurPositions(buys,sells);
+   if(buys>0 && sells>0)
+   { AddonCoolingWait("توجد صفقات شراء وبيع معاً؛ لن نضيف صفقة عكسية"); return; }
+
+   // Use the actual open basket direction, not the latest AI decision.
+   // The AI may say WAIT or its short-lived signal may expire while the
+   // existing basket is still moving and needs add-on/cooling management.
    if(group_count<=0)
    {
-      if(direction=="BUY") { g_last_addon_buy_price=0; g_last_cooling_buy_price=0; }
-      else { g_last_addon_sell_price=0; g_last_cooling_sell_price=0; }
+      g_last_addon_buy_price=0.0; g_last_addon_sell_price=0.0;
+      g_last_cooling_buy_price=0.0; g_last_cooling_sell_price=0.0;
       return;
    }
-   double latest_price=0.0; datetime latest_time=0;
+   string direction=(buys>0 ? "BUY" : "SELL");
+   int existing_adds=MathMax(0,group_count-1);
+   double latest_price=0.0;
+   datetime latest_time=0;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      if((direction=="BUY" && type!=POSITION_TYPE_BUY) || (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
+      if((direction=="BUY" && type!=POSITION_TYPE_BUY) ||
+         (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
       datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
-      if(opened>=latest_time) { latest_time=opened; latest_price=PositionGetDouble(POSITION_PRICE_OPEN); }
+      if(opened>=latest_time)
+      { latest_time=opened; latest_price=PositionGetDouble(POSITION_PRICE_OPEN); }
    }
-   MqlTick tick; if(!SymbolInfoTick(_Symbol,tick)) return;
+   if(latest_price<=0.0) { AddonCoolingWait("تعذر تحديد سعر آخر صفقة في السلة"); return; }
+
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) { AddonCoolingWait("لا يوجد سعر حي من MT5"); return; }
    double quote=(direction=="BUY" ? tick.bid : tick.ask);
    double addon_anchor=(direction=="BUY" ? g_last_addon_buy_price : g_last_addon_sell_price);
    double cooling_anchor=(direction=="BUY" ? g_last_cooling_buy_price : g_last_cooling_sell_price);
    if(addon_anchor<=0.0) addon_anchor=latest_price;
    if(cooling_anchor<=0.0) cooling_anchor=latest_price;
-   int existing_adds=MathMax(0,group_count-1);
+
    double candle_strength=0.0,volatility_factor=1.0;
    bool candle_trend_support=false,candle_reversal=false;
    bool candle_data_ok=GetSmartCandleMetrics(direction,candle_strength,volatility_factor,
                                               candle_trend_support,candle_reversal);
+
    if(g_cfg_addon_enabled && existing_adds<g_cfg_addon_max)
    {
       double step=g_cfg_addon_step*(g_cfg_addon_smart && candle_data_ok ? volatility_factor : 1.0);
       double favorable=(direction=="BUY" ? quote-addon_anchor : addon_anchor-quote);
-      bool smart_ok=!g_cfg_addon_smart || (candle_data_ok && candle_trend_support && g_last_confidence>=0.60);
+      bool smart_ok=!g_cfg_addon_smart ||
+                    (candle_data_ok && candle_trend_support && g_last_confidence>=0.60);
       if(favorable>=step && smart_ok)
       {
-         double lot_factor=(g_cfg_addon_multiplier_enabled ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
+         double lot_factor=(g_cfg_addon_multiplier_enabled
+                            ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
          if(g_cfg_addon_smart)
             lot_factor*=((0.80+0.40*g_last_confidence)*(0.85+0.30*candle_strength));
          double lot=NormalizeCappedLots(g_cfg_lot*lot_factor,g_cfg_addon_max_lot);
          string unique_id=g_last_decision_id+"_ADD_"+IntegerToString((long)TimeCurrent());
-         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,"تعزيز ذكي: توافق الشموع والاستراتيجية، قوة "+DoubleToString(candle_strength,2),g_last_strategy_id,lot))
+         string reason="تعزيز: تحرك السعر لصالح السلة بمقدار "+
+                       DoubleToString(favorable,2)+"؛ المسافة المطلوبة "+
+                       DoubleToString(step,2)+"؛ اللوت "+DoubleToString(lot,2);
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true))
          {
-            if(direction=="BUY") g_last_addon_buy_price=quote; else g_last_addon_sell_price=quote;
-            g_status="Smart add-on opened / "+direction+" / lot "+DoubleToString(lot,2);
+            if(direction=="BUY") g_last_addon_buy_price=quote;
+            else g_last_addon_sell_price=quote;
+            g_status="Add-on opened / "+direction+" / lot "+DoubleToString(lot,2);
+            Print("AL-ZOOL ADDON OPENED: ",direction," lot=",DoubleToString(lot,2),
+                  " favorable=",DoubleToString(favorable,2)," step=",DoubleToString(step,2));
             return;
          }
+         if(lot<=0.0) AddonCoolingWait("لوت التعزيز تجاوز السقف أو أقل من الحد الأدنى");
       }
+      else if(favorable>=step && !smart_ok)
+         AddonCoolingWait("شرط التعزيز الذكي لم يكتمل: توافق الشمعة/الثقة");
    }
+   else if(g_cfg_addon_enabled && existing_adds>=g_cfg_addon_max)
+      AddonCoolingWait("تم بلوغ الحد الأقصى للصفقات الإضافية");
+
    if(g_cfg_cooling_enabled && existing_adds<g_cfg_cooling_max)
    {
       double step=g_cfg_cooling_step*(g_cfg_cooling_smart && candle_data_ok ? volatility_factor : 1.0);
       double adverse=(direction=="BUY" ? cooling_anchor-quote : quote-cooling_anchor);
-      bool smart_ok=!g_cfg_cooling_smart || (candle_data_ok && candle_reversal && g_last_confidence>=0.68);
+      bool smart_ok=!g_cfg_cooling_smart ||
+                    (candle_data_ok && candle_reversal && g_last_confidence>=0.68);
       if(adverse>=step && smart_ok)
       {
-         double lot_factor=(g_cfg_cooling_multiplier_enabled ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
+         double lot_factor=(g_cfg_cooling_multiplier_enabled
+                            ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
          if(g_cfg_cooling_smart)
             lot_factor*=((0.75+0.35*g_last_confidence)*(0.85+0.30*candle_strength));
          double lot=NormalizeCappedLots(g_cfg_lot*lot_factor,g_cfg_cooling_max_lot);
          string unique_id=g_last_decision_id+"_COOL_"+IntegerToString((long)TimeCurrent());
-         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,"تبريد ذكي: شمعة انعكاس وتأكيد الاستراتيجية، قوة "+DoubleToString(candle_strength,2),g_last_strategy_id,lot))
+         string reason="تبريد: تحرك السعر ضد السلة بمقدار "+
+                       DoubleToString(adverse,2)+"؛ المسافة المطلوبة "+
+                       DoubleToString(step,2)+"؛ اللوت "+DoubleToString(lot,2);
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true))
          {
-            if(direction=="BUY") g_last_cooling_buy_price=quote; else g_last_cooling_sell_price=quote;
-            g_status="Smart cooling opened / "+direction+" / lot "+DoubleToString(lot,2);
+            if(direction=="BUY") g_last_cooling_buy_price=quote;
+            else g_last_cooling_sell_price=quote;
+            g_status="Cooling opened / "+direction+" / lot "+DoubleToString(lot,2);
+            Print("AL-ZOOL COOLING OPENED: ",direction," lot=",DoubleToString(lot,2),
+                  " adverse=",DoubleToString(adverse,2)," step=",DoubleToString(step,2));
+            return;
          }
+         if(lot<=0.0) AddonCoolingWait("لوت التبريد تجاوز السقف أو أقل من الحد الأدنى");
       }
+      else if(adverse>=step && !smart_ok)
+         AddonCoolingWait("شرط التبريد الذكي لم يكتمل: انعكاس الشمعة/الثقة");
    }
+   else if(g_cfg_cooling_enabled && existing_adds>=g_cfg_cooling_max)
+      AddonCoolingWait("تم بلوغ الحد الأقصى للصفقات الإضافية");
 }
 
 void OnTimer()
