@@ -72,6 +72,7 @@ double g_cfg_recovery_atr_distance=1.0,g_cfg_recovery_min_confidence=0.65;
 int g_cfg_addon_max=3,g_cfg_cooling_max=2;
 int g_cfg_recovery_min_positions=3,g_cfg_recovery_max_entries=1;
 datetime g_last_recovery_bar_time=0;
+ulong g_last_recovery_entry_ms=0;
 bool g_cfg_addon_enabled=false,g_cfg_addon_smart=false,g_cfg_addon_multiplier_enabled=true;
 bool g_cfg_recovery_enabled=false;
 string g_cfg_recovery_mode="AUTO";
@@ -333,12 +334,14 @@ double NormalizeCappedLots(const double requested,const double cap)
 }
 
 bool GetSmartCandleMetrics(const string direction,double &strength,double &volatility,
-                           bool &trend_support,bool &reversal_confirmed)
+                           bool &trend_support,bool &reversal_confirmed,
+                           const bool include_forming=false)
 {
    strength=0.0; volatility=1.0; trend_support=false; reversal_confirmed=false;
    MqlRates rates[];
    ArraySetAsSeries(rates,true);
-   if(CopyRates(_Symbol,PERIOD_CURRENT,1,3,rates)<3) return false;
+   int start_shift=(include_forming ? 0 : 1);
+   if(CopyRates(_Symbol,PERIOD_CURRENT,start_shift,3,rates)<3) return false;
    double atr=0.0;
    if(!GetATR(atr)) return false;
    double range_sum=0.0,body_ratio_sum=0.0;
@@ -489,7 +492,6 @@ bool CheckCentralHealth()
 bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
                              double &confidence,int &strategy_id)
 {
-   g_decision_verified=false;
    decision="";
    decision_id="";
    reason="";
@@ -547,6 +549,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
          " http=",http);
    if(http==-1)
    {
+      g_decision_verified=false;
       g_server_online=false;
       g_status="Server offline / WebRequest error "+IntegerToString(GetLastError());
       return false; // fail closed: no new entries
@@ -554,6 +557,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    if(http!=200)
    {
+      g_decision_verified=false;
       g_server_online=true;
       g_status="Server reachable / Market HTTP "+IntegerToString(http);
       g_last_reason=response;
@@ -562,6 +566,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
 
    if(!VerifyDecisionSignature(response))
    {
+      g_decision_verified=false;
       g_server_online=true;
       g_status="Server reachable / Decision signature invalid";
       return false; // never trade on an unsigned or altered server response
@@ -583,12 +588,14 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    g_last_decision=decision;
    if(decision!="BUY" && decision!="SELL" && decision!="WAIT")
    {
+      g_decision_verified=false;
       g_server_online=false;
       g_status="Invalid server response";
       return false;
    }
    if(decision_id=="")
    {
+      g_decision_verified=false;
       g_server_online=false;
       g_status="Missing decision id";
       return false;
@@ -749,7 +756,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    // a freshly verified, signed decision from the central engine.
    if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; RecordBlockedSignal(decision_id,"settings","إعدادات لوحة التحكم لم تصل بعد"); return false; }
    if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; RecordBlockedSignal(decision_id,"daily-loss","تم بلوغ حد الخسارة اليومي"); return false; }
-   if(g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
+   if(!recovery_order && (g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at))
    {
       g_status="Entry blocked / signed decision expired";
       RecordBlockedSignal(decision_id,"expired","انتهت صلاحية الإشارة الموقعة قبل التنفيذ");
@@ -770,7 +777,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل في إعدادات MT5"); return false; }
    if(direction=="SELL" && !InpAllowSell) { g_status="SELL disabled"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل في إعدادات MT5"); return false; }
    if(direction!="BUY" && direction!="SELL") return false;
-   if(strategy_id<1 || strategy_id>200) { g_status="Invalid strategy id"; return false; }
+   if((strategy_id<1 || strategy_id>200) && !recovery_order) { g_status="Invalid strategy id"; return false; }
    if(decision_id=="" || decision_id==g_last_decision_id) return false;
    MqlTick fresh_tick;
    if(!SymbolInfoTick(_Symbol,fresh_tick)) return false;
@@ -1491,15 +1498,25 @@ void ManageAiLossGuard()
    }
 }
 
+void RecoveryWait(const string reason)
+{
+   string message="Smart recovery waiting / "+reason;
+   if(g_status!=message) Print("AL-ZOOL SMART RECOVERY: ",reason);
+   g_status=message;
+}
+
 void ManageSmartRecovery()
 {
    if(!g_cfg_recovery_enabled) return;
 
    int buys=0,sells=0;
    int total=CountOurPositions(buys,sells);
-   if(total<=0) { g_last_recovery_bar_time=0; return; }
+   if(total<=0)
+   {
+      g_last_recovery_bar_time=0;
+      return;
+   }
 
-   // Basket exit remains local and active even if the server is offline or trading is paused.
    int recovery_open=0;
    double floating=0.0;
    for(int i=PositionsTotal()-1;i>=0;i--)
@@ -1511,42 +1528,96 @@ void ManageSmartRecovery()
       floating+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
       if(StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) recovery_open++;
    }
-   if(recovery_open>0 && floating>=g_cfg_recovery_target_profit)
+
+   // Close the complete basket whenever its configured net target is reached,
+   // even if the recovery leg itself has already closed.
+   if(g_cfg_recovery_target_profit>0.0 && floating>=g_cfg_recovery_target_profit)
    {
+      Print("AL-ZOOL SMART RECOVERY: basket target reached; floating=",DoubleToString(floating,2));
       CloseOurPositions("Smart recovery basket target reached");
       return;
    }
 
-   // New recovery entries require fresh server authorization and a live signed decision.
-   if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
-      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
+   if(!g_settings_loaded) { RecoveryWait("إعدادات اللوحة لم تصل"); return; }
+   if(!g_trading_enabled) { RecoveryWait("التداول متوقف من اللوحة"); return; }
+   if(!g_server_online || !g_decision_verified)
+   {
+      RecoveryWait("لا يوجد قرار مركزي موثّق");
       return;
-   if(buys>0 && sells>0) return; // never recover a mixed-direction basket
+   }
+   if(!CheckTradingControl()) { RecoveryWait("تعذر تأكيد صلاحية التداول"); return; }
+   if(buys>0 && sells>0) { RecoveryWait("السلة مختلطة الاتجاهات"); return; }
 
    string direction=(buys>0 ? "BUY" : "SELL");
    int group_count=(direction=="BUY" ? buys : sells);
-   if(group_count<g_cfg_recovery_min_positions || recovery_open>=g_cfg_recovery_max_entries) return;
-   if(floating>-g_cfg_recovery_trigger_loss) return;
-   if(g_last_decision!=direction || g_last_confidence<g_cfg_recovery_min_confidence) return;
-   double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
-   double opposite_quality=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
-   if(same_quality<=opposite_quality) return;
+   if(group_count<g_cfg_recovery_min_positions)
+   {
+      RecoveryWait("عدد الصفقات أقل من الحد الأدنى: "+IntegerToString(group_count)+
+                   "/"+IntegerToString(g_cfg_recovery_min_positions));
+      return;
+   }
+   if(recovery_open>=g_cfg_recovery_max_entries)
+   {
+      RecoveryWait("وصل لحد صفقات التعافي المفتوحة");
+      return;
+   }
+   if(floating>-g_cfg_recovery_trigger_loss)
+   {
+      RecoveryWait("الخسارة الحالية لم تصل إلى حد التفعيل: "+DoubleToString(floating,2));
+      return;
+   }
+   if(g_last_decision!=direction)
+   {
+      RecoveryWait("اتجاه آخر قرار مركزي لا يطابق اتجاه السلة");
+      return;
+   }
 
+   // Read the forming candle for recovery only; ordinary strategy entries
+   // continue to use their existing closed-candle rules.
    double candle_strength=0.0,volatility=1.0;
    bool trend_support=false,reversal_confirmed=false;
-   if(!GetSmartCandleMetrics(direction,candle_strength,volatility,trend_support,reversal_confirmed) ||
-      !reversal_confirmed) return;
+   if(!GetSmartCandleMetrics(direction,candle_strength,volatility,
+                             trend_support,reversal_confirmed,true) ||
+      !reversal_confirmed)
+   {
+      RecoveryWait("لم يتأكد الارتداد اللحظي بعد");
+      return;
+   }
 
-   datetime current_bar=iTime(_Symbol,PERIOD_CURRENT,0);
-   if(current_bar<=0 || current_bar==g_last_recovery_bar_time) return;
+   // A strong live reversal can qualify even when the previous server
+   // confidence/quality snapshot is slightly below its normal threshold.
+   bool strong_live_reversal=(candle_strength>=0.45);
+   double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
+   double opposite_quality=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
+   if(g_last_confidence<g_cfg_recovery_min_confidence && !strong_live_reversal)
+   {
+      RecoveryWait("ثقة القرار منخفضة ولم تصل الشمعة لقوة الارتداد المطلوبة");
+      return;
+   }
+   if(same_quality<=opposite_quality && !strong_live_reversal)
+   {
+      RecoveryWait("جودة الاتجاه لا تؤيد التعافي بعد");
+      return;
+   }
+
+   // Allow multiple recovery opportunities inside one candle, but enforce a
+   // short cooldown and the configured maximum number of simultaneous legs.
+   ulong now_ms=GetTickCount64();
+   if(g_last_recovery_entry_ms>0 && now_ms-g_last_recovery_entry_ms<3000)
+   {
+      RecoveryWait("فترة تهدئة قصيرة بين محاولات التعافي");
+      return;
+   }
 
    MqlTick tick;
-   if(!SymbolInfoTick(_Symbol,tick)) return;
+   if(!SymbolInfoTick(_Symbol,tick)) { RecoveryWait("لا توجد أسعار حية"); return; }
    double atr=0.0;
-   if(!GetATR(atr)) return;
+   if(!GetATR(atr) || atr<=0.0) { RecoveryWait("بيانات ATR غير جاهزة"); return; }
+
+   double recovery_distance=MathMin(g_cfg_recovery_atr_distance,0.75);
    double target_price=(direction=="BUY"
-      ? tick.bid+atr*g_cfg_recovery_atr_distance
-      : tick.ask-atr*g_cfg_recovery_atr_distance);
+      ? tick.bid+atr*recovery_distance
+      : tick.ask-atr*recovery_distance);
    ENUM_ORDER_TYPE order_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
    double projected_existing=0.0;
 
@@ -1563,40 +1634,65 @@ void ManageSmartRecovery()
       ENUM_ORDER_TYPE existing_type=(type==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
       if(!OrderCalcProfit(existing_type,_Symbol,PositionGetDouble(POSITION_VOLUME),
                           PositionGetDouble(POSITION_PRICE_OPEN),target_price,projected))
+      {
+         RecoveryWait("تعذر حساب ربح السلة المتوقع");
          return;
+      }
       projected_existing+=projected+PositionGetDouble(POSITION_SWAP);
    }
 
    double entry_price=(direction=="BUY" ? tick.ask : tick.bid);
    double one_lot_profit=0.0;
    if(!OrderCalcProfit(order_type,_Symbol,1.0,entry_price,target_price,one_lot_profit) ||
-      one_lot_profit<=0.0) return;
+      one_lot_profit<=0.0)
+   {
+      RecoveryWait("هدف الحركة لا يعطي ربحاً موجباً للوت");
+      return;
+   }
 
    double requested_lot=g_cfg_recovery_manual_lot;
    if(g_cfg_recovery_mode=="AUTO")
    {
       double needed=(g_cfg_recovery_target_profit-projected_existing)/one_lot_profit;
-      if(needed<=0.0) return;
+      if(needed<=0.0)
+      {
+         RecoveryWait("السلة متوقع أن تصل للهدف دون صفقة تعافٍ إضافية");
+         return;
+      }
       requested_lot=needed;
    }
-   double lots=NormalizeCappedLots(requested_lot,g_cfg_recovery_max_lot);
-   if(lots<=0.0) { g_status="Smart recovery blocked / required lot exceeds maximum"; return; }
 
-   double recovery_profit=0.0;
-   if(!OrderCalcProfit(order_type,_Symbol,lots,entry_price,target_price,recovery_profit)) return;
-   if(projected_existing+recovery_profit<g_cfg_recovery_target_profit)
+   double lots=NormalizeCappedLots(requested_lot,g_cfg_recovery_max_lot);
+   if(lots<=0.0)
    {
-      g_status="Smart recovery waiting / capped lot cannot reach basket target";
+      RecoveryWait("اللوت المحسوب أقل من الحد الأدنى أو سقف اللوت غير صالح");
       return;
    }
 
-   string unique_id=g_last_decision_id+"_REC_"+IntegerToString((long)current_bar);
-   string reason="تعافٍ ذكي: ارتداد مؤكد؛ لوت "+DoubleToString(lots,2)+
-                 "؛ صافي المجموعة المتوقع عند هدف ATR "+DoubleToString(projected_existing+recovery_profit,2);
+   double recovery_profit=0.0;
+   if(!OrderCalcProfit(order_type,_Symbol,lots,entry_price,target_price,recovery_profit))
+   {
+      RecoveryWait("تعذر حساب ربح صفقة التعافي");
+      return;
+   }
+   double projected_basket=projected_existing+recovery_profit;
+   if(projected_basket<g_cfg_recovery_target_profit)
+      Print("AL-ZOOL SMART RECOVERY: using capped lot ",DoubleToString(lots,2),
+            "; projected basket=",DoubleToString(projected_basket,2),
+            "; target=",DoubleToString(g_cfg_recovery_target_profit,2));
+
+   string unique_id=g_last_decision_id+"_REC_"+IntegerToString((long)TimeCurrent());
+   string reason="تعافٍ ذكي آلي: ارتداد لحظي مؤكد؛ لوت "+
+                 DoubleToString(lots,2)+"؛ قوة الشمعة "+
+                 DoubleToString(candle_strength,2)+"؛ صافي متوقع "+
+                 DoubleToString(projected_basket,2);
    if(PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lots,true))
    {
-      g_last_recovery_bar_time=current_bar;
+      g_last_recovery_entry_ms=GetTickCount64();
+      g_last_recovery_bar_time=iTime(_Symbol,PERIOD_CURRENT,0);
       g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(lots,2);
+      Print("AL-ZOOL SMART RECOVERY OPENED: ",direction," lot=",DoubleToString(lots,2),
+            " projected_basket=",DoubleToString(projected_basket,2));
    }
 }
 void ManageAddonCooling()
