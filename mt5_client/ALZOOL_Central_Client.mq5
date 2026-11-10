@@ -750,7 +750,8 @@ bool PollCentralSettings()
 
 bool PlaceCentralTrade(const string direction,const string decision_id,
                        const string reason,const int strategy_id,const double lot_override=0.0,
-                       const bool recovery_order=false,const bool management_order=false)
+                       const bool recovery_order=false,const bool management_order=false,
+                       const string management_tag="")
 {
    // All orders require live server health, dashboard permission and a
    // previously verified signed decision. Ordinary entries also require that
@@ -839,12 +840,12 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       {
          price=NormalizeDouble(tick.ask+MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : (management_order ? "AZS_MANAGEMENT" : "AZS"+IntegerToString(strategy_id))));
+         sent=trade.BuyStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : (management_order ? (management_tag!="" ? management_tag : "AZS_MANAGEMENT") : "AZS"+IntegerToString(strategy_id))));
       }
       else
       {
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : (management_order ? "AZS_MANAGEMENT" : "AZS"+IntegerToString(strategy_id))));
+         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : (management_order ? (management_tag!="" ? management_tag : "AZS_MANAGEMENT") : "AZS"+IntegerToString(strategy_id))));
       }
    }
    else
@@ -854,12 +855,12 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       {
          price=NormalizeDouble(tick.bid-MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
-         sent=trade.SellStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
+         sent=trade.SellStop(lots,price,_Symbol,sl,0.0,ORDER_TIME_GTC,0,(recovery_order ? "AZR_RECOVERY" : (management_order ? (management_tag!="" ? management_tag : "AZS_MANAGEMENT") : "AZS"+IntegerToString(strategy_id))));
       }
       else
       {
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
-         sent=trade.Sell(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
+         sent=trade.Sell(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : (management_order ? (management_tag!="" ? management_tag : "AZS_MANAGEMENT") : "AZS"+IntegerToString(strategy_id))));
       }
    }
 
@@ -1695,6 +1696,21 @@ void ManageSmartRecovery()
             " projected_basket=",DoubleToString(projected_basket,2));
    }
 }
+int CountOurManagementPositions(const string tag)
+{
+   int count=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      string comment=PositionGetString(POSITION_COMMENT);
+      if(StringFind(comment,tag)>=0) count++;
+   }
+   return count;
+}
+
 void AddonCoolingWait(const string reason)
 {
    string message="تعزيز/تبريد ينتظر: "+reason;
@@ -1726,7 +1742,11 @@ void ManageAddonCooling()
       return;
    }
    string direction=(buys>0 ? "BUY" : "SELL");
-   int existing_adds=MathMax(0,group_count-1);
+   // Separate add-on and cooling quotas; legacy management trades count toward both.
+   int legacy_management=CountOurManagementPositions("AZS_MANAGEMENT");
+   int addon_count=CountOurManagementPositions("AZS_ADDON")+legacy_management;
+   int cooling_count=CountOurManagementPositions("AZS_COOLING")+legacy_management;
+   int total_additional=MathMax(0,group_count-1);
    double latest_price=0.0;
    datetime latest_time=0;
    for(int i=PositionsTotal()-1;i>=0;i--)
@@ -1757,7 +1777,7 @@ void ManageAddonCooling()
    bool candle_data_ok=GetSmartCandleMetrics(direction,candle_strength,volatility_factor,
                                               candle_trend_support,candle_reversal);
 
-   if(g_cfg_addon_enabled && existing_adds<g_cfg_addon_max)
+   if(g_cfg_addon_enabled && addon_count<g_cfg_addon_max)
    {
       double step=g_cfg_addon_step*(g_cfg_addon_smart && candle_data_ok ? volatility_factor : 1.0);
       double favorable=(direction=="BUY" ? quote-addon_anchor : addon_anchor-quote);
@@ -1766,7 +1786,7 @@ void ManageAddonCooling()
       if(favorable>=step && smart_ok)
       {
          double lot_factor=(g_cfg_addon_multiplier_enabled
-                            ? MathPow(g_cfg_addon_multiplier,existing_adds+1) : 1.0);
+                            ? MathPow(g_cfg_addon_multiplier,addon_count+1) : 1.0);
          if(g_cfg_addon_smart)
             lot_factor*=((0.80+0.40*g_last_confidence)*(0.85+0.30*candle_strength));
          double lot=NormalizeCappedLots(g_cfg_lot*lot_factor,g_cfg_addon_max_lot);
@@ -1774,7 +1794,7 @@ void ManageAddonCooling()
          string reason="تعزيز: تحرك السعر لصالح السلة بمقدار "+
                        DoubleToString(favorable,2)+"؛ المسافة المطلوبة "+
                        DoubleToString(step,2)+"؛ اللوت "+DoubleToString(lot,2);
-         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true))
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true,"AZS_ADDON"))
          {
             if(direction=="BUY") g_last_addon_buy_price=quote;
             else g_last_addon_sell_price=quote;
@@ -1788,10 +1808,10 @@ void ManageAddonCooling()
       else if(favorable>=step && !smart_ok)
          AddonCoolingWait("شرط التعزيز الذكي لم يكتمل: توافق الشمعة/الثقة");
    }
-   else if(g_cfg_addon_enabled && existing_adds>=g_cfg_addon_max)
+   else if(g_cfg_addon_enabled && addon_count>=g_cfg_addon_max)
       AddonCoolingWait("تم بلوغ الحد الأقصى للصفقات الإضافية");
 
-   if(g_cfg_cooling_enabled && existing_adds<g_cfg_cooling_max)
+   if(g_cfg_cooling_enabled && cooling_count<g_cfg_cooling_max)
    {
       double step=g_cfg_cooling_step*(g_cfg_cooling_smart && candle_data_ok ? volatility_factor : 1.0);
       double adverse=(direction=="BUY" ? cooling_anchor-quote : quote-cooling_anchor);
@@ -1800,7 +1820,7 @@ void ManageAddonCooling()
       if(adverse>=step && smart_ok)
       {
          double lot_factor=(g_cfg_cooling_multiplier_enabled
-                            ? MathPow(g_cfg_cooling_multiplier,existing_adds+1) : 1.0);
+                            ? MathPow(g_cfg_cooling_multiplier,cooling_count+1) : 1.0);
          if(g_cfg_cooling_smart)
             lot_factor*=((0.75+0.35*g_last_confidence)*(0.85+0.30*candle_strength));
          double lot=NormalizeCappedLots(g_cfg_lot*lot_factor,g_cfg_cooling_max_lot);
@@ -1808,7 +1828,7 @@ void ManageAddonCooling()
          string reason="تبريد: تحرك السعر ضد السلة بمقدار "+
                        DoubleToString(adverse,2)+"؛ المسافة المطلوبة "+
                        DoubleToString(step,2)+"؛ اللوت "+DoubleToString(lot,2);
-         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true))
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true,"AZS_COOLING"))
          {
             if(direction=="BUY") g_last_cooling_buy_price=quote;
             else g_last_cooling_sell_price=quote;
@@ -1822,7 +1842,7 @@ void ManageAddonCooling()
       else if(adverse>=step && !smart_ok)
          AddonCoolingWait("شرط التبريد الذكي لم يكتمل: انعكاس الشمعة/الثقة");
    }
-   else if(g_cfg_cooling_enabled && existing_adds>=g_cfg_cooling_max)
+   else if(g_cfg_cooling_enabled && cooling_count>=g_cfg_cooling_max)
       AddonCoolingWait("تم بلوغ الحد الأقصى للصفقات الإضافية");
 }
 
