@@ -119,7 +119,10 @@ class EngineGateway:
         return normalized,bid,ask
 
     def market(self, client_id, token, data):
+        request_started=time.perf_counter()
+        auth_started=time.perf_counter()
         client=self._client(client_id,token)
+        auth_ms=(time.perf_counter()-auth_started)*1000
         if not client: raise PermissionError("client authorization failed")
         rates,_,_=self._validate_market(data)
         mtf=data.get("mtf_bias",{})
@@ -132,9 +135,13 @@ class EngineGateway:
         try: selected_id=int(selected_raw or 0)
         except (TypeError,ValueError,OverflowError): raise ValueError("selected_strategy_id must be 0..200") from None
         if not 0<=selected_id<=200: raise ValueError("selected_strategy_id must be 0..200")
+        weights_started=time.perf_counter()
         rows=self._request("GET","alzool_engine_weights?client_id=eq."+client_id+"&select=strategy_id,weight")
+        weights_ms=(time.perf_counter()-weights_started)*1000
         weights={str(r["strategy_id"]):float(r["weight"]) for r in rows}
+        strategy_started=time.perf_counter()
         result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode,selected_strategy_id=selected_id)
+        strategy_ms=(time.perf_counter()-strategy_started)*1000
         now=time.time(); expires=now+TTL_SECONDS; decision_id=str(uuid.uuid4())
         confidence=float(result.get("confidence",0.0))
         signed=f"{client_id}|{decision_id}|{result['decision']}|{int(result['strategy_id'])}|{confidence:.8f}|{expires:.6f}"
@@ -143,9 +150,14 @@ class EngineGateway:
                  "reason_ar":result["reason_ar"],"confidence":confidence,"context":result["context"],
                  "analysis":result,"candles":rates,"symbol":data.get("symbol"),"bid":float(data.get("bid")),"ask":float(data.get("ask")),"timeframe":data.get("timeframe","CURRENT"),"created_at":now,"expires_at":expires,"signed_payload":signed,
                  "signature":hmac.new(token.encode(),signed.encode(),hashlib.sha256).hexdigest()}
+        persist_started=time.perf_counter()
         self._request("POST","alzool_engine_decisions",{"client_id":client_id,"payload":payload,
                       "created_at":datetime.fromtimestamp(now,timezone.utc).isoformat()},
                       "resolution=merge-duplicates,return=minimal")
+        persist_ms=(time.perf_counter()-persist_started)*1000
+        total_ms=(time.perf_counter()-request_started)*1000
+        print("AL-ZOOL LATENCY market_total_ms=%.1f auth_ms=%.1f weights_ms=%.1f strategy_ms=%.1f persist_ms=%.1f" %
+              (total_ms,auth_ms,weights_ms,strategy_ms,persist_ms),flush=True)
         return {k:v for k,v in payload.items() if k!="analysis"}
 
     def latest(self, client_id, token, kind="decision"):
