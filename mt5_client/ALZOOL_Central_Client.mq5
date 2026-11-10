@@ -4,7 +4,7 @@
 //| Strategy logic remains on the owner's central server.            |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.03"
+#property version   "1.04"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
@@ -15,7 +15,7 @@ input string InpEngineId = "";
 input string InpEngineToken = "";
 input string InpServerSymbol = "XAUUSD";
 input int    InpHttpTimeoutMs = 12000;
-input int    InpRequestEverySeconds = 2;
+input int    InpRequestEverySeconds = 1;
 input int    InpBarsToSend = 120;
 
 input group "Trading safety"
@@ -518,7 +518,13 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
    string response_headers;
    ResetLastError();
+   ulong request_started_ms=GetTickCount64();
    int http=WebRequest("POST",url,headers,InpHttpTimeoutMs,data,result,response_headers);
+   ulong market_http_ms=GetTickCount64()-request_started_ms;
+   double candle_close_lag_sec=MathMax(0.0,(double)(TimeCurrent()-(bar_time+PeriodSeconds((ENUM_TIMEFRAMES)_Period))));
+   Print("AL-ZOOL LATENCY market_http_ms=",market_http_ms,
+         " candle_close_lag_sec=",DoubleToString(candle_close_lag_sec,2),
+         " http=",http);
    if(http==-1)
    {
       g_server_online=false;
@@ -773,6 +779,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    trade.SetDeviationInPoints(20);
    trade.SetTypeFillingBySymbol(_Symbol);
 
+   ulong broker_order_started_ms=GetTickCount64();
    if(direction=="BUY")
    {
       price=tick.ask;
@@ -805,6 +812,8 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    }
 
    uint rc=trade.ResultRetcode();
+   Print("AL-ZOOL LATENCY broker_order_ms=",GetTickCount64()-broker_order_started_ms,
+         " retcode=",rc," description=",trade.ResultRetcodeDescription());
    if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
    {
       ulong order_ticket=trade.ResultOrder();
