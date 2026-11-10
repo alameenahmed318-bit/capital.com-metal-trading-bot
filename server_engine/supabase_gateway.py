@@ -221,7 +221,7 @@ class EngineGateway:
         if client.get("revoked"):
             return {"mt5_connected":False,"trading_enabled":False,"reason":"client_revoked","last_seen_at":None,"seconds_since_last_data":None}
         cid=urllib.parse.quote(client["client_id"],safe="")
-        live=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=sequence,received_at&limit=1")
+        live=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=sequence,received_at&order=received_at.desc&limit=1")
         row=live[0] if live else None
         stamp=(row or {}).get("received_at")
         try:
@@ -352,7 +352,7 @@ class EngineGateway:
         client=clients[0]
         cid=urllib.parse.quote(client["client_id"],safe="")
         rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
-                           "&select=payload,sequence,source_time,received_at&limit=1")
+                           "&select=payload,sequence,source_time,received_at&order=received_at.desc&limit=1")
         row=rows[0] if rows else None
         live_payload=(row or {}).get("payload") or {}
         decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+
@@ -382,7 +382,7 @@ class EngineGateway:
         outcomes=self._request("GET","alzool_engine_outcomes?client_id=eq."+cid+"&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit="+str(max(1,min(int(limit),200))))
         weights=self._request("GET","alzool_engine_weights?client_id=eq."+cid+"&select=strategy_id,weight&order=strategy_id.asc")
         terminal_rows=self._request("GET","alzool_engine_terminal_state?client_id=eq."+cid+"&select=payload,updated_at&limit=1")
-        live_rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=payload,sequence,source_time,received_at&limit=1")
+        live_rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=payload,sequence,source_time,received_at&order=received_at.desc&limit=1")
         payload=(decisions[0].get("payload") or {}) if decisions else None
         live_row=live_rows[0] if live_rows else None
         live_stamp=(live_row or {}).get("received_at")
