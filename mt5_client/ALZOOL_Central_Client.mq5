@@ -64,8 +64,15 @@ double g_cfg_fixed_sl_distance=3.0, g_cfg_trail_start=3.0, g_cfg_trail_distance=
 double g_cfg_pending_distance=2.0;
 double g_cfg_addon_step=2.0,g_cfg_addon_multiplier=1.2,g_cfg_cooling_step=3.0,g_cfg_cooling_multiplier=1.2;
 double g_cfg_addon_max_lot=0.05,g_cfg_cooling_max_lot=0.05;
+double g_cfg_recovery_manual_lot=0.01,g_cfg_recovery_max_lot=0.05;
+double g_cfg_recovery_trigger_loss=10.0,g_cfg_recovery_target_profit=0.5;
+double g_cfg_recovery_atr_distance=1.0,g_cfg_recovery_min_confidence=0.65;
 int g_cfg_addon_max=3,g_cfg_cooling_max=2;
+int g_cfg_recovery_min_positions=3,g_cfg_recovery_max_entries=1;
+datetime g_last_recovery_bar_time=0;
 bool g_cfg_addon_enabled=false,g_cfg_addon_smart=false,g_cfg_addon_multiplier_enabled=true;
+bool g_cfg_recovery_enabled=false;
+string g_cfg_recovery_mode="AUTO";
 bool g_cfg_cooling_enabled=false,g_cfg_cooling_smart=false,g_cfg_cooling_multiplier_enabled=true;
 double g_last_addon_buy_price=0.0,g_last_addon_sell_price=0.0,g_last_cooling_buy_price=0.0,g_last_cooling_sell_price=0.0;
 double g_decision_expires_at=0.0;
@@ -682,12 +689,23 @@ bool PollCentralSettings()
    g_cfg_cooling_multiplier=JsonNumber(response,"cooling_multiplier",1.2);
    g_cfg_cooling_max=(int)JsonNumber(response,"cooling_max",2);
    g_cfg_cooling_max_lot=JsonNumber(response,"cooling_max_lot",0.05);
+   g_cfg_recovery_manual_lot=JsonNumber(response,"recovery_manual_lot",0.01);
+   g_cfg_recovery_max_lot=JsonNumber(response,"recovery_max_lot",0.05);
+   g_cfg_recovery_trigger_loss=JsonNumber(response,"recovery_trigger_loss",10.0);
+   g_cfg_recovery_target_profit=JsonNumber(response,"recovery_target_profit",0.5);
+   g_cfg_recovery_min_positions=(int)JsonNumber(response,"recovery_min_positions",3);
+   g_cfg_recovery_atr_distance=JsonNumber(response,"recovery_atr_distance",1.0);
+   g_cfg_recovery_min_confidence=JsonNumber(response,"recovery_min_confidence",0.65);
+   g_cfg_recovery_max_entries=(int)JsonNumber(response,"recovery_max_entries",1);
    g_cfg_addon_enabled=JsonBool(response,"addon_enabled",false);
    g_cfg_addon_smart=JsonBool(response,"addon_smart_enabled",false);
    g_cfg_addon_multiplier_enabled=JsonBool(response,"addon_multiplier_enabled",true);
    g_cfg_cooling_enabled=JsonBool(response,"cooling_enabled",false);
    g_cfg_cooling_smart=JsonBool(response,"cooling_smart_enabled",false);
    g_cfg_cooling_multiplier_enabled=JsonBool(response,"cooling_multiplier_enabled",true);
+   g_cfg_recovery_enabled=JsonBool(response,"recovery_enabled",false);
+   g_cfg_recovery_mode=JsonString(response,"recovery_mode");
+   if(g_cfg_recovery_mode!="AUTO" && g_cfg_recovery_mode!="MANUAL") g_cfg_recovery_mode="AUTO";
    g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
    g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
    g_cfg_global_loss_enabled=JsonBool(response,"global_loss_enabled",true);
@@ -703,14 +721,18 @@ bool PollCentralSettings()
       g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0 ||
       g_cfg_addon_step<=0 || g_cfg_cooling_step<=0 || g_cfg_addon_multiplier<1 || g_cfg_cooling_multiplier<1 ||
       g_cfg_addon_max<0 || g_cfg_cooling_max<0 ||
-      g_cfg_addon_max_lot<=0 || g_cfg_cooling_max_lot<=0)
+      g_cfg_addon_max_lot<=0 || g_cfg_cooling_max_lot<=0 ||
+      g_cfg_recovery_manual_lot<=0 || g_cfg_recovery_max_lot<=0 || g_cfg_recovery_trigger_loss<=0 ||
+      g_cfg_recovery_target_profit<0 || g_cfg_recovery_min_positions<2 || g_cfg_recovery_atr_distance<=0 ||
+      g_cfg_recovery_min_confidence<0.50 || g_cfg_recovery_min_confidence>0.95 || g_cfg_recovery_max_entries<1)
    { g_settings_loaded=false; g_status="Invalid risk/protection settings"; return false; }
    g_settings_loaded=true;
    return true;
 }
 
 bool PlaceCentralTrade(const string direction,const string decision_id,
-                       const string reason,const int strategy_id,const double lot_override=0.0)
+                       const string reason,const int strategy_id,const double lot_override=0.0,
+                       const bool recovery_order=false)
 {
    // Fail closed: a trade requires both a confirmed live health check and
    // a freshly verified, signed decision from the central engine.
@@ -757,7 +779,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
 
    int buys=0,sells=0;
    int current_positions=CountOurPositions(buys,sells)+CountOurPendingOrders();
-   if(g_cfg_max_positions>0 && current_positions>=g_cfg_max_positions)
+   if(!recovery_order && g_cfg_max_positions>0 && current_positions>=g_cfg_max_positions)
    {
       g_status="Maximum positions reached (dashboard setting)";
       RecordBlockedSignal(decision_id,"max-positions","تم بلوغ الحد الأقصى لعدد الصفقات");
@@ -1449,6 +1471,109 @@ void ManageAiLossGuard()
    }
 }
 
+void ManageSmartRecovery()
+{
+   if(!g_settings_loaded || !g_cfg_recovery_enabled || !g_trading_enabled ||
+      !g_server_online || !g_decision_verified ||
+      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
+      return;
+
+   int buys=0,sells=0;
+   int total=CountOurPositions(buys,sells);
+   if(total<=0) { g_last_recovery_bar_time=0; return; }
+   // Recovery is for one-direction baskets only. Never average a mixed BUY/SELL basket.
+   if(buys>0 && sells>0) return;
+   string direction=(buys>0 ? "BUY" : "SELL");
+   int group_count=(direction=="BUY" ? buys : sells);
+   if(group_count<g_cfg_recovery_min_positions) return;
+
+   int recovery_open=0;
+   double floating=0.0,projected_existing=0.0;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) return;
+   double atr=0.0;
+   if(!GetATR(atr)) return;
+   double target_price=(direction=="BUY"
+      ? tick.bid+atr*g_cfg_recovery_atr_distance
+      : tick.ask-atr*g_cfg_recovery_atr_distance);
+   ENUM_ORDER_TYPE order_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if((direction=="BUY" && type!=POSITION_TYPE_BUY) ||
+         (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
+
+      floating+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      if(StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) recovery_open++;
+
+      double projected=0.0;
+      ENUM_ORDER_TYPE existing_type=(type==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+      if(!OrderCalcProfit(existing_type,_Symbol,PositionGetDouble(POSITION_VOLUME),
+                          PositionGetDouble(POSITION_PRICE_OPEN),target_price,projected))
+         return;
+      projected_existing+=projected+PositionGetDouble(POSITION_SWAP)+PositionGetDouble(POSITION_COMMISSION);
+   }
+
+   // Once a recovery entry exists, close the whole basket together at its net target.
+   if(recovery_open>0)
+   {
+      if(floating>=g_cfg_recovery_target_profit)
+         CloseOurPositions("Smart recovery basket target reached");
+      return;
+   }
+   if(floating>-g_cfg_recovery_trigger_loss) return;
+   if(recovery_open>=g_cfg_recovery_max_entries) return;
+   if(g_last_decision!=direction || g_last_confidence<g_cfg_recovery_min_confidence) return;
+   double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
+   double opposite_quality=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
+   if(same_quality<=opposite_quality) return;
+
+   double candle_strength=0.0,volatility=1.0;
+   bool trend_support=false,reversal_confirmed=false;
+   if(!GetSmartCandleMetrics(direction,candle_strength,volatility,trend_support,reversal_confirmed) ||
+      !reversal_confirmed) return;
+
+   datetime current_bar=iTime(_Symbol,PERIOD_CURRENT,0);
+   if(current_bar<=0 || current_bar==g_last_recovery_bar_time) return;
+
+   double entry_price=(direction=="BUY" ? tick.ask : tick.bid);
+   double one_lot_profit=0.0;
+   if(!OrderCalcProfit(order_type,_Symbol,1.0,entry_price,target_price,one_lot_profit) ||
+      one_lot_profit<=0.0) return;
+
+   double requested_lot=g_cfg_recovery_manual_lot;
+   if(g_cfg_recovery_mode=="AUTO")
+   {
+      double needed=(g_cfg_recovery_target_profit-projected_existing)/one_lot_profit;
+      if(needed<=0.0) return;
+      requested_lot=needed;
+   }
+   double lots=NormalizeCappedLots(requested_lot,g_cfg_recovery_max_lot);
+   if(lots<=0.0) { g_status="Smart recovery blocked / required lot exceeds maximum"; return; }
+
+   double recovery_profit=0.0;
+   if(!OrderCalcProfit(order_type,_Symbol,lots,entry_price,target_price,recovery_profit)) return;
+   if(projected_existing+recovery_profit<g_cfg_recovery_target_profit)
+   {
+      g_status="Smart recovery waiting / capped lot cannot reach basket target";
+      return;
+   }
+
+   string unique_id=g_last_decision_id+"_REC_"+IntegerToString((long)current_bar);
+   string reason="تعافٍ ذكي: ارتداد مؤكد؛ لوت "+DoubleToString(lots,2)+
+                 "؛ صافي المجموعة المتوقع عند هدف ATR "+DoubleToString(projected_existing+recovery_profit,2);
+   if(PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lots,true))
+   {
+      g_last_recovery_bar_time=current_bar;
+      g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(lots,2);
+   }
+}
+
 void ManageAddonCooling()
 {
    if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
@@ -1550,6 +1675,7 @@ void OnTimer()
    CheckTradingControl();
    PollCentralEngine();
    ManageAiLossGuard();
+   ManageSmartRecovery();
    ManageAddonCooling();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
