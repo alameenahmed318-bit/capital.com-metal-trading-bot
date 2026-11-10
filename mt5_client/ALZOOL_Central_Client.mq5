@@ -1220,11 +1220,100 @@ string JsonSafe(string value)
    return value;
 }
 
+void SendLiveState()
+{
+   static ulong last_send_ms=0;
+   static ulong sequence=0;
+   ulong now_ms=GetTickCount64();
+   if(last_send_ms>0 && now_ms-last_send_ms<1000) return;
+   if(InpEngineId=="" || InpEngineToken=="") return;
+   last_send_ms=now_ms;
+   sequence++;
+
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0 || tick.ask<tick.bid) return;
+   MqlRates current[];
+   ArraySetAsSeries(current,true);
+   bool has_candle=(CopyRates(_Symbol,PERIOD_CURRENT,0,1,current)==1);
+
+   string body="{\"sequence\":"+IntegerToString((long)sequence)+
+      ",\"source_time\":"+IntegerToString((long)tick.time)+
+      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
+   body+="\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+
+      "\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+
+      "\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+
+      "\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+
+      ",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+
+      ",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+
+      ",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+
+      ",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
+   int n=0;
+   for(int i=PositionsTotal()-1;i>=0 && n<200;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(n++>0) body+=",";
+      body+="{\"ticket\":\""+(string)ticket+"\",\"symbol\":\""+JsonSafe(PositionGetString(POSITION_SYMBOL))+
+         "\",\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE))+
+         ",\"volume\":"+DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+
+         ",\"open_price\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN),_Digits)+
+         ",\"price_current\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT),_Digits)+
+         ",\"sl\":"+DoubleToString(PositionGetDouble(POSITION_SL),_Digits)+
+         ",\"tp\":"+DoubleToString(PositionGetDouble(POSITION_TP),_Digits)+
+         ",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+
+         ",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+
+         ",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+
+         "\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
+   }
+   body+="],\"orders\":[";
+   n=0;
+   for(int j=OrdersTotal()-1;j>=0 && n<200;j--)
+   {
+      ulong ticket=OrderGetTicket(j);
+      if(ticket==0) continue;
+      if(n++>0) body+=",";
+      body+="{\"ticket\":\""+(string)ticket+"\",\"symbol\":\""+JsonSafe(OrderGetString(ORDER_SYMBOL))+
+         "\",\"type\":"+IntegerToString((int)OrderGetInteger(ORDER_TYPE))+
+         ",\"state\":"+IntegerToString((int)OrderGetInteger(ORDER_STATE))+
+         ",\"volume\":"+DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT),2)+
+         ",\"price\":"+DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN),_Digits)+
+         ",\"sl\":"+DoubleToString(OrderGetDouble(ORDER_SL),_Digits)+
+         ",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+"}";
+   }
+   body+="],\"tick\":{\"bid\":"+DoubleToString(tick.bid,_Digits)+
+      ",\"ask\":"+DoubleToString(tick.ask,_Digits)+
+      ",\"last\":"+DoubleToString(tick.last,_Digits)+
+      ",\"spread_points\":"+DoubleToString((tick.ask-tick.bid)/_Point,1)+
+      ",\"time\":"+IntegerToString((long)tick.time)+
+      ",\"time_msc\":"+IntegerToString((long)tick.time_msc)+"},";
+   if(has_candle)
+      body+="\"forming_candle\":{\"time\":"+IntegerToString((long)current[0].time)+
+         ",\"open\":"+DoubleToString(current[0].open,_Digits)+
+         ",\"high\":"+DoubleToString(current[0].high,_Digits)+
+         ",\"low\":"+DoubleToString(current[0].low,_Digits)+
+         ",\"close\":"+DoubleToString(current[0].close,_Digits)+
+         ",\"tick_volume\":"+IntegerToString((long)current[0].tick_volume)+"}";
+   else body+="\"forming_candle\":{}";
+   body+="}";
+
+   char data[],result[];
+   StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string response_headers;
+   ulong started=GetTickCount64();
+   int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/live/"+InpEngineId,
+                       headers,MathMin(InpHttpTimeoutMs,1500),data,result,response_headers);
+   ulong elapsed=GetTickCount64()-started;
+   if(http!=200) Print("AL-ZOOL live telemetry failed. HTTP=",http," err=",GetLastError()," ms=",elapsed);
+   else if(elapsed>700) Print("AL-ZOOL live telemetry slow. ms=",elapsed);
+}
+
 void SendTerminalState()
 {
    ulong now_ms=GetTickCount64();
    // Account/history payloads are larger; refresh every 5 seconds, not every timer tick.
-   if(g_last_terminal_state_ms>0 && now_ms-g_last_terminal_state_ms<5000) return;
+   if(g_last_terminal_state_ms>0 && now_ms-g_last_terminal_state_ms<30000) return;
    g_last_terminal_state_ms=now_ms;
    if(InpEngineId=="" || InpEngineToken=="") return;
    string body="{\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+"\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+"\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+"\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
@@ -1441,6 +1530,7 @@ void OnTimer()
    ManageSettingsProfitLoss();
    ManageLocalProtection();
    FlushPendingOutcomes();
+   SendLiveState();
    SendTerminalState();
    CheckCentralHealth();
    if(!g_server_online) CancelOurPendingOrders();
