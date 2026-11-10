@@ -165,7 +165,7 @@ async function refreshLiveTelemetry(){
  if(liveTelemetryBusy || !session)return;
  liveTelemetryBusy=true;
  try{
-  const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},positions=state.positions||[],orders=state.orders||[];
+  const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},indicator=d.indicator||{},positions=state.positions||[],orders=state.orders||[];
   const host=$("liveTelemetryStrip"),settingsHost=$("engineSettingsLive");
   const money=v=>Number.isFinite(Number(v))?Number(v).toFixed(2):"—";
   const floating=positions.reduce((sum,p)=>sum+Number(p.profit||0)+Number(p.swap||0),0);
@@ -185,17 +185,20 @@ async function refreshLiveTelemetry(){
   if(pageHost){
    const orderRows=orders.length?'<div class="catalog-list">'+orders.map(o=>'<div class="catalog-row"><b>'+esc(o.symbol||state.symbol||"XAUUSD")+' • أمر '+esc(o.type)+' • '+esc(o.volume)+' لوت</b><small>#'+esc(o.ticket)+' • السعر '+esc(o.price)+' • SL '+esc(o.sl)+' • TP '+esc(o.tp)+' • الحالة '+esc(o.state)+'</small></div>').join("")+'</div>':'<p class="muted">لا توجد أوامر معلقة حالياً.</p>';
    const liveStats='<div class="dash-cards">'+[["Bid",money(tick.bid)],["Ask",money(tick.ask)],["السبريد",money(tick.spread_points)],["الفريم",state.timeframe||"—"],["آخر Tick",tick.time_msc?new Date(Number(tick.time_msc)).toLocaleTimeString("ar-AE"):"—"],["تسلسل MT5",d.sequence??"—"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>';
-   const candleCard=candle.time?'<div class="dash-cards">'+[["افتتاح",money(candle.open)],["أعلى",money(candle.high)],["أدنى",money(candle.low)],["السعر الحالي",money(candle.close)],["حجم التيك",candle.tick_volume??"—"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>':'<p class="muted">لا توجد شمعة حالية مستلمة.</p>';
+   const candleCard=candle.time?'<div class="dash-cards">'+[["افتتاح",money(candle.open)],["أعلى",money(candle.high)],["أدنى",money(candle.low)],["السعر الحالي",money(tick.bid||candle.close)],["حجم التيك",candle.tick_volume??"—"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>':'<p class="muted">لا توجد شمعة حالية مستلمة.</p>';
+   const indicatorCard='<div class="dash-panel ai-indicator-panel"><h4>المؤشر الصناعي اللحظي — مساعد الاستراتيجيات والتركيبات</h4>'+(indicator.ready?'<div class="dash-cards">'+[["ميل المؤشر",indicator.direction==="BUY"?"شراء":indicator.direction==="SELL"?"بيع":"محايد"],["قوة القراءة",Number(indicator.strength).toFixed(1)+"/100"],["قوة الشراء",Number(indicator.buy_score).toFixed(1)+"/100"],["قوة البيع",Number(indicator.sell_score).toFixed(1)+"/100"],["الزخم RSI",indicator.components?.rsi??"—"],["قوة الاتجاه",indicator.components?.trend??"—"],["ضغط الشمعة",indicator.components?.forming_candle??"—"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div><p>'+esc(indicator.reason_ar||"")+'</p><small class="muted">تظهر درجة توافق المؤشر بجانب تصويت الاستراتيجيات والتركيبات. لا يغيّر شروط الدخول ولا يرسل أوامر.</small>':'<p class="muted">المؤشر ينتظر 20 شمعة تحليلية فعلية من المحرك. لن يعرض قراءة تقديرية من دون بيانات كافية.</p>')+'</div>';
+   const candleVisual=(()=>{const op=Number(candle.open),hi=Number(candle.high),lo=Number(candle.low),price=Number(tick.bid||candle.close),span=Math.max(hi-lo,0.0000001),top=Math.max(0,Math.min(100,(hi-Math.max(op,price))/span*100)),height=Math.max(2,Math.min(100,Math.abs(price-op)/span*100)),up=price>=op,color=up?"#3b82f6":"#ef4444";return candle.time?'<div class="live-candle-card"><b>حركة الشمعة الحالية</b><div style="height:132px;display:flex;align-items:center;justify-content:center;gap:14px"><div style="position:relative;width:34px;height:112px"><div style="position:absolute;left:16px;top:0;width:2px;height:100%;background:#9ca3af"></div><div style="position:absolute;left:7px;top:'+top+'%;width:20px;height:'+height+'%;min-height:3px;background:'+color+';border-radius:3px"></div></div><div><b style="color:'+color+'">'+money(price)+'</b><small style="display:block">تتحرك مع تحديثات Tick المستلمة</small></div></div></div>':""})();
+
    const accountLive='<div class="dash-cards">'+[["الرصيد",money(account.balance)+" "+(account.currency||"")],["Equity",money(account.equity)+" "+(account.currency||"")],["الهامش المستخدم",money(account.margin)],["الهامش المتاح",money(account.free_margin)],["الربح العائم",money(floating)+" "+(account.currency||"")],["عدد الصفقات",positions.length]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>';
-   let pageContent=liveStats;
+   let pageContent=indicatorCard+liveStats;
    if(activeDashboardPage==="open")pageContent=accountLive+positionRows;
    else if(activeDashboardPage==="pending")pageContent='<h4>الأوامر المعلقة — تحديث مباشر من MT5</h4>'+orderRows;
    else if(activeDashboardPage==="trades")pageContent=accountLive+'<h4>الصفقات المفتوحة الآن</h4>'+positionRows+'<h4>الأوامر المعلقة الآن</h4>'+orderRows;
-   else if(activeDashboardPage==="candles")pageContent='<h4>الشمعة الحالية — تتحدث مع كل إرسال من MT5</h4>'+candleCard+liveStats;
-   else if(activeDashboardPage==="settings")pageContent=accountLive;
-   else if(activeDashboardPage==="control")pageContent='<div class="dash-cards">'+[["حالة MT5",d.connected?"متصل":"غير متصل / بيانات قديمة"],["إذن التداول",d.trading_enabled?"مفعّل":"متوقف"],["آخر وصول",received],["عمر البيانات",d.age_ms==null?"—":d.age_ms+" ms"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>'+liveStats;
+   else if(activeDashboardPage==="candles")pageContent=indicatorCard+'<h4>الشمعة الحالية — تتحدث مع كل Tick مستلم من MT5</h4>'+candleVisual+candleCard+liveStats;
+   else if(activeDashboardPage==="settings")pageContent=indicatorCard+accountLive;
+   else if(activeDashboardPage==="control")pageContent=indicatorCard+'<div class="dash-cards">'+[["حالة MT5",d.connected?"متصل":"غير متصل / بيانات قديمة"],["إذن التداول",d.trading_enabled?"مفعّل":"متوقف"],["آخر وصول",received],["عمر البيانات",d.age_ms==null?"—":d.age_ms+" ms"]].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+esc(v[1])+'</b></article>').join("")+'</div>'+liveStats;
    else if(activeDashboardPage==="signals")pageContent=liveStats;
-   else pageContent='<h4>بيانات السوق الحالية من MT5</h4>'+liveStats+candleCard;
+   else pageContent=indicatorCard+'<h4>بيانات السوق الحالية من MT5</h4>'+liveStats+candleCard;
    pageHost.innerHTML=pageContent;
   }
   if(host)host.dataset.sequence=String(d.sequence??"");
