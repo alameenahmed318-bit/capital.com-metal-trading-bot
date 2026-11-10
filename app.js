@@ -212,7 +212,7 @@ async function loadDashboardWorkspace(){
    const cards=positions.length?'<div class="catalog-list">'+positions.map(v=>{
     const pnl=Number(v.profit||0)+Number(v.swap||0),tone=pnl>0?"#2563eb":pnl<0?"#dc2626":"#64748b";
     const side=Number(v.type)===0?"شراء":Number(v.type)===1?"بيع":escv(v.type);
-    return '<div class="catalog-row open-position"><b>'+escv(v.symbol||settings.chart_symbol||"XAUUSD")+' • '+side+' • '+escv(v.volume)+' لوت</b><small>تذكرة #'+escv(v.ticket)+' • دخول: '+escv(v.open_price)+' • السعر الحالي: '+escv(v.price_current)+'</small><small>الربح / الخسارة: <strong style="color:'+tone+';font-weight:800">'+money(pnl)+'</strong> • SL: '+escv(v.sl)+' • TP: '+escv(v.tp)+'</small></div>';
+    return '<div class="catalog-row open-position"><b>'+escv(v.symbol||settings.chart_symbol||"XAUUSD")+' • '+side+' • '+escv(v.volume)+' لوت</b><small>تذكرة #'+escv(v.ticket)+' • دخول: '+escv(v.open_price)+' • السعر الحالي: '+escv(v.price_current)+'</small><div class="open-pnl-line">الربح / الخسارة: <strong class="'+(pnl>0?"open-pnl-positive":pnl<0?"open-pnl-negative":"open-pnl-zero")+'">'+money(pnl)+'</strong><span> • SL: '+escv(v.sl)+' • TP: '+escv(v.tp)+'</span></div></div>';
    }).join("")+'</div>':'<p class="muted">لا توجد صفقات مفتوحة مستلمة من MT5 حالياً.</p>';
    body=grid([tile("الصفقات المفتوحة",positions.length),tile("الربح العائم",money(positions.reduce((s,v)=>s+Number(v.profit||0)+Number(v.swap||0),0))),tile("رصيد الحساب",terminal.account?.balance),tile("حقوق الحساب",terminal.account?.equity)])+cards;
   }
