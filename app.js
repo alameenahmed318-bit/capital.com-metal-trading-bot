@@ -147,7 +147,7 @@ async function loadEngineCatalog(){
   if($("combinationCatalog"))$("combinationCatalog").innerHTML=d.combinations.map(x=>'<div class="catalog-row"><b>'+esc(x.name)+'</b><small>Strategy IDs: '+x.members.join(" / ")+'</small></div>').join("");
  }catch(e){for(const id of ["familyCatalog","strategyCatalog","combinationCatalog"])if($(id))$(id).innerHTML='<p class="error">'+esc(e.message)+'</p>'}
 }
-function show(v){["loginView","adminView","clientView","dashboardView"].forEach(id=>{const el=$(id);if(el)el.classList.toggle("hidden",id!==v)})}
+function show(v){["loginView","adminView","clientView","dashboardView"].forEach(id=>{const el=$(id);if(el)el.classList.toggle("hidden",id!==v)});document.body.classList.toggle("owner-theme",v==="adminView"||(v==="dashboardView"&&dashboardRole==="owner"));document.body.classList.toggle("client-theme",v==="dashboardView"&&dashboardRole==="client");}
 async function afterLogin(){
  try{
   const a=await api("/api/access/check","POST",{});
