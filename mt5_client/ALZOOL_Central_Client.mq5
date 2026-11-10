@@ -764,7 +764,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       RecordBlockedSignal(decision_id,"expired","انتهت صلاحية الإشارة الموقعة قبل التنفيذ");
       return false;
    }
-   if(!g_server_online || !g_decision_verified)
+   if(!g_server_online || (!g_decision_verified && !management_order))
    {
       g_status="Entry blocked / central server or signed decision not confirmed";
       RecordBlockedSignal(decision_id,"server","السيرفر أو توقيع القرار غير مؤكد");
@@ -1722,8 +1722,8 @@ void ManageAddonCooling()
 {
    if(!g_settings_loaded) { AddonCoolingWait("إعدادات اللوحة غير محمّلة"); return; }
    if(!g_trading_enabled) { AddonCoolingWait("التداول الآلي متوقف من اللوحة"); return; }
-   if(!g_server_online || !g_decision_verified)
-   { AddonCoolingWait("السيرفر أو آخر قرار موثّق غير متاح"); return; }
+   if(!g_server_online)
+   { AddonCoolingWait("السيرفر غير متاح؛ تم إيقاف أوامر الإدارة الجديدة"); return; }
    if(!g_cfg_addon_enabled && !g_cfg_cooling_enabled) return;
    if(!CheckTradingControl()) { AddonCoolingWait("صلاحية التداول غير مؤكدة"); return; }
 
@@ -1746,7 +1746,6 @@ void ManageAddonCooling()
    int legacy_management=CountOurManagementPositions("AZS_MANAGEMENT");
    int addon_count=CountOurManagementPositions("AZS_ADDON")+legacy_management;
    int cooling_count=CountOurManagementPositions("AZS_COOLING")+legacy_management;
-   int total_additional=MathMax(0,group_count-1);
    double latest_price=0.0;
    datetime latest_time=0;
    for(int i=PositionsTotal()-1;i>=0;i--)
