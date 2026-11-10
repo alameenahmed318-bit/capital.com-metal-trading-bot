@@ -54,6 +54,8 @@ double g_last_confidence = 0.0;
 int g_last_strategy_id = 0;
 string g_last_decision = "WAIT";
 string g_global_bar_key = "";
+double g_last_market_bid=0.0,g_last_market_ask=0.0;
+ulong g_decision_received_ms=0;
 
 // Live dashboard settings, fetched through the authenticated central API.
 bool g_settings_loaded=false;
@@ -83,6 +85,7 @@ double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
 bool g_context_buy_trap=false,g_context_sell_trap=false;
 string g_context_regime="";
 string g_cfg_order_mode="Market Order", g_cfg_strategy_mode="AUTO — Best current fit";
+bool g_cfg_adaptive_strategy_switch=false;
 bool g_daily_loss_paused=false;
 string g_daily_loss_date="";
 
@@ -405,6 +408,7 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
 
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0 || tick.ask<tick.bid) return false;
+   g_last_market_bid=tick.bid; g_last_market_ask=tick.ask;
 
    string strategy_mode="AUTO";
    int selected_strategy_id=0;
@@ -412,6 +416,11 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    else if(StringFind(g_cfg_strategy_mode,"SNIPER")==0) strategy_mode="SNIPER";
    else if(StringLen(g_cfg_strategy_mode)>0 && StringGetCharacter(g_cfg_strategy_mode,0)>='0' && StringGetCharacter(g_cfg_strategy_mode,0)<='9')
       selected_strategy_id=(int)StringToInteger(g_cfg_strategy_mode);
+   int open_buys=0,open_sells=0;
+   if(g_cfg_adaptive_strategy_switch && CountOurPositions(open_buys,open_sells)>0)
+   {
+      strategy_mode="AUTO"; selected_strategy_id=0;
+   }
    body="{\"symbol\":\""+InpServerSymbol+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
    body+="\"strategy_mode\":\""+strategy_mode+"\",\"selected_strategy_id\":"+IntegerToString(selected_strategy_id)+",";
    body+="\"bid\":"+DoubleToString(tick.bid,_Digits)+",";
@@ -586,6 +595,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    }
    g_server_online=true;
    g_decision_verified=true;
+   g_decision_received_ms=GetTickCount64();
    g_last_bar_time=bar_time;
    // Persist as soon as a fresh server decision is received. This favors
    // duplicate prevention over retrying a rejected order on the same candle.
@@ -715,6 +725,7 @@ bool PollCentralSettings()
    g_cfg_ai_loss_guard=JsonBool(response,"ai_loss_guard_enabled",false);
    g_cfg_order_mode=JsonString(response,"order_mode");
    if(g_cfg_order_mode=="") g_cfg_order_mode="Market Order";
+   g_cfg_adaptive_strategy_switch=JsonBool(response,"adaptive_strategy_switch",false);
    g_cfg_strategy_mode=JsonString(response,"strategy_mode");
    if(g_cfg_strategy_mode=="") g_cfg_strategy_mode="AUTO — Best current fit";
    if(g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
@@ -1030,11 +1041,20 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       else
          Print("AL-ZOOL: entry deal has no valid strategy mapping. deal=",trans.deal);
       string side=(HistoryDealGetInteger(trans.deal,DEAL_TYPE)==DEAL_TYPE_BUY ? "BUY" : "SELL");
+      double fill_price=HistoryDealGetDouble(trans.deal,DEAL_PRICE);
+      double reference_price=(side=="BUY" ? g_last_market_ask : g_last_market_bid);
+      double slippage_points=(reference_price>0.0 ? ((side=="BUY" ? fill_price-reference_price : reference_price-fill_price)/_Point) : 0.0);
+      ulong decision_to_fill_ms=(g_decision_received_ms>0 ? GetTickCount64()-g_decision_received_ms : 0);
       string opened_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"ticket\":\""+(string)trans.deal+
          "\",\"position_id\":\""+(string)position_id+"\",\"order\":\""+(string)order+
          "\",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"side\":\""+side+
          "\",\"volume\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_VOLUME),2)+
-         ",\"price\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_PRICE),_Digits)+
+         ",\"price\":"+DoubleToString(fill_price,_Digits)+
+         ",\"reference_price\":"+DoubleToString(reference_price,_Digits)+
+         ",\"slippage_points\":"+DoubleToString(slippage_points,1)+
+         ",\"decision_to_fill_ms\":"+IntegerToString((long)decision_to_fill_ms)+
+         ",\"market_regime\":\""+JsonSafe(g_context_regime)+"\""+
+         ",\"decision_id\":\""+JsonSafe(g_last_decision_id)+"\""+
          ",\"strategy_id\":"+IntegerToString(entry_strategy)+
          ",\"strategy_name\":\""+JsonSafe(g_last_strategy_name)+
          "\",\"confidence\":"+DoubleToString(g_last_confidence,4)+
