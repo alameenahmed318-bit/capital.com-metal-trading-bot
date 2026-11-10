@@ -183,8 +183,7 @@ async function refreshLiveTelemetry(){
   const status=d.connected?(Number(d.age_ms)<=1500?"لحظي":"متصل — البيانات متأخرة"):"غير متصل";
   const accountPage='<div class="dash-cards">'+[
    ["حالة MT5",status],["الرصيد",money(account.balance)+" "+(account.currency||"")],["Equity",money(account.equity)+" "+(account.currency||"")],
-   ["الهامش المستخدم",money(account.margin)],["الهامش المتاح",money(account.free_margin)],["الصفقات المفتوحة",positions.length],
-   ["الربح العائم",pnlMarkup(floating,account.currency)],["Bid / Ask",money(tick.bid)+" / "+money(tick.ask)],
+   ["الهامش المستخدم",money(account.margin)],["الهامش المتاح",money(account.free_margin)],["Bid / Ask",money(tick.bid)+" / "+money(tick.ask)],
    ["عمر بيانات MT5",d.age_ms==null?"—":d.age_ms+" ms"],["آخر وصول",received]
   ].map(v=>'<article><small>'+esc(v[0])+'</small><b>'+(v[0]==="الربح العائم"?v[1]:esc(v[1]))+'</b></article>').join("")+'</div><p class="muted">هذه الصفحة الوحيدة لملخص الحساب والاتصال وبيانات السوق العامة.</p>';
   const positionRows=positions.length?'<div class="catalog-list">'+positions.map(p=>{
