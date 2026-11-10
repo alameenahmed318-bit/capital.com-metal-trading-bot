@@ -441,18 +441,27 @@ class EngineGateway:
         outcomes=self._request("GET","alzool_engine_outcomes?client_id=eq."+cid+"&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit="+str(max(1,min(int(limit),200))))
         opened_events=self._request("GET","alzool_engine_signal_events?client_id=eq."+cid+
                                     "&event_type=eq.TRADE_OPENED&select=payload&order=created_at.desc&limit=500")
-        regime_by_deal={}
+        closed_events=self._request("GET","alzool_engine_signal_events?client_id=eq."+cid+
+                                    "&event_type=eq.TRADE_CLOSED&select=payload&order=created_at.desc&limit=500")
+        regime_by_position={}
+        position_by_close_deal={}
         for event in opened_events:
             event_payload=event.get("payload") or {}
-            deal_key=str(event_payload.get("deal_id") or "").strip()
+            position_key=str(event_payload.get("position_id") or "").strip()
             regime=str(event_payload.get("market_regime") or "").strip()
-            if deal_key and regime and deal_key not in regime_by_deal:
-                regime_by_deal[deal_key]=regime
+            if position_key and regime and position_key not in regime_by_position:
+                regime_by_position[position_key]=regime
+        for event in closed_events:
+            event_payload=event.get("payload") or {}
+            deal_key=str(event_payload.get("deal_id") or "").strip()
+            position_key=str(event_payload.get("position_id") or "").strip()
+            if deal_key and position_key:
+                position_by_close_deal[deal_key]=position_key
         regime_stats={}
         strategy_regime_stats={}
         for outcome in outcomes:
             deal_key=str(outcome.get("deal_id") or "").strip()
-            regime=regime_by_deal.get(deal_key)
+            regime=regime_by_position.get(position_by_close_deal.get(deal_key,""))
             if not regime: continue
             try: pnl=float(outcome.get("pnl") or 0.0)
             except (TypeError,ValueError,OverflowError): continue
