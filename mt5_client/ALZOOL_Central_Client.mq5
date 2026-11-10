@@ -4,7 +4,7 @@
 //| Strategy logic remains on the owner's central server.            |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.06"
+#property version   "1.07"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
@@ -889,6 +889,10 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
          "\",\"volume\":"+DoubleToString(lots,2)+",\"price\":"+DoubleToString(price,digits)+
          ",\"strategy_id\":"+IntegerToString(strategy_id)+",\"reason_ar\":\""+JsonSafe(reason)+"\"}";
       SendSignalEvent(decision_id+"_order-sent","ORDER_SENT",sent_payload);
+      if(management_order && management_tag=="AZS_ADDON")
+         SendSignalEvent(decision_id+"_addon-opened","ADDON_OPENED",sent_payload);
+      else if(management_order && management_tag=="AZS_COOLING")
+         SendSignalEvent(decision_id+"_cooling-opened","COOLING_OPENED",sent_payload);
       return true;
    }
    g_status="Order rejected: "+trade.ResultRetcodeDescription();
