@@ -54,7 +54,7 @@ async function normalizeNumericInput(raw){
  else value=value.replace(/,/g,"");
  return value;
 }
-function saveBasicSettings(){
+async function saveBasicSettings(){
  const host=$("basicSettingsForm"),msg=$("basicSettingsMessage");if(!host)return;
  const values={};let invalid=null;
  host.querySelectorAll("[data-setting]").forEach(el=>{
