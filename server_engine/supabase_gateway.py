@@ -439,6 +439,46 @@ class EngineGateway:
         cid=urllib.parse.quote(client["client_id"],safe="")
         decisions=self._request("GET","alzool_engine_decisions?client_id=eq."+cid+"&select=payload,created_at&order=created_at.desc&limit=1")
         outcomes=self._request("GET","alzool_engine_outcomes?client_id=eq."+cid+"&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit="+str(max(1,min(int(limit),200))))
+        opened_events=self._request("GET","alzool_engine_signal_events?client_id=eq."+cid+
+                                    "&event_type=eq.TRADE_OPENED&select=payload&order=created_at.desc&limit=500")
+        regime_by_deal={}
+        for event in opened_events:
+            event_payload=event.get("payload") or {}
+            deal_key=str(event_payload.get("deal_id") or "").strip()
+            regime=str(event_payload.get("market_regime") or "").strip()
+            if deal_key and regime and deal_key not in regime_by_deal:
+                regime_by_deal[deal_key]=regime
+        regime_stats={}
+        strategy_regime_stats={}
+        for outcome in outcomes:
+            deal_key=str(outcome.get("deal_id") or "").strip()
+            regime=regime_by_deal.get(deal_key)
+            if not regime: continue
+            try: pnl=float(outcome.get("pnl") or 0.0)
+            except (TypeError,ValueError,OverflowError): continue
+            sid=int(outcome.get("strategy_id") or 0)
+            bucket=regime_stats.setdefault(regime,{"regime":regime,"trades":0,"wins":0,"losses":0,"net_pnl":0.0})
+            bucket["trades"]+=1
+            bucket["wins"]+=1 if pnl>0 else 0
+            bucket["losses"]+=1 if pnl<0 else 0
+            bucket["net_pnl"]+=pnl
+            sbucket=strategy_regime_stats.setdefault((regime,sid),{"regime":regime,"strategy_id":sid,"trades":0,"wins":0,"net_pnl":0.0})
+            sbucket["trades"]+=1
+            sbucket["wins"]+=1 if pnl>0 else 0
+            sbucket["net_pnl"]+=pnl
+        regime_performance=[]
+        for bucket in regime_stats.values():
+            bucket["win_rate_pct"]=round(100*bucket["wins"]/max(1,bucket["trades"]),1)
+            bucket["net_pnl"]=round(bucket["net_pnl"],2)
+            regime_performance.append(bucket)
+        strategy_regime_performance=[]
+        for bucket in strategy_regime_stats.values():
+            bucket["win_rate_pct"]=round(100*bucket["wins"]/max(1,bucket["trades"]),1)
+            bucket["net_pnl"]=round(bucket["net_pnl"],2)
+            strategy_regime_performance.append(bucket)
+        regime_performance.sort(key=lambda x:x["trades"],reverse=True)
+        strategy_regime_performance.sort(key=lambda x:(x["trades"],x["net_pnl"]),reverse=True)
+
         weights=self._request("GET","alzool_engine_weights?client_id=eq."+cid+"&select=strategy_id,weight&order=strategy_id.asc")
         terminal_rows=self._request("GET","alzool_engine_terminal_state?client_id=eq."+cid+"&select=payload,updated_at&limit=1")
         live_rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+"&select=payload,sequence,source_time,received_at&order=received_at.desc&limit=1")
@@ -474,6 +514,7 @@ class EngineGateway:
                         "reason_ar":(payload or {}).get("reason_ar"),"confidence":(payload or {}).get("confidence"),
                         "created_at":(payload or {}).get("created_at"),"expires_at":(payload or {}).get("expires_at")} if payload else None,
             "outcomes":outcomes,"weights":weights,"outcome_count":len(outcomes),
+            "regime_performance":regime_performance,"strategy_regime_performance":strategy_regime_performance,
             "terminal_state":terminal_state,"client_revoked":revoked
         }
 
