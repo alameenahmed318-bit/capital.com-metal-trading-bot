@@ -816,7 +816,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(direction=="BUY")
    {
       price=tick.ask;
-      if(g_cfg_order_mode=="Pending Order")
+      if(!recovery_order && g_cfg_order_mode=="Pending Order")
       {
          price=NormalizeDouble(tick.ask+MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
@@ -831,7 +831,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    else
    {
       price=tick.bid;
-      if(g_cfg_order_mode=="Pending Order")
+      if(!recovery_order && g_cfg_order_mode=="Pending Order")
       {
          price=NormalizeDouble(tick.bid-MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
@@ -1588,6 +1588,17 @@ void ManageAddonCooling()
    if(!CheckTradingControl()) return;
    int buys=0,sells=0;
    CountOurPositions(buys,sells);
+   if(g_cfg_recovery_enabled)
+   {
+      for(int r=PositionsTotal()-1;r>=0;r--)
+      {
+         ulong recovery_ticket=PositionGetTicket(r);
+         if(recovery_ticket==0 || !PositionSelectByTicket(recovery_ticket)) continue;
+         if(PositionGetString(POSITION_SYMBOL)==_Symbol &&
+            (ulong)PositionGetInteger(POSITION_MAGIC)==InpMagic &&
+            StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) return;
+      }
+   }
    string direction=g_last_decision;
    int group_count=(direction=="BUY" ? buys : sells);
    if(group_count<=0)
