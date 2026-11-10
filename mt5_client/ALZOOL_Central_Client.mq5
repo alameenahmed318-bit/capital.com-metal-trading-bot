@@ -1224,14 +1224,18 @@ void SendLiveState()
 {
    static ulong last_send_ms=0;
    static ulong sequence=0;
+   static long last_tick_time_msc=0;
    ulong now_ms=GetTickCount64();
-   if(last_send_ms>0 && now_ms-last_send_ms<1000) return;
    if(InpEngineId=="" || InpEngineToken=="") return;
-   last_send_ms=now_ms;
-   sequence++;
 
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0 || tick.ask<tick.bid) return;
+   // Push immediately after a changed MT5 tick (within the 250 ms timer);
+   // keep a 1-second heartbeat when the market is quiet.
+   if(last_send_ms>0 && tick.time_msc==last_tick_time_msc && now_ms-last_send_ms<1000) return;
+   last_send_ms=now_ms;
+   last_tick_time_msc=tick.time_msc;
+   sequence++;
    MqlRates current[];
    ArraySetAsSeries(current,true);
    bool has_candle=(CopyRates(_Symbol,PERIOD_CURRENT,0,1,current)==1);
@@ -1401,7 +1405,8 @@ int OnInit()
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
 
-   EventSetTimer(1);
+   // High-resolution telemetry timer; maintenance tasks remain throttled below.
+   EventSetMillisecondTimer(250);
    g_status="Starting central server connection check";
    Print("AL-ZOOL Central Client initialized on ",_Symbol,
          ". Checking server connection...");
@@ -1526,6 +1531,15 @@ void ManageAddonCooling()
 
 void OnTimer()
 {
+   // Live MT5 snapshot is sent first, independently of slower maintenance work.
+   SendLiveState();
+
+   // Keep account/history, settings, control and strategy polling at 1-second cadence.
+   static ulong last_maintenance_ms=0;
+   ulong now_ms=GetTickCount64();
+   if(last_maintenance_ms>0 && now_ms-last_maintenance_ms<1000) return;
+   last_maintenance_ms=now_ms;
+
    PollCentralSettings();
    ManageSettingsProfitLoss();
    ManageLocalProtection();
@@ -1537,7 +1551,6 @@ void OnTimer()
    PollCentralEngine();
    ManageAiLossGuard();
    ManageAddonCooling();
-   SendLiveState();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
