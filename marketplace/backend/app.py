@@ -122,6 +122,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"settings":ENGINE.settings_for_user(u["id"])})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
+        if self.path=="/api/engine/live":
+            try:
+                u=current_user(token_of(self))
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                return self.send_json(200,ENGINE.live_state_for_user(u["id"]))
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
         if self.path=="/api/engine/workspace":
             try:
                 u=current_user(token_of(self))
@@ -190,6 +199,9 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 result=ENGINE.market(client_id,token_of(self),data)
                 return self.send_json(200,result)
+            path_parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
+            if len(path_parts)==4 and path_parts[:3]==["v1","terminal-state","live"]:
+                return self.send_json(200,ENGINE.terminal_state_live(path_parts[3],token,data))
             if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","terminal-state"]:
                 client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
                 return self.send_json(200,ENGINE.terminal_state(client_id,token_of(self),data))
