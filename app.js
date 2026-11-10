@@ -13,17 +13,7 @@ $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventLis
 async function loadClients(){$("clientsList").innerHTML='<p class="muted">جاري تحميل الحسابات...</p>';try{const d=await api("/api/admin/clients"),rows=d.clients||[];$("clientCount").textContent=rows.length;$("activeCount").textContent=rows.filter(x=>x.active).length;$("clientsList").innerHTML=rows.length?rows.map(c=>'<div class="client-row"><div class="client-info"><b>'+esc(c.name||c.email)+'</b><small>'+esc(c.email)+'</small><span class="tag '+(c.active?"":"off")+'">'+(c.active?"نشط":"موقوف")+'</span></div><div class="client-actions"><button data-action="toggle" data-id="'+esc(c.id)+'" data-active="'+c.active+'">'+(c.active?"إيقاف":"تفعيل")+'</button><button class="danger" data-action="delete" data-id="'+esc(c.id)+'">حذف</button></div></div>').join(""):'<p class="muted">لا يوجد عملاء حتى الآن.</p>'}catch(e){$("clientsList").innerHTML='<p class="error">'+esc(e.message)+'</p>'}}
 $("clientsList").addEventListener("click",async e=>{const b=e.target.closest("button[data-action]");if(!b)return;try{if(b.dataset.action==="delete"){if(!confirm("تأكيد حذف حساب العميل؟ لن يستطيع تسجيل الدخول بعد الحذف."))return;await api("/api/admin/clients/"+b.dataset.id,"DELETE")}else{await api("/api/admin/clients/"+b.dataset.id,"PATCH",{active:b.dataset.active!=="true"})}await loadClients()}catch(x){alert(x.message)}});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();err("createError","");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials=d;$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("credentialBox").classList.remove("hidden");$("clientName").value="";$("clientEmail").value="";await loadClients()}catch(x){err("createError",x.message)}});
-$("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const engine=latestCredentials.engine||{};const t="AL-ZOOL GOLD SNIPER
-بيانات دخول العميل
-البريد الإلكتروني: "+latestCredentials.email+"
-كلمة المرور: "+latestCredentials.password+"
-
-بيانات ربط محرك MT5
-رابط السيرفر: "+(latestCredentials.engine_server_url||"https://al-zool-gold-sniper.onrender.com")+"
-Client ID: "+(engine.client_id||"غير متوفر")+"
-Client Token: "+(engine.client_token||"غير متوفر")+"
-
-في MT5 أضف رابط السيرفر إلى قائمة WebRequest المسموحة، ثم أدخل الرابط وClient ID وClient Token في إعدادات AL-ZOOL Central Client. لا تشارك هذا الملف مع أي شخص غير صاحب الحساب. احتفظ بالرمز السري بسرية.";const blob=new Blob(["\ufeff"+t],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="AL-ZOOL-client-access.txt";a.click();URL.revokeObjectURL(url)});
+$("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const engine=latestCredentials.engine||{};const t="AL-ZOOL GOLD SNIPER\nبيانات دخول العميل\nالبريد الإلكتروني: "+latestCredentials.email+"\nكلمة المرور: "+latestCredentials.password+"\n\nبيانات ربط محرك MT5\nرابط السيرفر: "+(latestCredentials.engine_server_url||"https://al-zool-gold-sniper.onrender.com")+"\nClient ID: "+(engine.client_id||"غير متوفر")+"\nClient Token: "+(engine.client_token||"غير متوفر")+"\n\nفي MT5 أضف رابط السيرفر إلى قائمة WebRequest المسموحة، ثم أدخل الرابط وClient ID وClient Token في إعدادات AL-ZOOL Central Client. لا تشارك هذا الملف مع أي شخص غير صاحب الحساب. احتفظ بالرمز السري بسرية.";const blob=new Blob(["\ufeff"+t],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="AL-ZOOL-client-access.txt";a.click();URL.revokeObjectURL(url)});
 start();
 
 /* AL-ZOOL web trading workspace — navigation shell; live execution remains locked until engine/MT5 validation. */
@@ -173,13 +163,7 @@ async function afterLogin(){
    let btn=$("openOwnerDashboard");if(!btn){btn=document.createElement("button");btn.id="openOwnerDashboard";btn.className="btn primary";btn.textContent="فتح لوحة التداول";$("adminView").querySelector(".welcome").appendChild(btn)}
    btn.onclick=()=>{activeDashboardPage="home";renderDashboard();show("dashboardView")};
    let ownerEngineBtn=$("ownerEngineCredentials");if(!ownerEngineBtn){ownerEngineBtn=document.createElement("button");ownerEngineBtn.id="ownerEngineCredentials";ownerEngineBtn.className="btn secondary";ownerEngineBtn.textContent="إصدار بيانات ربط حساب المالك لـ MT5";$("adminView").querySelector(".welcome").appendChild(ownerEngineBtn)}
-   ownerEngineBtn.onclick=async()=>{if(!confirm("سيتم إصدار/تجديد بيانات ربط محرك حساب المالك. أي بيانات مالك سابقة ستتوقف. هل تتابع؟"))return;ownerEngineBtn.disabled=true;try{const d=await api("/api/owner/engine-credentials","POST",{});const e=d.engine||{};const t="AL-ZOOL GOLD SNIPER
-بيانات ربط محرك حساب المالك
-Server URL: "+d.engine_server_url+"
-Owner Engine ID: "+e.client_id+"
-Owner Engine Token: "+e.client_token+"
-
-احتفظ بهذا الملف بسرية. أدخل القيم في InpEngineId و InpEngineToken داخل MT5.";const blob=new Blob(["\ufeff"+t],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="AL-ZOOL-owner-engine-access.txt";a.click();URL.revokeObjectURL(url);alert("تم إصدار بيانات ربط المالك وتنزيل الملف. أدخلها في MT5.");}catch(e){alert(e.message)}finally{ownerEngineBtn.disabled=false}};
+   ownerEngineBtn.onclick=async()=>{if(!confirm("سيتم إصدار/تجديد بيانات ربط محرك حساب المالك. أي بيانات مالك سابقة ستتوقف. هل تتابع؟"))return;ownerEngineBtn.disabled=true;try{const d=await api("/api/owner/engine-credentials","POST",{});const e=d.engine||{};const t="AL-ZOOL GOLD SNIPER\nبيانات ربط محرك حساب المالك\nServer URL: "+d.engine_server_url+"\nOwner Engine ID: "+e.client_id+"\nOwner Engine Token: "+e.client_token+"\n\nاحتفظ بهذا الملف بسرية. أدخل القيم في InpEngineId و InpEngineToken داخل MT5.";const blob=new Blob(["\ufeff"+t],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="AL-ZOOL-owner-engine-access.txt";a.click();URL.revokeObjectURL(url);alert("تم إصدار بيانات ربط المالك وتنزيل الملف. أدخلها في MT5.");}catch(e){alert(e.message)}finally{ownerEngineBtn.disabled=false}};
   }else{dashboardRole="client";activeDashboardPage="home";renderDashboard();show("dashboardView")}
  }catch(e){await sb.auth.signOut();session=null;show("loginView");err("loginError",e.message)}
 }
