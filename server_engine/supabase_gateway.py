@@ -171,7 +171,7 @@ class EngineGateway:
         stamp = datetime.fromtimestamp(created_at, timezone.utc).isoformat() if created_at else datetime.now(timezone.utc).isoformat()
         row = {"event_id": str(event_id)[:180], "client_id": client_id, "event_type": str(event_type)[:40],
                "payload": payload if isinstance(payload, dict) else {}, "created_at": stamp}
-        self._request("POST", "alzool_engine_signal_events", row, "resolution=ignore-duplicates,return=minimal")
+        self._request("POST", "alzool_engine_signal_events?on_conflict=event_id", row, "resolution=ignore-duplicates,return=minimal")
 
     def ingest_signal_events(self, client_id, token, events):
         if not self._client(client_id, token):
