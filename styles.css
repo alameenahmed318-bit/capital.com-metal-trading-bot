@@ -161,3 +161,14 @@ body.client-theme .dash-nav[data-page^="settings_"]{color:#51466d}
 body.owner-theme .basic-setting-group{background:linear-gradient(145deg,#1d1730,#13101f);border-color:#39295f}
 body.owner-theme .basic-setting-toggle{background:#171329;border-color:#39295f}
 @media(max-width:600px){.basic-setting-grid{grid-template-columns:1fr}.basic-setting-actions{align-items:flex-start;flex-direction:column}#licenseClientsList .catalog-row{align-items:flex-start}}
+
+/* Profit/loss semantic colors — shared by open trades and floating P/L */
+.open-pnl-positive{color:#e879c8!important;font-weight:800;font-variant-numeric:tabular-nums}
+.open-pnl-negative{color:#ef4444!important;font-weight:800;font-variant-numeric:tabular-nums}
+.open-pnl-zero{color:var(--muted,#8b8798)!important;font-weight:700;font-variant-numeric:tabular-nums}
+.open-floating-summary{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:15px 18px;margin:0 0 14px;border:1px solid var(--line,#ddd);border-radius:14px;background:rgba(128,91,180,.07)}
+.open-floating-summary>span{font-size:13px;font-weight:700}
+.open-floating-summary strong{font-size:20px}
+.open-position-row{align-items:flex-start}
+.open-position-row small{line-height:1.8}
+#livePageData:empty{display:none}
