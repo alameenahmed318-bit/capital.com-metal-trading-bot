@@ -162,7 +162,7 @@ async function afterLogin(){
 }
 
 async function refreshLiveTelemetry(){
- if(liveTelemetryBusy || !session || dashboardRole!=="client")return;
+ if(liveTelemetryBusy || !session)return;
  liveTelemetryBusy=true;
  try{
   const d=await api("/api/engine/live"),state=d.live_state||{},account=state.account||{},tick=state.tick||{},candle=state.forming_candle||{},positions=state.positions||[];
