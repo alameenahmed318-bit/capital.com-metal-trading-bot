@@ -4,7 +4,7 @@
 //| Strategy logic remains on the owner's central server.            |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.04"
+#property version   "1.05"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
@@ -752,8 +752,9 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
                        const string reason,const int strategy_id,const double lot_override=0.0,
                        const bool recovery_order=false)
 {
-   // Fail closed: a trade requires both a confirmed live health check and
-   // a freshly verified, signed decision from the central engine.
+   // All orders require live server health, dashboard permission and a
+   // previously verified signed decision. Ordinary entries also require that
+   // decision to be unexpired; recovery additionally requires a live reversal.
    if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; RecordBlockedSignal(decision_id,"settings","إعدادات لوحة التحكم لم تصل بعد"); return false; }
    if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; RecordBlockedSignal(decision_id,"daily-loss","تم بلوغ حد الخسارة اليومي"); return false; }
    if(!recovery_order && (g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at))
