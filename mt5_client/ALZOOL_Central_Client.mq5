@@ -1473,59 +1473,39 @@ void ManageAiLossGuard()
 
 void ManageSmartRecovery()
 {
-   if(!g_settings_loaded || !g_cfg_recovery_enabled || !g_trading_enabled ||
-      !g_server_online || !g_decision_verified ||
-      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
-      return;
+   if(!g_cfg_recovery_enabled) return;
 
    int buys=0,sells=0;
    int total=CountOurPositions(buys,sells);
    if(total<=0) { g_last_recovery_bar_time=0; return; }
-   // Recovery is for one-direction baskets only. Never average a mixed BUY/SELL basket.
-   if(buys>0 && sells>0) return;
-   string direction=(buys>0 ? "BUY" : "SELL");
-   int group_count=(direction=="BUY" ? buys : sells);
-   if(group_count<g_cfg_recovery_min_positions) return;
 
+   // Basket exit remains local and active even if the server is offline or trading is paused.
    int recovery_open=0;
-   double floating=0.0,projected_existing=0.0;
-   MqlTick tick;
-   if(!SymbolInfoTick(_Symbol,tick)) return;
-   double atr=0.0;
-   if(!GetATR(atr)) return;
-   double target_price=(direction=="BUY"
-      ? tick.bid+atr*g_cfg_recovery_atr_distance
-      : tick.ask-atr*g_cfg_recovery_atr_distance);
-   ENUM_ORDER_TYPE order_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
-
+   double floating=0.0;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
          (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
-      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      if((direction=="BUY" && type!=POSITION_TYPE_BUY) ||
-         (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
-
       floating+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
       if(StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) recovery_open++;
-
-      double projected=0.0;
-      ENUM_ORDER_TYPE existing_type=(type==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
-      if(!OrderCalcProfit(existing_type,_Symbol,PositionGetDouble(POSITION_VOLUME),
-                          PositionGetDouble(POSITION_PRICE_OPEN),target_price,projected))
-         return;
-      projected_existing+=projected+PositionGetDouble(POSITION_SWAP);
    }
-
-   // Once a recovery entry exists, close the whole basket together at its net target.
    if(recovery_open>0 && floating>=g_cfg_recovery_target_profit)
    {
       CloseOurPositions("Smart recovery basket target reached");
       return;
    }
-   if(recovery_open>=g_cfg_recovery_max_entries) return;
+
+   // New recovery entries require fresh server authorization and a live signed decision.
+   if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
+      g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
+      return;
+   if(buys>0 && sells>0) return; // never recover a mixed-direction basket
+
+   string direction=(buys>0 ? "BUY" : "SELL");
+   int group_count=(direction=="BUY" ? buys : sells);
+   if(group_count<g_cfg_recovery_min_positions || recovery_open>=g_cfg_recovery_max_entries) return;
    if(floating>-g_cfg_recovery_trigger_loss) return;
    if(g_last_decision!=direction || g_last_confidence<g_cfg_recovery_min_confidence) return;
    double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
@@ -1539,6 +1519,33 @@ void ManageSmartRecovery()
 
    datetime current_bar=iTime(_Symbol,PERIOD_CURRENT,0);
    if(current_bar<=0 || current_bar==g_last_recovery_bar_time) return;
+
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) return;
+   double atr=0.0;
+   if(!GetATR(atr)) return;
+   double target_price=(direction=="BUY"
+      ? tick.bid+atr*g_cfg_recovery_atr_distance
+      : tick.ask-atr*g_cfg_recovery_atr_distance);
+   ENUM_ORDER_TYPE order_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+   double projected_existing=0.0;
+
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if((direction=="BUY" && type!=POSITION_TYPE_BUY) ||
+         (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
+      double projected=0.0;
+      ENUM_ORDER_TYPE existing_type=(type==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+      if(!OrderCalcProfit(existing_type,_Symbol,PositionGetDouble(POSITION_VOLUME),
+                          PositionGetDouble(POSITION_PRICE_OPEN),target_price,projected))
+         return;
+      projected_existing+=projected+PositionGetDouble(POSITION_SWAP);
+   }
 
    double entry_price=(direction=="BUY" ? tick.ask : tick.bid);
    double one_lot_profit=0.0;
@@ -1572,7 +1579,6 @@ void ManageSmartRecovery()
       g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(lots,2);
    }
 }
-
 void ManageAddonCooling()
 {
    if(!g_settings_loaded || !g_trading_enabled || !g_server_online || !g_decision_verified ||
