@@ -12,3 +12,75 @@
 .open-position .open-pnl-line strong.open-pnl-positive{color:#2563eb!important;font-weight:900!important}
 .open-position .open-pnl-line strong.open-pnl-negative{color:#dc2626!important;font-weight:900!important}
 .open-position .open-pnl-line strong.open-pnl-zero{color:#64748b!important;font-weight:900!important}
+
+
+/* AL-ZOOL dual workspace refresh: premium owner dark / clean client light */
+body.owner-theme{--bg:#0d0b19;--panel:#171329;--line:#35275a;--muted:#aaa3c2;--purple:#a78bfa;--white:#f8f6ff;background:radial-gradient(ellipse at 12% 8%,#4b2b8850,transparent 34%),radial-gradient(ellipse at 90% 90%,#39246a45,transparent 38%),#0d0b19}
+body.owner-theme .wrap{max-width:1500px}
+body.owner-theme .dash-top,body.owner-theme .dash-side,body.owner-theme .dash-cards article,body.owner-theme .dash-panel,body.owner-theme .panel,body.owner-theme .stat{background:linear-gradient(145deg,#1c1733,#131123);border-color:#39295f;box-shadow:0 16px 40px #05030d55}
+body.owner-theme .dash-nav.selected{background:linear-gradient(100deg,#6843c6,#39236d);box-shadow:inset -3px 0 #c4a8ff,0 5px 18px #6b45c455}
+body.owner-theme .dash-nav:hover{background:#2b2148}
+body.owner-theme .dash-brand span,body.owner-theme .dash-heading small{color:#b9a1ff}
+body.owner-theme .market-tag,body.owner-theme .engine-pill{background:#241b3b;border-color:#59418b;color:#d9caff}
+body.owner-theme #adminView .welcome{padding:26px 28px;border:1px solid #39295f;border-radius:22px;background:linear-gradient(115deg,#21183d,#151126);box-shadow:0 18px 45px #05030d55}
+body.owner-theme #adminView .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.owner-theme #adminView .stat{border-radius:18px}
+body.owner-theme #adminView .admin-grid{grid-template-columns:minmax(280px,.85fr) minmax(420px,1.15fr)}
+body.owner-theme #adminView .panel{border-radius:20px}
+body.owner-theme #adminView .clients-list{max-height:520px}
+body.owner-theme #adminView .notice{background:#241b37;border-color:#57417f;color:#d7cbea}
+body.owner-theme #adminView .btn.primary{background:linear-gradient(100deg,#986cff,#6541c5)}
+body.owner-theme #adminView .btn.secondary{background:#30234d;border-color:#69519c}
+body.owner-theme #adminView .btn.ghost{background:#241d39;border-color:#4a3b6c}
+body.owner-theme #adminView input{background:#100d1d;border-color:#463663}
+body.owner-theme .dash-heading h1{font-size:29px}
+body.owner-theme .dash-cards article{border-radius:17px}
+body.owner-theme .dash-panel{border-radius:18px}
+body.owner-theme .catalog-list{border-color:#382b58;background:#110e20}
+body.owner-theme .catalog-row{border-color:#2e2449}
+body.owner-theme footer{color:#9287b0}
+
+body.client-theme{color-scheme:light;--bg:#f5f3fb;--panel:#fff;--line:#e4def2;--muted:#77718b;--purple:#7650d5;--white:#241b3b;background:radial-gradient(ellipse at 8% 0%,#e6dcff 0,transparent 38%),radial-gradient(ellipse at 100% 100%,#eee7ff 0,transparent 38%),#f7f6fb;color:#241b3b}
+body.client-theme .wrap{max-width:1440px}
+body.client-theme .dash-top{background:#fff;border:1px solid #e7e0f4;box-shadow:0 12px 35px #4c347d12;border-radius:20px}
+body.client-theme .dash-side{background:#fff;border:1px solid #e7e0f4;box-shadow:0 12px 35px #4c347d10;border-radius:20px}
+body.client-theme .dash-user{color:#7650d5;border-color:#eee8f7}
+body.client-theme .dash-nav{color:#51466d}
+body.client-theme .dash-nav span{color:#8564d8}
+body.client-theme .dash-nav.selected{background:linear-gradient(100deg,#8c63ed,#6844c7);color:#fff;box-shadow:0 7px 18px #805bdc35}
+body.client-theme .dash-nav.selected span{color:#fff}
+body.client-theme .dash-nav:hover{background:#f0ebfb;color:#4b2f91}
+body.client-theme .dash-brand{color:#30204f}
+body.client-theme .dash-brand span,body.client-theme .dash-heading small{color:#7650d5}
+body.client-theme .dash-top small,body.client-theme .dash-heading h1{color:#30204f}
+body.client-theme .engine-pill,body.client-theme .market-tag{background:#f4efff;border-color:#e1d5fb;color:#6241ad}
+body.client-theme .dash-cards article,body.client-theme .dash-panel{background:#fff;border:1px solid #e7e0f4;box-shadow:0 10px 28px #4c347d0d;border-radius:17px;color:#30204f}
+body.client-theme .dash-cards small,body.client-theme .dash-panel>p,body.client-theme .muted{color:#77718b}
+body.client-theme .dash-cards b,body.client-theme .dash-panel h3,body.client-theme .dash-panel h4{color:#30204f}
+body.client-theme .catalog-list{background:#fbfaff;border-color:#e8e1f3}
+body.client-theme .catalog-row{border-color:#eee8f7;color:#30204f}
+body.client-theme .catalog-row small{color:#77718b}
+body.client-theme .family-item{background:#faf8ff;border-color:#e8e1f3;color:#30204f}
+body.client-theme .family-item span{color:#7650d5}
+body.client-theme .engine-wait{background:#f8f5ff;border-color:#d9c9f5}
+body.client-theme .engine-wait b{color:#4b3280}
+body.client-theme .engine-wait p,body.client-theme .engine-wait small{color:#77718b}
+body.client-theme .trade-lock{background:#fff8fa;border-color:#f0d7df;color:#543344}
+body.client-theme .trade-lock b{color:#9c3d59}
+body.client-theme .trade-lock p,body.client-theme #tradeControlNote{color:#765c69}
+body.client-theme .trade-actions .dash-btn{background:#7650d5;border-color:#7650d5;color:#fff}
+body.client-theme .trade-actions #disableTradingBtn{background:#fff0f2;border-color:#e8bac5;color:#a13f58}
+body.client-theme .basic-setting-group{background:#fff;border-color:#e8e1f3}
+body.client-theme .basic-setting-group h4{color:#4b3280}
+body.client-theme .basic-setting-field,body.client-theme .basic-setting-toggle{color:#51466d}
+body.client-theme .basic-setting-field input,body.client-theme .basic-setting-field select,body.client-theme .basic-setting-toggle input{background:#faf8ff;border-color:#e2d9f0;color:#30204f}
+body.client-theme .dash-btn{background:#7650d5;color:#fff;border-color:#7650d5}
+body.client-theme .combo-details{border-color:#e8e1f3}
+body.client-theme .combo-details summary{color:#6241ad}
+body.client-theme .open-position .open-pnl-line strong.open-pnl-positive{color:#2563eb!important}
+body.client-theme .open-position .open-pnl-line strong.open-pnl-negative{color:#dc2626!important}
+body.client-theme footer{color:#89819c}
+body.client-theme .dash-heading{margin-top:12px}
+body.client-theme .dash-main{min-width:0}
+@media(max-width:850px){body.owner-theme #adminView .admin-grid{grid-template-columns:1fr}body.owner-theme #adminView .stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){body.client-theme .dash-side{background:#fff}body.client-theme .dash-top{padding:14px}}
