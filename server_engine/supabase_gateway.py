@@ -319,6 +319,50 @@ class EngineGateway:
         self._request("POST","alzool_engine_terminal_state",row,"resolution=merge-duplicates,return=minimal")
         return {"accepted":True,"positions":len(payload["positions"]),"orders":len(payload["orders"])}
 
+    def terminal_state_live(self, client_id, token, data):
+        client=self._client(client_id,token)
+        if not client: raise PermissionError("client authorization failed")
+        if not isinstance(data,dict): raise ValueError("live state must be an object")
+        account=data.get("account") or {}
+        positions=data.get("positions",[])
+        orders=data.get("orders",[])
+        if not isinstance(account,dict) or not isinstance(positions,list) or not isinstance(orders,list):
+            raise ValueError("invalid live account or trade arrays")
+        if len(positions)>200 or len(orders)>200: raise ValueError("too many live trade records")
+        try: sequence=int(data.get("sequence",0))
+        except (TypeError,ValueError,OverflowError): raise ValueError("invalid sequence") from None
+        if sequence<0: raise ValueError("invalid sequence")
+        try:
+            epoch=float(data.get("source_time",0) or 0)
+            source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
+        except (TypeError,ValueError,OverflowError,OSError): source_time=None
+        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence")}
+        received=datetime.now(timezone.utc).isoformat()
+        row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
+             "received_at":received,"updated_at":received}
+        self._request("POST","alzool_engine_live_state",row,"resolution=merge-duplicates,return=minimal")
+        return {"accepted":True,"sequence":sequence,"received_at":received}
+
+    def live_state_for_user(self, user_id):
+        clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+
+                              "&select=client_id,revoked,trading_enabled&limit=1")
+        if not clients: return {"connected":False,"reason":"credentials_not_issued","live_state":None}
+        client=clients[0]
+        cid=urllib.parse.quote(client["client_id"],safe="")
+        rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
+                           "&select=payload,sequence,source_time,received_at&limit=1")
+        row=rows[0] if rows else None
+        stamp=(row or {}).get("received_at")
+        try: received=datetime.fromisoformat(stamp.replace("Z","+00:00")).timestamp() if stamp else 0
+        except Exception: received=0
+        age_ms=max(0,int((time.time()-received)*1000)) if received else None
+        revoked=bool(client.get("revoked"))
+        fresh=age_ms is not None and age_ms<=5000 and not revoked
+        return {"connected":fresh,"reason":"live_data_recent" if fresh else ("no_live_data" if not row else "live_data_stale"),
+                "trading_enabled":bool(client.get("trading_enabled",False)) and not revoked,
+                "sequence":(row or {}).get("sequence"),"source_time":(row or {}).get("source_time"),
+                "received_at":stamp,"age_ms":age_ms,"live_state":(row or {}).get("payload")}
+
     def workspace_for_user(self, user_id, limit=100):
         """Return persisted engine intelligence for the authenticated dashboard user."""
         clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
