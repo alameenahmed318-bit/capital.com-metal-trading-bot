@@ -844,13 +844,13 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       else
       {
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price-stop_distance,digits) : 0.0);
-         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : "AZS"+IntegerToString(strategy_id)));
+         sent=trade.Buy(lots,_Symbol,0.0,sl,0.0,(recovery_order ? "AZR_RECOVERY" : (management_order ? "AZS_MANAGEMENT" : "AZS"+IntegerToString(strategy_id))));
       }
    }
    else
    {
       price=tick.bid;
-      if(!recovery_order && g_cfg_order_mode=="Pending Order")
+      if(!recovery_order && !management_order && g_cfg_order_mode=="Pending Order")
       {
          price=NormalizeDouble(tick.bid-MathMax(g_cfg_pending_distance,min_distance),digits);
          sl=(g_cfg_fixed_sl_enabled ? NormalizeDouble(price+stop_distance,digits) : 0.0);
