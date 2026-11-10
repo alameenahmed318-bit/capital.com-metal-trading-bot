@@ -79,6 +79,9 @@ string g_cfg_order_mode="Market Order", g_cfg_strategy_mode="AUTO — Best curre
 bool g_daily_loss_paused=false;
 string g_daily_loss_date="";
 
+void SendSignalEvent(const string event_id,const string event_type,const string payload);
+void RecordBlockedSignal(const string decision_id,const string key,const string reason);
+
 string ServerBaseUrl()
 {
    string url=InpServerUrl;
@@ -710,25 +713,28 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
 {
    // Fail closed: a trade requires both a confirmed live health check and
    // a freshly verified, signed decision from the central engine.
-   if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; return false; }
-   if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; return false; }
+   if(!g_settings_loaded) { g_status="Entry blocked / dashboard settings not loaded"; RecordBlockedSignal(decision_id,"settings","إعدادات لوحة التحكم لم تصل بعد"); return false; }
+   if(g_daily_loss_paused) { g_status="Entry blocked / daily loss limit reached"; RecordBlockedSignal(decision_id,"daily-loss","تم بلوغ حد الخسارة اليومي"); return false; }
    if(g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at)
    {
       g_status="Entry blocked / signed decision expired";
+      RecordBlockedSignal(decision_id,"expired","انتهت صلاحية الإشارة الموقعة قبل التنفيذ");
       return false;
    }
    if(!g_server_online || !g_decision_verified)
    {
       g_status="Entry blocked / central server or signed decision not confirmed";
+      RecordBlockedSignal(decision_id,"server","السيرفر أو توقيع القرار غير مؤكد");
       return false;
    }
    if(!CheckTradingControl(true))
    {
       g_status="Trading disabled from dashboard / no new entries";
+      RecordBlockedSignal(decision_id,"trading-off","التداول الآلي متوقف من لوحة التحكم");
       return false;
    }
-   if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; return false; }
-   if(direction=="SELL" && !InpAllowSell) { g_status="SELL disabled"; return false; }
+   if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل في إعدادات MT5"); return false; }
+   if(direction=="SELL" && !InpAllowSell) { g_status="SELL disabled"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل في إعدادات MT5"); return false; }
    if(direction!="BUY" && direction!="SELL") return false;
    if(strategy_id<1 || strategy_id>200) { g_status="Invalid strategy id"; return false; }
    if(decision_id=="" || decision_id==g_last_decision_id) return false;
@@ -738,11 +744,13 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(InpMaxSpreadPoints>0 && current_spread>InpMaxSpreadPoints)
    {
       g_status="Spread widened after server decision";
+      RecordBlockedSignal(decision_id,"spread","اتسع السبريد بعد صدور الإشارة وتجاوز الحد المسموح");
       return false;
    }
    if(g_cfg_one_direction && HasOppositePosition(direction))
    {
       g_status="Opposite position exists";
+      RecordBlockedSignal(decision_id,"opposite","توجد صفقة في الاتجاه المعاكس؛ تم منع الدخول");
       return false;
    }
 
@@ -751,6 +759,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(g_cfg_max_positions>0 && current_positions>=g_cfg_max_positions)
    {
       g_status="Maximum positions reached (dashboard setting)";
+      RecordBlockedSignal(decision_id,"max-positions","تم بلوغ الحد الأقصى لعدد الصفقات");
       return false;
    }
 
@@ -769,6 +778,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(InpRequireBrokerStops && g_cfg_fixed_sl_enabled && stop_distance<min_distance)
    {
       g_status="Broker stop distance too small";
+      RecordBlockedSignal(decision_id,"stops","مسافة وقف الخسارة أقل من الحد الذي يسمح به الوسيط");
       return false;
    }
 
@@ -831,9 +841,18 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       GlobalVariableSet(g_global_bar_key,(double)g_last_bar_time);
       g_status=direction+" opened / strategy "+IntegerToString(strategy_id);
       g_last_reason=reason;
+      string sent_payload="{\"decision_id\":\""+JsonSafe(decision_id)+"\",\"side\":\""+direction+
+         "\",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"order_id\":\""+(string)order_ticket+
+         "\",\"volume\":"+DoubleToString(lots,2)+",\"price\":"+DoubleToString(price,digits)+
+         ",\"strategy_id\":"+IntegerToString(strategy_id)+",\"reason_ar\":\""+JsonSafe(reason)+"\"}";
+      SendSignalEvent(decision_id+"_order-sent","ORDER_SENT",sent_payload);
       return true;
    }
    g_status="Order rejected: "+trade.ResultRetcodeDescription();
+   string reject_payload="{\"decision_id\":\""+JsonSafe(decision_id)+"\",\"side\":\""+direction+
+      "\",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"volume\":"+DoubleToString(lots,2)+
+      ",\"retcode\":"+IntegerToString((int)rc)+",\"reason_ar\":\""+JsonSafe(trade.ResultRetcodeDescription())+"\"}";
+   SendSignalEvent(decision_id+"_order-rejected","ORDER_REJECTED",reject_payload);
    return false;
 }
 
@@ -951,6 +970,15 @@ void SendSignalEvent(const string event_id,const string event_type,const string 
    int http=WebRequest("POST",ServerBaseUrl()+"/v1/signals/events/"+InpEngineId,
                        headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
    if(http!=200) Print("AL-ZOOL signal event upload failed. HTTP=",http," err=",GetLastError());
+}
+
+void RecordBlockedSignal(const string decision_id,const string key,const string reason)
+{
+   if(decision_id=="") return;
+   string payload="{\"decision_id\":\""+JsonSafe(decision_id)+"\",\"decision\":\""+JsonSafe(g_last_decision)+
+      "\",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"strategy_id\":"+IntegerToString(g_last_strategy_id)+
+      ",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"reason_ar\":\""+JsonSafe(reason)+"\"}";
+   SendSignalEvent(decision_id+"_blocked_"+key,"BLOCKED",payload);
 }
 
 void OnTradeTransaction(const MqlTradeTransaction &trans,
