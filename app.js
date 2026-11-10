@@ -44,7 +44,7 @@ async function loadBasicSettings(){
  basicStrategyCatalog=(c.strategies||[]).map(x=>({value:String(x.id).padStart(3,"0"),label:'#'+String(x.id).padStart(3,"0")+' '+x.name+' — '+x.family}));
  renderBasicSettings({...BASIC_SETTING_DEFAULTS,...(d.settings||{})});
 }
-async function normalizeNumericInput(raw){
+function normalizeNumericInput(raw){
  let value=String(raw??"").trim();
  value=value.replace(/[٠-٩]/g,ch=>String(ch.charCodeAt(0)-1632));
  value=value.replace(/[۰-۹]/g,ch=>String(ch.charCodeAt(0)-1776));
