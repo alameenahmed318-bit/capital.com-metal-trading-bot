@@ -1566,12 +1566,6 @@ void ManageSmartRecovery()
       RecoveryWait("الخسارة الحالية لم تصل إلى حد التفعيل: "+DoubleToString(floating,2));
       return;
    }
-   if(g_last_decision!=direction)
-   {
-      RecoveryWait("اتجاه آخر قرار مركزي لا يطابق اتجاه السلة");
-      return;
-   }
-
    // Read the forming candle for recovery only; ordinary strategy entries
    // continue to use their existing closed-candle rules.
    double candle_strength=0.0,volatility=1.0;
@@ -1587,6 +1581,11 @@ void ManageSmartRecovery()
    // A strong live reversal can qualify even when the previous server
    // confidence/quality snapshot is slightly below its normal threshold.
    bool strong_live_reversal=(candle_strength>=0.45);
+   if(g_last_decision!=direction && !strong_live_reversal)
+   {
+      RecoveryWait("القرار المركزي لا يطابق السلة والارتداد اللحظي ليس قوياً بما يكفي");
+      return;
+   }
    double same_quality=(direction=="BUY" ? g_context_buy_quality : g_context_sell_quality);
    double opposite_quality=(direction=="BUY" ? g_context_sell_quality : g_context_buy_quality);
    if(g_last_confidence<g_cfg_recovery_min_confidence && !strong_live_reversal)
