@@ -84,3 +84,53 @@ body.client-theme .dash-heading{margin-top:12px}
 body.client-theme .dash-main{min-width:0}
 @media(max-width:850px){body.owner-theme #adminView .admin-grid{grid-template-columns:1fr}body.owner-theme #adminView .stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){body.client-theme .dash-side{background:#fff}body.client-theme .dash-top{padding:14px}}
+
+
+/* AL-ZOOL visual redesign v2 — clearly separated owner console and client portal */
+body.owner-theme{background:#0b0915!important;color:#f7f4ff!important}
+body.owner-theme .top{padding:16px 22px;margin:0 0 26px;border:1px solid #35264f;border-radius:20px;background:linear-gradient(110deg,#211638,#100d1d);box-shadow:0 18px 50px #0007}
+body.owner-theme #adminView .welcome{margin:0 0 22px;padding:30px 32px;border-radius:24px;background:linear-gradient(115deg,#35205d,#171128 72%);border:1px solid #61458d;position:relative;overflow:hidden}
+body.owner-theme #adminView .welcome:after{content:"ADMIN CONTROL";position:absolute;left:28px;bottom:20px;font:800 10px Arial;letter-spacing:3px;color:#bda4f655}
+body.owner-theme #adminView .welcome h1{font-size:36px;letter-spacing:-.5px}
+body.owner-theme #adminView .welcome p{color:#c8bddb}
+body.owner-theme #adminView .stats{gap:16px;margin:0 0 20px}
+body.owner-theme #adminView .stat{padding:23px 25px;border-radius:18px;background:linear-gradient(145deg,#211936,#151122);border:1px solid #40305e;min-height:112px}
+body.owner-theme #adminView .stat small{color:#b9abcF}
+body.owner-theme #adminView .stat strong{font-size:30px;color:#e9ddff}
+body.owner-theme #adminView .admin-grid{gap:20px}
+body.owner-theme #adminView .panel{padding:26px;border-radius:20px;background:linear-gradient(145deg,#1d1730,#13101f);border:1px solid #3c2d59}
+body.owner-theme #adminView .panel-head h2{font-size:22px;color:#f7f2ff}
+body.owner-theme #adminView label{color:#d8cce9}
+body.owner-theme #adminView input{padding:14px 16px;border-radius:12px;background:#0e0b18;border-color:#4a3967}
+body.owner-theme #adminView .btn{border-radius:12px;padding:12px 18px}
+body.owner-theme #adminView .btn.primary{box-shadow:0 8px 24px #7545c944}
+body.owner-theme #adminView .clients-list{max-height:540px}
+body.owner-theme #adminView .client-row{padding:16px 8px;border-color:#342747}
+body.owner-theme #adminView .client-info b{font-size:14px;color:#f5efff}
+body.owner-theme #adminView .client-actions button{padding:8px 13px;font-size:11px}
+body.owner-theme #adminView .notice{padding:17px 20px;border-radius:15px}
+body.owner-theme #adminView #openOwnerDashboard,body.owner-theme #adminView #ownerEngineCredentials{margin:8px 0 0 8px}
+body.client-theme{background:#f5f2fb!important;color:#29203e!important}
+body.client-theme .top{padding:15px 20px;margin-bottom:20px;background:#fff;border:1px solid #e7e0f2;border-radius:18px;box-shadow:0 10px 30px #4b347d12}
+body.client-theme .brand strong{color:#30204f}
+body.client-theme .brand small{color:#827995}
+body.client-theme .status{color:#6241a5;border-color:#e2d8f2;background:#f8f5ff}
+body.client-theme .dash-top{padding:22px 26px}
+body.client-theme .dash-layout{grid-template-columns:255px minmax(0,1fr);gap:20px}
+body.client-theme .dash-side{padding:16px}
+body.client-theme .dash-nav{padding:12px 13px;font-size:13px;margin:3px 0}
+body.client-theme .dash-heading h1{font-size:28px}
+body.client-theme .dash-cards article{padding:20px}
+body.client-theme .dash-cards b{font-size:25px}
+body.client-theme .dash-panel{padding:24px}
+body.client-theme .client-status{background:#fff;border:1px solid #e7e0f4;border-radius:22px;padding:30px;box-shadow:0 12px 35px #4c347d10}
+body.client-theme #clientView .welcome{padding:28px 30px;background:linear-gradient(110deg,#fff,#f3edff);border:1px solid #e7def7;border-radius:22px}
+body.client-theme #clientView .welcome h1{color:#30204f;font-size:32px}
+body.client-theme #clientView .welcome p{color:#786d8e}
+body.client-theme .btn.ghost{background:#f3effb;color:#5a4388;border-color:#e1d7f1}
+@media(max-width:800px){
+ body.client-theme .dash-layout{grid-template-columns:1fr}
+ body.owner-theme #adminView .welcome h1,body.client-theme #clientView .welcome h1{font-size:24px}
+ body.owner-theme #adminView .welcome:after{display:none}
+ body.owner-theme #adminView .stats{grid-template-columns:1fr 1fr}
+}
