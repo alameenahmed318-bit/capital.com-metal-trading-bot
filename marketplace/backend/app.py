@@ -89,7 +89,12 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers","Authorization, Content-Type")
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
-        if self.path=="/api/health": return self.send_json(200,{"ok":True,"service":"AL-ZOOL Web"})
+        if self.path=="/api/health":
+            try:
+                engine_health=ENGINE.health()
+                return self.send_json(200,{"ok":True,"service":"AL-ZOOL Web","engine":engine_health})
+            except Exception as e:
+                return self.send_json(503,{"ok":False,"service":"AL-ZOOL Web","engine":"unavailable","error":str(e)[:180]})
         if self.path=="/health":
             try: return self.send_json(200,ENGINE.health())
             except Exception as e: return self.send_json(503,{"service":"AL-ZOOL central engine","status":"setup_required","error":str(e)[:180]})
