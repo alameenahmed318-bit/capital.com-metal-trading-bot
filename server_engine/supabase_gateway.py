@@ -289,6 +289,7 @@ class EngineGateway:
 
     def outcome(self, client_id, token, data):
         if not self._client(client_id,token): raise PermissionError("client authorization failed")
+        if not isinstance(data,dict): raise ValueError("outcome must be an object")
         deal=data.get("deal_id"); sid=data.get("strategy_id"); pnl=data.get("pnl")
         if not isinstance(deal,str) or not deal.strip() or len(deal)>120 or isinstance(sid,bool) or not isinstance(sid,int) or isinstance(pnl,bool):
             raise ValueError("valid deal_id, integer strategy_id and numeric pnl required")
@@ -454,7 +455,7 @@ class EngineGateway:
                 regime_by_position[position_key]=regime
         for event in closed_events:
             event_payload=event.get("payload") or {}
-            deal_key=str(event_payload.get("deal_id") or "").strip()
+            deal_key=str(event_payload.get("learning_id") or event_payload.get("deal_id") or "").strip()
             position_key=str(event_payload.get("position_id") or "").strip()
             if deal_key and position_key:
                 position_by_close_deal[deal_key]=position_key
