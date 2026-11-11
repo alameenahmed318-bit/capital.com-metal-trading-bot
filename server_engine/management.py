@@ -294,6 +294,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         move = abs(candle_close - candle_open)
         if candle_open > 0 and candle_high >= candle_low > 0 and move >= _number(settings.get("candle_chase_min_move"), 0.1):
             candle_orders = [o for o in orders if "AZS_CANDLE" in str(o.get("comment", ""))]
+            candle_orders += [p for p in positions if "AZS_CANDLE" in str(p.get("comment", ""))]
             chase_max = int(_number(settings.get("candle_chase_max_orders"), 1))
             if len(candle_orders) < chase_max:
                 candle_time = str(candle.get("time") or payload.get("sequence", "0"))
@@ -304,14 +305,16 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 lots = _volume(_number(settings.get("lot"), 0.01), payload)
                 if lots > 0 and not buy_exists and len(candle_orders) < chase_max:
                     price = candle_high + distance
-                    tp_distance = _number(settings.get("candle_chase_buy_target"), 1.0)
+                    tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
+                                   if chase_max == 1 else _number(settings.get("candle_chase_buy_target"), 1.0))
                     tp = price + tp_distance if tp_distance > 0 else 0.0
                     return command("PLACE_PENDING", "أمر متابعة شمعة شراء محسوب مركزياً",
                                    direction="BUY", lots=lots, price=price, tp=tp,
                                    comment="AZS_CANDLE_BUY", key="candle_buy_" + candle_time)
                 if lots > 0 and not sell_exists and len(candle_orders) < chase_max:
                     price = candle_low - distance
-                    tp_distance = _number(settings.get("candle_chase_sell_target"), 1.0)
+                    tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
+                                   if chase_max == 1 else _number(settings.get("candle_chase_sell_target"), 1.0))
                     tp = price - tp_distance if tp_distance > 0 else 0.0
                     return command("PLACE_PENDING", "أمر متابعة شمعة بيع محسوب مركزياً",
                                    direction="SELL", lots=lots, price=price, tp=tp,
