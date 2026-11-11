@@ -286,18 +286,24 @@ class EngineGateway:
             if age>5:
                 plan={"action":"WAIT","reason":"بيانات MT5 قديمة؛ لا يصدر أمر إدارة"}
             else:
-                from .management import build_management_command
-                plan=build_management_command(settings,live)
+                decision_payload=self._decision_cache.get(client_id) or {}
+                plan=build_management_command(settings,live,market_decision=decision_payload)
         action=str(plan.get("action","WAIT"))
         command_id=str(plan.get("command_id") or uuid.uuid4().hex)
         ticket=str(plan.get("ticket",""))
         sl=float(plan.get("sl",0.0) or 0.0)
         tp=float(plan.get("tp",0.0) or 0.0)
+        direction=str(plan.get("direction",""))
+        lots=float(plan.get("lots",0.0) or 0.0)
+        price=float(plan.get("price",0.0) or 0.0)
+        comment=str(plan.get("comment","")).replace("|","")[:48]
         expires=float(plan.get("expires_at",time.time()+5.0))
-        signed=(f"{client_id}|{command_id}|{action}|{ticket}|{sl:.8f}|{tp:.8f}|{expires:.6f}")
+        signed=(f"{client_id}|{command_id}|{action}|{ticket}|{sl:.8f}|{tp:.8f}|"
+                f"{direction}|{lots:.8f}|{price:.8f}|{comment}|{expires:.6f}")
         signature=hmac.new(token.encode("utf-8"),signed.encode("utf-8"),hashlib.sha256).hexdigest()
         return {**plan,"client_id":client_id,"command_id":command_id,
-                "ticket":ticket,"sl":sl,"tp":tp,"expires_at":expires,
+                "ticket":ticket,"sl":sl,"tp":tp,"direction":direction,"lots":lots,
+                "price":price,"comment":comment,"expires_at":expires,
                 "signed_payload":signed,"signature":signature}
 
     def status_for_user(self, user_id, stale_after=5):
