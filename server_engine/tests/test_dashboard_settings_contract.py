@@ -7,7 +7,7 @@ GATEWAY = (ROOT / "server_engine" / "supabase_gateway.py").read_text(encoding="u
 DASHBOARD = (ROOT / "app.js").read_text(encoding="utf-8")
 EA = (ROOT / "mt5_client" / "ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
 
-# Every saved trading control must be parsed by the MT5 execution adapter.
+# Dashboard controls own settings; only learning controls are server-only and never sent to MT5 as local inputs.
 SERVER_ONLY_SETTINGS = {"learning_enabled", "learning_rate_percent"}
 NOT_YET_IMPLEMENTED_IN_EA = SERVER_ONLY_SETTINGS
 
