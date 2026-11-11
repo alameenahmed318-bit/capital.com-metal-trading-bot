@@ -326,5 +326,57 @@ class CentralManagementPlannerTests(unittest.TestCase):
         self.assertAlmostEqual(result["lots"], 0.01)
 
 
+    def _recovery_fixture(self, decision, direction_mode="SAME"):
+        positions = [position("1", side=0, volume=0.01, profit=-7),
+                     position("2", side=0, volume=0.02, profit=-7),
+                     position("3", side=0, volume=0.01, profit=-7)]
+        live = snapshot(positions)
+        live["payload"].update({"sequence": 15, "volume_step": 0.01,
+                                "volume_min": 0.01, "volume_max": 100,
+                                "forming_candle": {"open": 2049, "close": 2050}})
+        candles = [{"time": 2000 + i, "open": 2049, "high": 2050,
+                    "low": 2048, "close": 2049.5} for i in range(15)]
+        market = {"decision": decision, "confidence": 0.9, "candles": candles}
+        settings = {"_trading_enabled": True, "global_loss_enabled": False,
+                    "per_trade_profit_enabled": False, "global_profit_enabled": False,
+                    "trailing_enabled": False, "recovery_enabled": True,
+                    "recovery_min_positions": 3, "recovery_trigger_loss": 10,
+                    "recovery_target_profit": 0, "recovery_mode": "AUTO",
+                    "recovery_min_confidence": 0.65,
+                    "recovery_direction_mode": direction_mode}
+        return settings, live, market
+
+    def test_recovery_same_direction_ignores_opposite_market_signal(self):
+        settings, live, market = self._recovery_fixture("SELL", "SAME")
+        result = build_management_command(settings, live, now=1000, market_decision=market)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "BUY")
+        self.assertAlmostEqual(result["lots"], 0.05)
+
+    def test_recovery_opposite_direction_is_explicitly_selected(self):
+        settings, live, market = self._recovery_fixture("SELL", "OPPOSITE")
+        live["payload"]["forming_candle"] = {"open": 2051, "close": 2050}
+        market["candles"] = [{"time": 2000 + i, "open": 2050, "high": 2053,
+                              "low": 2049, "close": 2051} for i in range(15)]
+        result = build_management_command(settings, live, now=1000, market_decision=market)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "SELL")
+
+    def test_recovery_both_directions_follows_central_market_signal(self):
+        settings, live, market = self._recovery_fixture("SELL", "BOTH")
+        live["payload"]["forming_candle"] = {"open": 2051, "close": 2050}
+        market["candles"] = [{"time": 2000 + i, "open": 2050, "high": 2053,
+                              "low": 2049, "close": 2051} for i in range(15)]
+        result = build_management_command(settings, live, now=1000, market_decision=market)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "SELL")
+
+    def test_recovery_auto_lot_uses_only_losing_position_volumes(self):
+        settings, live, market = self._recovery_fixture("BUY", "SAME")
+        live["payload"]["positions"].append(position("4", side=1, volume=0.50, profit=5))
+        result = build_management_command(settings, live, now=1000, market_decision=market)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertAlmostEqual(result["lots"], 0.05)
+
 if __name__ == "__main__":
     unittest.main()
