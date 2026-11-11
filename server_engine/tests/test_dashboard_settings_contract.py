@@ -7,6 +7,8 @@ GATEWAY = (ROOT / "server_engine" / "supabase_gateway.py").read_text(encoding="u
 MANAGEMENT = (ROOT / "server_engine" / "management.py").read_text(encoding="utf-8")
 DASHBOARD = (ROOT / "app.js").read_text(encoding="utf-8")
 EA = (ROOT / "mt5_client" / "ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
+AI_MODULE = (ROOT / "server_engine" / "openai_ai.py").read_text(encoding="utf-8")
+BACKEND = (ROOT / "marketplace" / "backend" / "app.py").read_text(encoding="utf-8")
 
 
 class DashboardSettingsContractTests(unittest.TestCase):
@@ -35,6 +37,16 @@ class DashboardSettingsContractTests(unittest.TestCase):
         self.assertNotIn("recovery_max_entries", MANAGEMENT)
         self.assertNotIn("recovery_max_entries", GATEWAY)
         self.assertIn("recovery_direction_mode", DASHBOARD)
+
+    def test_official_openai_analysis_is_server_side_and_monitor_only(self):
+        self.assertIn("https://api.openai.com/v1/responses", AI_MODULE)
+        self.assertIn('"type": "json_schema"', AI_MODULE)
+        self.assertIn("OPENAI_API_KEY", GATEWAY)
+        self.assertIn("MONITOR_ONLY", GATEWAY)
+        self.assertIn('self._queue_ai_analysis(', GATEWAY)
+        self.assertIn('if self.path=="/api/engine/ai":', BACKEND)
+        self.assertIn('api("/api/engine/ai")', DASHBOARD)
+        self.assertNotIn("OPENAI_API_KEY", DASHBOARD)
 
     def test_mt5_inputs_are_connection_credentials_only(self):
         inputs = set(re.findall(r'^input\s+\w+\s+(Inp\w+)', EA, re.MULTILINE))
