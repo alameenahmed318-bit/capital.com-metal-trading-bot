@@ -4,7 +4,7 @@
 //| Keeps the existing licence/connection protocol. NO trade actions.|
 //+------------------------------------------------------------------+
 #property strict
-#property version "2.10"
+#property version "2.20"
 #property description "AL-ZOOL MT5 live telemetry client - no trade execution"
 
 input group "بيانات الاتصال بالخادم"
@@ -135,6 +135,43 @@ bool SendLiveSnapshot()
       count++;
    }
    body+="]";
+
+   // Closed deals for the last 30 days; telemetry only.
+   datetime history_from=TimeCurrent()-30*86400;
+   if(HistorySelect(history_from,TimeCurrent()))
+   {
+      body+=",\"closed_deals\":[";
+      int deals_sent=0;
+      int total_deals=HistoryDealsTotal();
+      for(int h=total_deals-1;h>=0 && deals_sent<500;h--)
+      {
+         ulong deal_ticket=HistoryDealGetTicket(h);
+         if(deal_ticket==0) continue;
+         long entry=HistoryDealGetInteger(deal_ticket,DEAL_ENTRY);
+         if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) continue;
+         string deal_symbol=HistoryDealGetString(deal_ticket,DEAL_SYMBOL);
+         if(deals_sent>0) body+=",";
+         body+="{\"ticket\":\""+(string)deal_ticket+"\"";
+         body+=",\"position_id\":\""+(string)HistoryDealGetInteger(deal_ticket,DEAL_POSITION_ID)+"\"";
+         body+=",\"symbol\":\""+JsonEscape(deal_symbol)+"\"";
+         body+=",\"type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
+         body+=",\"deal_type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
+         body+=",\"entry\":"+IntegerToString((int)entry);
+         body+=",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_REASON));
+         body+=",\"volume\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_VOLUME),2);
+         body+=",\"price\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PRICE),(int)SymbolInfoInteger(deal_symbol,SYMBOL_DIGITS));
+         body+=",\"profit\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PROFIT));
+         body+=",\"commission\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_COMMISSION));
+         body+=",\"swap\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_SWAP));
+         body+=",\"fee\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_FEE));
+         body+=",\"magic\":\""+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_MAGIC))+"\"";
+         body+=",\"comment\":\""+JsonEscape(HistoryDealGetString(deal_ticket,DEAL_COMMENT))+"\"";
+         body+=",\"time\":"+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_TIME))+"}";
+         deals_sent++;
+      }
+      body+="]";
+   }
+   else body+=",\"closed_deals\":[]";
 
    MqlTick tick;
    bool have_tick=SymbolInfoTick(_Symbol,tick);
