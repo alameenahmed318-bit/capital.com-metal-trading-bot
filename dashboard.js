@@ -54,7 +54,7 @@ async function refresh(){
   $("dailyLoss").textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
   $("dailyNet").textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
   $("dailyTrades").textContent=daily.trades==null?"—":fmt(daily.trades);
-  $("dailyMeta").textContent="إجمالي الصفقات المغلقة: "+fmt(s.closed_count||0)+" · نسبة النجاح من سجل MT5 المستلم";
+  $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
   $("closedTrades").innerHTML=rows.length?rows.map(t=>{
    const date=t.time?new Intl.DateTimeFormat("en-GB",{dateStyle:"short",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date(t.time*1000)):"—";
