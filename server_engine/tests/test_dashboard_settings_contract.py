@@ -60,8 +60,8 @@ class DashboardSettingsContractTests(unittest.TestCase):
     def test_server_owns_recovery_addon_cooling_and_candle_follow(self):
         for key in (
             "recovery_enabled", "recovery_min_positions", "recovery_trigger_loss",
-            "recovery_target_profit", "addon_enabled", "addon_step", "addon_multiplier",
-            "cooling_enabled", "cooling_step", "cooling_multiplier",
+            "recovery_target_profit", "addon_step",
+            "cooling_step", 'kind + "_enabled"', 'kind + "_multiplier"',
             "candle_chase_enabled", "candle_chase_min_move",
             "reverse_protection_enabled", "ai_loss_guard_enabled",
         ):
