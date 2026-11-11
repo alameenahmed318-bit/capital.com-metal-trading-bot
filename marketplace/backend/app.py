@@ -31,6 +31,17 @@ def sb(method,path,payload=None,bearer=None,admin=False):
         except Exception: pass
         raise ValueError(str(detail)[:300])
 
+def bootstrap_owner():
+    password=os.getenv("OWNER_PASSWORD","")
+    if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and password): return
+    try:
+        users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
+        if any((u.get("email") or "").lower()==OWNER_EMAIL for u in users): return
+        sb("POST","/auth/v1/admin/users",{"email":OWNER_EMAIL,"password":password,"email_confirm":True,
+            "user_metadata":{"name":"AL-ZOOL OWNER","role":"owner"}},admin=True)
+        print("Owner account created.")
+    except Exception as e: print("OWNER_BOOTSTRAP_WARNING:",str(e),flush=True)
+
 def token_of(h):
     v=h.headers.get("Authorization","")
     return v[7:].strip() if v.lower().startswith("bearer ") else ""
@@ -218,6 +229,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("X-Frame-Options","DENY"); super().end_headers()
 
 if __name__=="__main__":
+    bootstrap_owner()
     port=int(os.getenv("PORT","10000"))
     print("AL-ZOOL connection/licensing service listening on",port,flush=True)
     ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
