@@ -170,42 +170,6 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 if average > 0 and adverse >= required:
                     return command("CLOSE_ALL", "تأكيد الانعكاس: تجاوزت الحركة المعاكسة مسافة التفعيل والاستمرار")
 
-    # Main BUY/SELL entries are decided and sized centrally.
-    if direction in ("BUY", "SELL"):
-        side_allowed = _truth(settings, "allow_buy", True) if direction == "BUY" else _truth(settings, "allow_sell", True)
-        spread_points = _number(tick.get("spread_points"))
-        spread_limit = _number(settings.get("max_spread_points"))
-        max_positions = int(_number(settings.get("max_positions"), 0))
-        current_total = count + len(orders)
-        opposite_exists = bool(sells if direction == "BUY" else buys)
-        permitted = side_allowed and (spread_limit <= 0 or spread_points <= spread_limit)
-        permitted = permitted and (not _truth(settings, "one_direction_only", True) or not opposite_exists)
-        permitted = permitted and (max_positions <= 0 or current_total < max_positions)
-        if permitted:
-            lot = _number(settings.get("lot"), 0.01)
-            if _truth(settings, "ai_risk_enabled"):
-                account = payload.get("account") or {}
-                risk_cash = _number(account.get("balance")) * _number(settings.get("ai_risk_percent"), 0.5) / 100.0
-                stop_distance = _number(settings.get("fixed_sl_distance"), 3.0)
-                tick_value = _number(payload.get("tick_value"))
-                tick_size = _number(payload.get("tick_size"))
-                if risk_cash > 0 and stop_distance > 0 and tick_value > 0 and tick_size > 0:
-                    lot = risk_cash / ((stop_distance / tick_size) * tick_value)
-                else:
-                    lot = 0.0
-                lot = min(lot, _number(settings.get("ai_max_lot"), 0.05))
-            lots = _volume(lot, payload)
-            if lots > 0:
-                pending = str(settings.get("order_mode", "Market Order")) == "Pending Order"
-                distance = max(_number(settings.get("pending_distance"), 2.0),
-                                _number(payload.get("stops_level")) * _number(payload.get("point")))
-                entry_price = (ask + distance) if direction == "BUY" else (bid - distance)
-                action = "PLACE_PENDING" if pending else "OPEN_MARKET"
-                return command(action, str(decision.get("reason_ar") or "إشارة مركزية من محرك الاستراتيجيات"),
-                               direction=direction, lots=lots, price=entry_price if pending else 0.0,
-                               comment="AZS" + str(decision.get("strategy_id") or 0),
-                               key=str(direction) + "_" + str((candles[-1] or {}).get("time", payload.get("sequence", "0"))))
-
     # Recovery basket target is independent of whether a new recovery entry is due.
     if _truth(settings, "recovery_enabled") and _number(settings.get("recovery_target_profit")) > 0:
         if floating >= _number(settings.get("recovery_target_profit")):
@@ -274,5 +238,41 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             return command("OPEN_MARKET", ("تعزيز مركزي" if kind == "addon" else "تبريد مركزي"),
                            direction=basket_direction, lots=lots, comment=tag,
                            key=kind + "_" + str(anchor_position.get("ticket")))
+
+    # Main BUY/SELL entries are decided and sized centrally.
+    if direction in ("BUY", "SELL"):
+        side_allowed = _truth(settings, "allow_buy", True) if direction == "BUY" else _truth(settings, "allow_sell", True)
+        spread_points = _number(tick.get("spread_points"))
+        spread_limit = _number(settings.get("max_spread_points"))
+        max_positions = int(_number(settings.get("max_positions"), 0))
+        current_total = count + len(orders)
+        opposite_exists = bool(sells if direction == "BUY" else buys)
+        permitted = side_allowed and (spread_limit <= 0 or spread_points <= spread_limit)
+        permitted = permitted and (not _truth(settings, "one_direction_only", True) or not opposite_exists)
+        permitted = permitted and (max_positions <= 0 or current_total < max_positions)
+        if permitted:
+            lot = _number(settings.get("lot"), 0.01)
+            if _truth(settings, "ai_risk_enabled"):
+                account = payload.get("account") or {}
+                risk_cash = _number(account.get("balance")) * _number(settings.get("ai_risk_percent"), 0.5) / 100.0
+                stop_distance = _number(settings.get("fixed_sl_distance"), 3.0)
+                tick_value = _number(payload.get("tick_value"))
+                tick_size = _number(payload.get("tick_size"))
+                if risk_cash > 0 and stop_distance > 0 and tick_value > 0 and tick_size > 0:
+                    lot = risk_cash / ((stop_distance / tick_size) * tick_value)
+                else:
+                    lot = 0.0
+                lot = min(lot, _number(settings.get("ai_max_lot"), 0.05))
+            lots = _volume(lot, payload)
+            if lots > 0:
+                pending = str(settings.get("order_mode", "Market Order")) == "Pending Order"
+                distance = max(_number(settings.get("pending_distance"), 2.0),
+                                _number(payload.get("stops_level")) * _number(payload.get("point")))
+                entry_price = (ask + distance) if direction == "BUY" else (bid - distance)
+                action = "PLACE_PENDING" if pending else "OPEN_MARKET"
+                return command(action, str(decision.get("reason_ar") or "إشارة مركزية من محرك الاستراتيجيات"),
+                               direction=direction, lots=lots, price=entry_price if pending else 0.0,
+                               comment="AZS" + str(decision.get("strategy_id") or 0),
+                               key=str(direction) + "_" + str((candles[-1] or {}).get("time", payload.get("sequence", "0"))))
 
     return {"action": "WAIT", "reason": "لا يوجد أمر إدارة جديد من لوحة التحكم"}
