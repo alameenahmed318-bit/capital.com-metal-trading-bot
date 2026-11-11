@@ -298,8 +298,8 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             chase_max = int(_number(settings.get("candle_chase_max_orders"), 1))
             if len(candle_orders) < chase_max:
                 candle_time = str(candle.get("time") or payload.get("sequence", "0"))
-                buy_exists = any(int(_number(o.get("type"), -1)) in (2, 4) for o in candle_orders)
-                sell_exists = any(int(_number(o.get("type"), -1)) in (3, 5) for o in candle_orders)
+                buy_exists = any(int(_number(o.get("type"), -1)) in (0, 2, 4, 6) for o in candle_orders)
+                sell_exists = any(int(_number(o.get("type"), -1)) in (1, 3, 5, 7) for o in candle_orders)
                 distance = max(_number(settings.get("pending_distance"), 2.0),
                                _number(payload.get("stops_level")) * _number(payload.get("point")))
                 lots = _volume(_number(settings.get("lot"), 0.01), payload)
