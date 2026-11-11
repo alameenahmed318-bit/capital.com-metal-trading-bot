@@ -765,6 +765,7 @@ void SendLiveState()
    static ulong last_send_ms=0;
    static ulong sequence=0;
    static long last_tick_time_msc=0;
+   static datetime last_closed_bar_sent=0;
    ulong now_ms=GetTickCount64();
    if(InpEngineId=="" || InpEngineToken=="") return;
 
@@ -847,8 +848,10 @@ void SendLiveState()
    MqlRates closed_rates[];
    ArraySetAsSeries(closed_rates,true);
    int closed_count=CopyRates(_Symbol,PERIOD_CURRENT,1,65,closed_rates);
+   bool new_closed_bar=(closed_count>=65 && closed_rates[0].time>0 &&
+                        closed_rates[0].time!=last_closed_bar_sent);
    body+=",\"closed_candles\":[";
-   if(closed_count>=65)
+   if(new_closed_bar)
    {
       for(int c=closed_count-1;c>=0;c--)
       {
@@ -860,6 +863,7 @@ void SendLiveState()
             ",\"close\":"+DoubleToString(closed_rates[c].close,_Digits)+
             ",\"tick_volume\":"+IntegerToString((long)closed_rates[c].tick_volume)+"}";
       }
+      last_closed_bar_sent=closed_rates[0].time;
    }
    body+="]";
    body+="}";
