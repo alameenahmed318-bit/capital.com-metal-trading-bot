@@ -1016,9 +1016,9 @@ bool VerifyManagementCommand(const string response)
    if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
       command_id=="" || expires<=0.0 || (double)TimeGMT()>=expires) return false;
    if(action!="WAIT" && action!="CLOSE_ALL" && action!="CLOSE_POSITION" &&
-      action!="MODIFY_SL" && action!="OPEN_MARKET" && action!="PLACE_PENDING" && action!="CANCEL_PENDING") return false;
+      action!="MODIFY_SL" && action!="OPEN_MARKET" && action!="PLACE_PENDING" && action!="CANCEL_PENDING" && action!="MODIFY_PENDING") return false;
    if((action=="OPEN_MARKET" || action=="PLACE_PENDING") && ((direction!="BUY" && direction!="SELL") || lots<=0.0 || comment=="")) return false;
-   if(action=="PLACE_PENDING" && price<=0.0) return false;
+   if((action=="PLACE_PENDING" || action=="MODIFY_PENDING") && price<=0.0) return false;
    string expected_payload=client_id+"|"+command_id+"|"+action+"|"+ticket+"|"+
       DoubleToString(sl,8)+"|"+DoubleToString(tp,8)+"|"+direction+"|"+
       DoubleToString(lots,8)+"|"+DoubleToString(price,8)+"|"+comment+"|"+DoubleToString(expires,6);
@@ -1101,6 +1101,20 @@ void PollCentralManagement()
           uint rc=trade.ResultRetcode();
           executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED ||
                             rc==TRADE_RETCODE_DONE_PARTIAL);
+       }
+    }
+    else if(action=="MODIFY_PENDING")
+    {
+       ulong order_ticket=(ulong)StringToInteger(ticket_text);
+       if(order_ticket>0 && OrderSelect(order_ticket) &&
+          OrderGetString(ORDER_SYMBOL)==_Symbol &&
+          (ulong)OrderGetInteger(ORDER_MAGIC)==ALZOOL_MAGIC)
+       {
+          bool sent=trade.OrderModify(order_ticket,NormalizeDouble(price,_Digits),
+                                      NormalizeDouble(sl,_Digits),NormalizeDouble(tp,_Digits),
+                                      ORDER_TIME_GTC,0,0.0);
+          uint rc=trade.ResultRetcode();
+          executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED);
        }
     }
     else if(action=="CANCEL_PENDING")
