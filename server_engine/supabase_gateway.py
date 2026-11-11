@@ -1,10 +1,11 @@
 """Supabase-backed authentication and persistence for the AL-ZOOL central engine."""
 from __future__ import annotations
-import hashlib, hmac, json, math, secrets, time, urllib.parse, urllib.request, urllib.error, uuid
+import hashlib, hmac, json, math, os, secrets, threading, time, urllib.parse, urllib.request, urllib.error, uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from .engine import evaluate_market, build_synthetic_indicator
 from .management import build_management_command
+from .openai_ai import analyze_market, OpenAIAnalysisError
 
 TTL_SECONDS = 12
 
@@ -20,6 +21,11 @@ class EngineGateway:
         self._terminal_cache = {}
         # Keep a small bounded pool for independent durable writes.
         self._persist_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="alzool-persist")
+        self._ai_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="alzool-openai")
+        self._ai_lock = threading.Lock()
+        self._ai_requested = {}
+        self._ai_inflight = set()
+        self._ai_results = {}
 
     def _request(self, method, path, payload=None, prefer=None):
         if not self.url or not self.key:
@@ -128,6 +134,163 @@ class EngineGateway:
             raise ValueError("valid bid and ask are required")
         return normalized,bid,ask
 
+    def _queue_ai_analysis(self, client_id, rates, market_data, engine_result, live_payload, open_positions):
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        enabled = os.getenv("OPENAI_AI_ENABLED", "true").strip().lower() not in ("0", "false", "no", "off")
+        if not api_key or not enabled or not rates:
+            return
+        try:
+            candle_time = int(rates[-1]["time"])
+        except (TypeError, ValueError, KeyError, OverflowError):
+            return
+        symbol = str(market_data.get("symbol") or "")
+        timeframe = str(market_data.get("timeframe") or "CURRENT")
+        request_key = symbol + "|" + timeframe + "|" + str(candle_time)
+        with self._ai_lock:
+            if self._ai_requested.get(client_id) == request_key or client_id in self._ai_inflight:
+                return
+            self._ai_requested[client_id] = request_key
+            self._ai_inflight.add(client_id)
+        received = (self._live_cache.get(client_id) or {}).get("received_at")
+        try:
+            age = max(0.0, time.time() - datetime.fromisoformat(received.replace("Z", "+00:00")).timestamp()) if received else None
+        except Exception:
+            age = None
+        context = {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "closed_candle_time": candle_time,
+            "closed_candles": rates[-65:],
+            "forming_candle": market_data.get("forming_candle") or live_payload.get("forming_candle") or {},
+            "tick": market_data.get("tick") or {"bid": market_data.get("bid"), "ask": market_data.get("ask")},
+            "mtf_bias": market_data.get("mtf_bias") or {},
+            "central_engine_signal": {
+                "decision": engine_result.get("decision"),
+                "confidence": engine_result.get("confidence"),
+                "reason_ar": engine_result.get("reason_ar"),
+                "market_context": engine_result.get("context") or {},
+            },
+            "open_positions": [{
+                "side": "BUY" if int(p.get("type", -1)) == 0 else "SELL",
+                "volume": p.get("volume"),
+                "open_price": p.get("open_price"),
+                "floating_net": self._safe_float(p.get("profit")) + self._safe_float(p.get("swap")),
+                "comment": str(p.get("comment") or "")[:80],
+            } for p in open_positions],
+            "pending_orders": [{
+                "type": o.get("type"), "volume": o.get("volume"),
+                "price": o.get("price"), "comment": str(o.get("comment") or "")[:80],
+            } for o in (live_payload.get("orders") or [])
+              if isinstance(o, dict) and str(o.get("symbol", "")) == symbol
+              and str(o.get("magic", "")) == "26110801"],
+            "account": {
+                "currency": (live_payload.get("account") or {}).get("currency"),
+                "balance": (live_payload.get("account") or {}).get("balance"),
+                "equity": (live_payload.get("account") or {}).get("equity"),
+                "floating_profit": (live_payload.get("account") or {}).get("profit"),
+            },
+            "live_state_age_seconds": age,
+            "positions_fresh": age is not None and age <= 5.0,
+        }
+        model = os.getenv("OPENAI_MODEL", "gpt-6-astra").strip() or "gpt-6-astra"
+        self._ai_executor.submit(self._run_ai_analysis, client_id, request_key,
+                                 candle_time, symbol, timeframe, model, api_key, context)
+
+    def _run_ai_analysis(self, client_id, request_key, candle_time, symbol, timeframe, model, api_key, context):
+        try:
+            analysis = analyze_market(api_key, model, context)
+            result = {
+                **analysis, "status": "ready", "provider": "OpenAI",
+                "model": model, "mode": "MONITOR_ONLY",
+                "candle_time": candle_time, "symbol": symbol,
+                "timeframe": timeframe, "analyzed_at": time.time(),
+                "execution_authority": "central_engine_only",
+            }
+        except OpenAIAnalysisError as exc:
+            result = {
+                "status": "error", "provider": "OpenAI", "model": model,
+                "error_code": exc.code, "mode": "MONITOR_ONLY",
+                "candle_time": candle_time, "symbol": symbol,
+                "timeframe": timeframe, "analyzed_at": time.time(),
+            }
+        except Exception:
+            result = {
+                "status": "error", "provider": "OpenAI", "model": model,
+                "error_code": "internal_analysis_error", "mode": "MONITOR_ONLY",
+                "candle_time": candle_time, "symbol": symbol,
+                "timeframe": timeframe, "analyzed_at": time.time(),
+            }
+        with self._ai_lock:
+            self._ai_results[client_id] = result
+            self._ai_inflight.discard(client_id)
+        event_id = "ai-analysis:" + symbol + ":" + timeframe + ":" + str(candle_time)
+        try:
+            self._store_signal_event(client_id, event_id, "AI_ANALYSIS", result, result["analyzed_at"])
+        except Exception as exc:
+            print("AL-ZOOL AI analysis persistence failed: " + type(exc).__name__, flush=True)
+
+    @staticmethod
+    def _safe_float(value):
+        try:
+            number = float(value)
+            return number if math.isfinite(number) else 0.0
+        except (TypeError, ValueError, OverflowError):
+            return 0.0
+
+    def ai_status_for_user(self, user_id):
+        clients = self._request(
+            "GET", "alzool_engine_clients?user_id=eq." + urllib.parse.quote(user_id, safe="") +
+            "&select=client_id,revoked&limit=1")
+        configured = bool(os.getenv("OPENAI_API_KEY", "").strip())
+        enabled = os.getenv("OPENAI_AI_ENABLED", "true").strip().lower() not in ("0", "false", "no", "off")
+        model = os.getenv("OPENAI_MODEL", "gpt-6-astra").strip() or "gpt-6-astra"
+        if not clients:
+            return {"configured": configured, "enabled": enabled, "model": model,
+                    "provider": "OpenAI", "monitor_only": True,
+                    "status": "client_not_linked", "analysis": None}
+        client = clients[0]
+        if client.get("revoked"):
+            return {"configured": configured, "enabled": enabled, "model": model,
+                    "provider": "OpenAI", "monitor_only": True,
+                    "status": "account_disabled", "analysis": None}
+        client_id = client["client_id"]
+        with self._ai_lock:
+            analysis = self._ai_results.get(client_id)
+        if analysis is None:
+            rows = self._request(
+                "GET", "alzool_engine_signal_events?client_id=eq." +
+                urllib.parse.quote(client_id, safe="") +
+                "&event_type=eq.AI_ANALYSIS&select=payload,created_at&order=created_at.desc&limit=1")
+            analysis = (rows[0].get("payload") or {}) if rows else None
+        decision = self._decision_cache.get(client_id)
+        if decision is None:
+            rows = self._request(
+                "GET", "alzool_engine_decisions?client_id=eq." +
+                urllib.parse.quote(client_id, safe="") +
+                "&select=payload&order=created_at.desc&limit=1")
+            decision = (rows[0].get("payload") or {}) if rows else {}
+        candles = decision.get("candles") or []
+        latest_candle = int(candles[-1].get("time", 0)) if candles else 0
+        fresh = bool(analysis and latest_candle and int(analysis.get("candle_time", 0)) == latest_candle)
+        if not configured:
+            status = "not_configured"
+        elif not enabled:
+            status = "disabled"
+        elif not analysis:
+            status = "waiting_for_closed_candle"
+        elif analysis.get("status") == "error":
+            status = "error"
+        elif not fresh:
+            status = "stale"
+        else:
+            status = "ready"
+        return {
+            "configured": configured, "enabled": enabled, "model": model,
+            "provider": "OpenAI", "monitor_only": True,
+            "status": status, "analysis": analysis,
+            "fresh_for_latest_closed_candle": fresh,
+        }
+
     def market(self, client_id, token, data):
         request_started=time.perf_counter()
         auth_started=time.perf_counter()
@@ -166,6 +329,9 @@ class EngineGateway:
         result=evaluate_market(rates,weights=weights or None,mtf_bias=mtf,mode=mode,selected_strategy_id=selected_id,
                                forming_candle=data.get("forming_candle"),tick=data.get("tick"))
         strategy_ms=(time.perf_counter()-strategy_started)*1000
+        # Official OpenAI analysis runs asynchronously once per newly closed bar.
+        # It is monitor-only and never changes the deterministic execution signal.
+        self._queue_ai_analysis(client_id, rates, data, result, live_payload, open_own_positions)
         # Keep a short, client-isolated market-regime history. It is advisory only
         # and is stored inside the decision payload; it never changes the signal.
         previous_payload=self._decision_cache.get(client_id)
@@ -244,7 +410,7 @@ class EngineGateway:
             raise PermissionError("client authorization failed")
         if not isinstance(events, list) or len(events) > 50:
             raise ValueError("events must be an array with at most 50 records")
-        allowed = {"ORDER_SENT","TRADE_OPENED","TRADE_CLOSED","ORDER_REJECTED","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED"}
+        allowed = {"ORDER_SENT","TRADE_OPENED","TRADE_CLOSED","ORDER_REJECTED","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","AI_ANALYSIS"}
         accepted = 0
         for item in events:
             if not isinstance(item, dict):
