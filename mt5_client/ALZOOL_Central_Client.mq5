@@ -1193,7 +1193,7 @@ void PollCentralManagement()
             ",\"reason_ar\":\""+JsonSafe(JsonString(response,"reason"))+"\"}";
          SendSignalEvent(command_id+"_central-execution",event_type,event_payload);
       }
-      else if(action=="CANCEL_PENDING" || action=="MODIFY_SL")
+      else if(action=="CANCEL_PENDING" || action=="MODIFY_PENDING" || action=="MODIFY_SL")
          SendSignalEvent(command_id+"_central-protection","PROTECTION",
                          "{\"command_id\":\""+JsonSafe(command_id)+"\",\"action\":\""+action+"\"}");
       Print("AL-ZOOL central management executed: ",action," command=",command_id);
