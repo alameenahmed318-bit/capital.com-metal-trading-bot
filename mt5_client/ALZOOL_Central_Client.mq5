@@ -1023,11 +1023,17 @@ void FlushPendingOutcomes()
          GlobalVariableDel(name);
          GlobalVariableDel(skey);
          GlobalVariableDel(pkey);
+         g_status="نتيجة الصفقة محفوظة في Supabase / strategy "+IntegerToString(strategy_id);
+         Print("AL-ZOOL LEARNING outcome accepted: id=",suffix," strategy=",strategy_id," pnl=",DoubleToString(pnl,2),
+               " response=",CharArrayToString(result,0,-1,CP_UTF8));
       }
       else
       {
+         string response_text=CharArrayToString(result,0,-1,CP_UTF8);
          if(http==-1) g_status="Outcome saved locally; server offline";
          else g_status="Outcome pending / HTTP "+IntegerToString(http);
+         Print("AL-ZOOL LEARNING upload failed: HTTP=",http," err=",GetLastError()," body=",response_text,
+               " outcome_id=",suffix," strategy=",strategy_id);
       }
       return;
    }
@@ -1052,6 +1058,30 @@ int ResolveEntryStrategy(const ulong deal,const ulong order)
       if(strategy_id>=1 && strategy_id<=200) return strategy_id;
    }
    return StrategyFromDealComment(deal);
+}
+
+int StrategyForPositionFromHistory(const ulong position_id)
+{
+   datetime now=TimeCurrent();
+   if(!HistorySelect(now-90*86400,now)) return 0;
+   for(int i=HistoryDealsTotal()-1;i>=0;i--)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0) continue;
+      if((ulong)HistoryDealGetInteger(deal,DEAL_POSITION_ID)!=position_id) continue;
+      if((ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=ALZOOL_MAGIC) continue;
+      if((ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY)!=DEAL_ENTRY_IN) continue;
+      int strategy_id=StrategyFromDealComment(deal);
+      if(strategy_id>=1 && strategy_id<=200) return strategy_id;
+      ulong entry_order=(ulong)HistoryDealGetInteger(deal,DEAL_ORDER);
+      string order_key=OrderStrategyKey(entry_order);
+      if(GlobalVariableCheck(order_key))
+      {
+         strategy_id=(int)GlobalVariableGet(order_key);
+         if(strategy_id>=1 && strategy_id<=200) return strategy_id;
+      }
+   }
+   return 0;
 }
 
 void SendSignalEvent(const string event_id,const string event_type,const string payload)
@@ -1141,7 +1171,8 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       string close_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"learning_id\":\""+JsonSafe(learning_id)+
          "\",\"position_id\":\""+(string)position_id+
          "\",\"order\":\""+(string)order+"\",\"symbol\":\""+JsonSafe(_Symbol)+
-         "\",\"volume\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_VOLUME),2)+
+         "\",\"magic\":\""+(string)deal_magic+"\",\"entry\":"+IntegerToString((int)entry)+
+         ",\"volume\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_VOLUME),2)+
          ",\"price\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_PRICE),_Digits)+
          ",\"net_profit\":"+DoubleToString(closed_net,2)+
          ",\"reason_ar\":\"تأكيد إغلاق الصفقة من سجل تنفيذ الوسيط MT5\"}";
@@ -1151,6 +1182,19 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    int closing_strategy=0;
    if(GlobalVariableCheck(position_key))
       closing_strategy=(int)GlobalVariableGet(position_key);
+
+   // Recover strategy attribution from the broker's opening deal history if
+   // terminal Global Variables were lost during a reinstall or restart.
+   if((closing_strategy<1 || closing_strategy>200) && deal_magic==ALZOOL_MAGIC)
+   {
+      closing_strategy=StrategyForPositionFromHistory(position_id);
+      if(closing_strategy>=1 && closing_strategy<=200)
+      {
+         GlobalVariableSet(position_key,(double)closing_strategy);
+         Print("AL-ZOOL LEARNING recovered strategy mapping from history. position=",position_id,
+               " strategy=",closing_strategy);
+      }
+   }
 
    // Fallback for brokers that report the close before the entry mapping.
    if((closing_strategy<1 || closing_strategy>200) && entry!=DEAL_ENTRY_INOUT)
