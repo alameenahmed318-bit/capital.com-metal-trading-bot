@@ -75,5 +75,74 @@ class CentralManagementPlannerTests(unittest.TestCase):
         self.assertEqual(result["action"], "WAIT")
 
 
+
+    def test_addon_is_planned_centrally_from_dashboard_settings(self):
+        live = snapshot([position(opened=2040, current=2040, profit=1.0)])
+        live["payload"].update({"sequence": 12, "volume_step": 0.01,
+                                "volume_min": 0.01, "volume_max": 100})
+        result = build_management_command(
+            {"_trading_enabled": True, "global_loss_enabled": False,
+             "per_trade_profit_enabled": False, "global_profit_enabled": False,
+             "trailing_enabled": False, "addon_enabled": True, "addon_step": 2,
+             "addon_multiplier_enabled": True, "addon_multiplier": 1.2,
+             "addon_max": 3, "addon_max_lot": 0.05, "lot": 0.01},
+            live, now=1000)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "BUY")
+        self.assertEqual(result["comment"], "AZS_ADDON")
+        self.assertAlmostEqual(result["lots"], 0.02)
+
+    def test_cooling_is_planned_centrally_in_basket_direction(self):
+        live = snapshot([position(opened=2050, current=2050, profit=-4.0)], bid=2045, ask=2045.2)
+        live["payload"].update({"sequence": 13, "volume_step": 0.01,
+                                "volume_min": 0.01, "volume_max": 100})
+        result = build_management_command(
+            {"_trading_enabled": True, "global_loss_enabled": False,
+             "per_trade_profit_enabled": False, "global_profit_enabled": False,
+             "trailing_enabled": False, "cooling_enabled": True, "cooling_step": 3,
+             "cooling_multiplier_enabled": False, "cooling_max": 2,
+             "cooling_max_lot": 0.05, "lot": 0.01},
+            live, now=1000)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "BUY")
+        self.assertEqual(result["comment"], "AZS_COOLING")
+        self.assertAlmostEqual(result["lots"], 0.01)
+
+    def test_recovery_uses_total_basket_lots_and_central_market_direction(self):
+        positions = [position("1", opened=2050, profit=-7),
+                     position("2", opened=2051, profit=-7),
+                     position("3", opened=2052, profit=-7)]
+        live = snapshot(positions)
+        live["payload"].update({"sequence": 14, "volume_step": 0.01,
+                                "volume_min": 0.01, "volume_max": 100,
+                                "forming_candle": {"open": 2049, "close": 2050}})
+        decision = {"decision": "BUY", "confidence": 0.8}
+        result = build_management_command(
+            {"_trading_enabled": True, "global_loss_enabled": False,
+             "per_trade_profit_enabled": False, "global_profit_enabled": False,
+             "trailing_enabled": False, "recovery_enabled": True,
+             "recovery_min_positions": 3, "recovery_trigger_loss": 10,
+             "recovery_target_profit": 0, "recovery_mode": "AUTO",
+             "recovery_min_confidence": 0.65},
+            live, now=1000, market_decision=decision)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "BUY")
+        self.assertEqual(result["comment"], "AZR_RECOVERY")
+        self.assertAlmostEqual(result["lots"], 0.04)
+
+    def test_management_commands_are_stable_for_same_snapshot(self):
+        live = snapshot([position(opened=2040, current=2040)])
+        live["payload"].update({"sequence": 99, "volume_step": 0.01,
+                                "volume_min": 0.01, "volume_max": 100})
+        settings = {"_trading_enabled": True, "global_loss_enabled": False,
+                    "per_trade_profit_enabled": False, "global_profit_enabled": False,
+                    "trailing_enabled": False, "addon_enabled": True, "addon_step": 2,
+                    "addon_multiplier_enabled": False, "addon_max": 3,
+                    "addon_max_lot": 0.05, "lot": 0.01}
+        first = build_management_command(settings, live, now=1000)
+        second = build_management_command(settings, live, now=1001)
+        self.assertEqual(first["command_id"], second["command_id"])
+
+
 if __name__ == "__main__":
     unittest.main()
