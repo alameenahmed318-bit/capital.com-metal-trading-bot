@@ -2368,21 +2368,15 @@ void OnTimer()
    if(last_maintenance_ms>0 && now_ms-last_maintenance_ms<1000) return;
    last_maintenance_ms=now_ms;
 
-   PollCentralSettings();
    FlushPendingOutcomes();
    SendTerminalState();
    CheckCentralHealth();
-   CheckTradingControl();
    PollCentralManagement();
    PollCentralEngine();
-   ManageAiLossGuard();
-   ManageConfirmedReversal();
-   ManageCandleChase();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
-           "Settings: ",(g_settings_loaded ? "LOADED FROM DASHBOARD" : "WAITING / INVALID"),"\n",
-           "Trading control: ",(g_trading_enabled ? "ENABLED" : "DISABLED"),"\n",
+           "Control: dashboard / central server only","\n",
            "Symbol: ",_Symbol," | TF: ",EnumToString((ENUM_TIMEFRAMES)_Period),"\n",
            "Magic: ",(string)ALZOOL_MAGIC,"\n",
            "AI Decision: ",g_last_decision," | Confidence: ",DoubleToString(g_last_confidence*100.0,1),"%\n",
