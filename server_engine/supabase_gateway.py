@@ -16,6 +16,7 @@ class EngineGateway:
         # Supabase remains the durable fallback after restarts or on other instances.
         self._live_cache = {}
         self._decision_cache = {}
+        self._terminal_cache = {}
         # Keep a small bounded pool for independent durable writes.
         self._persist_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="alzool-persist")
 
@@ -296,6 +297,16 @@ class EngineGateway:
                         urllib.parse.quote(client_id,safe="")+
                         "&select=payload&order=created_at.desc&limit=1")
                     decision_payload=(rows[0].get("payload") or {}) if rows else {}
+                terminal=self._terminal_cache.get(client_id)
+                if terminal is None:
+                    terminal_rows=self._request("GET","alzool_engine_terminal_state?client_id=eq."+
+                        urllib.parse.quote(client_id,safe="")+
+                        "&select=payload,updated_at&order=updated_at.desc&limit=1")
+                    terminal=terminal_rows[0] if terminal_rows else {}
+                live_payload=dict(live.get("payload") or {})
+                terminal_payload=(terminal.get("payload") or {})
+                live_payload["history"]=terminal_payload.get("history") or []
+                live={"payload":live_payload,"received_at":live.get("received_at")}
                 plan=build_management_command(settings,live,market_decision=decision_payload)
         action=str(plan.get("action","WAIT"))
         command_id=str(plan.get("command_id") or uuid.uuid4().hex)
@@ -443,6 +454,7 @@ class EngineGateway:
         if len(payload["positions"])>200 or len(payload["orders"])>200 or len(payload["history"])>200: raise ValueError("too many terminal records")
         row={"client_id":client_id,"payload":payload,"updated_at":datetime.now(timezone.utc).isoformat()}
         self._request("POST","alzool_engine_terminal_state",row,"resolution=merge-duplicates,return=minimal")
+        self._terminal_cache[client_id] = {"payload":payload,"updated_at":row["updated_at"]}
         return {"accepted":True,"positions":len(payload["positions"]),"orders":len(payload["orders"])}
 
     def terminal_state_live(self, client_id, token, data):
@@ -462,7 +474,7 @@ class EngineGateway:
             epoch=float(data.get("source_time",0) or 0)
             source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
         except (TypeError,ValueError,OverflowError,OSError): source_time=None
-        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","point","volume_step","volume_min","volume_max","tick_value","tick_size","stops_level")}
+        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","point","volume_step","volume_min","volume_max","tick_value","tick_size","stops_level","day_start")}
         received=datetime.now(timezone.utc).isoformat()
         row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
              "received_at":received,"updated_at":received}
