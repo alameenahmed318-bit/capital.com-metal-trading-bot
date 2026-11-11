@@ -120,14 +120,16 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 owner(token_of(self))
                 users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
+                licenses=sb("GET","/rest/v1/alzool_engine_clients?select=user_id,client_id,expires_at,revoked",admin=True)
+                by_user={x.get("user_id"):x for x in licenses}
                 rows=[]
                 for u in users:
                     email=(u.get("email") or "").lower()
                     if not email or email==OWNER_EMAIL: continue
-                    lic=license_for_user(u.get("id",""))
+                    lic=by_user.get(u.get("id")) or {}
                     rows.append({"id":u.get("id"),"email":email,"name":(u.get("user_metadata") or {}).get("name",""),
                                  "created_at":u.get("created_at"),"active":not banned(u),
-                                 "licensed":bool(lic and not lic.get("revoked")),"expires_at":lic.get("expires_at") if lic else None})
+                                 "licensed":bool(lic and not lic.get("revoked")),"expires_at":lic.get("expires_at")})
                 return self.send_json(200,{"clients":rows})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
@@ -137,8 +139,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if (u.get("email") or "").lower()!=OWNER_EMAIL:
                     lic=license_for_user(u["id"])
                     client_id=lic.get("client_id") if lic else ""
-                else: client_id=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("client_id",[""])[0]
-                item=CONNECTIONS.get(client_id) if client_id else None
+                    item=CONNECTIONS.get(client_id) if client_id else None
+                else:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                
                 return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
                                            "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
             except Exception as e: return self.send_json(403,{"error":str(e)[:180]})
