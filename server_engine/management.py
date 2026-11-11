@@ -141,6 +141,18 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         if target > 0 and floating >= target:
             return command("CLOSE_ALL", "تحقق هدف ربح السلة")
 
+    # Smart-profit protection exits a profitable basket when the central signal
+    # confirms that the market direction has turned against the basket.
+    if positions and _truth(settings, "smart_profit_enabled"):
+        decision = market_decision or {}
+        signal = str(decision.get("decision") or "").upper()
+        confidence = _number(decision.get("confidence"))
+        if confidence >= 0.65 and floating > 0:
+            basket_buy = any(int(_number(p.get("type"), -1)) == 0 for p in positions)
+            basket_sell = any(int(_number(p.get("type"), -1)) == 1 for p in positions)
+            if (basket_buy and not basket_sell and signal == "SELL") or (basket_sell and not basket_buy and signal == "BUY"):
+                return command("CLOSE_ALL", "حماية الربح الذكية: إشارة معاكسة مؤكدة والسلة رابحة")
+
     # Central trailing-stop calculation; MT5 only applies the returned price.
     point = _number(payload.get("point"))
     if positions and _truth(settings, "trailing_enabled", True) and point > 0:
@@ -203,7 +215,13 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         recovery_positions = [p for p in positions if "AZR_RECOVERY" in str(p.get("comment", ""))]
         minimum = int(_number(settings.get("recovery_min_positions"), 3))
         trigger = abs(_number(settings.get("recovery_trigger_loss"), 10))
-        if count >= minimum and floating <= -trigger and not recovery_positions and direction in ("BUY", "SELL"):
+        basket_start = min((_number(p.get("time")) for p in positions), default=0.0)
+        recovery_limit = int(_number(settings.get("recovery_max_entries"), 0))
+        recovery_history = [d for d in (payload.get("history") or [])
+                            if isinstance(d, dict) and "AZR_RECOVERY" in str(d.get("comment", ""))
+                            and _number(d.get("time")) >= basket_start]
+        if count >= minimum and floating <= -trigger and not recovery_positions and
+           (recovery_limit <= 0 or len(recovery_history) < recovery_limit) and direction in ("BUY", "SELL"):
             min_conf = _number(settings.get("recovery_min_confidence"), .65)
             body = _number(forming.get("close")) - _number(forming.get("open"))
             candle_agrees = body > 0 if direction == "BUY" else body < 0
@@ -297,6 +315,10 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             candle_orders += [p for p in positions if "AZS_CANDLE" in str(p.get("comment", ""))]
             chase_max = int(_number(settings.get("candle_chase_max_orders"), 1))
             if len(candle_orders) < chase_max:
+                cooldown = _number(settings.get("candle_chase_cooldown"), 0.0)
+                last_chase = max([_number(o.get("time_setup") or o.get("time")) for o in candle_orders] or [0.0])
+                if cooldown > 0 and last_chase > 0 and now - last_chase < cooldown:
+                    return {"action": "WAIT", "reason": "فترة تهدئة متابعة الشمعة لم تنته بعد"}
                 candle_time = str(candle.get("time") or payload.get("sequence", "0"))
                 buy_exists = any(int(_number(o.get("type"), -1)) in (0, 2, 4, 6) for o in candle_orders)
                 sell_exists = any(int(_number(o.get("type"), -1)) in (1, 3, 5, 7) for o in candle_orders)
