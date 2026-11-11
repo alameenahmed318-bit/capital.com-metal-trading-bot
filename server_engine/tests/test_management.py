@@ -116,7 +116,8 @@ class CentralManagementPlannerTests(unittest.TestCase):
         live["payload"].update({"sequence": 14, "volume_step": 0.01,
                                 "volume_min": 0.01, "volume_max": 100,
                                 "forming_candle": {"open": 2049, "close": 2050}})
-        candles = [{"time": 1000 + i, "open": 2049, "high": 2050, "low": 2048, "close": 2049.5} for i in range(15)]\n        decision = {"decision": "BUY", "confidence": 0.8, "candles": candles}
+        candles = [{"time": 1000 + i, "open": 2049, "high": 2050, "low": 2048, "close": 2049.5} for i in range(15)]
+        decision = {"decision": "BUY", "confidence": 0.8, "candles": candles}
         result = build_management_command(
             {"_trading_enabled": True, "global_loss_enabled": False,
              "per_trade_profit_enabled": False, "global_profit_enabled": False,
