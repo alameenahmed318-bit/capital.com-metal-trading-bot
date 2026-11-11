@@ -296,28 +296,26 @@ class EngineGateway:
         try: pnl=float(pnl)
         except (TypeError,ValueError,OverflowError): raise ValueError("pnl must be finite") from None
         if not 1<=sid<=200 or not math.isfinite(pnl) or abs(pnl)>=1e9: raise ValueError("invalid strategy_id or pnl")
-        result=self._request("POST","alzool_engine_outcomes",
-            {"client_id":client_id,"deal_id":deal.strip(),"strategy_id":sid,"pnl":pnl},
-            "resolution=ignore-duplicates,return=representation")
-        if result:
-            rows=self._request("GET","alzool_engine_weights?client_id=eq."+client_id+"&strategy_id=eq."+str(sid)+"&select=weight")
-            old=float(rows[0]["weight"]) if rows else 1.0
-            settings=self.settings_for_client(client_id,token)
-            learning_enabled=bool(settings.get("learning_enabled",True))
-            learning_rate=max(0.001,min(0.20,float(settings.get("learning_rate_percent",4.0))/100.0))
-            if learning_enabled:
-                factor=(1.0+learning_rate if pnl>0 else 1.0-learning_rate if pnl<0 else 1.0)
-                new=max(.25,min(4.0,old*factor))
-                self._request("POST","alzool_engine_weights",
-                    {"client_id":client_id,"strategy_id":sid,"weight":new},
-                    "resolution=merge-duplicates,return=minimal")
-        else:
-            settings=self.settings_for_client(client_id,token)
-            learning_enabled=bool(settings.get("learning_enabled",True))
-        return {"accepted":True,"duplicate":not bool(result),
-                "trained":bool(result) and learning_enabled,
-                "learning_enabled":learning_enabled,
-                "learning_rate_percent":float(settings.get("learning_rate_percent",4.0))}
+
+        # Resolve controls before the database transaction. The RPC below inserts
+        # the outcome and changes its strategy weight atomically, so a retry can
+        # never leave a saved-but-untrained result or train the same deal twice.
+        settings=self.settings_for_client(client_id,token)
+        learning_enabled=bool(settings.get("learning_enabled",True))
+        learning_rate=max(0.001,min(0.20,float(settings.get("learning_rate_percent",4.0))/100.0))
+        result=self._request("POST","rpc/alzool_record_learning_outcome",{
+            "p_client_id":client_id,
+            "p_deal_id":deal.strip(),
+            "p_strategy_id":sid,
+            "p_pnl":pnl,
+            "p_learning_enabled":learning_enabled,
+            "p_learning_rate":learning_rate,
+        })
+        if isinstance(result,list) and result:
+            result=result[0]
+        if not isinstance(result,dict):
+            raise RuntimeError("Supabase learning transaction returned an invalid response")
+        return result
 
 
 
