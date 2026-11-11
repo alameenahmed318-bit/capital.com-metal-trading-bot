@@ -377,15 +377,14 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             if len(candle_orders) < chase_max:
                 cooldown = _number(settings.get("candle_chase_cooldown"), 0.0)
                 last_chase = max([_number(o.get("time_setup") or o.get("time")) for o in candle_orders] or [0.0])
-                if cooldown > 0 and last_chase > 0 and now - last_chase < cooldown:
-                    return {"action": "WAIT", "reason": "فترة تهدئة متابعة الشمعة لم تنته بعد"}
+                cooldown_active = cooldown > 0 and last_chase > 0 and now - last_chase < cooldown
                 candle_time = str(candle.get("time") or payload.get("sequence", "0"))
                 buy_exists = any(int(_number(o.get("type"), -1)) in (0, 2, 4, 6) for o in candle_orders)
                 sell_exists = any(int(_number(o.get("type"), -1)) in (1, 3, 5, 7) for o in candle_orders)
                 distance = max(_number(settings.get("pending_distance"), 2.0),
                                _number(payload.get("stops_level")) * _number(payload.get("point")))
                 lots = _volume(_number(settings.get("lot"), 0.01), payload)
-                if lots > 0 and _truth(settings, "allow_buy", True) and not buy_exists and len(candle_orders) < chase_max:
+                if lots > 0 and not cooldown_active and _truth(settings, "allow_buy", True) and not buy_exists and len(candle_orders) < chase_max:
                     price = candle_high + distance
                     tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
                                    if chase_max == 1 else _number(settings.get("candle_chase_buy_target"), 1.0))
@@ -395,7 +394,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                     return command("PLACE_PENDING", "أمر متابعة شمعة شراء محسوب مركزياً",
                                    direction="BUY", lots=lots, price=price, tp=tp,
                                    comment="AZS_CANDLE_BUY", key="candle_buy_" + candle_time)
-                if lots > 0 and _truth(settings, "allow_sell", True) and not sell_exists and len(candle_orders) < chase_max:
+                if lots > 0 and not cooldown_active and _truth(settings, "allow_sell", True) and not sell_exists and len(candle_orders) < chase_max:
                     price = candle_low - distance
                     tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
                                    if chase_max == 1 else _number(settings.get("candle_chase_sell_target"), 1.0))
