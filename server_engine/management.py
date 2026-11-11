@@ -89,8 +89,13 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         # Stable per live snapshot: repeated polls cannot issue duplicate orders.
         identity = "|".join((key or seq, action, str(ticket), direction, str(comment)))
         command_id = uuid.uuid5(uuid.NAMESPACE_URL, identity).hex
-        if action in ("OPEN_MARKET", "PLACE_PENDING") and _truth(settings, "fixed_sl_enabled", True):
-            stop_distance = _number(settings.get("fixed_sl_distance"), 3.0)
+        if action in ("OPEN_MARKET", "PLACE_PENDING"):
+            if comment.startswith("AZS_CANDLE"):
+                stop_distance = (_number(settings.get("candle_chase_sl_distance"), 3.0)
+                                 if _truth(settings, "candle_chase_sl_enabled") else 0.0)
+            else:
+                stop_distance = (_number(settings.get("fixed_sl_distance"), 3.0)
+                                 if _truth(settings, "fixed_sl_enabled", True) else 0.0)
             if stop_distance > 0:
                 entry_price = price if action == "PLACE_PENDING" else (ask if direction == "BUY" else bid)
                 sl = (entry_price - stop_distance) if direction == "BUY" else (entry_price + stop_distance)
@@ -238,6 +243,39 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             return command("OPEN_MARKET", ("تعزيز مركزي" if kind == "addon" else "تبريد مركزي"),
                            direction=basket_direction, lots=lots, comment=tag,
                            key=kind + "_" + str(anchor_position.get("ticket")))
+
+    # Candle-follow breakout orders are generated centrally, one command at a time.
+    if _truth(settings, "candle_chase_enabled"):
+        candle = forming
+        candle_open = _number(candle.get("open"))
+        candle_high = _number(candle.get("high"))
+        candle_low = _number(candle.get("low"))
+        candle_close = _number(candle.get("close"))
+        move = abs(candle_close - candle_open)
+        if candle_open > 0 and candle_high >= candle_low > 0 and move >= _number(settings.get("candle_chase_min_move"), 0.1):
+            candle_orders = [o for o in orders if "AZS_CANDLE" in str(o.get("comment", ""))]
+            chase_max = int(_number(settings.get("candle_chase_max_orders"), 1))
+            if len(candle_orders) < chase_max:
+                candle_time = str(candle.get("time") or payload.get("sequence", "0"))
+                buy_exists = any(int(_number(o.get("type"), -1)) in (2, 4) for o in candle_orders)
+                sell_exists = any(int(_number(o.get("type"), -1)) in (3, 5) for o in candle_orders)
+                distance = max(_number(settings.get("pending_distance"), 2.0),
+                               _number(payload.get("stops_level")) * _number(payload.get("point")))
+                lots = _volume(_number(settings.get("lot"), 0.01), payload)
+                if lots > 0 and not buy_exists and len(candle_orders) < chase_max:
+                    price = candle_high + distance
+                    tp_distance = _number(settings.get("candle_chase_buy_target"), 1.0)
+                    tp = price + tp_distance if tp_distance > 0 else 0.0
+                    return command("PLACE_PENDING", "أمر متابعة شمعة شراء محسوب مركزياً",
+                                   direction="BUY", lots=lots, price=price, tp=tp,
+                                   comment="AZS_CANDLE_BUY", key="candle_buy_" + candle_time)
+                if lots > 0 and not sell_exists and len(candle_orders) < chase_max:
+                    price = candle_low - distance
+                    tp_distance = _number(settings.get("candle_chase_sell_target"), 1.0)
+                    tp = price - tp_distance if tp_distance > 0 else 0.0
+                    return command("PLACE_PENDING", "أمر متابعة شمعة بيع محسوب مركزياً",
+                                   direction="SELL", lots=lots, price=price, tp=tp,
+                                   comment="AZS_CANDLE_SELL", key="candle_sell_" + candle_time)
 
     # Main BUY/SELL entries are decided and sized centrally.
     if direction in ("BUY", "SELL"):
