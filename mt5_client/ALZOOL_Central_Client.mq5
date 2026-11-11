@@ -1096,8 +1096,8 @@ void PollCentralManagement()
           trade.SetDeviationInPoints(20);
           trade.SetTypeFillingBySymbol(_Symbol);
           bool sent=false;
-          if(direction=="BUY") sent=trade.Buy(lots,_Symbol,0.0,sl,tp,comment);
-          else if(direction=="SELL") sent=trade.Sell(lots,_Symbol,0.0,sl,tp,comment);
+          if(direction=="BUY") sent=trade.Buy(lots,_Symbol,0.0,NormalizeDouble(sl,_Digits),NormalizeDouble(tp,_Digits),comment);
+          else if(direction=="SELL") sent=trade.Sell(lots,_Symbol,0.0,NormalizeDouble(sl,_Digits),NormalizeDouble(tp,_Digits),comment);
           uint rc=trade.ResultRetcode();
           executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED ||
                             rc==TRADE_RETCODE_DONE_PARTIAL);
@@ -1128,9 +1128,9 @@ void PollCentralManagement()
           trade.SetTypeFillingBySymbol(_Symbol);
           bool sent=false;
           if(direction=="BUY" && price>current_tick.ask)
-             sent=trade.BuyStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
+             sent=trade.BuyStop(lots,NormalizeDouble(price,_Digits),_Symbol,NormalizeDouble(sl,_Digits),NormalizeDouble(tp,_Digits),ORDER_TIME_GTC,0,comment);
           else if(direction=="SELL" && price<current_tick.bid)
-             sent=trade.SellStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
+             sent=trade.SellStop(lots,NormalizeDouble(price,_Digits),_Symbol,NormalizeDouble(sl,_Digits),NormalizeDouble(tp,_Digits),ORDER_TIME_GTC,0,comment);
           uint rc=trade.ResultRetcode();
           executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED);
        }
