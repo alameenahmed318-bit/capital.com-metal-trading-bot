@@ -67,5 +67,38 @@ class SupabaseLearningPipelineTests(unittest.TestCase):
             )
 
 
+class SettingsBeforeCredentialsGateway(EngineGateway):
+    def __init__(self):
+        super().__init__("https://example.supabase.co", "service-key")
+        self.client = None
+        self.settings = {}
+
+    def _request(self, method, path, payload=None, prefer=None):
+        if method == "GET" and path.startswith("alzool_engine_clients?user_id=eq."):
+            if self.client is None:
+                return []
+            if "select=trading_settings" in path:
+                return [{"trading_settings": self.settings}]
+            return [{"client_id": self.client["client_id"]}]
+        if method == "POST" and path == "alzool_engine_clients":
+            self.client = dict(payload)
+            return [dict(payload)]
+        if method == "POST" and path == "alzool_engine_weights":
+            return []
+        if method == "PATCH" and path.startswith("alzool_engine_clients?user_id=eq."):
+            self.settings = dict(payload["trading_settings"])
+            return []
+        raise AssertionError((method, path, payload, prefer))
+
+
+class DashboardSettingsPersistenceTests(unittest.TestCase):
+    def test_settings_saved_before_credentials_are_not_lost(self):
+        gateway = SettingsBeforeCredentialsGateway()
+        saved = gateway.save_settings_for_user("user-before-mt5", {"lot": 0.02})
+        self.assertIsNotNone(gateway.client)
+        self.assertAlmostEqual(gateway.settings["lot"], 0.02)
+        self.assertAlmostEqual(saved["lot"], 0.02)
+
+
 if __name__ == "__main__":
     unittest.main()
