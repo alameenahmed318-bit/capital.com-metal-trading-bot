@@ -53,9 +53,9 @@ class LiveTelemetryAITriggerTests(unittest.TestCase):
         self.assertTrue(result["accepted"])
         self.assertEqual(len(executor.calls), 1)
         args, _ = executor.calls[0]
-        self.assertEqual(args[0], "client-1")
-        self.assertEqual(args[3], "XAUUSD")
-        self.assertEqual(args[4], "PERIOD_M1")
+        self.assertEqual(args[1], "client-1")
+        self.assertEqual(args[4], "XAUUSD")
+        self.assertEqual(args[5], "PERIOD_M1")
         self.assertEqual(len(args[-1]["closed_candles"]), 65)
         self.assertEqual(args[-1]["closed_candles"][0]["time"], 1)
         self.assertEqual(args[-1]["closed_candles"][-1]["time"], 65)
