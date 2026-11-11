@@ -143,8 +143,14 @@ class EngineGateway:
         if configured_mode.startswith("HUNTER"): mode="HUNTER"
         elif configured_mode.startswith("SNIPER"): mode="SNIPER"
         else: mode="AUTO"
-        selected_raw=(configured_mode if configured_mode.isdigit()
-                      else dashboard_settings.get("selected_strategy_id",data.get("selected_strategy_id",0)))
+        live_snapshot=self._live_cache.get(client_id) or {}
+        live_payload=live_snapshot.get("payload") or {}
+        if bool(dashboard_settings.get("adaptive_strategy_switch")) and live_payload.get("positions"):
+            mode="AUTO"
+            selected_raw=0
+        else:
+            selected_raw=(configured_mode if configured_mode.isdigit()
+                          else dashboard_settings.get("selected_strategy_id",data.get("selected_strategy_id",0)))
         if isinstance(selected_raw,bool): raise ValueError("selected_strategy_id must be 0..200")
         try: selected_id=int(selected_raw or 0)
         except (TypeError,ValueError,OverflowError): raise ValueError("selected_strategy_id must be 0..200") from None
