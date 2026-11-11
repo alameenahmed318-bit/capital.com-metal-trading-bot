@@ -1074,7 +1074,9 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    {
       double closed_net=HistoryDealGetDouble(trans.deal,DEAL_PROFIT)+HistoryDealGetDouble(trans.deal,DEAL_COMMISSION)+
                         HistoryDealGetDouble(trans.deal,DEAL_SWAP)+HistoryDealGetDouble(trans.deal,DEAL_FEE);
-      string close_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"position_id\":\""+(string)position_id+
+      string learning_id=(entry==DEAL_ENTRY_INOUT ? (string)position_id+"_REV_"+(string)trans.deal : (string)position_id);
+      string close_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"learning_id\":\""+JsonSafe(learning_id)+
+         "\",\"position_id\":\""+(string)position_id+
          "\",\"order\":\""+(string)order+"\",\"symbol\":\""+JsonSafe(_Symbol)+
          "\",\"volume\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_VOLUME),2)+
          ",\"price\":"+DoubleToString(HistoryDealGetDouble(trans.deal,DEAL_PRICE),_Digits)+
