@@ -123,6 +123,9 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     if daily_limit > 0 and realized_today + floating <= -daily_limit:
         if positions:
             return command("CLOSE_ALL", "تم بلوغ حد الخسارة اليومي من إعدادات لوحة التحكم")
+        if orders:
+            return command("CANCEL_PENDING", "إلغاء الأوامر المعلقة بعد بلوغ حد الخسارة اليومي",
+                           ticket=orders[0].get("ticket"), key="daily_loss_cancel_" + str(orders[0].get("ticket")))
         return {"action": "WAIT", "reason": "تم بلوغ حد الخسارة اليومي؛ الدخول متوقف حتى يوم التداول التالي"}
 
     if positions and _truth(settings, "global_loss_enabled", True):
@@ -321,7 +324,11 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         spread_limit = _number(settings.get("max_spread_points"))
         max_positions = int(_number(settings.get("max_positions"), 0))
         current_total = count + len(orders)
-        opposite_exists = bool(sells if direction == "BUY" else buys)
+        opposite_position = bool(sells if direction == "BUY" else buys)
+        opposite_pending = any(
+            int(_number(o.get("type"), -1)) in ((3, 5, 7) if direction == "BUY" else (2, 4, 6))
+            for o in orders)
+        opposite_exists = opposite_position or opposite_pending
         permitted = side_allowed and (spread_limit <= 0 or spread_points <= spread_limit)
         permitted = permitted and (not _truth(settings, "one_direction_only", True) or not opposite_exists)
         permitted = permitted and (max_positions <= 0 or current_total < max_positions)
