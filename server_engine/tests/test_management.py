@@ -244,7 +244,7 @@ class CentralManagementPlannerTests(unittest.TestCase):
         self.assertEqual(first["direction"], "BUY")
         live["payload"]["orders"] = [{"ticket": "9001", "symbol": "XAUUSD",
             "type": 4, "magic": "26110801", "comment": "AZS_CANDLE_BUY",
-            "time_setup": 500}]
+            "price": 2053.0, "sl": 0.0, "tp": 2054.0, "time_setup": 500}]
         second = build_management_command(settings, live, now=1001)
         self.assertEqual(second["action"], "PLACE_PENDING")
         self.assertEqual(second["direction"], "SELL")
