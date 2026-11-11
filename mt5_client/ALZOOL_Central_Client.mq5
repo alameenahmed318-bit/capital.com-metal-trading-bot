@@ -58,7 +58,7 @@ double g_cfg_recovery_manual_lot=0.01,g_cfg_recovery_max_lot=0.05;
 double g_cfg_recovery_trigger_loss=10.0,g_cfg_recovery_target_profit=0.5;
 double g_cfg_recovery_atr_distance=1.0,g_cfg_recovery_min_confidence=0.65;
 int g_cfg_addon_max=3,g_cfg_cooling_max=2;
-int g_cfg_recovery_min_positions=3,g_cfg_recovery_max_entries=1;
+int g_cfg_recovery_min_positions=3,g_cfg_recovery_max_entries=0;
 datetime g_last_recovery_bar_time=0;
 ulong g_last_recovery_entry_ms=0;
 bool g_cfg_addon_enabled=false,g_cfg_addon_smart=false,g_cfg_addon_multiplier_enabled=true;
@@ -729,7 +729,7 @@ bool PollCentralSettings()
    g_cfg_recovery_min_positions=(int)JsonNumber(response,"recovery_min_positions",3);
    g_cfg_recovery_atr_distance=JsonNumber(response,"recovery_atr_distance",1.0);
    g_cfg_recovery_min_confidence=JsonNumber(response,"recovery_min_confidence",0.65);
-   g_cfg_recovery_max_entries=(int)JsonNumber(response,"recovery_max_entries",1);
+   g_cfg_recovery_max_entries=(int)JsonNumber(response,"recovery_max_entries",0);
    g_cfg_addon_enabled=JsonBool(response,"addon_enabled",false);
    g_cfg_addon_smart=JsonBool(response,"addon_smart_enabled",false);
    g_cfg_addon_multiplier_enabled=JsonBool(response,"addon_multiplier_enabled",true);
@@ -779,7 +779,7 @@ bool PollCentralSettings()
       g_cfg_addon_max_lot<=0 || g_cfg_cooling_max_lot<=0 ||
       g_cfg_recovery_manual_lot<=0 || g_cfg_recovery_max_lot<=0 || g_cfg_recovery_trigger_loss<=0 ||
       g_cfg_recovery_target_profit<0 || g_cfg_recovery_min_positions<2 || g_cfg_recovery_atr_distance<=0 ||
-      g_cfg_recovery_min_confidence<0.50 || g_cfg_recovery_min_confidence>0.95 || g_cfg_recovery_max_entries<1 ||
+      g_cfg_recovery_min_confidence<0.50 || g_cfg_recovery_min_confidence>0.95 || g_cfg_recovery_max_entries<0 ||
       g_cfg_reverse_trigger<=0 || g_cfg_reverse_continue<=0 ||
       g_cfg_candle_chase_min_move<=0 || g_cfg_candle_chase_cooldown<0 ||
       g_cfg_candle_chase_buy_target<0 || g_cfg_candle_chase_sell_target<0 ||
@@ -1727,7 +1727,7 @@ void ManageSmartRecovery()
    // entry while the first recovery position is still open.
    if(recovery_open>0) { RecoveryWait("صفقة التعافي موجودة بالفعل؛ ننتظر إغلاق السلة على الهدف"); return; }
    double recovery_count=(g_recovery_count_key!="" && GlobalVariableCheck(g_recovery_count_key) ? GlobalVariableGet(g_recovery_count_key) : 0.0);
-   if(recovery_count>=g_cfg_recovery_max_entries)
+   if(g_cfg_recovery_max_entries>0 && recovery_count>=g_cfg_recovery_max_entries)
    { RecoveryWait("تم بلوغ عدد محاولات التعافي المحدد لهذه السلة"); return; }
 
    // Recovery follows the current market direction, independently of basket side.
