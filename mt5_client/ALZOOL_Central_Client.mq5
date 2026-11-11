@@ -1912,7 +1912,8 @@ void ManageConfirmedReversal()
       return;
    }
    if(buys>0 && sells>0) return;
-   if(!g_server_online || !g_decision_verified || g_decision_expires_at<=0.0 ||
+   // A dashboard stop blocks new trading actions; it must not trigger a reversal close.
+   if(!g_trading_enabled || !g_server_online || !g_decision_verified || g_decision_expires_at<=0.0 ||
       (double)TimeGMT()>=g_decision_expires_at || g_last_confidence<0.65) return;
 
    string basket_side=(buys>0 ? "BUY" : "SELL");
@@ -1975,7 +1976,7 @@ void ManageConfirmedReversal()
 void ManageCandleChase()
 {
    if(!g_settings_loaded || !g_cfg_candle_chase_enabled) return;
-   if(!g_trading_enabled || !g_server_online || !CheckTradingControl()) return;
+   if(g_daily_loss_paused || !g_trading_enabled || !g_server_online || !CheckTradingControl()) return;
 
    MqlRates candle[];
    ArraySetAsSeries(candle,true);
