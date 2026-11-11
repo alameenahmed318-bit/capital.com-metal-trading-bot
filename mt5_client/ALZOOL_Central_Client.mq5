@@ -818,15 +818,17 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       RecordBlockedSignal(decision_id,"trading-off","التداول الآلي متوقف من لوحة التحكم");
       return false;
    }
-   if(direction=="BUY" && !g_cfg_allow_buy) { g_status="BUY disabled from dashboard"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل من لوحة التحكم"); return false; }
-   if(direction=="SELL" && !g_cfg_allow_sell) { g_status="SELL disabled from dashboard"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل من لوحة التحكم"); return false; }
+   // Recovery is intentionally allowed to follow the confirmed market reversal
+   // even when ordinary BUY/SELL entry permissions are disabled in the dashboard.
+   if(!recovery_order && direction=="BUY" && !g_cfg_allow_buy) { g_status="BUY disabled from dashboard"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل من لوحة التحكم"); return false; }
+   if(!recovery_order && direction=="SELL" && !g_cfg_allow_sell) { g_status="SELL disabled from dashboard"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل من لوحة التحكم"); return false; }
    if(direction!="BUY" && direction!="SELL") return false;
    if((strategy_id<1 || strategy_id>200) && !recovery_order && !management_order) { g_status="Invalid strategy id"; return false; }
    if(decision_id=="" || decision_id==g_last_decision_id) return false;
    MqlTick fresh_tick;
    if(!SymbolInfoTick(_Symbol,fresh_tick)) return false;
    double current_spread=(fresh_tick.ask-fresh_tick.bid)/_Point;
-   if(g_cfg_max_spread_points>0 && current_spread>g_cfg_max_spread_points)
+   if(!recovery_order && g_cfg_max_spread_points>0 && current_spread>g_cfg_max_spread_points)
    {
       g_status="Spread widened after server decision";
       RecordBlockedSignal(decision_id,"spread","اتسع السبريد بعد صدور الإشارة وتجاوز الحد المسموح");
@@ -849,7 +851,9 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    }
 
    double atr=0.0;
-   if(!GetATR(atr)) { g_status="ATR unavailable"; return false; }
+   // Recovery already validates ATR/rebound before reaching this executor;
+   // do not add a second ATR gate that could suppress the recovery order.
+   if(!GetATR(atr) && !recovery_order && !management_order) { g_status="ATR unavailable"; return false; }
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return false;
 
