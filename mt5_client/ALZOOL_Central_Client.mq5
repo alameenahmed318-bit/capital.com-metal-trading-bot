@@ -1617,7 +1617,7 @@ void OnDeinit(const int reason)
 
 void ManageAiLossGuard()
 {
-   if(!g_settings_loaded || !g_cfg_ai_loss_guard || !g_decision_verified ||
+   if(!g_settings_loaded || !g_trading_enabled || !g_cfg_ai_loss_guard || !g_decision_verified ||
       g_decision_expires_at<=0.0 || (double)TimeGMT()>=g_decision_expires_at || g_last_confidence<0.72) return;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
@@ -1952,7 +1952,7 @@ void ManageAddonCooling()
 
 void ManageConfirmedReversal()
 {
-   if(!g_settings_loaded) return;
+   if(!g_settings_loaded || !g_trading_enabled) return;
    if(!g_cfg_reverse_protection_enabled)
    {
       if(g_reversal_trigger_key!="") GlobalVariableDel(g_reversal_trigger_key);
