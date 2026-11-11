@@ -1459,8 +1459,8 @@ void SendLiveState()
          ",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+
          ",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+
          ",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+
-         ",\"comment\":\""+JsonSafe(PositionGetString(POSITION_COMMENT))+"\",
-         "\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
+          "\",\"comment\":\""+JsonSafe(PositionGetString(POSITION_COMMENT))+
+          "\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
    }
    body+="],\"orders\":[";
    n=0;
@@ -2198,6 +2198,8 @@ bool VerifyManagementCommand(const string response)
    double sl=JsonNumber(response,"sl",0.0);
    double tp=JsonNumber(response,"tp",0.0);
    double lots=JsonNumber(response,"lots",0.0);
+   double sl=JsonNumber(response,"sl",0.0);
+   double tp=JsonNumber(response,"tp",0.0);
     double sl=JsonNumber(response,"sl",0.0);
     double tp=JsonNumber(response,"tp",0.0);
    double price=JsonNumber(response,"price",0.0);
