@@ -13,7 +13,6 @@ input group "Central server"
 input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
 input string InpEngineId = "";
 input string InpEngineToken = "";
-input string InpServerSymbol = "XAUUSD";
 input int    InpHttpTimeoutMs = 12000;
 // Technical identifiers only; not user trading controls.
 #define ALZOOL_MAGIC 26110801
@@ -1434,7 +1433,7 @@ void SendLiveState()
 
    string body="{\"sequence\":"+IntegerToString((long)sequence)+
       ",\"source_time\":"+IntegerToString((long)tick.time)+
-      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"point\":"+DoubleToString(_Point,10)+",\"volume_step\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP),8)+",\"volume_min\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),8)+",\"volume_max\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX),8)+",";
+      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"point\":"+DoubleToString(_Point,10)+",\"volume_step\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP),8)+",\"volume_min\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),8)+",\"volume_max\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX),8)+",\"tick_value\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_VALUE),8)+",\"tick_size\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE),10)+",\"stops_level\":"+IntegerToString((int)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL))+",";
    body+="\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+
       "\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+
       "\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+
