@@ -123,6 +123,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,result)
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
+        if self.path=="/api/engine/ai":
+            try:
+                u=current_user(token_of(self))
+                try: fresh=admin_user(u["id"])
+                except Exception: fresh=u
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                return self.send_json(200,ENGINE.ai_status_for_user(u["id"]))
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
         if self.path=="/api/engine/settings":
             try:
                 u=current_user(token_of(self))
