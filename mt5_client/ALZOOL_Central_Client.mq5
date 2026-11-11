@@ -1062,7 +1062,12 @@ void PollCentralManagement()
                        headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
    if(http!=200)
    {
-      if(http==-1) Print("AL-ZOOL central management request failed. err=",GetLastError());
+      string error_body=CharArrayToString(result,0,-1,CP_UTF8);
+      Print("AL-ZOOL central management request failed. http_status=",http,
+            " webrequest_error=",(http==-1 ? GetLastError() : 0),
+            " response_headers=",StringSubstr(response_headers,0,500),
+            " response_body=",StringSubstr(error_body,0,700));
+      g_status="Management request failed / HTTP "+IntegerToString(http);
       return;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
@@ -1081,7 +1086,12 @@ void PollCentralManagement()
    double tp=JsonNumber(response,"tp",0.0);
    double price=JsonNumber(response,"price",0.0);
    string dedupe_key="AZ_CMD_"+command_id;
-   if(action=="WAIT" || GlobalVariableCheck(dedupe_key)) return;
+   if(action=="WAIT")
+   {
+      Print("AL-ZOOL central management WAIT: ",JsonString(response,"reason"));
+      return;
+   }
+   if(GlobalVariableCheck(dedupe_key)) return;
 
    bool executed=false;
    trade.SetExpertMagicNumber(ALZOOL_MAGIC);
@@ -1221,8 +1231,21 @@ void PollCentralManagement()
       Print("AL-ZOOL central management executed: ",action," command=",command_id);
    }
    else
-      Print("AL-ZOOL central management not completed: ",action,
-            " retcode=",trade.ResultRetcode()," ",trade.ResultRetcodeDescription());
+   {
+      uint failed_rc=trade.ResultRetcode();
+      string failed_description=trade.ResultRetcodeDescription();
+      Print("AL-ZOOL central management not completed: action=",action,
+            " direction=",direction," lots=",DoubleToString(lots,4),
+            " retcode=",failed_rc," ",failed_description);
+      string rejected_payload="{\\"command_id\\":\\""+JsonSafe(command_id)+
+         "\\",\\"action\\":\\""+JsonSafe(action)+
+         "\\",\\"side\\":\\""+JsonSafe(direction)+
+         "\\",\\"symbol\\":\\""+JsonSafe(_Symbol)+
+         "\\",\\"volume\\":"+DoubleToString(lots,4)+
+         ",\\"retcode\\":"+IntegerToString((int)failed_rc)+
+         ",\\"reason_ar\\":\\""+JsonSafe(failed_description)+"\\"}";
+      SendSignalEvent(command_id+"_rejected","ORDER_REJECTED",rejected_payload);
+   }
 }
 
 void OnTimer()
@@ -1239,8 +1262,8 @@ void OnTimer()
    FlushPendingOutcomes();
    SendTerminalState();
    CheckCentralHealth();
-   PollCentralManagement();
    PollCentralEngine();
+   PollCentralManagement();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
