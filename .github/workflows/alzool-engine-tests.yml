@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile web gateway and engine
-        run: python -m py_compile marketplace/backend/app.py server_engine/engine.py server_engine/service.py server_engine/supabase_gateway.py
+        run: python -m py_compile marketplace/backend/app.py server_engine/engine.py server_engine/service.py server_engine/supabase_gateway.py server_engine/management.py
       - name: Run engine tests
         working-directory: server_engine
         run: python -m unittest discover -s tests -v
