@@ -89,6 +89,10 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         # Stable per live snapshot: repeated polls cannot issue duplicate orders.
         identity = "|".join((seq, action, str(ticket), direction, str(comment)))
         command_id = uuid.uuid5(uuid.NAMESPACE_URL, identity).hex
+        if action == "OPEN_MARKET" and _truth(settings, "fixed_sl_enabled", True):
+            stop_distance = _number(settings.get("fixed_sl_distance"), 3.0)
+            if stop_distance > 0:
+                sl = (ask - stop_distance) if direction == "BUY" else (bid + stop_distance)
         return {"action": action, "command_id": command_id, "ticket": str(ticket),
                 "sl": float(sl), "tp": float(tp), "direction": direction,
                 "lots": float(lots), "price": float(price), "comment": comment,
