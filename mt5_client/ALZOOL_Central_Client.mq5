@@ -72,7 +72,12 @@ bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_en
 bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true,g_cfg_ai_loss_guard=false;
 bool g_cfg_allow_buy=true,g_cfg_allow_sell=true,g_cfg_require_broker_stops=true;
 bool g_cfg_ai_risk_enabled=false,g_cfg_smart_profit=false;
+bool g_cfg_candle_chase_enabled=false,g_cfg_candle_chase_sl_enabled=false;
 double g_cfg_max_spread_points=0.0,g_cfg_ai_risk_percent=0.5,g_cfg_ai_max_lot=0.05;
+double g_cfg_candle_chase_min_move=0.1,g_cfg_candle_chase_buy_target=1.0;
+double g_cfg_candle_chase_sell_target=1.0,g_cfg_candle_chase_single_target=0.5,g_cfg_candle_chase_sl_distance=3.0;
+int g_cfg_candle_chase_cooldown=2,g_cfg_candle_chase_max_orders=1;
+ulong g_last_chase_buy_ms=0,g_last_chase_sell_ms=0;
 string g_recovery_count_key="",g_recovery_low_key="",g_recovery_high_key="";
 double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
 bool g_context_buy_trap=false,g_context_sell_trap=false;
@@ -739,6 +744,15 @@ bool PollCentralSettings()
    g_cfg_ai_risk_percent=JsonNumber(response,"ai_risk_percent",0.5);
    g_cfg_ai_max_lot=JsonNumber(response,"ai_max_lot",0.05);
    g_cfg_smart_profit=JsonBool(response,"smart_profit_enabled",false);
+   g_cfg_candle_chase_enabled=JsonBool(response,"candle_chase_enabled",false);
+   g_cfg_candle_chase_min_move=JsonNumber(response,"candle_chase_min_move",0.1);
+   g_cfg_candle_chase_cooldown=(int)JsonNumber(response,"candle_chase_cooldown",2);
+   g_cfg_candle_chase_buy_target=JsonNumber(response,"candle_chase_buy_target",1.0);
+   g_cfg_candle_chase_sell_target=JsonNumber(response,"candle_chase_sell_target",1.0);
+   g_cfg_candle_chase_single_target=JsonNumber(response,"candle_chase_single_target",0.5);
+   g_cfg_candle_chase_sl_enabled=JsonBool(response,"candle_chase_sl_enabled",false);
+   g_cfg_candle_chase_sl_distance=JsonNumber(response,"candle_chase_sl_distance",3.0);
+   g_cfg_candle_chase_max_orders=(int)JsonNumber(response,"candle_chase_max_orders",1);
    g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
    g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
    g_cfg_global_loss_enabled=JsonBool(response,"global_loss_enabled",true);
@@ -759,7 +773,11 @@ bool PollCentralSettings()
       g_cfg_addon_max_lot<=0 || g_cfg_cooling_max_lot<=0 ||
       g_cfg_recovery_manual_lot<=0 || g_cfg_recovery_max_lot<=0 || g_cfg_recovery_trigger_loss<=0 ||
       g_cfg_recovery_target_profit<0 || g_cfg_recovery_min_positions<2 || g_cfg_recovery_atr_distance<=0 ||
-      g_cfg_recovery_min_confidence<0.50 || g_cfg_recovery_min_confidence>0.95 || g_cfg_recovery_max_entries<1)
+      g_cfg_recovery_min_confidence<0.50 || g_cfg_recovery_min_confidence>0.95 || g_cfg_recovery_max_entries<1 ||
+      g_cfg_candle_chase_min_move<=0 || g_cfg_candle_chase_cooldown<0 ||
+      g_cfg_candle_chase_buy_target<0 || g_cfg_candle_chase_sell_target<0 ||
+      g_cfg_candle_chase_single_target<0 || g_cfg_candle_chase_sl_distance<=0 ||
+      g_cfg_candle_chase_max_orders<1 || g_cfg_candle_chase_max_orders>10)
    { g_settings_loaded=false; g_status="Invalid risk/protection settings"; return false; }
    g_settings_loaded=true;
    return true;
@@ -1868,6 +1886,131 @@ void ManageAddonCooling()
       AddonCoolingWait("تم بلوغ الحد الأقصى للصفقات الإضافية");
 }
 
+void ManageCandleChase()
+{
+   if(!g_settings_loaded || !g_cfg_candle_chase_enabled) return;
+   if(!g_trading_enabled || !g_server_online || !CheckTradingControl()) return;
+
+   MqlRates candle[];
+   ArraySetAsSeries(candle,true);
+   if(CopyRates(_Symbol,PERIOD_CURRENT,0,1,candle)!=1) return;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<=tick.bid) return;
+   double spread=(tick.ask-tick.bid)/_Point;
+   if(g_cfg_max_spread_points>0.0 && spread>g_cfg_max_spread_points) return;
+
+   int buys=0,sells=0;
+   int positions=CountOurPositions(buys,sells);
+   int pending=CountOurPendingOrders();
+   if(g_cfg_max_positions>0 && positions+pending>=g_cfg_max_positions) return;
+   if(g_cfg_one_direction && buys>0 && sells>0) return;
+
+   int chase_buy=0,chase_sell=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
+      string comment=PositionGetString(POSITION_COMMENT);
+      if(StringFind(comment,"AZC_CHASE_BUY")>=0) chase_buy++;
+      if(StringFind(comment,"AZC_CHASE_SELL")>=0) chase_sell++;
+   }
+   for(int j=OrdersTotal()-1;j>=0;j--)
+   {
+      ulong ticket=OrderGetTicket(j);
+      if(ticket==0) continue;
+      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=ALZOOL_MAGIC) continue;
+      string comment=OrderGetString(ORDER_COMMENT);
+      if(StringFind(comment,"AZC_CHASE_BUY")>=0) chase_buy++;
+      if(StringFind(comment,"AZC_CHASE_SELL")>=0) chase_sell++;
+   }
+
+   long stops_level=SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
+   double min_distance=(double)stops_level*_Point;
+   int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+   double total_before=(double)(positions+pending);
+   double single_target=(total_before==0.0 ? g_cfg_candle_chase_single_target : 0.0);
+   datetime expiration=candle[0].time+PeriodSeconds(_Period);
+   if(expiration<=TimeCurrent()) expiration=0;
+
+   bool allow_buy=g_cfg_allow_buy && !(g_cfg_one_direction && sells>0);
+   bool allow_sell=g_cfg_allow_sell && !(g_cfg_one_direction && buys>0);
+   if(allow_buy && chase_buy<g_cfg_candle_chase_max_orders &&
+      (g_last_chase_buy_ms==0 || GetTickCount64()-g_last_chase_buy_ms>=(ulong)g_cfg_candle_chase_cooldown*1000))
+   {
+      double price=NormalizeDouble(MathMax(candle[0].high+g_cfg_candle_chase_min_move,tick.ask+min_distance),digits);
+      double sl=(g_cfg_candle_chase_sl_enabled ? NormalizeDouble(price-g_cfg_candle_chase_sl_distance,digits) : 0.0);
+      double target=(single_target>0.0 ? single_target : g_cfg_candle_chase_buy_target);
+      double tp=(target>0.0 ? NormalizeDouble(price+target,digits) : 0.0);
+      double lots=(g_cfg_ai_risk_enabled
+                   ? (g_cfg_candle_chase_sl_enabled ? CalculateRiskLots(g_cfg_candle_chase_sl_distance) : 0.0)
+                   : NormalizeLots(g_cfg_lot));
+      bool stops_ok=(!g_cfg_require_broker_stops ||
+                     ((!g_cfg_candle_chase_sl_enabled || price-sl>=min_distance) &&
+                      (tp==0.0 || tp-price>=min_distance)));
+      if(lots>0.0 && stops_ok)
+      {
+         trade.SetExpertMagicNumber(ALZOOL_MAGIC);
+         bool sent=(expiration>0
+            ? trade.BuyStop(lots,price,_Symbol,sl,tp,ORDER_TIME_SPECIFIED,expiration,"AZC_CHASE_BUY")
+            : trade.BuyStop(lots,price,_Symbol,sl,tp,ORDER_TIME_GTC,0,"AZC_CHASE_BUY"));
+         uint rc=trade.ResultRetcode();
+         if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED))
+         {
+            g_last_chase_buy_ms=GetTickCount64();
+            string id="AZC_BUY_"+IntegerToString((long)candle[0].time)+"_"+IntegerToString((long)trade.ResultOrder());
+            string payload="{\"decision_id\":\""+id+"\",\"side\":\"BUY\",\"symbol\":\""+JsonSafe(_Symbol)+
+               "\",\"order_id\":\""+(string)trade.ResultOrder()+"\",\"volume\":"+DoubleToString(lots,2)+
+               ",\"price\":"+DoubleToString(price,digits)+",\"tp\":"+DoubleToString(tp,digits)+
+               ",\"reason_ar\":\"أمر متابعة شمعة شراء من إعدادات لوحة التحكم\"}";
+            SendSignalEvent(id,"ORDER_SENT",payload);
+         }
+         else Print("AL-ZOOL candle chase BUY rejected: ",trade.ResultRetcodeDescription());
+      }
+      else if(lots<=0.0 && g_cfg_ai_risk_enabled)
+         g_status="Candle chase BUY waiting / AI risk requires SL and valid broker volume";
+   }
+
+   // Recount after a possible buy placement so the dashboard maximum is shared.
+   pending=CountOurPendingOrders();
+   if(g_cfg_max_positions>0 && positions+pending>=g_cfg_max_positions) return;
+   if(allow_sell && chase_sell<g_cfg_candle_chase_max_orders &&
+      (g_last_chase_sell_ms==0 || GetTickCount64()-g_last_chase_sell_ms>=(ulong)g_cfg_candle_chase_cooldown*1000))
+   {
+      double price=NormalizeDouble(MathMin(candle[0].low-g_cfg_candle_chase_min_move,tick.bid-min_distance),digits);
+      double sl=(g_cfg_candle_chase_sl_enabled ? NormalizeDouble(price+g_cfg_candle_chase_sl_distance,digits) : 0.0);
+      double target=(single_target>0.0 ? single_target : g_cfg_candle_chase_sell_target);
+      double tp=(target>0.0 ? NormalizeDouble(price-target,digits) : 0.0);
+      double lots=(g_cfg_ai_risk_enabled
+                   ? (g_cfg_candle_chase_sl_enabled ? CalculateRiskLots(g_cfg_candle_chase_sl_distance) : 0.0)
+                   : NormalizeLots(g_cfg_lot));
+      bool stops_ok=(!g_cfg_require_broker_stops ||
+                     ((!g_cfg_candle_chase_sl_enabled || sl-price>=min_distance) &&
+                      (tp==0.0 || price-tp>=min_distance)));
+      if(lots>0.0 && stops_ok)
+      {
+         trade.SetExpertMagicNumber(ALZOOL_MAGIC);
+         bool sent=(expiration>0
+            ? trade.SellStop(lots,price,_Symbol,sl,tp,ORDER_TIME_SPECIFIED,expiration,"AZC_CHASE_SELL")
+            : trade.SellStop(lots,price,_Symbol,sl,tp,ORDER_TIME_GTC,0,"AZC_CHASE_SELL"));
+         uint rc=trade.ResultRetcode();
+         if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED))
+         {
+            g_last_chase_sell_ms=GetTickCount64();
+            string id="AZC_SELL_"+IntegerToString((long)candle[0].time)+"_"+IntegerToString((long)trade.ResultOrder());
+            string payload="{\"decision_id\":\""+id+"\",\"side\":\"SELL\",\"symbol\":\""+JsonSafe(_Symbol)+
+               "\",\"order_id\":\""+(string)trade.ResultOrder()+"\",\"volume\":"+DoubleToString(lots,2)+
+               ",\"price\":"+DoubleToString(price,digits)+",\"tp\":"+DoubleToString(tp,digits)+
+               ",\"reason_ar\":\"أمر متابعة شمعة بيع من إعدادات لوحة التحكم\"}";
+            SendSignalEvent(id,"ORDER_SENT",payload);
+         }
+         else Print("AL-ZOOL candle chase SELL rejected: ",trade.ResultRetcodeDescription());
+      }
+      else if(lots<=0.0 && g_cfg_ai_risk_enabled)
+         g_status="Candle chase SELL waiting / AI risk requires SL and valid broker volume";
+   }
+}
+
 void OnTimer()
 {
    // Live MT5 snapshot is sent first, independently of slower maintenance work.
@@ -1889,6 +2032,7 @@ void OnTimer()
    CheckTradingControl();
    PollCentralEngine();
    ManageAiLossGuard();
+   ManageCandleChase();
    ManageSmartRecovery();
    ManageAddonCooling();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
