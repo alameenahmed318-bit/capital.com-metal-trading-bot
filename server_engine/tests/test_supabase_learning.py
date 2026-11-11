@@ -22,12 +22,22 @@ class FakeSupabaseLearningGateway(EngineGateway):
         return {"user_id": "user-1"} if client_id == "client-1" and token == "token-1" else None
 
     def _request(self, method, path, payload=None, prefer=None):
-        if method == "POST" and path == "alzool_engine_outcomes":
-            key = (payload["client_id"], payload["deal_id"])
+        if method == "POST" and path == "rpc/alzool_record_learning_outcome":
+            key = (payload["p_client_id"], payload["p_deal_id"])
             if key in self.saved:
-                return []
+                return {"accepted": True, "duplicate": True, "trained": False}
             self.saved[key] = dict(payload)
-            return [dict(payload)]
+            sid = int(payload["p_strategy_id"])
+            pnl = float(payload["p_pnl"])
+            enabled = bool(payload["p_learning_enabled"])
+            rate = float(payload["p_learning_rate"])
+            before = self.weights.get(sid, 1.0)
+            if enabled and pnl != 0:
+                factor = 1.0 + rate if pnl > 0 else 1.0 - rate
+                self.weights[sid] = max(0.25, min(4.0, before * factor))
+                self.weight_writes += 1
+            return {"accepted": True, "duplicate": False, "trained": enabled and pnl != 0,
+                    "weight_before": before, "weight_after": self.weights.get(sid, before)}
         if method == "GET" and path.startswith("alzool_engine_weights?"):
             sid = int(path.split("strategy_id=eq.", 1)[1].split("&", 1)[0])
             return [{"weight": self.weights.get(sid, 1.0)}]
