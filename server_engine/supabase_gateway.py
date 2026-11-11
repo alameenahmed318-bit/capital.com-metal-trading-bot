@@ -4,6 +4,7 @@ import hashlib, hmac, json, math, secrets, time, urllib.parse, urllib.request, u
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from .engine import evaluate_market, build_synthetic_indicator
+from .management import build_management_command
 
 TTL_SECONDS = 12
 
