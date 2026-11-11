@@ -211,15 +211,31 @@ class Handler(SimpleHTTPRequestHandler):
                 account=(item or {}).get("account",{}) if connected else {}
                 positions=(item or {}).get("positions",[]) if connected else []
                 deals=(item or {}).get("closed_deals",[]) if connected else []
-                # Durable 30-day history; memory is only a fallback if DB is unavailable.
-                if client_id:
-                    cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
-                    try:
+                # Durable 30-day history from Supabase. Resolve the latest stored client
+                # for the owner as a fallback if the account licence lookup is unavailable.
+                history_records=0
+                history_error=""
+                try:
+                    if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
+                        latest=sb("GET","/rest/v1/alzool_engine_closed_deals?select=client_id&order=deal_time.desc&limit=1",admin=True)
+                        if latest: client_id=latest[0].get("client_id","")
+                    if client_id:
+                        cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
                         stored=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                             "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+
-                            "&select=payload&order=deal_time.desc&limit=2000",admin=True)
+                            "&select=deal_time,payload&order=deal_time.desc&limit=2000",admin=True)
                         if isinstance(stored,list):
-                            deals=[row.get("payload",{}) for row in stored if isinstance(row,dict) and isinstance(row.get("payload"),dict)]
+                            history_records=len(stored)
+                            deals=[]
+                            for record in stored:
+                                if not isinstance(record,dict) or not isinstance(record.get("payload"),dict): continue
+                                deal=dict(record["payload"])
+                                if not int(deal.get("time") or 0) and record.get("deal_time"):
+                                    deal["time"]=int(datetime.fromisoformat(record["deal_time"].replace("Z","+00:00")).timestamp())
+                                deals.append(deal)
+                except Exception as history_error_value:
+                    history_error=str(history_error_value)[:180]
+                    print("CLOSED_HISTORY_READ_WARNING:",history_error,flush=True)
                     except Exception as history_error:
                         print("CLOSED_HISTORY_READ_WARNING:",str(history_error)[:180],flush=True)
                 uae=timezone(timedelta(hours=4))
@@ -254,6 +270,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "floating_pl":account.get("profit"),"currency":account.get("currency"),
                     "open_trades":len(positions),"win_rate":win_rate,
                     "closed_count":len(closed),"closed_trades":closed[:20],
+                    "history_records":history_records,"history_client_id":client_id,"history_error":history_error,
                     "daily":{"profit":daily_profit,"loss":daily_loss,"net":daily_net,"trades":daily_count},
                     "account":account,"positions":positions,
                     "orders":(item or {}).get("orders",[]) if connected else [],
