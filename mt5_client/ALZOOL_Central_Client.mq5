@@ -1511,37 +1511,36 @@ void RecoveryWait(const string reason)
    g_status=message;
 }
 
-bool SendRecoveryVolume(const string direction,const double requested_lots,const string base_id,const string reason)
+bool SendRecoveryVolume(const string direction,const double requested_lots,const string decision_id,const string reason)
 {
    double vmax=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
    double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
    double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
    if(vmax<=0.0 || vmin<=0.0 || step<=0.0) return false;
-   double remaining=requested_lots;
-   bool sent_any=false;
-   int leg=0,digits=(step<0.001 ? 4 : (step<0.01 ? 3 : 2));
-   while(remaining>=vmin-1e-8)
+
+   int digits=(step<0.001 ? 4 : (step<0.01 ? 3 : 2));
+   double lots=NormalizeDouble(MathCeil(requested_lots/step-1e-8)*step,digits);
+   // Recovery is deliberately ONE market order. Never split a large recovery
+   // volume into multiple orders; if the broker's per-order limit is lower,
+   // report that fact and wait rather than changing the requested lot.
+   if(lots<vmin-1e-8 || lots>vmax+1e-8)
    {
-      double part=MathFloor(MathMin(remaining,vmax)/step+1e-8)*step;
-      part=NormalizeDouble(part,digits);
-      if(part<vmin-1e-8) break;
-      MqlTick q;
-      if(!SymbolInfoTick(_Symbol,q)) break;
-      double margin=0.0;
-      ENUM_ORDER_TYPE ot=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
-      double px=(direction=="BUY" ? q.ask : q.bid);
-      if(!OrderCalcMargin(ot,_Symbol,part,px,margin) || margin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
-      {
-         RecoveryWait("الهامش الحر لا يكفي لإكمال حجم التعافي المحسوب");
-         break;
-      }
-      if(!PlaceCentralTrade(direction,base_id+"_LEG_"+IntegerToString(leg),reason,g_last_strategy_id,part,true))
-         break;
-      sent_any=true; leg++; remaining-=part;
-      if(remaining<step*0.5) remaining=0.0;
+      RecoveryWait("حجم التعافي المطلوب خارج حدود الصفقة الواحدة لدى الوسيط؛ المطلوب="+DoubleToString(lots,digits)+
+                   " والحد الأقصى="+DoubleToString(vmax,digits));
+      return false;
    }
-   if(remaining>0.0) Print("AL-ZOOL recovery volume not fully filled; residual=",DoubleToString(remaining,digits));
-   return sent_any;
+
+   MqlTick q;
+   if(!SymbolInfoTick(_Symbol,q)) return false;
+   ENUM_ORDER_TYPE order_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+   double price=(direction=="BUY" ? q.ask : q.bid),margin=0.0;
+   if(!OrderCalcMargin(order_type,_Symbol,lots,price,margin) ||
+      margin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+   {
+      RecoveryWait("الهامش الحر لا يكفي لحجم التعافي المطلوب "+DoubleToString(lots,digits));
+      return false;
+   }
+   return PlaceCentralTrade(direction,decision_id,reason,g_last_strategy_id,lots,true);
 }
 
 void ManageSmartRecovery()
@@ -1552,15 +1551,14 @@ void ManageSmartRecovery()
    if(total<=0) { g_last_recovery_bar_time=0; return; }
 
    int recovery_open=0;
-   double floating=0.0,losing_lots=0.0;
+   double floating=0.0,total_open_lots=0.0;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
-      double pnl=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
-      floating+=pnl;
-      if(pnl<0.0) losing_lots+=PositionGetDouble(POSITION_VOLUME);
+      floating+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      total_open_lots+=PositionGetDouble(POSITION_VOLUME);
       if(StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) recovery_open++;
    }
 
@@ -1576,7 +1574,11 @@ void ManageSmartRecovery()
    if(!CheckTradingControl()) { RecoveryWait("تعذر تأكيد صلاحية التداول"); return; }
    if(total<g_cfg_recovery_min_positions) { RecoveryWait("عدد صفقات السلة أقل من الحد الأدنى"); return; }
    if(floating>-g_cfg_recovery_trigger_loss) { RecoveryWait("الخسارة لم تصل إلى حد التفعيل"); return; }
-   if(losing_lots<=0.0) { RecoveryWait("لا توجد صفقات خاسرة لحساب لوت التعافي"); return; }
+   if(total_open_lots<=0.0) { RecoveryWait("لا توجد لوتات مفتوحة لحساب التعافي"); return; }
+
+   // Exactly one recovery order per basket: do not compound another recovery
+   // entry while the first recovery position is still open.
+   if(recovery_open>0) { RecoveryWait("صفقة التعافي موجودة بالفعل؛ ننتظر إغلاق السلة على الهدف"); return; }
 
    // Recovery follows the current market direction, independently of basket side.
    string direction=g_last_decision;
@@ -1599,55 +1601,27 @@ void ManageSmartRecovery()
    if(g_last_recovery_entry_ms>0 && now-g_last_recovery_entry_ms<3000)
    { RecoveryWait("فترة تهدئة قصيرة بين أوامر التعافي"); return; }
 
-   MqlTick tick;
-   double atr=0.0;
-   if(!SymbolInfoTick(_Symbol,tick) || !GetATR(atr) || atr<=0.0)
-   { RecoveryWait("السعر أو ATR غير جاهز"); return; }
-   double dist=MathMin(g_cfg_recovery_atr_distance,0.75);
-   double target=(direction=="BUY" ? tick.bid+atr*dist : tick.ask-atr*dist);
-   ENUM_ORDER_TYPE recovery_type=(direction=="BUY" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
-
-   // Project the whole basket, including positions in the opposite direction.
-   double projected_existing=0.0;
-   for(int i=PositionsTotal()-1;i>=0;i--)
-   {
-      ulong ticket=PositionGetTicket(i);
-      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
-      ENUM_POSITION_TYPE pt=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      ENUM_ORDER_TYPE et=(pt==POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
-      double p=0.0;
-      if(!OrderCalcProfit(et,_Symbol,PositionGetDouble(POSITION_VOLUME),PositionGetDouble(POSITION_PRICE_OPEN),target,p))
-      { RecoveryWait("تعذر حساب الربح المتوقع لكل السلة"); return; }
-      projected_existing+=p+PositionGetDouble(POSITION_SWAP);
-   }
-   double entry=(direction=="BUY" ? tick.ask : tick.bid),one_lot=0.0;
-   if(!OrderCalcProfit(recovery_type,_Symbol,1.0,entry,target,one_lot) || one_lot<=0.0)
-   { RecoveryWait("الحركة المتوقعة لا تحقق ربحاً في اتجاه التعافي"); return; }
-
-   double deficit=g_cfg_recovery_target_profit-projected_existing;
-   double calculated=(deficit>0.0 ? deficit/one_lot : 0.0);
    double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
    double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
-   if(step<=0.0 || vmin<=0.0) { RecoveryWait("خطوة اللوت غير صالحة"); return; }
-   // No EA recovery lot ceiling and no recovery-leg count cap.
-   double requested=MathMax(calculated,losing_lots+step);
-   requested=MathMax(requested,vmin);
-   int vd=(step<0.001 ? 4 : (step<0.01 ? 3 : 2));
-   requested=NormalizeDouble(MathCeil(requested/step-1e-8)*step,vd);
+   double vmax=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+   if(step<=0.0 || vmin<=0.0 || vmax<=0.0) { RecoveryWait("إعدادات حجم اللوت لدى الوسيط غير صالحة"); return; }
+   int volume_digits=(step<0.001 ? 4 : (step<0.01 ? 3 : 2));
 
+   // User-defined rule: sum the lots of ALL open basket positions, then add
+   // exactly one broker volume step (normally 0.01 lot).
+   double requested=NormalizeDouble(MathCeil((total_open_lots+step)/step-1e-8)*step,volume_digits);
    string id=g_last_decision_id+"_REC_"+IntegerToString((long)TimeCurrent())+"_"+
              IntegerToString((long)GetTickCount64());
-   string why="تعافٍ مستقل "+direction+"؛ لوت الخاسر="+DoubleToString(losing_lots,2)+
-              "؛ لوت الإنقاذ="+DoubleToString(requested,2)+
-              "؛ الصافي المتوقع="+DoubleToString(projected_existing+requested*one_lot,2);
+   string why="تعافٍ مستقل "+direction+"؛ مجموع لوتات السلة="+DoubleToString(total_open_lots,volume_digits)+
+              "؛ لوت التعافي="+DoubleToString(requested,volume_digits)+
+              " (مجموع اللوتات + خطوة واحدة)";
    if(SendRecoveryVolume(direction,requested,id,why))
    {
       g_last_recovery_entry_ms=GetTickCount64();
       g_last_recovery_bar_time=iTime(_Symbol,PERIOD_CURRENT,0);
-      g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(requested,2);
-      Print("AL-ZOOL recovery opened ",direction," losing=",DoubleToString(losing_lots,2),
-            " recovery=",DoubleToString(requested,2)," projected=",DoubleToString(projected_existing+requested*one_lot,2));
+      g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(requested,volume_digits);
+      Print("AL-ZOOL recovery opened ",direction," basket_lots=",DoubleToString(total_open_lots,volume_digits),
+            " recovery_lot=",DoubleToString(requested,volume_digits));
    }
 }
 int CountOurManagementPositions(const string tag)
