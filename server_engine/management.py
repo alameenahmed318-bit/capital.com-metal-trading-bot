@@ -221,22 +221,39 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     # Recovery entry: server chooses direction and lot from the complete open basket.
     if _truth(settings, "recovery_enabled"):
         recovery_positions = [p for p in positions if "AZR_RECOVERY" in str(p.get("comment", ""))]
+        losing_positions = [p for p in positions
+                            if _number(p.get("profit")) + _number(p.get("swap")) < 0]
         minimum = int(_number(settings.get("recovery_min_positions"), 3))
         trigger = abs(_number(settings.get("recovery_trigger_loss"), 10))
-        basket_start = min((_number(p.get("time")) for p in positions), default=0.0)
-        recovery_limit = int(_number(settings.get("recovery_max_entries"), 0))
-        recovery_history = [d for d in (payload.get("history") or [])
-                            if isinstance(d, dict) and "AZR_RECOVERY" in str(d.get("comment", ""))
-                            and int(_number(d.get("entry"), -1)) in (0, 2)
-                            and _number(d.get("time")) >= basket_start]
-        if (count >= minimum and floating <= -trigger and not recovery_positions and
-                (recovery_limit <= 0 or len(recovery_history) < recovery_limit) and direction in ("BUY", "SELL")):
+        losing_buy_lots = sum(_number(p.get("volume")) for p in losing_positions
+                              if int(_number(p.get("type"), -1)) == 0)
+        losing_sell_lots = sum(_number(p.get("volume")) for p in losing_positions
+                               if int(_number(p.get("type"), -1)) == 1)
+        if losing_buy_lots > losing_sell_lots:
+            losing_basket_direction = "BUY"
+        elif losing_sell_lots > losing_buy_lots:
+            losing_basket_direction = "SELL"
+        else:
+            losing_basket_direction = ""
+        direction_mode = str(settings.get("recovery_direction_mode", "SAME")).upper()
+        if direction_mode not in ("SAME", "OPPOSITE", "BOTH"):
+            direction_mode = "SAME"
+        recovery_direction = (
+            losing_basket_direction if direction_mode == "SAME" else
+            ("SELL" if losing_basket_direction == "BUY" else "BUY")
+            if direction_mode == "OPPOSITE" and losing_basket_direction else
+            direction if direction_mode == "BOTH" else ""
+        )
+        # One live recovery position at a time prevents duplicate simultaneous
+        # recovery orders; there is no lifetime/attempt-count ceiling.
+        if (len(losing_positions) >= minimum and floating <= -trigger and
+                not recovery_positions and recovery_direction in ("BUY", "SELL")):
             min_conf = _number(settings.get("recovery_min_confidence"), .65)
             body = _number(forming.get("close")) - _number(forming.get("open"))
-            candle_agrees = body > 0 if direction == "BUY" else body < 0
+            candle_agrees = body > 0 if recovery_direction == "BUY" else body < 0
             atr_value = _atr(candles)
             recent = candles[-14:] if isinstance(candles, list) else []
-            if direction == "BUY":
+            if recovery_direction == "BUY":
                 adverse_extreme = min((_number(x.get("low")) for x in recent), default=0.0)
                 rebound = bid - adverse_extreme
             else:
@@ -244,16 +261,16 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 rebound = adverse_extreme - ask
             rebound_required = atr_value * _number(settings.get("recovery_atr_distance"), 1.0)
             if confidence >= min_conf and candle_agrees and atr_value > 0 and adverse_extreme > 0 and rebound >= rebound_required:
-                total_lots = sum(_number(p.get("volume")) for p in positions)
                 mode = str(settings.get("recovery_mode", "AUTO")).upper()
+                losing_lots = losing_buy_lots + losing_sell_lots
                 requested = (_number(settings.get("recovery_manual_lot"), .01) if mode == "MANUAL"
-                             else total_lots + _number(payload.get("volume_step"), .01))
+                             else losing_lots + _number(payload.get("volume_step"), .01))
                 cap = _number(settings.get("recovery_max_lot")) if mode == "MANUAL" else 0.0
                 lots = _volume(requested, payload, cap)
                 if lots > 0:
-                    return command("OPEN_MARKET", "تعافٍ مركزي: اللوت محسوب من مجموع لوتات السلة",
-                                   direction=direction, lots=lots, comment="AZR_RECOVERY",
-                                    key="recovery_" + str((candles[-1] or {}).get("time", payload.get("sequence", "0"))) + "_" + "_".join(sorted(str(p.get("ticket")) for p in positions)))
+                    return command("OPEN_MARKET", "تعافٍ مركزي: اتجاهه حسب وضع التعافي ولوت AUTO أكبر من مجموع لوتات الصفقات الخاسرة",
+                                   direction=recovery_direction, lots=lots, comment="AZR_RECOVERY",
+                                   key="recovery_" + str((candles[-1] or {}).get("time", payload.get("sequence", "0"))) + "_" + "_".join(sorted(str(p.get("ticket")) for p in positions)))
 
     # Add-on and cooling use separate quotas and separate most-recent anchors.
     for kind in ("addon", "cooling"):
