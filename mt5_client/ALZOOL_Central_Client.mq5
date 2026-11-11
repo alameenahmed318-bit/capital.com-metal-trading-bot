@@ -254,7 +254,15 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    MqlRates rates[];
    ArraySetAsSeries(rates,false);
    int copied=CopyRates(_Symbol,PERIOD_CURRENT,1,ALZOOL_BARS_TO_SEND,rates);
-   if(copied<65) return false;
+   if(copied<65)
+   {
+      Print("AL-ZOOL market candles not ready. CopyRates=",copied,
+            " Bars=",Bars(_Symbol,PERIOD_CURRENT),
+            " required=65 symbol=",_Symbol,
+            " timeframe=",EnumToString((ENUM_TIMEFRAMES)_Period),
+            " error=",GetLastError());
+      return false;
+   }
    bar_time=rates[copied-1].time;
 
    MqlTick tick;
@@ -832,6 +840,28 @@ void SendLiveState()
          ",\"close\":"+DoubleToString(current[0].close,_Digits)+
          ",\"tick_volume\":"+IntegerToString((long)current[0].tick_volume)+"}";
    else body+="\"forming_candle\":{}";
+
+   // Include a compact closed-candle window in the independent live heartbeat.
+   // This lets the server run OpenAI analysis even while the slower signed
+   // market-decision poll is waiting for its next bar.
+   MqlRates closed_rates[];
+   ArraySetAsSeries(closed_rates,true);
+   int closed_count=CopyRates(_Symbol,PERIOD_CURRENT,1,65,closed_rates);
+   body+=",\"closed_candles\":[";
+   if(closed_count>=65)
+   {
+      for(int c=closed_count-1;c>=0;c--)
+      {
+         if(c<closed_count-1) body+=",";
+         body+="{\"time\":"+IntegerToString((long)closed_rates[c].time)+
+            ",\"open\":"+DoubleToString(closed_rates[c].open,_Digits)+
+            ",\"high\":"+DoubleToString(closed_rates[c].high,_Digits)+
+            ",\"low\":"+DoubleToString(closed_rates[c].low,_Digits)+
+            ",\"close\":"+DoubleToString(closed_rates[c].close,_Digits)+
+            ",\"tick_volume\":"+IntegerToString((long)closed_rates[c].tick_volume)+"}";
+      }
+   }
+   body+="]";
    body+="}";
 
    char data[],result[];
