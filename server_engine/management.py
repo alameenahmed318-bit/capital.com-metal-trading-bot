@@ -311,6 +311,57 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             return command("CANCEL_PENDING", "إلغاء أمر معلق قديم أو مخالف لقرار السيرفر",
                            ticket=order.get("ticket"), key="cancel_" + str(order.get("ticket")))
 
+    # Reprice existing AL-ZOOL stop orders from current broker quotes and dashboard distances.
+    pending_distance = max(_number(settings.get("pending_distance"), 2.0),
+                           _number(payload.get("stops_level")) * _number(payload.get("point")))
+    for order in orders:
+        order_type = int(_number(order.get("type"), -1))
+        order_comment = str(order.get("comment", ""))
+        is_buy_stop = order_type == 4
+        is_sell_stop = order_type == 5
+        if not (is_buy_stop or is_sell_stop):
+            continue
+        pending_side = "BUY" if is_buy_stop else "SELL"
+        if "AZS_CANDLE" in order_comment and _truth(settings, "candle_chase_enabled"):
+            candle = forming
+            if pending_side == "BUY":
+                desired_price = _number(candle.get("high")) + pending_distance
+                target_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
+                                   if int(_number(settings.get("candle_chase_max_orders"), 1)) == 1
+                                   else _number(settings.get("candle_chase_buy_target"), 1.0))
+                desired_tp = desired_price + target_distance if target_distance > 0 else 0.0
+            else:
+                desired_price = _number(candle.get("low")) - pending_distance
+                target_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
+                                   if int(_number(settings.get("candle_chase_max_orders"), 1)) == 1
+                                   else _number(settings.get("candle_chase_sell_target"), 1.0))
+                desired_tp = desired_price - target_distance if target_distance > 0 else 0.0
+            stop_distance = (_number(settings.get("candle_chase_sl_distance"), 3.0)
+                             if _truth(settings, "candle_chase_sl_enabled") else 0.0)
+        else:
+            if direction != pending_side:
+                continue
+            desired_price = ask + pending_distance if pending_side == "BUY" else bid - pending_distance
+            desired_tp = _number(order.get("tp"))
+            stop_distance = (_number(settings.get("fixed_sl_distance"), 3.0)
+                             if _truth(settings, "fixed_sl_enabled", True) else 0.0)
+        if desired_price <= 0:
+            continue
+        if stop_distance > 0 and _truth(settings, "require_broker_stops", True):
+            stop_distance = max(stop_distance, _number(payload.get("stops_level")) * _number(payload.get("point")))
+        desired_sl = (desired_price - stop_distance if pending_side == "BUY"
+                      else desired_price + stop_distance) if stop_distance > 0 else 0.0
+        old_price = _number(order.get("price"))
+        old_sl, old_tp = _number(order.get("sl")), _number(order.get("tp"))
+        tolerance = max(_number(payload.get("point")) * 0.5, 1e-8)
+        if (abs(desired_price - old_price) > tolerance or
+                abs(desired_sl - old_sl) > tolerance or abs(desired_tp - old_tp) > tolerance):
+            return command("MODIFY_PENDING", "تعديل سعر ووقف وهدف الأمر المعلق مركزياً",
+                           ticket=order.get("ticket"), direction=pending_side,
+                           sl=desired_sl, tp=desired_tp, price=desired_price,
+                           comment=order_comment,
+                           key="modify_pending_" + str(order.get("ticket")) + "_" + str(round(desired_price, 5)))
+
     # Candle-follow breakout orders are generated centrally, one command at a time.
     if _truth(settings, "candle_chase_enabled") and entry_spread_ok:
         candle = forming
