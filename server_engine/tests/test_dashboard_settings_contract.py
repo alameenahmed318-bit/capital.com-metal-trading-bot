@@ -12,8 +12,8 @@ EA = (ROOT / "mt5_client" / "ALZOOL_Central_Client.mq5").read_text(encoding="utf
 class DashboardSettingsContractTests(unittest.TestCase):
     def test_every_saved_setting_has_a_dashboard_control(self):
         defaults_line = GATEWAY.split("BASIC_SETTINGS_DEFAULTS = ", 1)[1].splitlines()[0]
-        server_keys = set(re.findall(r'"([a-z_]+)"\\s*:', defaults_line))
-        ui_fields = set(re.findall(r'\\["([a-z_]+)","[^"]+","(?:bool|number|select|strategy)"\\]', DASHBOARD))
+        server_keys = set(re.findall(r'"([a-z_]+)"\s*:', defaults_line))
+        ui_fields = set(re.findall(r'\["([a-z_]+)","[^"]+","(?:bool|number|select|strategy)"\]', DASHBOARD))
         self.assertEqual(server_keys, ui_fields)
 
     def test_central_planner_owns_core_trade_decisions(self):
@@ -34,14 +34,14 @@ class DashboardSettingsContractTests(unittest.TestCase):
         self.assertIn('configured_mode=str(dashboard_settings.get("strategy_mode"', GATEWAY)
 
     def test_mt5_inputs_are_connection_credentials_only(self):
-        inputs = set(re.findall(r'^input\\s+\\w+\\s+(Inp\\w+)', EA, re.MULTILINE))
+        inputs = set(re.findall(r'^input\s+\w+\s+(Inp\w+)', EA, re.MULTILINE))
         self.assertEqual(inputs, {
             "InpServerUrl", "InpEngineId", "InpEngineToken", "InpHttpTimeoutMs",
         })
 
     def test_mt5_market_poll_does_not_open_or_manage_trades_locally(self):
         start = EA.index("void PollCentralEngine()")
-        end = EA.index("\\nint OnInit()", start)
+        end = EA.index("\nint OnInit()", start)
         market_poll = EA[start:end]
         self.assertIn("RequestCentralDecision(", market_poll)
         self.assertNotIn("PlaceCentralTrade(", market_poll)
@@ -50,7 +50,7 @@ class DashboardSettingsContractTests(unittest.TestCase):
 
     def test_timer_executes_only_signed_central_management_commands(self):
         start = EA.index("void OnTimer()")
-        end = EA.index("\\nvoid OnTick()", start)
+        end = EA.index("\nvoid OnTick()", start)
         timer = EA[start:end]
         self.assertIn("PollCentralManagement();", timer)
         self.assertNotIn("ManageCandleChase();", timer)
