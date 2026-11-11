@@ -1519,8 +1519,8 @@ void SendTerminalState()
       ulong t=PositionGetTicket(i); if(t==0 || !PositionSelectByTicket(t)) continue;
       if(n++>0) body+=",";
       body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(PositionGetString(POSITION_SYMBOL))+"\",\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE))+",\"volume\":"+DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+",\"open_price\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN),_Digits)+",\"price_current\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT),_Digits)+",\"sl\":"+DoubleToString(PositionGetDouble(POSITION_SL),_Digits)+",\"tp\":"+DoubleToString(PositionGetDouble(POSITION_TP),_Digits)+",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+"\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
-   }
-   body+="],\"orders\":["; n=0;
+          "\",\"comment\":\""+JsonSafe(PositionGetString(POSITION_COMMENT))+"\",
+          "\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
    for(int j=OrdersTotal()-1;j>=0 && n<200;j--){
       ulong t=OrderGetTicket(j); if(t==0) continue;
       if(n++>0) body+=",";
@@ -2198,6 +2198,8 @@ bool VerifyManagementCommand(const string response)
    double sl=JsonNumber(response,"sl",0.0);
    double tp=JsonNumber(response,"tp",0.0);
    double lots=JsonNumber(response,"lots",0.0);
+    double sl=JsonNumber(response,"sl",0.0);
+    double tp=JsonNumber(response,"tp",0.0);
    double price=JsonNumber(response,"price",0.0);
    double expires=JsonNumber(response,"expires_at",0.0);
    if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
