@@ -171,7 +171,9 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             lots = _volume(lot, payload)
             if lots > 0:
                 pending = str(settings.get("order_mode", "Market Order")) == "Pending Order"
-                distance = max(_number(settings.get("pending_distance"), 2.0),\n                                _number(payload.get("stops_level")) * _number(payload.get("point")))\n                entry_price = (ask + distance) if direction == "BUY" else (bid - distance)
+                distance = max(_number(settings.get("pending_distance"), 2.0),
+                                _number(payload.get("stops_level")) * _number(payload.get("point")))
+                entry_price = (ask + distance) if direction == "BUY" else (bid - distance)
                 action = "PLACE_PENDING" if pending else "OPEN_MARKET"
                 return command(action, str(decision.get("reason_ar") or "إشارة مركزية من محرك الاستراتيجيات"),
                                direction=direction, lots=lots, price=entry_price if pending else 0.0,
@@ -244,6 +246,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         lots = _volume(lot, payload, _number(settings.get(kind + "_max_lot")))
         if lots > 0:
             return command("OPEN_MARKET", ("تعزيز مركزي" if kind == "addon" else "تبريد مركزي"),
-                           direction=basket_direction, lots=lots, comment=tag,\n                           key=kind + "_" + str(anchor_position.get("ticket")))
+                           direction=basket_direction, lots=lots, comment=tag,
+                           key=kind + "_" + str(anchor_position.get("ticket")))
 
     return {"action": "WAIT", "reason": "لا يوجد أمر إدارة جديد من لوحة التحكم"}
