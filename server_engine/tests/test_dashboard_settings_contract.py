@@ -24,7 +24,7 @@ class DashboardSettingsContractTests(unittest.TestCase):
             "per_trade_profit_enabled", "per_trade_profit_target",
             "fixed_sl_enabled", "fixed_sl_distance", "trailing_enabled",
             "trail_start", "trail_distance", "recovery_enabled",
-            "recovery_min_positions", "recovery_trigger_loss",
+            "recovery_min_positions", "recovery_trigger_loss", "recovery_direction_mode",
             "recovery_target_profit", "recovery_min_confidence",
             "reverse_protection_enabled", "reverse_trigger", "reverse_continue",
             "ai_loss_guard_enabled", "candle_chase_enabled",
@@ -32,6 +32,9 @@ class DashboardSettingsContractTests(unittest.TestCase):
         ):
             self.assertIn(key, MANAGEMENT)
         self.assertIn('configured_mode=str(dashboard_settings.get("strategy_mode"', GATEWAY)
+        self.assertNotIn("recovery_max_entries", MANAGEMENT)
+        self.assertNotIn("recovery_max_entries", GATEWAY)
+        self.assertIn("recovery_direction_mode", DASHBOARD)
 
     def test_mt5_inputs_are_connection_credentials_only(self):
         inputs = set(re.findall(r'^input\s+\w+\s+(Inp\w+)', EA, re.MULTILINE))
