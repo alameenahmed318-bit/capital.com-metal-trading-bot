@@ -1474,7 +1474,7 @@ void SendLiveState()
          ",\"volume\":"+DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT),2)+
          ",\"price\":"+DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN),_Digits)+
          ",\"sl\":"+DoubleToString(OrderGetDouble(ORDER_SL),_Digits)+
-         ",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+",\"magic\":\""+(string)OrderGetInteger(ORDER_MAGIC)+"\",\"comment\":\""+JsonSafe(OrderGetString(ORDER_COMMENT))+"\"}";
+         ",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+",\"magic\":\""+(string)OrderGetInteger(ORDER_MAGIC)+"\",\"comment\":\""+JsonSafe(OrderGetString(ORDER_COMMENT))+"\",\"time_setup\":"+IntegerToString((long)OrderGetInteger(ORDER_TIME_SETUP))+"}";
    }
    body+="],\"tick\":{\"bid\":"+DoubleToString(tick.bid,_Digits)+
       ",\"ask\":"+DoubleToString(tick.ask,_Digits)+
@@ -2206,7 +2206,7 @@ bool VerifyManagementCommand(const string response)
    if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
       command_id=="" || expires<=0.0 || (double)TimeGMT()>=expires) return false;
    if(action!="WAIT" && action!="CLOSE_ALL" && action!="CLOSE_POSITION" &&
-      action!="MODIFY_SL" && action!="OPEN_MARKET" && action!="PLACE_PENDING") return false;
+      action!="MODIFY_SL" && action!="OPEN_MARKET" && action!="PLACE_PENDING" && action!="CANCEL_PENDING") return false;
    if((action=="OPEN_MARKET" || action=="PLACE_PENDING") && ((direction!="BUY" && direction!="SELL") || lots<=0.0 || comment=="")) return false;
    if(action=="PLACE_PENDING" && price<=0.0) return false;
    string expected_payload=client_id+"|"+command_id+"|"+action+"|"+ticket+"|"+
@@ -2299,6 +2299,15 @@ void PollCentralManagement()
           }
        }
     }
+    else if(action=="CANCEL_PENDING")
+    {
+       ulong order_ticket=(ulong)StringToInteger(ticket_text);
+       if(order_ticket>0 && OrderSelect(order_ticket) &&
+          OrderGetString(ORDER_SYMBOL)==_Symbol &&
+          (ulong)OrderGetInteger(ORDER_MAGIC)==ALZOOL_MAGIC)
+          executed=trade.OrderDelete(order_ticket);
+    }
+
     else if(action=="PLACE_PENDING")
     {
        double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
