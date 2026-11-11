@@ -451,7 +451,7 @@ class EngineGateway:
 
     def workspace_for_user(self, user_id, limit=100):
         """Return live MT5 state and persisted intelligence for the authenticated dashboard user."""
-        clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
+        clients=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled,trading_settings&limit=1")
         if not clients:
             return {"connected":False,"reason":"credentials_not_issued","analysis":None,"decisions":[],"outcomes":[],"weights":[],"terminal_state":None,"live_state":None}
         client=clients[0]
