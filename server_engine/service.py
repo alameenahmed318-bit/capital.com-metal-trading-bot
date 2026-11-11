@@ -114,8 +114,8 @@ def authenticated_client(handler, client_id: str) -> bool:
 
 
 def validate_market(data):
-    if not isinstance(data, dict) or data.get("symbol") != "XAUUSD":
-        raise ValueError("symbol must be XAUUSD")
+    if not isinstance(data, dict) or not isinstance(data.get("symbol"), str) or not data.get("symbol").strip():
+        raise ValueError("a valid broker symbol is required")
     candles = data.get("candles")
     if not isinstance(candles, list) or not 65 <= len(candles) <= 300:
         raise ValueError("candles must contain 65..300 closed bars")
