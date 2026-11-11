@@ -1,5 +1,5 @@
 """AL-ZOOL: MT5 connection monitor and customer/licence administration only."""
-import hashlib, hmac, json, os, re, secrets, urllib.parse, urllib.request, urllib.error
+import hashlib, hmac, json, math, os, re, secrets, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -95,6 +95,34 @@ def validate_license(client_id,token):
     except Exception: return False
     return not row.get("revoked") and not expired and hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(),row["token_hash"])
 
+def finite_number(value, default=0.0):
+    try:
+        number=float(value)
+        return number if math.isfinite(number) else default
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+def clean_telemetry_rows(rows, allowed, limit=200):
+    if not isinstance(rows,list): return []
+    cleaned=[]
+    for item in rows[:limit]:
+        if not isinstance(item,dict): continue
+        row={}
+        for key in allowed:
+            if key not in item: continue
+            value=item[key]
+            if key in ("symbol","comment","ticket","magic"):
+                row[key]=str(value)[:120]
+            elif key in ("type","state","entry","reason"):
+                try: row[key]=int(value)
+                except (TypeError,ValueError,OverflowError): row[key]=0
+            elif key=="time":
+                try: row[key]=int(value)
+                except (TypeError,ValueError,OverflowError): row[key]=0
+            else: row[key]=finite_number(value)
+        cleaned.append(row)
+    return cleaned
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs): super().__init__(*args,directory=str(ROOT),**kwargs)
     def log_message(self,fmt,*args): print("WEB:",fmt%args)
@@ -144,6 +172,29 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"clients":rows})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/dashboard/summary":
+            try:
+                u=current_user(token_of(self)); fresh=admin_user(u["id"])
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                else:
+                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                    item=CONNECTIONS.get(client_id) if client_id else None
+                connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
+                account=(item or {}).get("account",{}) if connected else {}
+                positions=(item or {}).get("positions",[]) if connected else []
+                return self.send_json(200,{"connected":connected,
+                    "balance":account.get("balance"),"equity":account.get("equity"),
+                    "floating_pl":account.get("profit"),"currency":account.get("currency"),
+                    "open_trades":len(positions),"win_rate":None,
+                    "account":account,"positions":positions,
+                    "orders":(item or {}).get("orders",[]) if connected else [],
+                    "symbol":(item or {}).get("symbol") if connected else None,
+                    "timeframe":(item or {}).get("timeframe") if connected else None,
+                    "last_seen":(item or {}).get("last_seen") if connected else None})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/connection/status":
             try:
                 u=current_user(token_of(self))
@@ -187,11 +238,30 @@ class Handler(SimpleHTTPRequestHandler):
                 if not isinstance(account,dict): return self.send_json(400,{"error":"بيانات الطرفية غير صحيحة"})
                 safe={"login":str(account.get("login",""))[:40],"server":str(account.get("server",""))[:100],
                       "company":str(account.get("company",""))[:100],"currency":str(account.get("currency",""))[:12],
-                      "leverage":int(account.get("leverage",0) or 0),"symbol":str(data.get("symbol",""))[:40],
-                      "timeframe":str(data.get("timeframe",""))[:20],"terminal_build":int(data.get("terminal_build",0) or 0)}
+                      "leverage":int(finite_number(account.get("leverage",0))),
+                      "balance":finite_number(account.get("balance")),"equity":finite_number(account.get("equity")),
+                      "margin":finite_number(account.get("margin")),"free_margin":finite_number(account.get("free_margin")),
+                      "profit":finite_number(account.get("profit"))}
+                positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
+                orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
+                candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
+                forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
+                if forming:
+                    forming=clean_telemetry_rows([forming],("time","open","high","low","close","tick_volume"),1)
+                    forming=forming[0] if forming else None
+                tick=data.get("tick") if isinstance(data.get("tick"),dict) else {}
+                safe_tick={"bid":finite_number(tick.get("bid")),"ask":finite_number(tick.get("ask")),
+                           "spread":finite_number(tick.get("spread"))}
+                now=datetime.now(timezone.utc)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
-                    "received_at":datetime.now(timezone.utc),"last_seen":datetime.now(timezone.utc).isoformat()}
-                return self.send_json(200,{"accepted":True,"connection_only":True})
+                    "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
+                    "terminal_build":int(finite_number(data.get("terminal_build",0))),
+                    "positions":positions,"orders":orders,"closed_candles":candles,
+                    "forming_candle":forming,"tick":safe_tick,
+                    "received_at":now,"last_seen":now.isoformat()}
+                return self.send_json(200,{"accepted":True,"telemetry":True,
+                    "positions_received":len(positions),"orders_received":len(orders),
+                    "candles_received":len(candles)})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
