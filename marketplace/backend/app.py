@@ -1,20 +1,16 @@
-"""AL-ZOOL web gateway: static portal + Supabase Auth customer administration."""
-import json, os, re, secrets, sys, urllib.parse, urllib.request, urllib.error
-from datetime import datetime, timezone
+"""AL-ZOOL: MT5 connection monitor and customer/licence administration only."""
+import hashlib, hmac, json, os, re, secrets, urllib.parse, urllib.request, urllib.error
+from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[2]
-sys.path.insert(0,str(ROOT))
-from server_engine.engine import FAMILIES, STRATEGIES, COMBINATIONS
-from server_engine.supabase_gateway import EngineGateway
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
 SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
-OWNER_PASSWORD=os.getenv("OWNER_PASSWORD","")
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
-ENGINE=EngineGateway(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY)
+CONNECTIONS={}
 
 def sb(method,path,payload=None,bearer=None,admin=False):
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
@@ -34,15 +30,6 @@ def sb(method,path,payload=None,bearer=None,admin=False):
             obj=json.loads(detail); detail=obj.get("msg") or obj.get("message") or detail
         except Exception: pass
         raise ValueError(str(detail)[:300])
-
-def bootstrap_owner():
-    if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and OWNER_PASSWORD): return
-    try:
-        users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
-        if any((u.get("email") or "").lower()==OWNER_EMAIL for u in users): return
-        sb("POST","/auth/v1/admin/users",{"email":OWNER_EMAIL,"password":OWNER_PASSWORD,"email_confirm":True,"user_metadata":{"name":"AL-ZOOL OWNER","role":"owner"}},admin=True)
-        print("Owner account created.")
-    except Exception as e: print("OWNER_BOOTSTRAP_WARNING:",str(e))
 
 def token_of(h):
     v=h.headers.get("Authorization","")
@@ -70,6 +57,33 @@ def banned(u):
     try: return datetime.fromisoformat(val.replace("Z","+00:00"))>datetime.now(timezone.utc)
     except Exception: return False
 
+def license_for_user(user_id):
+    rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,expires_at,revoked&limit=1",admin=True)
+    return rows[0] if rows else None
+
+def issue_license(user_id):
+    if not user_id: raise ValueError("حساب العميل غير صالح")
+    token=secrets.token_urlsafe(40)
+    expires=(datetime.now(timezone.utc)+timedelta(days=3650)).isoformat()
+    existing=license_for_user(user_id)
+    client_id=existing["client_id"] if existing else secrets.token_hex(16)
+    row={"client_id":client_id,"user_id":user_id,"token_hash":hashlib.sha256(token.encode()).hexdigest(),
+         "expires_at":expires,"revoked":False}
+    if existing:
+        sb("PATCH","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe=""),row,admin=True)
+    else:
+        sb("POST","/rest/v1/alzool_engine_clients",row,admin=True)
+    return {"client_id":client_id,"client_token":token,"expires_at":expires}
+
+def validate_license(client_id,token):
+    if not client_id or not token: return False
+    rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=token_hash,expires_at,revoked&limit=1",admin=True)
+    if not rows: return False
+    row=rows[0]
+    try: expired=datetime.fromisoformat(row["expires_at"].replace("Z","+00:00"))<=datetime.now(timezone.utc)
+    except Exception: return False
+    return not row.get("revoked") and not expired and hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(),row["token_hash"])
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs): super().__init__(*args,directory=str(ROOT),**kwargs)
     def log_message(self,fmt,*args): print("WEB:",fmt%args)
@@ -79,123 +93,30 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control","no-store"); self.send_header("X-Content-Type-Options","nosniff")
         self.send_header("Content-Length",str(len(body))); self.end_headers()
         try: self.wfile.write(body)
-        except (BrokenPipeError,ConnectionResetError): print("CLIENT_DISCONNECTED_BEFORE_RESPONSE: "+str(self.path))
+        except (BrokenPipeError,ConnectionResetError): pass
     def read_json(self):
         n=int(self.headers.get("Content-Length","0"))
-        if n>1000000: raise ValueError("حجم الطلب كبير")
+        if n>100000: raise ValueError("حجم الطلب كبير")
         return json.loads(self.rfile.read(n) or b"{}")
     def do_OPTIONS(self):
         self.send_response(204); self.send_header("Allow","GET, POST, PATCH, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers","Authorization, Content-Type")
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
-        if self.path=="/api/health":
-            try:
-                engine_health=ENGINE.health()
-                return self.send_json(200,{"ok":True,"service":"AL-ZOOL Web","engine":engine_health})
-            except Exception as e:
-                return self.send_json(503,{"ok":False,"service":"AL-ZOOL Web","engine":"unavailable","error":str(e)[:180]})
-        if self.path=="/health":
-            try: return self.send_json(200,ENGINE.health())
-            except Exception as e: return self.send_json(503,{"service":"AL-ZOOL central engine","status":"setup_required","error":str(e)[:180]})
-        parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
-        if len(parts)==3 and parts[0]=="v1" and parts[1]=="settings":
-            try:
-                # MT5 ALZOOL_Central_Client reads settings from the JSON root.
-                # Keep this engine endpoint flat; the browser dashboard has its
-                # own /api/engine/settings endpoint which intentionally wraps
-                # the object as {"settings": ...}.
-                settings=ENGINE.settings_for_client(parts[2],token_of(self))
-                return self.send_json(200,settings)
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
-        if len(parts)==3 and parts[0]=="v1" and parts[1]=="management":
-            try: return self.send_json(200,ENGINE.management_command(parts[2],token_of(self)))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(503,{"error":str(e)[:200]})
-        if len(parts)==3 and parts[0]=="v1" and parts[1]=="control":
-            try: return self.send_json(200,ENGINE.trading_control(parts[2],token_of(self)))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(503,{"error":str(e)[:200]})
-        if len(parts)==3 and parts[0]=="v1" and parts[1] in ("decision","analysis"):
-            try:
-                result=ENGINE.latest(parts[2],token_of(self),"analysis" if parts[1]=="analysis" else "decision")
-                return self.send_json(200,result)
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
-        if self.path=="/api/engine/ai":
-            try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                return self.send_json(200,ENGINE.ai_status_for_user(u["id"]))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
-        if self.path=="/api/engine/settings":
-            try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                return self.send_json(200,{"settings":ENGINE.settings_for_user(u["id"])})
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
-        if self.path=="/api/engine/live":
-            try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                return self.send_json(200,ENGINE.live_state_for_user(u["id"]))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
-        if self.path=="/api/engine/workspace":
-            try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                return self.send_json(200,ENGINE.workspace_for_user(u["id"],limit=100))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
-        if urllib.parse.urlparse(self.path).path=="/api/engine/signals":
-            try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                query=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-                try: limit=int(query.get("limit",["100"])[0])
-                except (TypeError,ValueError): limit=100
-                return self.send_json(200,ENGINE.signal_events_for_user(u["id"],limit=limit))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
-        if self.path=="/api/engine/status":
-            try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                return self.send_json(200,ENGINE.status_for_user(u["id"],stale_after=30))
-            except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
-        if self.path=="/api/config":
+        path=urllib.parse.urlparse(self.path).path
+        if path in ("/health","/api/health"):
+            return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Licensing","mt5_connection_api":True,"trading_engine":False})
+        if path=="/api/config":
             return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
-        if self.path=="/api/engine/catalog":
+        if path=="/api/access/check":
             try:
-                u=current_user(token_of(self))
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
+                u=current_user(token_of(self)); fresh=admin_user(u["id"])
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                return self.send_json(200,{
-                    "families":[{"name":name,"kind":kind} for name,kind in FAMILIES],
-                    "strategies":[{"id":s["id"],"name":s["name"],"family":s["family"],"fast":s["fast"],"slow":s["slow"],"period":s["period"]} for s in STRATEGIES],
-                    "combinations":[{"id":x["id"],"name":x["name"],"members":list(x["members"])} for x in COMBINATIONS]
-                })
+                email=(u.get("email") or "").lower()
+                return self.send_json(200,{"ok":True,"role":"owner" if email==OWNER_EMAIL else "client","email":email})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(500,{"error":str(e)[:250]})
-        if self.path=="/api/admin/clients":
+            except Exception as e: return self.send_json(502,{"error":str(e)[:200]})
+        if path=="/api/admin/clients":
             try:
                 owner(token_of(self))
                 users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
@@ -203,74 +124,62 @@ class Handler(SimpleHTTPRequestHandler):
                 for u in users:
                     email=(u.get("email") or "").lower()
                     if not email or email==OWNER_EMAIL: continue
-                    rows.append({"id":u.get("id"),"email":email,"name":(u.get("user_metadata") or {}).get("name",""),"created_at":u.get("created_at"),"active":not banned(u)})
+                    lic=license_for_user(u.get("id",""))
+                    rows.append({"id":u.get("id"),"email":email,"name":(u.get("user_metadata") or {}).get("name",""),
+                                 "created_at":u.get("created_at"),"active":not banned(u),
+                                 "licensed":bool(lic and not lic.get("revoked")),"expires_at":lic.get("expires_at") if lic else None})
                 return self.send_json(200,{"clients":rows})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
-            except Exception as e: return self.send_json(502,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/connection/status":
+            try:
+                u=current_user(token_of(self))
+                if (u.get("email") or "").lower()!=OWNER_EMAIL:
+                    lic=license_for_user(u["id"])
+                    client_id=lic.get("client_id") if lic else ""
+                else: client_id=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("client_id",[""])[0]
+                item=CONNECTIONS.get(client_id) if client_id else None
+                return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
+                                           "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
+            except Exception as e: return self.send_json(403,{"error":str(e)[:180]})
         return super().do_GET()
     def do_POST(self):
         try:
             data=self.read_json(); token=token_of(self)
-            event_parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
-            if len(event_parts)==4 and event_parts[:3]==["v1","signals","events"]:
-                return self.send_json(200,ENGINE.ingest_signal_events(event_parts[3],token_of(self),data.get("events",[])))
-            if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","market"]:
-                client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
-                result=ENGINE.market(client_id,token_of(self),data)
-                return self.send_json(200,result)
-            path_parts=urllib.parse.urlparse(self.path).path.strip("/").split("/")
-            if len(path_parts)==4 and path_parts[:3]==["v1","terminal-state","live"]:
-                return self.send_json(200,ENGINE.terminal_state_live(path_parts[3],token,data))
-            if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","terminal-state"]:
-                client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
-                return self.send_json(200,ENGINE.terminal_state(client_id,token_of(self),data))
-            if len(urllib.parse.urlparse(self.path).path.strip("/").split("/"))==3 and urllib.parse.urlparse(self.path).path.strip("/").split("/")[0:2]==["v1","outcome"]:
-                client_id=urllib.parse.urlparse(self.path).path.strip("/").split("/")[2]
-                return self.send_json(200,ENGINE.outcome(client_id,token_of(self),data))
-            if self.path=="/api/engine/settings":
-                u=current_user(token)
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                saved=ENGINE.save_settings_for_user(u["id"],data)
-                return self.send_json(200,{"ok":True,"settings":saved})
-            if self.path=="/api/engine/control":
-                u=current_user(token)
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                enabled=data.get("enabled")
-                if not isinstance(enabled,bool): return self.send_json(400,{"error":"enabled must be true or false"})
-                ENGINE.set_user_trading_enabled(u["id"],enabled)
-                return self.send_json(200,{"ok":True,"trading_enabled":enabled})
-            if self.path=="/api/owner/engine-credentials":
-                u=owner(token)
-                credentials=ENGINE.issue(u.get("id"))
-                return self.send_json(201,{"engine":credentials,"engine_server_url":PUBLIC_ENGINE_URL,
-                    "message":"تم إصدار بيانات ربط محرك المالك. احتفظ بها بسرية."})
-            if self.path=="/api/access/check":
-                u=current_user(token)
-                try: fresh=admin_user(u["id"])
-                except Exception: fresh=u
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                email=(u.get("email") or "").lower()
-                return self.send_json(200,{"ok":True,"role":"owner" if email==OWNER_EMAIL else "client","email":email})
-            if self.path=="/api/admin/clients":
+            path=urllib.parse.urlparse(self.path).path
+            if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
                 if email==OWNER_EMAIL: return self.send_json(400,{"error":"لا يمكن إنشاء العميل ببريد المالك"})
                 password=secrets.token_urlsafe(12)+"A7!"
                 u=sb("POST","/auth/v1/admin/users",{"email":email,"password":password,"email_confirm":True,"user_metadata":{"name":name,"role":"client"}},admin=True)
-                try:
-                    engine_credentials=ENGINE.issue(u.get("id"))
+                try: credentials=issue_license(u.get("id"))
                 except Exception:
                     try: sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(u.get("id",""),safe=""),admin=True)
                     except Exception: pass
                     raise
-                return self.send_json(201,{"id":u.get("id"),"email":email,"name":name,"password":password,"engine":engine_credentials,"engine_server_url":PUBLIC_ENGINE_URL,"message":"تم إنشاء الحساب وصلاحية محرك التداول. احفظ بيانات الدخول والربط الآن."})
+                return self.send_json(201,{"id":u.get("id"),"email":email,"name":name,"password":password,"engine":credentials,
+                                          "engine_server_url":PUBLIC_ENGINE_URL,"message":"بيانات الدخول والترخيص والاتصال فقط. لا توجد صلاحيات تداول."})
+            if path=="/api/access/check":
+                u=current_user(token)
+                if banned(admin_user(u["id"])): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                return self.send_json(200,{"ok":True})
+            parts=path.strip("/").split("/")
+            if len(parts)==4 and parts[:3]==["v1","terminal-state","live"]:
+                client_id=parts[3]
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                account=data.get("account") or {}
+                if not isinstance(account,dict): return self.send_json(400,{"error":"بيانات الطرفية غير صحيحة"})
+                safe={"login":str(account.get("login",""))[:40],"server":str(account.get("server",""))[:100],
+                      "company":str(account.get("company",""))[:100],"currency":str(account.get("currency",""))[:12],
+                      "leverage":int(account.get("leverage",0) or 0),"symbol":str(data.get("symbol",""))[:40],
+                      "timeframe":str(data.get("timeframe",""))[:20],"terminal_build":int(data.get("terminal_build",0) or 0)}
+                CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
+                    "received_at":datetime.now(timezone.utc),"last_seen":datetime.now(timezone.utc).isoformat()}
+                return self.send_json(200,{"accepted":True,"connection_only":True})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
-        except Exception as e: return self.send_json(400,{"error":str(e)[:300]})
+        except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
     def do_PATCH(self):
         try:
             owner(token_of(self)); prefix="/api/admin/clients/"
@@ -279,10 +188,13 @@ class Handler(SimpleHTTPRequestHandler):
             if not re.fullmatch(r"[0-9a-fA-F-]{20,}",uid): return self.send_json(400,{"error":"معرّف الحساب غير صحيح"})
             active=bool(self.read_json().get("active"))
             sb("PUT","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),{"ban_duration":"none" if active else "876000h"},admin=True)
-            ENGINE.set_user_revoked(uid,not active)
+            rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(uid,safe="")+"&select=client_id",admin=True)
+            if rows:
+                sb("PATCH","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(uid,safe=""),{"revoked":not active},admin=True)
+                for row in rows: CONNECTIONS.pop(row["client_id"],None)
             return self.send_json(200,{"ok":True,"active":active})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
-        except Exception as e: return self.send_json(400,{"error":str(e)[:300]})
+        except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
     def do_DELETE(self):
         try:
             owner(token_of(self)); prefix="/api/admin/clients/"
@@ -291,16 +203,17 @@ class Handler(SimpleHTTPRequestHandler):
             if not re.fullmatch(r"[0-9a-fA-F-]{20,}",uid): return self.send_json(400,{"error":"معرّف الحساب غير صحيح"})
             target=admin_user(uid)
             if (target.get("email") or "").lower()==OWNER_EMAIL: return self.send_json(403,{"error":"لا يمكن حذف حساب المالك"})
-            ENGINE.set_user_revoked(uid,True)
+            rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(uid,safe="")+"&select=client_id",admin=True)
+            for row in rows: CONNECTIONS.pop(row["client_id"],None)
             sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),admin=True)
             return self.send_json(200,{"ok":True,"deleted":True})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
-        except Exception as e: return self.send_json(400,{"error":str(e)[:300]})
+        except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
     def end_headers(self):
         self.send_header("X-Content-Type-Options","nosniff"); self.send_header("Referrer-Policy","strict-origin-when-cross-origin")
         self.send_header("X-Frame-Options","DENY"); super().end_headers()
 
 if __name__=="__main__":
-    bootstrap_owner(); port=int(os.getenv("PORT","10000"))
-    print("AL-ZOOL web listening on",port)
+    port=int(os.getenv("PORT","10000"))
+    print("AL-ZOOL connection/licensing service listening on",port,flush=True)
     ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
