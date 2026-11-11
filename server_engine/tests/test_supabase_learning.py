@@ -131,7 +131,8 @@ class DashboardSettingsPersistenceTests(unittest.TestCase):
         self.assertIsNotNone(gateway.client)
         self.assertAlmostEqual(gateway.settings["lot"], 0.02)
         self.assertAlmostEqual(saved["lot"], 0.02)
-        self.assertEqual(saved["recovery_max_entries"], 0)
+        self.assertEqual(saved["recovery_direction_mode"], "SAME")
+        self.assertNotIn("recovery_max_entries", saved)
 
 
 if __name__ == "__main__":
