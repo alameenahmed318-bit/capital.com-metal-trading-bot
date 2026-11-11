@@ -110,6 +110,21 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     floating = sum(_number(p.get("profit")) + _number(p.get("swap")) for p in positions)
     count = len(positions)
 
+    # Daily realized + floating loss is evaluated centrally using broker-day timestamps.
+    day_start = _number(payload.get("day_start"))
+    realized_today = 0.0
+    for deal in payload.get("history") or []:
+        if not isinstance(deal, dict) or _number(deal.get("time")) < day_start:
+            continue
+        realized_today += _number(deal.get("net_profit"),
+                                  _number(deal.get("profit")) + _number(deal.get("commission")) +
+                                  _number(deal.get("swap")) + _number(deal.get("fee")))
+    daily_limit = abs(_number(settings.get("loss_limit"), 50.0))
+    if daily_limit > 0 and realized_today + floating <= -daily_limit:
+        if positions:
+            return command("CLOSE_ALL", "تم بلوغ حد الخسارة اليومي من إعدادات لوحة التحكم")
+        return {"action": "WAIT", "reason": "تم بلوغ حد الخسارة اليومي؛ الدخول متوقف حتى يوم التداول التالي"}
+
     if positions and _truth(settings, "global_loss_enabled", True):
         limit = abs(_number(settings.get("global_loss_amount"), 50.0))
         if limit > 0 and floating <= -limit:
