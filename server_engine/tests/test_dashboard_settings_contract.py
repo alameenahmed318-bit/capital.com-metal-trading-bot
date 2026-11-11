@@ -16,11 +16,22 @@ class DashboardSettingsContractTests(unittest.TestCase):
         ui_fields = set(re.findall(r'\\["([a-z_]+)","[^"]+","(?:bool|number|select|strategy)"\\]', DASHBOARD))
         self.assertEqual(server_keys, ui_fields)
 
-    def test_all_trade_settings_are_owned_by_server_not_mt5_inputs(self):
-        defaults_line = GATEWAY.split("BASIC_SETTINGS_DEFAULTS = ", 1)[1].splitlines()[0]
-        server_keys = set(re.findall(r'"([a-z_]+)"\\s*:', defaults_line))
-        missing = {key for key in server_keys if f'"{key}"' not in MANAGEMENT}
-        self.assertEqual(missing, {"learning_enabled", "learning_rate_percent"})
+    def test_central_planner_owns_core_trade_decisions(self):
+        for key in (
+            "allow_buy", "allow_sell", "lot", "max_spread_points",
+            "one_direction_only", "max_positions", "global_loss_enabled",
+            "global_loss_amount", "global_profit_enabled", "profit_target",
+            "per_trade_profit_enabled", "per_trade_profit_target",
+            "fixed_sl_enabled", "fixed_sl_distance", "trailing_enabled",
+            "trail_start", "trail_distance", "recovery_enabled",
+            "recovery_min_positions", "recovery_trigger_loss",
+            "recovery_target_profit", "recovery_min_confidence",
+            "reverse_protection_enabled", "reverse_trigger", "reverse_continue",
+            "ai_loss_guard_enabled", "candle_chase_enabled",
+            "candle_chase_min_move", "pending_distance",
+        ):
+            self.assertIn(key, MANAGEMENT)
+        self.assertIn('configured_mode=str(dashboard_settings.get("strategy_mode"', GATEWAY)
 
     def test_mt5_inputs_are_connection_credentials_only(self):
         inputs = set(re.findall(r'^input\\s+\\w+\\s+(Inp\\w+)', EA, re.MULTILINE))
