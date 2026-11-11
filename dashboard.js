@@ -50,10 +50,10 @@ async function refresh(){
   $("winRate").textContent=s.win_rate==null?"—":fmt(s.win_rate)+"%";
   $("balanceMeta").textContent=s.equity==null?"لا توجد بيانات حقوق الحساب":"حقوق الحساب: "+fmt(s.equity)+" "+currency;
   const daily=s.daily||{};
-  $("dailyProfit").textContent=daily.profit==null?"—":fmt(daily.profit)+" "+currency;
-  $("dailyLoss").textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
-  $("dailyNet").textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
-  $("dailyTrades").textContent=daily.trades==null?"—":fmt(daily.trades);
+  const dailyProfitEl=$("dailyProfit");if(dailyProfitEl)dailyProfitEl.textContent=daily.profit==null?"—":fmt(daily.profit)+" "+currency;
+  const dailyLossEl=$("dailyLoss");if(dailyLossEl)dailyLossEl.textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
+  const dailyNetEl=$("dailyNet");if(dailyNetEl)dailyNetEl.textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
+  const dailyTradesEl=$("dailyTrades");if(dailyTradesEl)dailyTradesEl.textContent=daily.trades==null?"—":fmt(daily.trades);
   $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
   $("closedTrades").innerHTML=rows.length?rows.map(t=>{
