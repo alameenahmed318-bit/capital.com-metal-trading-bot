@@ -1,6 +1,8 @@
+import io
 import json
 import os
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 from openai_ai import analyze_market, OpenAIAnalysisError
@@ -65,6 +67,27 @@ class OpenAIResponsesAdapterTests(unittest.TestCase):
         with self.assertRaises(OpenAIAnalysisError) as raised:
             analyze_market("", "gpt-6-astra", {}, opener=should_not_open)
         self.assertEqual(raised.exception.code, "api_key_not_configured")
+
+    def test_429_preserves_provider_quota_code_without_exposing_body(self):
+        error_body = json.dumps({
+            "error": {
+                "message": "Sensitive provider detail",
+                "type": "insufficient_quota",
+                "code": "credit_balance_exhausted",
+            }
+        }).encode("utf-8")
+
+        def reject(*args, **kwargs):
+            raise urllib.error.HTTPError(
+                "https://api.openai.com/v1/responses", 429,
+                "Too Many Requests", {}, io.BytesIO(error_body)
+            )
+
+        with self.assertRaises(OpenAIAnalysisError) as raised:
+            analyze_market("secret-key", "gpt-6-astra", {}, opener=reject)
+        self.assertEqual(raised.exception.code, "api_http_429_credit_balance_exhausted")
+        self.assertNotIn("Sensitive", str(raised.exception))
+
 
     def test_malformed_model_output_is_rejected(self):
         bad = valid_output()
