@@ -307,12 +307,17 @@ class CentralManagementPlannerTests(unittest.TestCase):
             "trailing_enabled": False,
             "recovery_enabled": False,
         }
+        candles = [
+            {"time": 100 + i, "open": 2050.0, "high": 2051.0,
+             "low": 2049.0, "close": 2050.5}
+            for i in range(65)
+        ]
         decision = {
             "decision": "BUY",
             "confidence": 1.0,
             "strategy_id": 1,
             "reason_ar": "اختبار إشارة شراء",
-            "candles": [],
+            "candles": candles,
         }
         result = build_management_command(settings, live, now=1000,
                                           market_decision=decision)
