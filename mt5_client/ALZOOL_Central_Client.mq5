@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //| AL-ZOOL Central MT5 Client                                       |
-//| Local MT5 execution + broker-side SL/TP + local trailing guard.  |
-//| Strategy logic remains on the owner's central server.            |
+//| MT5 connector + broker execution adapter.                         |
+//| All trading controls and settings are owned by the central tool.  |
 //+------------------------------------------------------------------+
 #property strict
 #property version   "1.07"
@@ -15,26 +15,14 @@ input string InpEngineId = "";
 input string InpEngineToken = "";
 input string InpServerSymbol = "XAUUSD";
 input int    InpHttpTimeoutMs = 12000;
-input int    InpRequestEverySeconds = 1;
-input int    InpBarsToSend = 120;
+input int    ALZOOL_REQUEST_SECONDS = 1;
+input int    ALZOOL_BARS_TO_SEND = 120;
 
-input group "Trading safety"
-input double InpLots = 0.01;
-input ulong  InpMagic = 26110801;
-input int    InpMaxPositions = 1;
-input int    InpMaxSpreadPoints = 80;
-input bool   InpAllowBuy = true;
-input bool   InpAllowSell = true;
-input bool   InpBlockOppositePositions = true;
-input bool   InpRequireBrokerStops = true;
-
-input group "Local protection (continues while MT5 terminal runs)"
-input int    InpATRPeriod = 14;
-input double InpStopLossATR = 1.8;
-input double InpTakeProfitATR = 1.2;
-input bool   InpUseTrailing = true;
-input double InpTrailStartATR = 1.0;
-input double InpTrailDistanceATR = 0.8;
+// Technical identifiers only; not user trading controls.
+#define ALZOOL_MAGIC 26110801
+#define ALZOOL_ATR_PERIOD 14
+#define ALZOOL_REQUEST_SECONDS 1
+#define ALZOOL_BARS_TO_SEND 120
 
 CTrade trade;
 datetime g_last_bar_time = 0;
@@ -82,6 +70,8 @@ double g_decision_expires_at=0.0;
 int g_cfg_max_positions=0;
 bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_enabled=true;
 bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true,g_cfg_ai_loss_guard=false;
+bool g_cfg_allow_buy=true,g_cfg_allow_sell=true,g_cfg_require_broker_stops=true;
+double g_cfg_max_spread_points=0.0;
 double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
 bool g_context_buy_trap=false,g_context_sell_trap=false;
 string g_context_regime="";
@@ -383,7 +373,7 @@ int CountOurPositions(int &buy_count,int &sell_count)
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol) continue;
-      if((ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
       if(type==POSITION_TYPE_BUY) buy_count++;
       if(type==POSITION_TYPE_SELL) sell_count++;
@@ -405,7 +395,7 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
 {
    MqlRates rates[];
    ArraySetAsSeries(rates,false);
-   int copied=CopyRates(_Symbol,PERIOD_CURRENT,1,InpBarsToSend,rates);
+   int copied=CopyRates(_Symbol,PERIOD_CURRENT,1,ALZOOL_BARS_TO_SEND,rates);
    if(copied<65) return false;
    bar_time=rates[copied-1].time;
 
@@ -525,7 +515,7 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return false;
    double spread=(tick.ask-tick.bid)/_Point;
-   if(InpMaxSpreadPoints>0 && spread>InpMaxSpreadPoints)
+   if(g_cfg_max_spread_points>0 && spread>g_cfg_max_spread_points)
    {
       g_status="Spread protection";
       g_last_bar_time=bar_time;
@@ -619,7 +609,7 @@ int CountOurPendingOrders()
    {
       ulong ticket=OrderGetTicket(i);
       if(ticket==0) continue;
-      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=InpMagic) continue;
+      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=ALZOOL_MAGIC) continue;
       total++;
    }
    return total;
@@ -627,12 +617,12 @@ int CountOurPendingOrders()
 
 void CancelOurPendingOrders()
 {
-   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetExpertMagicNumber(ALZOOL_MAGIC);
    for(int i=OrdersTotal()-1;i>=0;i--)
    {
       ulong ticket=OrderGetTicket(i);
       if(ticket==0) continue;
-      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=InpMagic) continue;
+      if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=ALZOOL_MAGIC) continue;
       if(!trade.OrderDelete(ticket)) Print("AL-ZOOL pending cancellation failed: ",ticket," ",trade.ResultRetcodeDescription());
    }
 }
@@ -723,6 +713,10 @@ bool PollCentralSettings()
    g_cfg_recovery_enabled=JsonBool(response,"recovery_enabled",false);
    g_cfg_recovery_mode=JsonString(response,"recovery_mode");
    if(g_cfg_recovery_mode!="AUTO" && g_cfg_recovery_mode!="MANUAL") g_cfg_recovery_mode="AUTO";
+   g_cfg_allow_buy=JsonBool(response,"allow_buy",true);
+   g_cfg_allow_sell=JsonBool(response,"allow_sell",true);
+   g_cfg_max_spread_points=JsonNumber(response,"max_spread_points",0.0);
+   g_cfg_require_broker_stops=JsonBool(response,"require_broker_stops",true);
    g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
    g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
    g_cfg_global_loss_enabled=JsonBool(response,"global_loss_enabled",true);
@@ -735,7 +729,7 @@ bool PollCentralSettings()
    g_cfg_adaptive_strategy_switch=JsonBool(response,"adaptive_strategy_switch",false);
    g_cfg_strategy_mode=JsonString(response,"strategy_mode");
    if(g_cfg_strategy_mode=="") g_cfg_strategy_mode="AUTO — Best current fit";
-   if(g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
+   if(g_cfg_max_spread_points<0 || g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
       g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0 ||
       g_cfg_addon_step<=0 || g_cfg_cooling_step<=0 || g_cfg_addon_multiplier<1 || g_cfg_cooling_multiplier<1 ||
       g_cfg_addon_max<0 || g_cfg_cooling_max<0 ||
@@ -776,15 +770,15 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
       RecordBlockedSignal(decision_id,"trading-off","التداول الآلي متوقف من لوحة التحكم");
       return false;
    }
-   if(direction=="BUY" && !InpAllowBuy) { g_status="BUY disabled"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل في إعدادات MT5"); return false; }
-   if(direction=="SELL" && !InpAllowSell) { g_status="SELL disabled"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل في إعدادات MT5"); return false; }
+   if(direction=="BUY" && !g_cfg_allow_buy) { g_status="BUY disabled from dashboard"; RecordBlockedSignal(decision_id,"buy-disabled","الشراء معطل من لوحة التحكم"); return false; }
+   if(direction=="SELL" && !g_cfg_allow_sell) { g_status="SELL disabled from dashboard"; RecordBlockedSignal(decision_id,"sell-disabled","البيع معطل من لوحة التحكم"); return false; }
    if(direction!="BUY" && direction!="SELL") return false;
    if((strategy_id<1 || strategy_id>200) && !recovery_order && !management_order) { g_status="Invalid strategy id"; return false; }
    if(decision_id=="" || decision_id==g_last_decision_id) return false;
    MqlTick fresh_tick;
    if(!SymbolInfoTick(_Symbol,fresh_tick)) return false;
    double current_spread=(fresh_tick.ask-fresh_tick.bid)/_Point;
-   if(InpMaxSpreadPoints>0 && current_spread>InpMaxSpreadPoints)
+   if(g_cfg_max_spread_points>0 && current_spread>g_cfg_max_spread_points)
    {
       g_status="Spread widened after server decision";
       RecordBlockedSignal(decision_id,"spread","اتسع السبريد بعد صدور الإشارة وتجاوز الحد المسموح");
@@ -818,7 +812,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    double target_distance=0.0;
    long stops_level=SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
    double min_distance=(double)stops_level*_Point;
-   if(InpRequireBrokerStops && g_cfg_fixed_sl_enabled && stop_distance<min_distance)
+   if(g_cfg_require_broker_stops && g_cfg_fixed_sl_enabled && stop_distance<min_distance)
    {
       g_status="Broker stop distance too small";
       RecordBlockedSignal(decision_id,"stops","مسافة وقف الخسارة أقل من الحد الذي يسمح به الوسيط");
@@ -828,7 +822,7 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
    double sl=0.0,tp=0.0,price=0.0;
    bool sent=false;
-   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetExpertMagicNumber(ALZOOL_MAGIC);
    trade.SetDeviationInPoints(20);
    trade.SetTypeFillingBySymbol(_Symbol);
 
@@ -905,17 +899,17 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
 
 string OrderStrategyKey(const ulong order)
 {
-   return "AZR_"+(string)InpMagic+"_"+(string)order;
+   return "AZR_"+(string)ALZOOL_MAGIC+"_"+(string)order;
 }
 
 string PositionStrategyKey(const ulong position_id)
 {
-   return "AZS_"+(string)InpMagic+"_"+(string)position_id;
+   return "AZS_"+(string)ALZOOL_MAGIC+"_"+(string)position_id;
 }
 
 string PendingOutcomePrefix()
 {
-   return "AZO_"+(string)InpMagic+"_";
+   return "AZO_"+(string)ALZOOL_MAGIC+"_";
 }
 
 bool PositionIdentifierIsOpen(const ulong position_id)
@@ -925,16 +919,16 @@ bool PositionIdentifierIsOpen(const ulong position_id)
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol) continue;
-      if((ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       if((ulong)PositionGetInteger(POSITION_IDENTIFIER)==position_id) return true;
    }
    return false;
 }
 
-void QueueClosedDealOutcome(const ulong deal,const int strategy_id,const double pnl)
+void QueueClosedDealOutcome(const string outcome_id,const int strategy_id,const double pnl)
 {
-   if(deal==0 || strategy_id<1 || strategy_id>200 || !MathIsValidNumber(pnl)) return;
-   string base=PendingOutcomePrefix()+(string)deal;
+   if(outcome_id=="" || strategy_id<1 || strategy_id>200 || !MathIsValidNumber(pnl)) return;
+   string base=PendingOutcomePrefix()+outcome_id;
    GlobalVariableSet(base+"_S",(double)strategy_id);
    GlobalVariableSet(base+"_P",pnl);
 }
@@ -954,14 +948,13 @@ void FlushPendingOutcomes()
       string name=GlobalVariableName(i);
       if(StringFind(name,prefix)!=0 || StringFind(name,"_S")>=0 || StringFind(name,"_P")>=0) continue;
       string suffix=StringSubstr(name,StringLen(prefix));
-      ulong deal=(ulong)StringToInteger(suffix);
       string skey=name+"_S";
       string pkey=name+"_P";
-      if(deal==0 || !GlobalVariableCheck(skey) || !GlobalVariableCheck(pkey)) continue;
+      if(suffix=="" || !GlobalVariableCheck(skey) || !GlobalVariableCheck(pkey)) continue;
 
       int strategy_id=(int)GlobalVariableGet(skey);
       double pnl=GlobalVariableGet(pkey);
-      string body="{\"deal_id\":\""+(string)deal+"\",\"strategy_id\":"+IntegerToString(strategy_id)+
+      string body="{\"deal_id\":\""+JsonSafe(suffix)+"\",\"strategy_id\":"+IntegerToString(strategy_id)+
                   ",\"pnl\":"+DoubleToString(pnl,8)+"}";
       char data[],result[];
       StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
@@ -1047,7 +1040,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    // old strategy, then replace the position mapping with the new strategy.
    if(entry==DEAL_ENTRY_IN)
    {
-      if(deal_magic!=InpMagic) return;
+      if(deal_magic!=ALZOOL_MAGIC) return;
       int entry_strategy=ResolveEntryStrategy(trans.deal,order);
       if(entry_strategy>=1 && entry_strategy<=200)
          GlobalVariableSet(position_key,(double)entry_strategy);
@@ -1077,7 +1070,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    }
 
    if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) return;
-   if(deal_magic==InpMagic)
+   if(deal_magic==ALZOOL_MAGIC)
    {
       double closed_net=HistoryDealGetDouble(trans.deal,DEAL_PROFIT)+HistoryDealGetDouble(trans.deal,DEAL_COMMISSION)+
                         HistoryDealGetDouble(trans.deal,DEAL_SWAP)+HistoryDealGetDouble(trans.deal,DEAL_FEE);
@@ -1100,7 +1093,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       // For a normal close, an outstanding order mapping can recover a
       // delayed entry event. On INOUT it belongs to the NEW reversed entry,
       // so it must never be used to label the old position's closing P/L.
-      if(deal_magic==InpMagic)
+      if(deal_magic==ALZOOL_MAGIC)
       {
          string order_key=OrderStrategyKey(order);
          if(GlobalVariableCheck(order_key))
@@ -1108,24 +1101,38 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       }
    }
 
-   if(closing_strategy>=1 && closing_strategy<=200)
+   if(deal_magic==ALZOOL_MAGIC && closing_strategy>=1 && closing_strategy<=200)
    {
-      double pnl=HistoryDealGetDouble(trans.deal,DEAL_PROFIT)+
-                 HistoryDealGetDouble(trans.deal,DEAL_COMMISSION)+
-                 HistoryDealGetDouble(trans.deal,DEAL_SWAP)+
-                 HistoryDealGetDouble(trans.deal,DEAL_FEE);
-      QueueClosedDealOutcome(trans.deal,closing_strategy,pnl);
+      // Aggregate partial exits and train once when the broker position is fully closed.
+      // INOUT closes the old strategy exposure and opens a new one on the same identifier.
+      double deal_pnl=HistoryDealGetDouble(trans.deal,DEAL_PROFIT)+
+                      HistoryDealGetDouble(trans.deal,DEAL_COMMISSION)+
+                      HistoryDealGetDouble(trans.deal,DEAL_SWAP)+
+                      HistoryDealGetDouble(trans.deal,DEAL_FEE);
+      string aggregate_base="AZP_"+(string)ALZOOL_MAGIC+"_"+(string)position_id;
+      string pnl_key=aggregate_base+"_P";
+      double accumulated=GlobalVariableCheck(pnl_key) ? GlobalVariableGet(pnl_key) : 0.0;
+      accumulated+=deal_pnl;
+      GlobalVariableSet(pnl_key,accumulated);
+      if(entry==DEAL_ENTRY_INOUT)
+      {
+         QueueClosedDealOutcome((string)position_id+"_REV_"+(string)trans.deal,closing_strategy,accumulated);
+         GlobalVariableDel(pnl_key);
+      }
+      else if(!PositionIdentifierIsOpen(position_id))
+      {
+         QueueClosedDealOutcome((string)position_id,closing_strategy,accumulated);
+         GlobalVariableDel(pnl_key);
+      }
    }
-   else
-   {
-      Print("AL-ZOOL: closed deal has no saved strategy mapping; outcome not submitted. deal=",trans.deal);
-   }
+   else if(deal_magic==ALZOOL_MAGIC && entry!=DEAL_ENTRY_INOUT)
+      Print("AL-ZOOL: closed deal has no valid strategy mapping; management orders are excluded from strategy learning. deal=",trans.deal);
 
    if(entry==DEAL_ENTRY_INOUT)
    {
       // The same deal opened the reversed position. Keep its new strategy
       // mapping under the still-active position identifier.
-      if(deal_magic==InpMagic)
+      if(deal_magic==ALZOOL_MAGIC)
       {
          int reversed_strategy=ResolveEntryStrategy(trans.deal,order);
          if(reversed_strategy>=1 && reversed_strategy<=200)
@@ -1151,7 +1158,7 @@ double CurrentOurFloatingPnl(int &count)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       total+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
       count++;
    }
@@ -1160,12 +1167,12 @@ double CurrentOurFloatingPnl(int &count)
 
 void CloseOurPositions(const string reason)
 {
-   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetExpertMagicNumber(ALZOOL_MAGIC);
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       if(!trade.PositionClose(ticket)) Print("AL-ZOOL close failed: ",ticket," ",trade.ResultRetcodeDescription());
    }
    CancelOurPendingOrders();
@@ -1183,7 +1190,7 @@ double TodayClosedPnl()
       ulong deal=HistoryDealGetTicket(i);
       if(deal==0) continue;
       if(HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol) continue;
-      if((ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=InpMagic) continue;
+      if((ulong)HistoryDealGetInteger(deal,DEAL_MAGIC)!=ALZOOL_MAGIC) continue;
       ENUM_DEAL_ENTRY entry=(ENUM_DEAL_ENTRY)HistoryDealGetInteger(deal,DEAL_ENTRY);
       if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY) continue;
       pnl+=HistoryDealGetDouble(deal,DEAL_PROFIT)+HistoryDealGetDouble(deal,DEAL_SWAP)+HistoryDealGetDouble(deal,DEAL_COMMISSION);
@@ -1236,7 +1243,7 @@ void ManageLocalProtection()
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol) continue;
-      if((ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
 
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
       double open_price=PositionGetDouble(POSITION_PRICE_OPEN);
@@ -1372,7 +1379,7 @@ void SendTerminalState()
 {
    ulong now_ms=GetTickCount64();
    // Account/history payloads are larger; refresh every 5 seconds, not every timer tick.
-   if(g_last_terminal_state_ms>0 && now_ms-g_last_terminal_state_ms<30000) return;
+   if(g_last_terminal_state_ms>0 && now_ms-g_last_terminal_state_ms<5000) return;
    g_last_terminal_state_ms=now_ms;
    if(InpEngineId=="" || InpEngineToken=="") return;
    string body="{\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+"\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+"\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+"\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
@@ -1393,16 +1400,16 @@ void SendTerminalState()
    int deals=HistoryDealsTotal(); n=0;
    for(int k=deals-1;k>=0 && n<200;k--){
       ulong d=HistoryDealGetTicket(k); if(d==0) continue;
-      if((ulong)HistoryDealGetInteger(d,DEAL_MAGIC)!=InpMagic) continue;
+      if((ulong)HistoryDealGetInteger(d,DEAL_MAGIC)!=ALZOOL_MAGIC) continue;
       if(HistoryDealGetString(d,DEAL_SYMBOL)!=_Symbol) continue;
       if(n++>0) body+=",";
       double deal_profit=HistoryDealGetDouble(d,DEAL_PROFIT);
       double deal_commission=HistoryDealGetDouble(d,DEAL_COMMISSION);
       double deal_swap=HistoryDealGetDouble(d,DEAL_SWAP);
       double deal_fee=HistoryDealGetDouble(d,DEAL_FEE);
-      body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+"\",\"order\":\""+(string)HistoryDealGetInteger(d,DEAL_ORDER)+"\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+"\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+",\"profit\":"+DoubleToString(deal_profit,2)+",\"commission\":"+DoubleToString(deal_commission,2)+",\"swap\":"+DoubleToString(deal_swap,2)+",\"fee\":"+DoubleToString(deal_fee,2)+",\"net_profit\":"+DoubleToString(deal_profit+deal_commission+deal_swap+deal_fee,2)+",\"magic\":\""+(string)InpMagic+"\",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
+      body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+"\",\"order\":\""+(string)HistoryDealGetInteger(d,DEAL_ORDER)+"\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+"\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+",\"profit\":"+DoubleToString(deal_profit,2)+",\"commission\":"+DoubleToString(deal_commission,2)+",\"swap\":"+DoubleToString(deal_swap,2)+",\"fee\":"+DoubleToString(deal_fee,2)+",\"net_profit\":"+DoubleToString(deal_profit+deal_commission+deal_swap+deal_fee,2)+",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
    }
-   body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"lots\":"+DoubleToString(InpLots,2)+",\"magic\":\""+(string)InpMagic+"\",\"max_positions\":"+IntegerToString(InpMaxPositions)+",\"max_spread_points\":"+IntegerToString(InpMaxSpreadPoints)+",\"allow_buy\":"+(InpAllowBuy?"true":"false")+",\"allow_sell\":"+(InpAllowSell?"true":"false")+",\"block_opposite\":"+(InpBlockOppositePositions?"true":"false")+",\"require_broker_stops\":"+(InpRequireBrokerStops?"true":"false")+",\"atr_period\":"+IntegerToString(InpATRPeriod)+",\"sl_atr\":"+DoubleToString(InpStopLossATR,2)+",\"tp_atr\":"+DoubleToString(InpTakeProfitATR,2)+",\"trailing\":"+(InpUseTrailing?"true":"false")+",\"trail_start_atr\":"+DoubleToString(InpTrailStartATR,2)+",\"trail_distance_atr\":"+DoubleToString(InpTrailDistanceATR,2)+",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"trading_enabled\":"+(g_trading_enabled?"true":"false")+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(InpRequestEverySeconds)+",\"bars_to_send\":"+IntegerToString(InpBarsToSend)+"},\"events\":[]}";
+   body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"trading_enabled\":"+(g_trading_enabled?"true":"false")+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(ALZOOL_REQUEST_SECONDS)+",\"bars_to_send\":"+IntegerToString(ALZOOL_BARS_TO_SEND)+"},\"events\":[]";
    char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
    string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n",response_headers;
    int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
@@ -1412,7 +1419,7 @@ void SendTerminalState()
 void PollCentralEngine()
 {
    ulong now_ms=GetTickCount64();
-   ulong interval_ms=(ulong)InpRequestEverySeconds*1000;
+   ulong interval_ms=(ulong)ALZOOL_REQUEST_SECONDS*1000;
    if(g_last_market_poll_ms>0 && now_ms-g_last_market_poll_ms<interval_ms) return;
    g_last_market_poll_ms=now_ms;
 
@@ -1442,21 +1449,16 @@ void PollCentralEngine()
 
 int OnInit()
 {
-   if(InpBarsToSend<65 || InpBarsToSend>300 || InpRequestEverySeconds<1 ||
-      InpATRPeriod<2 || InpStopLossATR<=0 || InpTakeProfitATR<=0 ||
-      InpMaxPositions<1 || InpLots<=0)
-      return INIT_PARAMETERS_INCORRECT;
-
-   trade.SetExpertMagicNumber(InpMagic);
+   trade.SetExpertMagicNumber(ALZOOL_MAGIC);
    trade.SetTypeFillingBySymbol(_Symbol);
-   g_atr_handle=iATR(_Symbol,PERIOD_CURRENT,InpATRPeriod);
+   g_atr_handle=iATR(_Symbol,PERIOD_CURRENT,ALZOOL_ATR_PERIOD);
    if(g_atr_handle==INVALID_HANDLE)
    {
       Print("AL-ZOOL: cannot create ATR handle. error=",GetLastError());
       return INIT_FAILED;
    }
 
-   g_global_bar_key="AZ_CENTRAL_"+_Symbol+"_"+IntegerToString((long)InpMagic);
+   g_global_bar_key="AZ_CENTRAL_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
 
@@ -1483,7 +1485,7 @@ void ManageAiLossGuard()
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       double pnl=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
       if(pnl>=0.0) continue;
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
@@ -1496,7 +1498,7 @@ void ManageAiLossGuard()
       bool evidence=(g_last_decision==opposite && opposite_quality>same_quality &&
                      g_last_confidence>=0.72 && (trap_against || regime_opposes));
       if(!evidence) continue;
-      trade.SetExpertMagicNumber(InpMagic);
+      trade.SetExpertMagicNumber(ALZOOL_MAGIC);
       if(trade.PositionClose(ticket))
          Print("AL-ZOOL AI loss guard closed losing position ",ticket,"; pnl=",DoubleToString(pnl,2),"; opposite quality=",DoubleToString(opposite_quality,1));
       else
@@ -1540,7 +1542,7 @@ bool SendRecoveryVolume(const string direction,const double requested_lots,const
       RecoveryWait("الهامش الحر لا يكفي لحجم التعافي المطلوب "+DoubleToString(lots,digits));
       return false;
    }
-   return PlaceCentralTrade(direction,decision_id,reason,g_last_strategy_id,lots,true);
+   return PlaceCentralTrade(direction,decision_id,reason,0,lots,true);
 }
 
 void ManageSmartRecovery()
@@ -1556,7 +1558,7 @@ void ManageSmartRecovery()
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       floating+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
       total_open_lots+=PositionGetDouble(POSITION_VOLUME);
       if(StringFind(PositionGetString(POSITION_COMMENT),"AZR_RECOVERY")>=0) recovery_open++;
@@ -1632,7 +1634,7 @@ int CountOurManagementPositions(const string tag)
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
-         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       string comment=PositionGetString(POSITION_COMMENT);
       if(StringFind(comment,tag)>=0) count++;
    }
@@ -1681,7 +1683,7 @@ void ManageAddonCooling()
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
-         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpMagic) continue;
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
       if((direction=="BUY" && type!=POSITION_TYPE_BUY) ||
          (direction=="SELL" && type!=POSITION_TYPE_SELL)) continue;
@@ -1721,7 +1723,7 @@ void ManageAddonCooling()
          string reason="تعزيز: تحرك السعر لصالح السلة بمقدار "+
                        DoubleToString(favorable,2)+"؛ المسافة المطلوبة "+
                        DoubleToString(step,2)+"؛ اللوت "+DoubleToString(lot,2);
-         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true,"AZS_ADDON"))
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,0,lot,false,true,"AZS_ADDON"))
          {
             if(direction=="BUY") g_last_addon_buy_price=quote;
             else g_last_addon_sell_price=quote;
@@ -1755,7 +1757,7 @@ void ManageAddonCooling()
          string reason="تبريد: تحرك السعر ضد السلة بمقدار "+
                        DoubleToString(adverse,2)+"؛ المسافة المطلوبة "+
                        DoubleToString(step,2)+"؛ اللوت "+DoubleToString(lot,2);
-         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,g_last_strategy_id,lot,false,true,"AZS_COOLING"))
+         if(lot>0.0 && PlaceCentralTrade(direction,unique_id,reason,0,lot,false,true,"AZS_COOLING"))
          {
             if(direction=="BUY") g_last_cooling_buy_price=quote;
             else g_last_cooling_sell_price=quote;
@@ -1802,7 +1804,7 @@ void OnTimer()
            "Settings: ",(g_settings_loaded ? "LOADED FROM DASHBOARD" : "WAITING / INVALID"),"\n",
            "Trading control: ",(g_trading_enabled ? "ENABLED" : "DISABLED"),"\n",
            "Symbol: ",_Symbol," | TF: ",EnumToString((ENUM_TIMEFRAMES)_Period),"\n",
-           "Magic: ",(string)InpMagic,"\n",
+           "Magic: ",(string)ALZOOL_MAGIC,"\n",
            "AI Decision: ",g_last_decision," | Confidence: ",DoubleToString(g_last_confidence*100.0,1),"%\n",
            "Selected Strategy: ",g_last_strategy_name," (ID ",IntegerToString(g_last_strategy_id),")\n",
            "Reason: ",g_last_reason);
