@@ -79,6 +79,7 @@ double g_cfg_candle_chase_min_move=0.1,g_cfg_candle_chase_buy_target=1.0;
 double g_cfg_candle_chase_sell_target=1.0,g_cfg_candle_chase_single_target=0.5,g_cfg_candle_chase_sl_distance=3.0;
 int g_cfg_candle_chase_cooldown=2,g_cfg_candle_chase_max_orders=1;
 ulong g_last_chase_buy_ms=0,g_last_chase_sell_ms=0;
+datetime g_last_chase_bar_time=0;
 string g_recovery_count_key="",g_recovery_low_key="",g_recovery_high_key="";
 string g_reversal_trigger_key="",g_reversal_side_key="";
 double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
@@ -1986,6 +1987,23 @@ void ManageCandleChase()
    MqlRates candle[];
    ArraySetAsSeries(candle,true);
    if(CopyRates(_Symbol,PERIOD_CURRENT,0,1,candle)!=1) return;
+   if(g_last_chase_bar_time!=candle[0].time)
+   {
+      // Remove stale GTC fallback orders from the previous candle before
+      // staging the new candle's high/low breakout orders.
+      for(int j=OrdersTotal()-1;j>=0;j--)
+      {
+         ulong old_ticket=OrderGetTicket(j);
+         if(old_ticket==0) continue;
+         if(OrderGetString(ORDER_SYMBOL)!=_Symbol || (ulong)OrderGetInteger(ORDER_MAGIC)!=ALZOOL_MAGIC) continue;
+         string old_comment=OrderGetString(ORDER_COMMENT);
+         if(StringFind(old_comment,"AZC_CHASE_")==0 && !trade.OrderDelete(old_ticket))
+            Print("AL-ZOOL candle chase stale-order delete failed: ",old_ticket," ",trade.ResultRetcodeDescription());
+      }
+      g_last_chase_bar_time=candle[0].time;
+      g_last_chase_buy_ms=0;
+      g_last_chase_sell_ms=0;
+   }
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<=tick.bid) return;
    double spread=(tick.ask-tick.bid)/_Point;
@@ -2047,6 +2065,11 @@ void ManageCandleChase()
             ? trade.BuyStop(lots,price,_Symbol,sl,tp,ORDER_TIME_SPECIFIED,expiration,"AZC_CHASE_BUY")
             : trade.BuyStop(lots,price,_Symbol,sl,tp,ORDER_TIME_GTC,0,"AZC_CHASE_BUY"));
          uint rc=trade.ResultRetcode();
+         if(!sent && expiration>0 && rc==TRADE_RETCODE_INVALID_EXPIRATION)
+         {
+            sent=trade.BuyStop(lots,price,_Symbol,sl,tp,ORDER_TIME_GTC,0,"AZC_CHASE_BUY");
+            rc=trade.ResultRetcode();
+         }
          if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED))
          {
             g_last_chase_buy_ms=GetTickCount64();
@@ -2086,6 +2109,11 @@ void ManageCandleChase()
             ? trade.SellStop(lots,price,_Symbol,sl,tp,ORDER_TIME_SPECIFIED,expiration,"AZC_CHASE_SELL")
             : trade.SellStop(lots,price,_Symbol,sl,tp,ORDER_TIME_GTC,0,"AZC_CHASE_SELL"));
          uint rc=trade.ResultRetcode();
+         if(!sent && expiration>0 && rc==TRADE_RETCODE_INVALID_EXPIRATION)
+         {
+            sent=trade.SellStop(lots,price,_Symbol,sl,tp,ORDER_TIME_GTC,0,"AZC_CHASE_SELL");
+            rc=trade.ResultRetcode();
+         }
          if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED))
          {
             g_last_chase_sell_ms=GetTickCount64();
