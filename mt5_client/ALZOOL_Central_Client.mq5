@@ -437,7 +437,7 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    {
       strategy_mode="AUTO"; selected_strategy_id=0;
    }
-   body="{\"symbol\":\""+InpServerSymbol+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
+   body="{\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
    body+="\"strategy_mode\":\""+strategy_mode+"\",\"selected_strategy_id\":"+IntegerToString(selected_strategy_id)+",";
    body+="\"bid\":"+DoubleToString(tick.bid,_Digits)+",";
    body+="\"ask\":"+DoubleToString(tick.ask,_Digits)+",";
