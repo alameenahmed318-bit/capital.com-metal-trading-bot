@@ -1237,13 +1237,13 @@ void PollCentralManagement()
       Print("AL-ZOOL central management not completed: action=",action,
             " direction=",direction," lots=",DoubleToString(lots,4),
             " retcode=",failed_rc," ",failed_description);
-      string rejected_payload="{\\"command_id\\":\\""+JsonSafe(command_id)+
-         "\\",\\"action\\":\\""+JsonSafe(action)+
-         "\\",\\"side\\":\\""+JsonSafe(direction)+
-         "\\",\\"symbol\\":\\""+JsonSafe(_Symbol)+
-         "\\",\\"volume\\":"+DoubleToString(lots,4)+
-         ",\\"retcode\\":"+IntegerToString((int)failed_rc)+
-         ",\\"reason_ar\\":\\""+JsonSafe(failed_description)+"\\"}";
+      string rejected_payload="{\"command_id\":\""+JsonSafe(command_id)+
+         "\",\"action\":\""+JsonSafe(action)+
+         "\",\"side\":\""+JsonSafe(direction)+
+         "\",\"symbol\":\""+JsonSafe(_Symbol)+
+         "\",\"volume\":"+DoubleToString(lots,4)+
+         ",\"retcode\":"+IntegerToString((int)failed_rc)+
+         ",\"reason_ar\":\""+JsonSafe(failed_description)+"\"}";
       SendSignalEvent(command_id+"_rejected","ORDER_REJECTED",rejected_payload);
    }
 }
