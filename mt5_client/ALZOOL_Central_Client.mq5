@@ -1103,6 +1103,11 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       else
          Print("AL-ZOOL: entry deal has no valid strategy mapping. deal=",trans.deal);
       string side=(HistoryDealGetInteger(trans.deal,DEAL_TYPE)==DEAL_TYPE_BUY ? "BUY" : "SELL");
+      string entry_comment=HistoryDealGetString(trans.deal,DEAL_COMMENT);
+      string entry_name=(entry_strategy>=1 && entry_strategy<=200
+                         ? g_last_strategy_name
+                         : (StringFind(entry_comment,"AZC_CHASE")>=0 ? "CANDLE CHASE" : "MANAGEMENT ORDER"));
+      string entry_decision=(entry_strategy>=1 && entry_strategy<=200 ? g_last_decision_id : "");
       double fill_price=HistoryDealGetDouble(trans.deal,DEAL_PRICE);
       double reference_price=(side=="BUY" ? g_last_market_ask : g_last_market_bid);
       double slippage_points=(reference_price>0.0 ? ((side=="BUY" ? fill_price-reference_price : reference_price-fill_price)/_Point) : 0.0);
@@ -1116,9 +1121,9 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
          ",\"slippage_points\":"+DoubleToString(slippage_points,1)+
          ",\"decision_to_fill_ms\":"+IntegerToString((long)decision_to_fill_ms)+
          ",\"market_regime\":\""+JsonSafe(g_context_regime)+"\""+
-         ",\"decision_id\":\""+JsonSafe(g_last_decision_id)+"\""+
+         ",\"decision_id\":\""+JsonSafe(entry_decision)+"\""+
          ",\"strategy_id\":"+IntegerToString(entry_strategy)+
-         ",\"strategy_name\":\""+JsonSafe(g_last_strategy_name)+
+         ",\"strategy_name\":\""+JsonSafe(entry_name)+
          "\",\"confidence\":"+DoubleToString(g_last_confidence,4)+
          ",\"reason_ar\":\"تأكيد فتح الصفقة من سجل تنفيذ الوسيط MT5\"}";
       SendSignalEvent("mt5-deal-"+(string)trans.deal+"-opened","TRADE_OPENED",opened_payload);
