@@ -137,9 +137,6 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
 
     buys = [p for p in positions if int(_number(p.get("type"), -1)) == 0]
     sells = [p for p in positions if int(_number(p.get("type"), -1)) == 1]
-    if buys and sells:
-        return {"action": "WAIT", "reason": "السلة تحتوي الاتجاهين؛ لا يضاف تعزيز أو تبريد تلقائياً"}
-
     decision = market_decision or {}
     direction = str(decision.get("decision") or "").upper()
     confidence = _number(decision.get("confidence"))
@@ -209,6 +206,8 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
 
     # Add-on and cooling use separate quotas and separate most-recent anchors.
     for kind in ("addon", "cooling"):
+        if buys and sells:
+            continue
         if not _truth(settings, kind + "_enabled"):
             continue
         tag = "AZS_ADDON" if kind == "addon" else "AZS_COOLING"
