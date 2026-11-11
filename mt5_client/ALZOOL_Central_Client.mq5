@@ -839,11 +839,21 @@ void SendLiveState()
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
    string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
    string response_headers;
+   ResetLastError();
    ulong started=GetTickCount64();
    int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/live/"+InpEngineId,
                        headers,MathMin(InpHttpTimeoutMs,1500),data,result,response_headers);
+   int request_error=GetLastError();
    ulong elapsed=GetTickCount64()-started;
-   if(http!=200) Print("AL-ZOOL live telemetry failed. HTTP=",http," err=",GetLastError()," ms=",elapsed);
+   if(http!=200)
+   {
+      string response_body=CharArrayToString(result,0,-1,CP_UTF8);
+      Print("AL-ZOOL live telemetry failed. http_status=",http,
+            " webrequest_error=",(http==-1 ? request_error : 0),
+            " ms=",elapsed,
+            " response_headers=",StringSubstr(response_headers,0,700),
+            " response_body=",StringSubstr(response_body,0,700));
+   }
    else if(elapsed>700) Print("AL-ZOOL live telemetry slow. ms=",elapsed);
 }
 
@@ -951,9 +961,21 @@ void SendTerminalState()
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
    string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
    string response_headers;
+   ResetLastError();
+   ulong request_started_ms=GetTickCount64();
    int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,
                        headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
-   if(http!=200) Print("AL-ZOOL telemetry upload failed. HTTP=",http," err=",GetLastError());
+   int request_error=GetLastError();
+   ulong request_elapsed_ms=GetTickCount64()-request_started_ms;
+   if(http!=200)
+   {
+      string response_body=CharArrayToString(result,0,-1,CP_UTF8);
+      Print("AL-ZOOL telemetry upload failed. http_status=",http,
+            " webrequest_error=",(http==-1 ? request_error : 0),
+            " ms=",request_elapsed_ms,
+            " response_headers=",StringSubstr(response_headers,0,700),
+            " response_body=",StringSubstr(response_body,0,700));
+   }
 }
 
 void PollCentralEngine()
