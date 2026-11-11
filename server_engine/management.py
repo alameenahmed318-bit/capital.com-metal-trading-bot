@@ -84,15 +84,16 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         return {"action": "WAIT", "reason": "بيانات السعر أو الرمز غير متاحة"}
 
     def command(action, reason, *, ticket="", sl=0.0, tp=0.0,
-                direction="", lots=0.0, price=0.0, comment=""):
+                direction="", lots=0.0, price=0.0, comment="", key=""):
         seq = str(payload.get("sequence", "0"))
         # Stable per live snapshot: repeated polls cannot issue duplicate orders.
-        identity = "|".join((seq, action, str(ticket), direction, str(comment)))
+        identity = "|".join((key or seq, action, str(ticket), direction, str(comment)))
         command_id = uuid.uuid5(uuid.NAMESPACE_URL, identity).hex
-        if action == "OPEN_MARKET" and _truth(settings, "fixed_sl_enabled", True):
+        if action in ("OPEN_MARKET", "PLACE_PENDING") and _truth(settings, "fixed_sl_enabled", True):
             stop_distance = _number(settings.get("fixed_sl_distance"), 3.0)
             if stop_distance > 0:
-                sl = (ask - stop_distance) if direction == "BUY" else (bid + stop_distance)
+                entry_price = price if action == "PLACE_PENDING" else (ask if direction == "BUY" else bid)
+                sl = (entry_price - stop_distance) if direction == "BUY" else (entry_price + stop_distance)
         return {"action": action, "command_id": command_id, "ticket": str(ticket),
                 "sl": float(sl), "tp": float(tp), "direction": direction,
                 "lots": float(lots), "price": float(price), "comment": comment,
@@ -134,8 +135,6 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                     if old_sl <= 0 or candidate < old_sl - point:
                         return command("MODIFY_SL", "وقف متحرك محسوب مركزياً", ticket=p["ticket"], sl=candidate, tp=tp)
 
-    if not positions:
-        return {"action": "WAIT", "reason": "لا توجد صفقات AL-ZOOL لإدارتها"}
     buys = [p for p in positions if int(_number(p.get("type"), -1)) == 0]
     sells = [p for p in positions if int(_number(p.get("type"), -1)) == 1]
     if buys and sells:
@@ -147,6 +146,41 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     candles = decision.get("candles") or []
     forming = payload.get("forming_candle") or {}
     atr = _atr(candles)
+
+    # Main BUY/SELL entries are decided and sized centrally.
+    if direction in ("BUY", "SELL"):
+        side_allowed = _truth(settings, "allow_buy", True) if direction == "BUY" else _truth(settings, "allow_sell", True)
+        spread_points = _number(tick.get("spread_points"))
+        spread_limit = _number(settings.get("max_spread_points"))
+        max_positions = int(_number(settings.get("max_positions"), 0))
+        current_total = count + len(orders)
+        opposite_exists = bool(sells if direction == "BUY" else buys)
+        permitted = side_allowed and (spread_limit <= 0 or spread_points <= spread_limit)
+        permitted = permitted and (not _truth(settings, "one_direction_only", True) or not opposite_exists)
+        permitted = permitted and (max_positions <= 0 or current_total < max_positions)
+        if permitted:
+            lot = _number(settings.get("lot"), 0.01)
+            if _truth(settings, "ai_risk_enabled"):
+                account = payload.get("account") or {}
+                risk_cash = _number(account.get("balance")) * _number(settings.get("ai_risk_percent"), 0.5) / 100.0
+                stop_distance = _number(settings.get("fixed_sl_distance"), 3.0)
+                tick_value = _number(payload.get("tick_value"))
+                tick_size = _number(payload.get("tick_size"))
+                if risk_cash > 0 and stop_distance > 0 and tick_value > 0 and tick_size > 0:
+                    lot = risk_cash / ((stop_distance / tick_size) * tick_value)
+                else:
+                    lot = 0.0
+                lot = min(lot, _number(settings.get("ai_max_lot"), 0.05))
+            lots = _volume(lot, payload)
+            if lots > 0:
+                pending = str(settings.get("order_mode", "Market Order")) == "Pending Order"
+                distance = _number(settings.get("pending_distance"), 2.0)
+                entry_price = (ask + distance) if direction == "BUY" else (bid - distance)
+                action = "PLACE_PENDING" if pending else "OPEN_MARKET"
+                return command(action, str(decision.get("reason_ar") or "إشارة مركزية من محرك الاستراتيجيات"),
+                               direction=direction, lots=lots, price=entry_price if pending else 0.0,
+                               comment="AZS" + str(decision.get("strategy_id") or 0),
+                               key=str(decision.get("decision_id") or payload.get("sequence", "0")))
 
     # Recovery basket target is independent of whether a new recovery entry is due.
     if _truth(settings, "recovery_enabled") and _number(settings.get("recovery_target_profit")) > 0:
