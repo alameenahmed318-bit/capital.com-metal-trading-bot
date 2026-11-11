@@ -286,7 +286,12 @@ class EngineGateway:
             if age>5:
                 plan={"action":"WAIT","reason":"بيانات MT5 قديمة؛ لا يصدر أمر إدارة"}
             else:
-                decision_payload=self._decision_cache.get(client_id) or {}
+                decision_payload=self._decision_cache.get(client_id)
+                if decision_payload is None:
+                    rows=self._request("GET","alzool_engine_decisions?client_id=eq."+
+                        urllib.parse.quote(client_id,safe="")+
+                        "&select=payload&order=created_at.desc&limit=1")
+                    decision_payload=(rows[0].get("payload") or {}) if rows else {}
                 plan=build_management_command(settings,live,market_decision=decision_payload)
         action=str(plan.get("action","WAIT"))
         command_id=str(plan.get("command_id") or uuid.uuid4().hex)
