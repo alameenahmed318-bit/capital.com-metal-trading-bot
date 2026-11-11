@@ -236,8 +236,6 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as history_error_value:
                     history_error=str(history_error_value)[:180]
                     print("CLOSED_HISTORY_READ_WARNING:",history_error,flush=True)
-                    except Exception as history_error:
-                        print("CLOSED_HISTORY_READ_WARNING:",str(history_error)[:180],flush=True)
                 uae=timezone(timedelta(hours=4))
                 today=datetime.now(uae).date()
                 by_position={}
