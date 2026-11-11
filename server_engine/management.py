@@ -97,6 +97,9 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 stop_distance = (_number(settings.get("fixed_sl_distance"), 3.0)
                                  if _truth(settings, "fixed_sl_enabled", True) else 0.0)
             if stop_distance > 0:
+                if _truth(settings, "require_broker_stops", True):
+                    broker_minimum = _number(payload.get("stops_level")) * _number(payload.get("point"))
+                    stop_distance = max(stop_distance, broker_minimum)
                 entry_price = price if action == "PLACE_PENDING" else (ask if direction == "BUY" else bid)
                 sl = (entry_price - stop_distance) if direction == "BUY" else (entry_price + stop_distance)
         return {"action": action, "command_id": command_id, "ticket": str(ticket),
