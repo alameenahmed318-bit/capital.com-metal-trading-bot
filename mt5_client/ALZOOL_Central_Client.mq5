@@ -16,7 +16,6 @@ input string InpEngineToken = "";
 input int    InpHttpTimeoutMs = 12000;
 // Technical identifiers only; not user trading controls.
 #define ALZOOL_MAGIC 26110801
-#define ALZOOL_ATR_PERIOD 14
 #define ALZOOL_REQUEST_SECONDS 1
 #define ALZOOL_BARS_TO_SEND 120
 
@@ -24,11 +23,8 @@ CTrade trade;
 datetime g_last_bar_time = 0;
 ulong g_last_health_check_ms = 0;
 ulong g_last_market_poll_ms = 0;
-ulong g_last_control_poll_ms = 0;
 ulong g_last_terminal_state_ms = 0;
-bool g_trading_enabled = false;
 string g_last_decision_id = "";
-int g_atr_handle = INVALID_HANDLE;
 bool g_server_online = false;
 bool g_decision_verified = false;
 string g_status = "Starting";
@@ -42,49 +38,9 @@ double g_last_market_bid=0.0,g_last_market_ask=0.0;
 ulong g_decision_received_ms=0;
 
 // Live dashboard settings, fetched through the authenticated central API.
-bool g_settings_loaded=false;
-ulong g_last_settings_poll_ms=0;
-double g_cfg_lot=0.01, g_cfg_profit_target=1.0, g_cfg_per_trade_target=2.0;
-double g_cfg_loss_limit=50.0, g_cfg_global_loss=50.0;
-double g_cfg_fixed_sl_distance=3.0, g_cfg_trail_start=3.0, g_cfg_trail_distance=3.0;
-double g_cfg_pending_distance=2.0;
-double g_cfg_addon_step=2.0,g_cfg_addon_multiplier=1.2,g_cfg_cooling_step=3.0,g_cfg_cooling_multiplier=1.2;
-double g_cfg_addon_max_lot=0.05,g_cfg_cooling_max_lot=0.05;
-double g_cfg_recovery_manual_lot=0.01,g_cfg_recovery_max_lot=0.05;
-double g_cfg_recovery_trigger_loss=10.0,g_cfg_recovery_target_profit=0.5;
-double g_cfg_recovery_atr_distance=1.0,g_cfg_recovery_min_confidence=0.65;
-int g_cfg_addon_max=3,g_cfg_cooling_max=2;
-int g_cfg_recovery_min_positions=3,g_cfg_recovery_max_entries=0;
-datetime g_last_recovery_bar_time=0;
-ulong g_last_recovery_entry_ms=0;
-bool g_cfg_addon_enabled=false,g_cfg_addon_smart=false,g_cfg_addon_multiplier_enabled=true;
-bool g_cfg_recovery_enabled=false;
-string g_cfg_recovery_mode="AUTO";
-bool g_cfg_cooling_enabled=false,g_cfg_cooling_smart=false,g_cfg_cooling_multiplier_enabled=true;
-double g_last_addon_buy_price=0.0,g_last_addon_sell_price=0.0,g_last_cooling_buy_price=0.0,g_last_cooling_sell_price=0.0;
-double g_decision_expires_at=0.0;
-int g_cfg_max_positions=0;
-bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_enabled=true;
-bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true,g_cfg_ai_loss_guard=false;
-bool g_cfg_allow_buy=true,g_cfg_allow_sell=true,g_cfg_require_broker_stops=true;
-bool g_cfg_ai_risk_enabled=false,g_cfg_smart_profit=false;
-bool g_cfg_candle_chase_enabled=false,g_cfg_candle_chase_sl_enabled=false,g_cfg_reverse_protection_enabled=false;
-double g_cfg_max_spread_points=0.0,g_cfg_ai_risk_percent=0.5,g_cfg_ai_max_lot=0.05;
-double g_cfg_reverse_trigger=5.0,g_cfg_reverse_continue=2.0;
-double g_cfg_candle_chase_min_move=0.1,g_cfg_candle_chase_buy_target=1.0;
-double g_cfg_candle_chase_sell_target=1.0,g_cfg_candle_chase_single_target=0.5,g_cfg_candle_chase_sl_distance=3.0;
-int g_cfg_candle_chase_cooldown=2,g_cfg_candle_chase_max_orders=1;
-ulong g_last_chase_buy_ms=0,g_last_chase_sell_ms=0;
-datetime g_last_chase_bar_time=0;
-string g_recovery_count_key="",g_recovery_low_key="",g_recovery_high_key="";
-string g_reversal_trigger_key="",g_reversal_side_key="";
 double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
 bool g_context_buy_trap=false,g_context_sell_trap=false;
 string g_context_regime="";
-string g_cfg_order_mode="Market Order", g_cfg_strategy_mode="AUTO — Best current fit";
-bool g_cfg_adaptive_strategy_switch=false;
-bool g_daily_loss_paused=false;
-string g_daily_loss_date="";
 
 void SendSignalEvent(const string event_id,const string event_type,const string payload);
 void RecordBlockedSignal(const string decision_id,const string key,const string reason);
@@ -455,7 +411,6 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    strategy_id=(int)JsonNumber(response,"strategy_id",0);
    g_last_strategy_name=JsonString(response,"strategy_name");
    g_last_confidence=confidence;
-   g_decision_expires_at=JsonNumber(response,"expires_at",0.0);
    g_context_buy_quality=JsonNumber(response,"buy_quality",0.0);
    g_context_sell_quality=JsonNumber(response,"sell_quality",0.0);
    g_context_buy_trap=JsonBool(response,"buy_trap",false);
@@ -931,7 +886,7 @@ void SendTerminalState()
       double deal_fee=HistoryDealGetDouble(d,DEAL_FEE);
       body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+"\",\"order\":\""+(string)HistoryDealGetInteger(d,DEAL_ORDER)+"\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+"\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+",\"profit\":"+DoubleToString(deal_profit,2)+",\"commission\":"+DoubleToString(deal_commission,2)+",\"swap\":"+DoubleToString(deal_swap,2)+",\"fee\":"+DoubleToString(deal_fee,2)+",\"net_profit\":"+DoubleToString(deal_profit+deal_commission+deal_swap+deal_fee,2)+",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
    }
-   body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"trading_enabled\":"+(g_trading_enabled?"true":"false")+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(ALZOOL_REQUEST_SECONDS)+",\"bars_to_send\":"+IntegerToString(ALZOOL_BARS_TO_SEND)+"},\"events\":[]";
+   body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(ALZOOL_REQUEST_SECONDS)+",\"bars_to_send\":"+IntegerToString(ALZOOL_BARS_TO_SEND)+"},\"events\":[]";
    char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
    string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n",response_headers;
    int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
@@ -973,7 +928,6 @@ int OnInit()
 {
    trade.SetExpertMagicNumber(ALZOOL_MAGIC);
    trade.SetTypeFillingBySymbol(_Symbol);
-   g_atr_handle=iATR(_Symbol,PERIOD_CURRENT,ALZOOL_ATR_PERIOD);
    if(g_atr_handle==INVALID_HANDLE)
    {
       Print("AL-ZOOL: cannot create ATR handle. error=",GetLastError());
@@ -981,12 +935,6 @@ int OnInit()
    }
 
    g_global_bar_key="AZ_CENTRAL_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
-   g_recovery_count_key="AZ_REC_COUNT_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
-   g_recovery_low_key="AZ_REC_LOW_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
-   g_recovery_high_key="AZ_REC_HIGH_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
-   g_reversal_trigger_key="AZ_REV_PRICE_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
-   g_reversal_side_key="AZ_REV_SIDE_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
-   if(!GlobalVariableCheck(g_recovery_count_key)) GlobalVariableSet(g_recovery_count_key,0.0);
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
 
