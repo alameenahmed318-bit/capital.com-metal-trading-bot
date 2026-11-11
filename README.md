@@ -1,14 +1,25 @@
-# AL-ZOOL GOLD SNIPER — Web Access
+# AL-ZOOL — بوابة الاتصال والتراخيص فقط
 
-This branch replaces the storefront entry point with a private login portal and owner-managed customer access.
+هذا المشروع مخصص حصرياً لوظيفتين:
+1. إدارة حسابات العملاء وتراخيصهم عبر Supabase Auth وجدول `alzool_engine_clients`.
+2. اتصال MetaTrader 5 عبر عميل MQL5 يرسل نبضة هوية الطرفية وحالة الاتصال فقط.
 
-Configure hosting environment variables:
-- SUPABASE_URL
-- SUPABASE_ANON_KEY
-- SUPABASE_SERVICE_ROLE_KEY (server secret only; never expose it in browser code)
-- OWNER_EMAIL (defaults to Meenosvn1@gmail.com)
-- OWNER_PASSWORD (strong secret; creates the owner account if it does not exist)
+**لا يحتوي هذا الإصدار على محرك تداول أو استراتيجيات أو ذكاء اصطناعي أو إشارات أو فتح/إغلاق/تعديل صفقات.**
 
-The owner signs in, enters a client's existing email address, creates an account, downloads its generated password, and shares the credentials privately. The owner can suspend/reactivate or permanently delete client accounts. Deleted accounts are removed from Supabase Auth.
+## متغيرات Render
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (سر خادم فقط)
+- `OWNER_EMAIL`
+- `PUBLIC_ENGINE_URL` (اختياري)
 
-This portal currently implements login and customer administration only. It does not claim that MT5 trading is connected. The original AL-ZOOL MT5 engine repository and files are not modified. Disable public sign-ups in Supabase Auth.
+## MT5
+استخدم `mt5_client/ALZOOL_Central_Client.mq5` بعد ترجمته في MetaEditor. أدخل رابط الخادم ومعرّف العميل ورمز الترخيص الذي يصدره المالك. أضف نطاق HTTPS إلى قائمة WebRequest المسموح بها في MT5.
+
+هذا العميل لا يضم Trade.mqh ولا CTrade ولا يقرأ الشموع أو المراكز أو الأوامر، ولا يرسل أي أمر تداول. يرسل فقط رقم الحساب والخادم والشركة والعملة والرافعة والرمز والفريم وإصدار المنصة كبيانات تعريف اتصال.
+
+## الترخيص
+يستخدم النظام جدول `public.alzool_engine_clients` الموجود مسبقاً. لا تحذف الجدول أو سجلات العملاء الحالية. إذا كان المشروع جديداً تماماً، راجع `LICENSING_SETUP.sql` لإنشاء جدول الترخيص فقط.
+
+## النشر
+Render يشغّل `python marketplace/backend/app.py`. لا تغيّر فرع الخدمة الحية قبل اختبار فرع إعادة البناء.
