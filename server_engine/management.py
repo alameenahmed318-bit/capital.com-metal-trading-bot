@@ -204,7 +204,16 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             min_conf = _number(settings.get("recovery_min_confidence"), .65)
             body = _number(forming.get("close")) - _number(forming.get("open"))
             candle_agrees = body > 0 if direction == "BUY" else body < 0
-            if confidence >= min_conf and candle_agrees:
+            atr_value = _atr(candles)
+            recent = candles[-14:] if isinstance(candles, list) else []
+            if direction == "BUY":
+                adverse_extreme = min((_number(x.get("low")) for x in recent), default=0.0)
+                rebound = bid - adverse_extreme
+            else:
+                adverse_extreme = max((_number(x.get("high")) for x in recent), default=0.0)
+                rebound = adverse_extreme - ask
+            rebound_required = atr_value * _number(settings.get("recovery_atr_distance"), 1.0)
+            if confidence >= min_conf and candle_agrees and atr_value > 0 and adverse_extreme > 0 and rebound >= rebound_required:
                 total_lots = sum(_number(p.get("volume")) for p in positions)
                 mode = str(settings.get("recovery_mode", "AUTO")).upper()
                 requested = (_number(settings.get("recovery_manual_lot"), .01) if mode == "MANUAL"
