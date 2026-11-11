@@ -1434,7 +1434,7 @@ void SendLiveState()
 
    string body="{\"sequence\":"+IntegerToString((long)sequence)+
       ",\"source_time\":"+IntegerToString((long)tick.time)+
-      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"point\":"+DoubleToString(_Point,10)+",";
+      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"point\":"+DoubleToString(_Point,10)+",\"volume_step\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP),8)+",\"volume_min\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),8)+",\"volume_max\":"+DoubleToString(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX),8)+",";
    body+="\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+
       "\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+
       "\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+
@@ -1459,6 +1459,7 @@ void SendLiveState()
          ",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+
          ",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+
          ",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+
+         ",\"comment\":\""+JsonSafe(PositionGetString(POSITION_COMMENT))+"\",
          "\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
    }
    body+="],\"orders\":[";
@@ -1474,7 +1475,7 @@ void SendLiveState()
          ",\"volume\":"+DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT),2)+
          ",\"price\":"+DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN),_Digits)+
          ",\"sl\":"+DoubleToString(OrderGetDouble(ORDER_SL),_Digits)+
-         ",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+"}";
+         ",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+",\"magic\":\""+(string)OrderGetInteger(ORDER_MAGIC)+"\",\"comment\":\""+JsonSafe(OrderGetString(ORDER_COMMENT))+"\"}";
    }
    body+="],\"tick\":{\"bid\":"+DoubleToString(tick.bid,_Digits)+
       ",\"ask\":"+DoubleToString(tick.ask,_Digits)+
@@ -2192,24 +2193,27 @@ bool VerifyManagementCommand(const string response)
    string command_id=JsonString(response,"command_id");
    string action=JsonString(response,"action");
    string ticket=JsonString(response,"ticket");
+   string direction=JsonString(response,"direction");
+   string comment=JsonString(response,"comment");
    double sl=JsonNumber(response,"sl",0.0);
    double tp=JsonNumber(response,"tp",0.0);
+   double lots=JsonNumber(response,"lots",0.0);
+   double price=JsonNumber(response,"price",0.0);
    double expires=JsonNumber(response,"expires_at",0.0);
    if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
-      command_id=="" || expires<=0.0 || (double)TimeGMT()>=expires)
-      return false;
-   if(action!="WAIT" && action!="CLOSE_ALL" && action!="CLOSE_POSITION" && action!="MODIFY_SL")
-      return false;
+      command_id=="" || expires<=0.0 || (double)TimeGMT()>=expires) return false;
+   if(action!="WAIT" && action!="CLOSE_ALL" && action!="CLOSE_POSITION" &&
+      action!="MODIFY_SL" && action!="OPEN_MARKET") return false;
+   if(action=="OPEN_MARKET" && ((direction!="BUY" && direction!="SELL") || lots<=0.0 || comment=="")) return false;
    string expected_payload=client_id+"|"+command_id+"|"+action+"|"+ticket+"|"+
-      DoubleToString(sl,8)+"|"+DoubleToString(tp,8)+"|"+DoubleToString(expires,6);
+      DoubleToString(sl,8)+"|"+DoubleToString(tp,8)+"|"+direction+"|"+
+      DoubleToString(lots,8)+"|"+DoubleToString(price,8)+"|"+comment+"|"+DoubleToString(expires,6);
    if(expected_payload!=signed_payload) return false;
    string expected="";
    if(!HMAC_SHA256_HEX(signed_payload,InpEngineToken,expected)) return false;
-   StringToLower(expected);
-   StringToLower(supplied);
+   StringToLower(expected); StringToLower(supplied);
    return expected==supplied;
 }
-
 void PollCentralManagement()
 {
    if(InpEngineId=="" || InpEngineToken=="" || !g_server_online) return;
@@ -2234,7 +2238,9 @@ void PollCentralManagement()
    string action=JsonString(response,"action");
    string command_id=JsonString(response,"command_id");
    string ticket_text=JsonString(response,"ticket");
-   double sl=JsonNumber(response,"sl",0.0);
+   string direction=JsonString(response,"direction");
+   string comment=JsonString(response,"comment");
+   double lots=JsonNumber(response,"lots",0.0);
    string dedupe_key="AZ_CMD_"+command_id;
    if(action=="WAIT" || GlobalVariableCheck(dedupe_key)) return;
 
@@ -2260,8 +2266,30 @@ void PollCentralManagement()
       }
       executed=(matched>0 && all_ok);
    }
-   else
-   {
+    else if(action=="OPEN_MARKET")
+    {
+       double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+       double vmax=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+       double vstep=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+       if(lots>=vmin-1e-8 && lots<=vmax+1e-8 && vstep>0.0 &&
+          MathAbs(lots/vstep-MathRound(lots/vstep))<0.0001)
+       {
+          trade.SetDeviationInPoints(20);
+          trade.SetTypeFillingBySymbol(_Symbol);
+          if(direction=="BUY") executed=trade.Buy(lots,_Symbol,0.0,sl,tp,comment);
+          else if(direction=="SELL") executed=trade.Sell(lots,_Symbol,0.0,sl,tp,comment);
+          if(executed)
+          {
+             string event_payload="{\"command_id\":\""+JsonSafe(command_id)+
+                "\",\"side\":\""+direction+"\",\"symbol\":\""+JsonSafe(_Symbol)+
+                "\",\"volume\":"+DoubleToString(lots,4)+
+                ",\"reason_ar\":\""+JsonSafe(JsonString(response,"reason"))+"\"}";
+             SendSignalEvent(command_id+"_central-order","ORDER_SENT",event_payload);
+          }
+       }
+    }
+    else
+    {
       ulong position_ticket=(ulong)StringToInteger(ticket_text);
       if(position_ticket>0 && PositionSelectByTicket(position_ticket) &&
          PositionGetString(POSITION_SYMBOL)==_Symbol &&
@@ -2313,8 +2341,6 @@ void OnTimer()
    ManageAiLossGuard();
    ManageConfirmedReversal();
    ManageCandleChase();
-   ManageSmartRecovery();
-   ManageAddonCooling();
    Comment("AL-ZOOL CENTRAL CLIENT\n",
            "Status: ",g_status,"\n",
            "Server: ",(g_server_online ? "ONLINE" : "OFFLINE / NOT CONFIRMED"),"\n",
