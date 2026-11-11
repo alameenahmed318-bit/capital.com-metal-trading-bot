@@ -26,6 +26,11 @@ class MarketValidationTests(unittest.TestCase):
     def test_valid_market_payload_is_accepted(self):
         self.assertEqual(len(validate_market(valid_payload())), 70)
 
+    def test_broker_gold_symbol_suffix_is_accepted(self):
+        payload = valid_payload()
+        payload["symbol"] = "XAUUSD.a"
+        self.assertEqual(len(validate_market(payload)), 70)
+
     def test_nan_price_is_rejected(self):
         payload = valid_payload()
         payload["candles"][20]["close"] = math.nan
