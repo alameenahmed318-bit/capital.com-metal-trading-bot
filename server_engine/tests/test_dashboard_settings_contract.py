@@ -7,15 +7,8 @@ GATEWAY = (ROOT / "server_engine" / "supabase_gateway.py").read_text(encoding="u
 DASHBOARD = (ROOT / "app.js").read_text(encoding="utf-8")
 EA = (ROOT / "mt5_client" / "ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
 
-# These dashboard controls still need to be moved into the central execution
-# planner before the MT5 file can become a pure command relay.
-NOT_YET_IMPLEMENTED_IN_EA = {
-    "reverse_trigger", "reverse_continue",
-    "candle_chase_enabled", "candle_chase_min_move", "candle_chase_cooldown",
-    "candle_chase_buy_target", "candle_chase_sell_target",
-    "candle_chase_single_target", "candle_chase_sl_enabled",
-    "candle_chase_sl_distance",
-}
+# Every saved trading control must be parsed by the MT5 execution adapter.
+NOT_YET_IMPLEMENTED_IN_EA = set()
 
 
 class DashboardSettingsContractTests(unittest.TestCase):
