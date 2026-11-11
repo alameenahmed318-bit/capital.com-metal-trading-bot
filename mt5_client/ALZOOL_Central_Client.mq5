@@ -1109,9 +1109,11 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
                          : (StringFind(entry_comment,"AZC_CHASE")>=0 ? "CANDLE CHASE" : "MANAGEMENT ORDER"));
       string entry_decision=(entry_strategy>=1 && entry_strategy<=200 ? g_last_decision_id : "");
       double fill_price=HistoryDealGetDouble(trans.deal,DEAL_PRICE);
-      double reference_price=(side=="BUY" ? g_last_market_ask : g_last_market_bid);
+      double reference_price=(entry_strategy>=1 && entry_strategy<=200
+                              ? (side=="BUY" ? g_last_market_ask : g_last_market_bid) : 0.0);
       double slippage_points=(reference_price>0.0 ? ((side=="BUY" ? fill_price-reference_price : reference_price-fill_price)/_Point) : 0.0);
-      ulong decision_to_fill_ms=(g_decision_received_ms>0 ? GetTickCount64()-g_decision_received_ms : 0);
+      ulong decision_to_fill_ms=(entry_strategy>=1 && entry_strategy<=200 && g_decision_received_ms>0
+                                 ? GetTickCount64()-g_decision_received_ms : 0);
       string opened_payload="{\"deal_id\":\""+(string)trans.deal+"\",\"ticket\":\""+(string)trans.deal+
          "\",\"position_id\":\""+(string)position_id+"\",\"order\":\""+(string)order+
          "\",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"side\":\""+side+
