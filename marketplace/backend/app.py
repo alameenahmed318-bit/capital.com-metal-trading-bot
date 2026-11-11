@@ -177,9 +177,12 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 import time
                 t0=time.perf_counter()
+                # GET /auth/v1/user returns the current user record from Supabase,
+                # including banned_until when a ban is active. Reuse this fresh record
+                # instead of making a second, slower admin-user request.
                 u=current_user(token_of(self)); t_user=time.perf_counter()
-                fresh=admin_user(u["id"]); t_admin=time.perf_counter()
-                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                t_admin=t_user
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 if (u.get("email") or "").lower()==OWNER_EMAIL:
                     item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
                 else:
@@ -189,14 +192,14 @@ class Handler(SimpleHTTPRequestHandler):
                 connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
                 if not connected:
                     return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة. تحقق من اتصال الطرفية.",
-                        "diagnostics":{"auth_ms":round((t_user-t0)*1000),"ban_check_ms":round((t_admin-t_user)*1000),
+                        "diagnostics":{"auth_ms":round((t_user-t0)*1000),"ban_check_ms":round((t_admin-t_user)*1000),"ban_check_source":"fresh_auth_user_record",
                         "connection_lookup_ms":round((t_lookup-t_admin)*1000),"server_total_ms":round((t_lookup-t0)*1000)}})
                 candles=(item or {}).get("closed_candles",[])
                 # MT5 sends series data newest-first; return oldest-first for analysis.
                 result={"symbol":item.get("symbol"),"timeframe":item.get("timeframe"),
                     "tick":item.get("tick",{}),"forming_candle":item.get("forming_candle"),
                     "candles":list(reversed(candles)),"received_at":item["last_seen"],
-                    "diagnostics":{"auth_ms":round((t_user-t0)*1000),"ban_check_ms":round((t_admin-t_user)*1000),
+                    "diagnostics":{"auth_ms":round((t_user-t0)*1000),"ban_check_ms":round((t_admin-t_user)*1000),"ban_check_source":"fresh_auth_user_record",
                     "connection_lookup_ms":round((t_lookup-t_admin)*1000),"server_total_ms":round((t_lookup-t0)*1000)}}
                 return self.send_json(200,result)
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
