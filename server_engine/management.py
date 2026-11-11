@@ -219,6 +219,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         recovery_limit = int(_number(settings.get("recovery_max_entries"), 0))
         recovery_history = [d for d in (payload.get("history") or [])
                             if isinstance(d, dict) and "AZR_RECOVERY" in str(d.get("comment", ""))
+                            and int(_number(d.get("entry"), -1)) in (0, 2)
                             and _number(d.get("time")) >= basket_start]
         if (count >= minimum and floating <= -trigger and not recovery_positions and
                 (recovery_limit <= 0 or len(recovery_history) < recovery_limit) and direction in ("BUY", "SELL")):
