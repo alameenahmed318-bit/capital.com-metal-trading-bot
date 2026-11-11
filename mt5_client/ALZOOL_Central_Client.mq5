@@ -38,8 +38,6 @@ double g_last_market_bid=0.0,g_last_market_ask=0.0;
 ulong g_decision_received_ms=0;
 
 // Live dashboard settings, fetched through the authenticated central API.
-double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
-bool g_context_buy_trap=false,g_context_sell_trap=false;
 string g_context_regime="";
 
 void SendSignalEvent(const string event_id,const string event_type,const string payload);
@@ -411,10 +409,6 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
    strategy_id=(int)JsonNumber(response,"strategy_id",0);
    g_last_strategy_name=JsonString(response,"strategy_name");
    g_last_confidence=confidence;
-   g_context_buy_quality=JsonNumber(response,"buy_quality",0.0);
-   g_context_sell_quality=JsonNumber(response,"sell_quality",0.0);
-   g_context_buy_trap=JsonBool(response,"buy_trap",false);
-   g_context_sell_trap=JsonBool(response,"sell_trap",false);
    g_context_regime=JsonString(response,"regime");
    g_last_strategy_id=strategy_id;
    g_last_decision=decision;
@@ -899,21 +893,13 @@ void PollCentralEngine()
    ulong interval_ms=(ulong)ALZOOL_REQUEST_SECONDS*1000;
    if(g_last_market_poll_ms>0 && now_ms-g_last_market_poll_ms<interval_ms) return;
    g_last_market_poll_ms=now_ms;
-
-   // Keep market data and AI analysis flowing even while dashboard trading is OFF.
-   // The actual order path re-checks CheckTradingControl() inside PlaceCentralTrade(),
-   // so analysis remains live without allowing new orders while trading is disabled.
-   CheckTradingControl();
-
-   // Do not request a signal while health is offline.
-   // The health check is throttled internally and returns the last confirmed state.
    if(!CheckCentralHealth()) return;
 
    string decision,decision_id,reason;
    double confidence=0.0;
    int strategy_id=0;
-   if(!PollCentralSettings()) return;
    if(!RequestCentralDecision(decision,decision_id,reason,confidence,strategy_id)) return;
+   g_last_decision_id=decision_id;
    if(decision=="WAIT")
    {
       g_status="Central WAIT / "+DoubleToString(confidence*100.0,1)+"%";
@@ -921,19 +907,15 @@ void PollCentralEngine()
       GlobalVariableSet(g_global_bar_key,(double)g_last_bar_time);
       return;
    }
-   PlaceCentralTrade(decision,decision_id,reason,strategy_id);
+   // All entries are queued by the central planner. MT5 never decides or sizes a trade.
+   g_status="Central signal received; waiting for signed execution command";
+   g_last_reason=reason;
 }
 
 int OnInit()
 {
    trade.SetExpertMagicNumber(ALZOOL_MAGIC);
    trade.SetTypeFillingBySymbol(_Symbol);
-   if(g_atr_handle==INVALID_HANDLE)
-   {
-      Print("AL-ZOOL: cannot create ATR handle. error=",GetLastError());
-      return INIT_FAILED;
-   }
-
    g_global_bar_key="AZ_CENTRAL_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
@@ -949,7 +931,6 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    EventKillTimer();
-   if(g_atr_handle!=INVALID_HANDLE) IndicatorRelease(g_atr_handle);
    Comment("");
 }
 
