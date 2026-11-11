@@ -49,6 +49,19 @@ async function refresh(){
   $("openTrades").textContent=s.open_trades==null?"—":fmt(s.open_trades);
   $("winRate").textContent=s.win_rate==null?"—":fmt(s.win_rate)+"%";
   $("balanceMeta").textContent=s.equity==null?"لا توجد بيانات حقوق الحساب":"حقوق الحساب: "+fmt(s.equity)+" "+currency;
+  const daily=s.daily||{};
+  $("dailyProfit").textContent=daily.profit==null?"—":fmt(daily.profit)+" "+currency;
+  $("dailyLoss").textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
+  $("dailyNet").textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
+  $("dailyTrades").textContent=daily.trades==null?"—":fmt(daily.trades);
+  $("dailyMeta").textContent="إجمالي الصفقات المغلقة: "+fmt(s.closed_count||0)+" · نسبة النجاح من سجل MT5 المستلم";
+  const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
+  $("closedTrades").innerHTML=rows.length?rows.map(t=>{
+   const date=t.time?new Intl.DateTimeFormat("en-GB",{dateStyle:"short",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date(t.time*1000)):"—";
+   const side=Number(t.type)===0?"شراء":Number(t.type)===1?"بيع":"—";
+   const net=Number(t.net||0);
+   return "<tr><td>"+escapeHtml(date)+"</td><td>"+escapeHtml(t.symbol||"—")+"</td><td>"+side+"</td><td>"+fmt(t.volume)+"</td><td class='"+(net>=0?"positive":"negative")+"'>"+fmt(net)+" "+escapeHtml(currency)+"</td></tr>";
+  }).join(""):"<tr><td colspan='5' class='empty-cell'>لا توجد صفقات مغلقة في سجل MT5 المستلم بعد</td></tr>";
   $("floatingMeta").textContent=s.connected?"الربح/الخسارة العائمة من حساب MT5":"بانتظار اتصال MT5";
   if(s.connected){
    $("dataNotice").innerHTML="<b>بيانات MT5 مستلمة</b><span>تم استلام بيانات الحساب والصفقات. الشموع والسعر تُرسل من الشارت المفتوح في MT5.</span>";
