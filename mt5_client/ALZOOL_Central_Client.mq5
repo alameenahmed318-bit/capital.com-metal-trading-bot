@@ -1914,7 +1914,12 @@ void ManageConfirmedReversal()
    if(buys>0 && sells>0) return;
    // A dashboard stop blocks new trading actions; it must not trigger a reversal close.
    if(!g_trading_enabled || !g_server_online || !g_decision_verified || g_decision_expires_at<=0.0 ||
-      (double)TimeGMT()>=g_decision_expires_at || g_last_confidence<0.65) return;
+      (double)TimeGMT()>=g_decision_expires_at || g_last_confidence<0.65)
+   {
+      if(g_reversal_trigger_key!="") GlobalVariableDel(g_reversal_trigger_key);
+      if(g_reversal_side_key!="") GlobalVariableDel(g_reversal_side_key);
+      return;
+   }
 
    string basket_side=(buys>0 ? "BUY" : "SELL");
    string opposite=(basket_side=="BUY" ? "SELL" : "BUY");
