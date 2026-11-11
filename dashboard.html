@@ -33,20 +33,7 @@
   <article class="card status-card"><div class="card-title"><div><span class="eyebrow">حالة البنية</span><h2>حالة الأنظمة</h2></div><span class="shield">◆</span></div>
    <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من آخر نبضة</small></div><span id="mt5Status" class="state pending">يفحص</span></div>
    <div class="status-row"><div><b>التداول الآلي</b><small>لا توجد واجهة تحكم تداول مرتبطة حالياً</small></div><span class="state muted">غير مربوط</span></div>
-   <div class="status-row"><div><b>الذكاء الاصطناعي</b><small>تحليل محلي عبر Ollama على جهازك</small></div><span id="aiStatus" class="state muted">يفحص</span></div>
-   <div class="status-row"><div><b>محرك التداول</b><small>بانتظار دمج واجهة المحرك</small></div><span class="state muted">غير مربوط</span></div>
-  </article>
- </section>
- <section class="card ai-card">
-  <div class="card-title"><div><span class="eyebrow">AL-ZOOL INTELLIGENCE</span><h2>تحليل الذهب بالذكاء الاصطناعي</h2></div><span class="market-tag">محلي · Ollama</span></div>
-  <div class="ai-toolbar"><div><b id="aiModelLabel">Qwen 2.5 · 3B</b><small id="aiHelp">يتطلب تشغيل Ollama على جهازك واتصال MT5 حديثاً</small></div><button id="aiAnalyzeBtn" class="refresh" type="button">تحليل الذهب الآن</button></div>
-  <div id="aiResult" class="ai-result"><div class="ai-placeholder">لم يبدأ التحليل بعد. اضغط «تحليل الذهب الآن» بعد التأكد من اتصال MT5 وتشغيل Ollama.</div></div>
-  <p class="chart-foot">التحليل استشاري فقط في هذه المرحلة؛ لا يفتح أو يغلق أي صفقة ولا يرسل أوامر إلى MT5.</p>
- </section>
- <section class="grid-lower">
-  <article class="card"><div class="card-title"><div><span class="eyebrow">إدارة رأس المال</span><h2>مؤشر المخاطر والحماية</h2></div><span class="icon-tile">⬡</span></div><div class="empty-state"><span class="empty-icon">⌁</span><b>بانتظار ربط نظام الحماية</b><p>سيظهر هنا مستوى المخاطر، حد الخسارة اليومي، وحالة حماية الأرباح عند توفر بيانات المحرك الفعلية.</p></div></article>
-  <article class="card"><div class="card-title"><div><span class="eyebrow">إدارة الصفقات</span><h2>نظام التعافي</h2></div><span class="icon-tile">⟳</span></div><div class="empty-state"><span class="empty-icon">⟳</span><b>بانتظار ربط نظام التعافي</b><p>سيظهر اتجاه التعافي، عدد صفقاته، وحالته دون افتراض أنه يعمل قبل اختبار المحرك.</p></div></article>
-  <article class="card daily-card"><div class="card-title"><div><span class="eyebrow">ملخص الأداء</span><h2>أداء اليوم</h2></div><span class="icon-tile">▥</span></div><div class="daily-grid"><div><small>أرباح اليوم</small><b id="dailyProfit">—</b></div><div><small>خسائر اليوم</small><b id="dailyLoss">—</b></div><div><small>صافي اليوم</small><b id="dailyNet">—</b></div><div><small>صفقات اليوم</small><b id="dailyTrades">—</b></div></div><p class="muted" id="dailyMeta">الأرقام من الصفقات المغلقة في MT5 بتوقيت الإمارات.</p></article>
+   <p class="muted" id="dailyMeta">الأرقام من الصفقات المغلقة في MT5 بتوقيت الإمارات.</p></article>
  </section>
  <section class="card history-card"><div class="card-title"><div><span class="eyebrow">سجل MT5</span><h2>آخر الصفقات المغلقة</h2></div><span class="market-tag">آخر 30 يوماً</span></div><div class="table-scroll"><table class="history-table"><thead><tr><th>الوقت</th><th>الرمز</th><th>الاتجاه</th><th>الحجم</th><th>الصافي</th></tr></thead><tbody id="closedTrades"><tr><td colspan="5" class="empty-cell">بانتظار سجل الصفقات المغلقة من MT5</td></tr></tbody></table></div></section>
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> لوحة القيادة · البيانات غير المتاحة لا تُعرض كأرقام تقديرية</footer>
