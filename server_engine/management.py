@@ -184,7 +184,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             continue
         side_positions = buys if buys else sells
         anchor_position = max(tagged or side_positions, key=lambda p: _number(p.get("time")))
-        anchor = _number(anchor_position.get("price_current")) or _number(anchor_position.get("open_price"))
+        anchor = _number(anchor_position.get("open_price"))
         quote = bid if direction == "BUY" or buys else ask
         basket_direction = "BUY" if buys else "SELL"
         if kind == "addon":
