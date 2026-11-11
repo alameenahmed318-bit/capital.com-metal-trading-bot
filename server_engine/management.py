@@ -267,6 +267,10 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         if maximum > 0 and len(tagged) >= maximum:
             continue
         side_positions = buys if buys else sells
+        # Add-on/cooling are position-management features. With no existing
+        # basket there is no anchor; skip them and continue to the main entry.
+        if not side_positions:
+            continue
         anchor_position = max(tagged or side_positions, key=lambda p: _number(p.get("time")))
         anchor = _number(anchor_position.get("open_price"))
         quote = bid if direction == "BUY" or buys else ask
