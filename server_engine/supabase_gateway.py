@@ -145,7 +145,10 @@ class EngineGateway:
         else: mode="AUTO"
         live_snapshot=self._live_cache.get(client_id) or {}
         live_payload=live_snapshot.get("payload") or {}
-        if bool(dashboard_settings.get("adaptive_strategy_switch")) and live_payload.get("positions"):
+        open_own_positions=[p for p in (live_payload.get("positions") or [])
+                            if isinstance(p,dict) and str(p.get("magic",""))=="26110801"
+                            and str(p.get("symbol",""))==str(data.get("symbol",""))]
+        if bool(dashboard_settings.get("adaptive_strategy_switch")) and open_own_positions:
             mode="AUTO"
             selected_raw=0
         else:
