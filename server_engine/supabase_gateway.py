@@ -360,6 +360,13 @@ class EngineGateway:
         if merged["candle_chase_min_move"]<=0 or merged["candle_chase_cooldown"]<0 or merged["candle_chase_buy_target"]<0 or merged["candle_chase_sell_target"]<0 or merged["candle_chase_single_target"]<0 or merged["candle_chase_sl_distance"]<=0: raise ValueError("candle-follow settings are invalid")
         if merged["strategy_mode"] not in ("AUTO — Best current fit","HUNTER — Frequent opportunities","SNIPER — Selective entries") and not merged["strategy_mode"].isdigit():
             raise ValueError("invalid strategy_mode")
+        # A dashboard user may save settings before issuing MT5 credentials.
+        # Create the per-user engine row first so the save is durable instead of
+        # silently PATCHing zero rows and reporting success.
+        client_rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+
+                                  "&select=client_id&limit=1")
+        if not client_rows:
+            self.issue(user_id)
         self._request("PATCH","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe=""),
                       {"trading_settings":merged},"return=minimal")
         return merged
