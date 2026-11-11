@@ -144,6 +144,32 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     forming = payload.get("forming_candle") or {}
     atr = _atr(candles)
 
+    # AI loss guard and confirmed basket reversal are server-side decisions.
+    decision = market_decision or {}
+    direction = str(decision.get("decision") or "").upper()
+    confidence = _number(decision.get("confidence"))
+    if _truth(settings, "ai_loss_guard_enabled") and direction in ("BUY", "SELL") and confidence >= 0.72:
+        for p in positions:
+            pnl = _number(p.get("profit")) + _number(p.get("swap"))
+            side = int(_number(p.get("type"), -1))
+            opposite = (side == 0 and direction == "SELL") or (side == 1 and direction == "BUY")
+            if pnl < 0 and opposite:
+                return command("CLOSE_POSITION", "حارس الخسارة الذكي: تأكد الاتجاه المعاكس مركزياً",
+                               ticket=p.get("ticket"))
+
+    if _truth(settings, "reverse_protection_enabled") and positions and direction in ("BUY", "SELL") and confidence >= 0.65:
+        if not (buys and sells):
+            basket_direction = "BUY" if buys else "SELL"
+            if direction != basket_direction:
+                volume = sum(_number(p.get("volume")) for p in positions)
+                weighted = sum(_number(p.get("open_price")) * _number(p.get("volume")) for p in positions)
+                average = weighted / volume if volume > 0 else 0.0
+                quote = bid if basket_direction == "BUY" else ask
+                adverse = (average - quote) if basket_direction == "BUY" else (quote - average)
+                required = _number(settings.get("reverse_trigger"), 5.0) + _number(settings.get("reverse_continue"), 2.0)
+                if average > 0 and adverse >= required:
+                    return command("CLOSE_ALL", "تأكيد الانعكاس: تجاوزت الحركة المعاكسة مسافة التفعيل والاستمرار")
+
     # Main BUY/SELL entries are decided and sized centrally.
     if direction in ("BUY", "SELL"):
         side_allowed = _truth(settings, "allow_buy", True) if direction == "BUY" else _truth(settings, "allow_sell", True)
