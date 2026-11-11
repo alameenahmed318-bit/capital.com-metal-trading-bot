@@ -1277,6 +1277,7 @@ void ManageSettingsProfitLoss()
 
 void ManageLocalProtection()
 {
+   if(!g_settings_loaded || !g_cfg_trailing) return;
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return;
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
