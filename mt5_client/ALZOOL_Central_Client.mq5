@@ -1113,7 +1113,10 @@ void PollCentralManagement()
        if(order_ticket>0 && OrderSelect(order_ticket) &&
           OrderGetString(ORDER_SYMBOL)==_Symbol &&
           (ulong)OrderGetInteger(ORDER_MAGIC)==ALZOOL_MAGIC)
-          executed=trade.OrderDelete(order_ticket);
+       {
+          bool sent=trade.OrderDelete(order_ticket);
+          executed=sent && trade.ResultRetcode()==TRADE_RETCODE_DONE;
+       }
     }
 
     else if(action=="PLACE_PENDING")
@@ -1127,10 +1130,13 @@ void PollCentralManagement()
           SymbolInfoTick(_Symbol,current_tick))
        {
           trade.SetTypeFillingBySymbol(_Symbol);
+          bool sent=false;
           if(direction=="BUY" && price>current_tick.ask)
-             executed=trade.BuyStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
+             sent=trade.BuyStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
           else if(direction=="SELL" && price<current_tick.bid)
-             executed=trade.SellStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
+             sent=trade.SellStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
+          uint rc=trade.ResultRetcode();
+          executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED);
        }
     }
     else
