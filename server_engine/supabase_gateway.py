@@ -136,9 +136,13 @@ class EngineGateway:
         mtf=data.get("mtf_bias",{})
         if not isinstance(mtf,dict) or any(k not in ("M5","M15","H1") or v not in ("BUY","SELL","WAIT") for k,v in mtf.items()):
             raise ValueError("mtf_bias must contain only M5/M15/H1 BUY/SELL/WAIT values")
-        mode=str(data.get("strategy_mode","AUTO")).upper()
-        if mode not in ("AUTO","HUNTER","SNIPER"): raise ValueError("invalid strategy_mode")
-        selected_raw=data.get("selected_strategy_id",0)
+        dashboard_settings=self.settings_for_client(client_id,token)
+        configured_mode=str(dashboard_settings.get("strategy_mode","AUTO")).upper()
+        if configured_mode.startswith("HUNTER"): mode="HUNTER"
+        elif configured_mode.startswith("SNIPER"): mode="SNIPER"
+        else: mode="AUTO"
+        selected_raw=(configured_mode if configured_mode.isdigit()
+                      else dashboard_settings.get("selected_strategy_id",data.get("selected_strategy_id",0)))
         if isinstance(selected_raw,bool): raise ValueError("selected_strategy_id must be 0..200")
         try: selected_id=int(selected_raw or 0)
         except (TypeError,ValueError,OverflowError): raise ValueError("selected_strategy_id must be 0..200") from None
