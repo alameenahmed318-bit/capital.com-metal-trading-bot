@@ -244,6 +244,19 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                            direction=basket_direction, lots=lots, comment=tag,
                            key=kind + "_" + str(anchor_position.get("ticket")))
 
+    # Cancel stale candle-follow orders or orders contradicted by the latest server signal.
+    forming_time = _number(forming.get("time"))
+    for order in orders:
+        order_type = int(_number(order.get("type"), -1))
+        order_comment = str(order.get("comment", ""))
+        setup_time = _number(order.get("time_setup"))
+        stale_candle = "AZS_CANDLE" in order_comment and forming_time > 0 and setup_time > 0 and setup_time < forming_time
+        pending_direction = "BUY" if order_type in (2, 4, 6) else "SELL" if order_type in (3, 5, 7) else ""
+        contradicted = direction in ("BUY", "SELL") and pending_direction and pending_direction != direction
+        if stale_candle or contradicted:
+            return command("CANCEL_PENDING", "إلغاء أمر معلق قديم أو مخالف لقرار السيرفر",
+                           ticket=order.get("ticket"), key="cancel_" + str(order.get("ticket")))
+
     # Candle-follow breakout orders are generated centrally, one command at a time.
     if _truth(settings, "candle_chase_enabled"):
         candle = forming
