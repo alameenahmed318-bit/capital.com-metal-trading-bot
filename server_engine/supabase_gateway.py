@@ -264,7 +264,7 @@ class EngineGateway:
 
     def status_for_user(self, user_id, stale_after=5):
         """Report MT5 connected from one-second terminal telemetry, not candle decisions."""
-        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled&limit=1")
+        rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled,trading_settings&limit=1")
         if not rows:
             return {"mt5_connected":False,"trading_enabled":False,"reason":"credentials_not_issued","last_seen_at":None,"seconds_since_last_data":None}
         client=rows[0]
@@ -302,15 +302,26 @@ class EngineGateway:
         if result:
             rows=self._request("GET","alzool_engine_weights?client_id=eq."+client_id+"&strategy_id=eq."+str(sid)+"&select=weight")
             old=float(rows[0]["weight"]) if rows else 1.0
-            new=max(.25,min(4.0,old*(1.04 if pnl>0 else .96 if pnl<0 else 1.0)))
-            self._request("POST","alzool_engine_weights",
-                {"client_id":client_id,"strategy_id":sid,"weight":new},
-                "resolution=merge-duplicates,return=minimal")
-        return {"accepted":True,"duplicate":not bool(result)}
+            settings=self.settings_for_client(client_id,token)
+            learning_enabled=bool(settings.get("learning_enabled",True))
+            learning_rate=max(0.001,min(0.20,float(settings.get("learning_rate_percent",4.0))/100.0))
+            if learning_enabled:
+                factor=(1.0+learning_rate if pnl>0 else 1.0-learning_rate if pnl<0 else 1.0)
+                new=max(.25,min(4.0,old*factor))
+                self._request("POST","alzool_engine_weights",
+                    {"client_id":client_id,"strategy_id":sid,"weight":new},
+                    "resolution=merge-duplicates,return=minimal")
+        else:
+            settings=self.settings_for_client(client_id,token)
+            learning_enabled=bool(settings.get("learning_enabled",True))
+        return {"accepted":True,"duplicate":not bool(result),
+                "trained":bool(result) and learning_enabled,
+                "learning_enabled":learning_enabled,
+                "learning_rate_percent":float(settings.get("learning_rate_percent",4.0))}
 
 
 
-    BASIC_SETTINGS_DEFAULTS = {"reverse_protection_enabled":False,"ai_risk_enabled":False,"allow_buy":True,"allow_sell":True,"max_spread_points":0,"require_broker_stops":True,"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":True,"per_trade_profit_enabled":True,"per_trade_profit_target":2,"smart_profit_enabled":False,"one_direction_only":True,"global_loss_enabled":True,"global_loss_amount":50,"ai_loss_guard_enabled":False,"max_positions":0,"fixed_sl_enabled":True,"fixed_sl_distance":3,"trailing_enabled":True,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":False,"candle_chase_max_orders":1,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":False,"candle_chase_sl_distance":3,"addon_enabled":False,"addon_smart_enabled":False,"addon_step":2,"addon_multiplier_enabled":True,"addon_multiplier":1.2,"addon_max":3,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_smart_enabled":False,"cooling_step":3,"cooling_multiplier_enabled":True,"cooling_multiplier":1.2,"cooling_max":2,"cooling_max_lot":0.05,"recovery_enabled":False,"recovery_mode":"AUTO","recovery_manual_lot":0.01,"recovery_max_lot":0.05,"recovery_trigger_loss":10.0,"recovery_target_profit":0.5,"recovery_min_positions":3,"recovery_atr_distance":1.0,"recovery_min_confidence":0.65,"recovery_max_entries":0,"adaptive_strategy_switch":False,"strategy_mode":"AUTO — Best current fit"}
+    BASIC_SETTINGS_DEFAULTS = {"learning_enabled":True,"learning_rate_percent":4.0,"reverse_protection_enabled":False,"ai_risk_enabled":False,"allow_buy":True,"allow_sell":True,"max_spread_points":0,"require_broker_stops":True,"lot":0.01,"ai_risk_percent":0.5,"ai_max_lot":0.05,"profit_target":1,"loss_limit":50,"global_profit_enabled":True,"per_trade_profit_enabled":True,"per_trade_profit_target":2,"smart_profit_enabled":False,"one_direction_only":True,"global_loss_enabled":True,"global_loss_amount":50,"ai_loss_guard_enabled":False,"max_positions":0,"fixed_sl_enabled":True,"fixed_sl_distance":3,"trailing_enabled":True,"trail_start":3,"trail_distance":3,"pending_distance":2,"order_mode":"Market Order","reverse_trigger":5,"reverse_continue":2,"candle_chase_enabled":False,"candle_chase_max_orders":1,"candle_chase_min_move":0.1,"candle_chase_cooldown":2,"candle_chase_buy_target":1,"candle_chase_sell_target":1,"candle_chase_single_target":0.5,"candle_chase_sl_enabled":False,"candle_chase_sl_distance":3,"addon_enabled":False,"addon_smart_enabled":False,"addon_step":2,"addon_multiplier_enabled":True,"addon_multiplier":1.2,"addon_max":3,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_smart_enabled":False,"cooling_step":3,"cooling_multiplier_enabled":True,"cooling_multiplier":1.2,"cooling_max":2,"cooling_max_lot":0.05,"recovery_enabled":False,"recovery_mode":"AUTO","recovery_manual_lot":0.01,"recovery_max_lot":0.05,"recovery_trigger_loss":10.0,"recovery_target_profit":0.5,"recovery_min_positions":3,"recovery_atr_distance":1.0,"recovery_min_confidence":0.65,"recovery_max_entries":0,"adaptive_strategy_switch":False,"strategy_mode":"AUTO — Best current fit"}
 
     def settings_for_client(self, client_id, token):
         client=self._client(client_id,token)
@@ -348,6 +359,7 @@ class EngineGateway:
                     raise ValueError(key+" must be a finite number")
             elif not isinstance(value,str):
                 raise ValueError(key+" must be text")
+        if not 0.1<=merged["learning_rate_percent"]<=20.0: raise ValueError("learning_rate_percent must be 0.1..20")
         if merged["order_mode"] not in ("Market Order","Pending Order"): raise ValueError("invalid order_mode")
         if merged["lot"]<=0 or merged["profit_target"]<=0 or merged["per_trade_profit_target"]<=0 or merged["loss_limit"]<=0 or merged["global_loss_amount"]<=0: raise ValueError("risk, lot and profit/loss targets must be greater than zero")
         if not 0.05<=merged["ai_risk_percent"]<=2.0 or merged["ai_max_lot"]<=0: raise ValueError("AI risk must be 0.05..2% and AI max lot must be positive")
@@ -519,6 +531,7 @@ class EngineGateway:
                         "live_updated_at":live_stamp,"live_sequence":(live_row or {}).get("sequence")}
         fresh=live_age is not None and live_age<=5 and not revoked
         return {
+            "settings":{**self.BASIC_SETTINGS_DEFAULTS,**(client.get("trading_settings") or {})},
             "connected":fresh,
             "reason":"live_data_recent" if fresh else ("client_revoked" if revoked else ("no_live_data" if not live_row else "live_data_stale")),
             "trading_enabled":bool(client.get("trading_enabled",False)) and not revoked,
