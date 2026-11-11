@@ -921,6 +921,7 @@ void SendTerminalState()
          "\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+
          ",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+
          ",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+
+         ",\"comment\":\""+JsonSafe(HistoryDealGetString(d,DEAL_COMMENT))+"\""+
          ",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+
          ",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+
          ",\"profit\":"+DoubleToString(deal_profit,2)+
