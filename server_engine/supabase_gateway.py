@@ -702,7 +702,7 @@ class EngineGateway:
         # can continue analysis without retransmitting the same bars every tick.
         previous_live = self._live_cache.get(client_id) or {}
         previous_payload = previous_live.get("payload") or {}
-        if not previous_payload.get("closed_candles"):
+        if not previous_live:
             previous_rows = self._request(
                 "GET", "alzool_engine_live_state?client_id=eq." +
                 urllib.parse.quote(client_id, safe="") +
