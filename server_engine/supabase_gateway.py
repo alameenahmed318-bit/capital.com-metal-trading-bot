@@ -25,6 +25,7 @@ class EngineGateway:
         self._ai_lock = threading.Lock()
         self._ai_requested = {}
         self._ai_inflight = set()
+        self._ai_last_attempt = {}
         self._ai_results = {}
 
     def _request(self, method, path, payload=None, prefer=None):
@@ -146,10 +147,19 @@ class EngineGateway:
         symbol = str(market_data.get("symbol") or "")
         timeframe = str(market_data.get("timeframe") or "CURRENT")
         request_key = symbol + "|" + timeframe + "|" + str(candle_time)
+        now = time.time()
         with self._ai_lock:
-            if self._ai_requested.get(client_id) == request_key or client_id in self._ai_inflight:
+            if client_id in self._ai_inflight:
+                return
+            previous_key = self._ai_requested.get(client_id)
+            previous_result = self._ai_results.get(client_id) or {}
+            if previous_key == request_key and previous_result.get("status") == "ready":
+                return
+            last_attempt = self._ai_last_attempt.get(client_id, 0.0)
+            if previous_key == request_key and now - last_attempt < 30.0:
                 return
             self._ai_requested[client_id] = request_key
+            self._ai_last_attempt[client_id] = now
             self._ai_inflight.add(client_id)
         received = (self._live_cache.get(client_id) or {}).get("received_at")
         try:
@@ -193,8 +203,15 @@ class EngineGateway:
             "positions_fresh": age is not None and age <= 5.0,
         }
         model = os.getenv("OPENAI_MODEL", "gpt-6-astra").strip() or "gpt-6-astra"
-        self._ai_executor.submit(self._run_ai_analysis, client_id, request_key,
-                                 candle_time, symbol, timeframe, model, api_key, context)
+        try:
+            self._ai_executor.submit(self._run_ai_analysis, client_id, request_key,
+                                     candle_time, symbol, timeframe, model, api_key, context)
+            print("AL-ZOOL AI_ANALYSIS queued symbol=%s timeframe=%s candle=%s source=%s" %
+                  (symbol, timeframe, candle_time, str(market_data.get("source") or "market")), flush=True)
+        except Exception as exc:
+            with self._ai_lock:
+                self._ai_inflight.discard(client_id)
+            print("AL-ZOOL AI_ANALYSIS queue failed: " + type(exc).__name__, flush=True)
 
     def _run_ai_analysis(self, client_id, request_key, candle_time, symbol, timeframe, model, api_key, context):
         try:
@@ -213,17 +230,21 @@ class EngineGateway:
                 "candle_time": candle_time, "symbol": symbol,
                 "timeframe": timeframe, "analyzed_at": time.time(),
             }
-        except Exception:
+            print("AL-ZOOL AI_ANALYSIS failed code=%s model=%s symbol=%s candle=%s" %
+                  (exc.code, model, symbol, candle_time), flush=True)
+        except Exception as exc:
             result = {
                 "status": "error", "provider": "OpenAI", "model": model,
                 "error_code": "internal_analysis_error", "mode": "MONITOR_ONLY",
                 "candle_time": candle_time, "symbol": symbol,
                 "timeframe": timeframe, "analyzed_at": time.time(),
             }
+            print("AL-ZOOL AI_ANALYSIS internal failure type=%s model=%s symbol=%s" %
+                  (type(exc).__name__, model, symbol), flush=True)
         with self._ai_lock:
             self._ai_results[client_id] = result
             self._ai_inflight.discard(client_id)
-        event_id = "ai-analysis:" + symbol + ":" + timeframe + ":" + str(candle_time)
+        event_id = "ai-analysis:" + symbol + ":" + timeframe + ":" + str(candle_time) + ":" + str(int(result["analyzed_at"] * 1000))
         try:
             self._store_signal_event(client_id, event_id, "AI_ANALYSIS", result, result["analyzed_at"])
         except Exception as exc:
@@ -270,6 +291,17 @@ class EngineGateway:
                 "&select=payload&order=created_at.desc&limit=1")
             decision = (rows[0].get("payload") or {}) if rows else {}
         candles = decision.get("candles") or []
+        if not candles:
+            live_snapshot = self._live_cache.get(client_id) or {}
+            live_payload = live_snapshot.get("payload") or {}
+            candles = live_payload.get("closed_candles") or []
+            if not candles:
+                live_rows = self._request(
+                    "GET", "alzool_engine_live_state?client_id=eq." +
+                    urllib.parse.quote(client_id, safe="") +
+                    "&select=payload&order=received_at.desc&limit=1")
+                live_payload = (live_rows[0].get("payload") or {}) if live_rows else {}
+                candles = live_payload.get("closed_candles") or []
         latest_candle = int(candles[-1].get("time", 0)) if candles else 0
         fresh = bool(analysis and latest_candle and int(analysis.get("candle_time", 0)) == latest_candle)
         if not configured:
@@ -664,13 +696,40 @@ class EngineGateway:
             epoch=float(data.get("source_time",0) or 0)
             source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
         except (TypeError,ValueError,OverflowError,OSError): source_time=None
-        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","source_time","point","volume_step","volume_min","volume_max","tick_value","tick_size","stops_level","day_start")}
+        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","closed_candles","symbol","timeframe","sequence","source_time","point","volume_step","volume_min","volume_max","tick_value","tick_size","stops_level","day_start")}
         received=datetime.now(timezone.utc).isoformat()
         row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
              "received_at":received,"updated_at":received}
         self._request("POST","alzool_engine_live_state",row,"resolution=merge-duplicates,return=minimal")
         self._live_cache[client_id] = {"payload":payload,"sequence":sequence,
                                        "source_time":source_time,"received_at":received}
+        # The live telemetry heartbeat is independent of the slower market-decision
+        # poll. Use its closed candles as a second, monitor-only OpenAI trigger so
+        # analysis still runs when the decision request is waiting for chart history.
+        closed = payload.get("closed_candles")
+        tick = payload.get("tick") or {}
+        if isinstance(closed, list) and len(closed) >= 65 and len(closed) <= 300:
+            try:
+                rates, _, _ = self._validate_market({
+                    "symbol": payload.get("symbol"),
+                    "timeframe": payload.get("timeframe"),
+                    "candles": closed,
+                    "bid": tick.get("bid"),
+                    "ask": tick.get("ask"),
+                })
+                symbol = str(payload.get("symbol") or "")
+                own_positions = [p for p in positions if isinstance(p, dict)
+                                 and str(p.get("magic", "")) == "26110801"
+                                 and str(p.get("symbol", "")) == symbol]
+                self._queue_ai_analysis(
+                    client_id, rates,
+                    {"source": "live_telemetry", "symbol": symbol,
+                     "timeframe": payload.get("timeframe") or "CURRENT",
+                     "forming_candle": payload.get("forming_candle") or {},
+                     "tick": tick, "bid": tick.get("bid"), "ask": tick.get("ask")},
+                    {}, payload, own_positions)
+            except (ValueError, TypeError) as exc:
+                print("AL-ZOOL AI live candle data rejected: " + str(exc)[:140], flush=True)
         return {"accepted":True,"sequence":sequence,"received_at":received}
 
     def live_state_for_user(self, user_id):
