@@ -966,6 +966,7 @@ void PollCentralEngine()
    double confidence=0.0;
    int strategy_id=0;
    if(!RequestCentralDecision(decision,decision_id,reason,confidence,strategy_id)) return;
+   g_last_decision_id=decision_id;
    // Market signal is telemetry/cache only. Signed management commands execute trades.
    g_last_decision=decision;
    g_last_reason=reason;
