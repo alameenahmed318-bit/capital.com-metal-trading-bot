@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#11121b"><title>AL-ZOOL | لوحة القيادة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/dashboard.css?v=1">
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+ <a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <div class="side-label">القائمة الرئيسية</div>
+ <a class="nav active" href="/dashboard.html"><span>▦</span> لوحة القيادة</a>
+ <a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a>
+ <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+</aside>
+<main class="main">
+ <header class="topbar"><div><div class="eyebrow">مركز القيادة والتحكم</div><h1>لوحة القيادة</h1><p>نظرة موحدة على الذهب والحساب وحالة أنظمة التداول</p></div><div class="top-actions"><span class="date-chip" id="clock">—</span><button id="refreshBtn" class="refresh">⟳ تحديث</button><a class="avatar" href="/">AZ</a></div></header>
+ <section class="notice" id="dataNotice"><b>تنبيه حالة الربط</b><span>نعرض البيانات الحقيقية المتاحة فقط. بيانات التداول والمخاطر والتعافي ستظهر بعد ربط محرك التداول.</span></section>
+ <section class="kpis">
+  <article class="kpi"><div class="kpi-head"><span>رصيد الحساب</span><i>◈</i></div><strong id="balance">—</strong><small id="balanceMeta">بانتظار مصدر بيانات الحساب</small></article>
+  <article class="kpi"><div class="kpi-head"><span>إجمالي الربح والخسارة العائمة</span><i>↗</i></div><strong id="floating">—</strong><small id="floatingMeta">بانتظار بيانات المراكز المفتوحة</small></article>
+  <article class="kpi"><div class="kpi-head"><span>الصفقات المفتوحة</span><i>▤</i></div><strong id="openTrades">—</strong><small>لا توجد بيانات صفقات من المحرك حالياً</small></article>
+  <article class="kpi"><div class="kpi-head"><span>نسبة النجاح</span><i>◎</i></div><strong id="winRate">—</strong><small>تُحسب من سجل الصفقات الفعلي</small></article>
+ </section>
+ <section class="grid-main">
+  <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2>الذهب XAUUSD</h2></div><span class="market-tag"><i></i> مخطط السوق</span></div>
+   <div class="chart-wrap"><iframe title="مخطط الذهب المباشر من TradingView" src="https://www.tradingview.com/widgetembed/?frameElementId=tv_gold_chart&symbol=OANDA%3AXAUUSD&interval=15&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=f5f5f7&theme=dark&style=1&timezone=Asia%2FDubai&withdateranges=1&hideideas=1" loading="lazy" allowfullscreen></iframe></div>
+   <p class="chart-foot">المخطط من TradingView كمصدر عرض خارجي؛ تنفيذ الصفقات غير متاح من هذه الصفحة حالياً.</p>
+  </article>
+  <article class="card status-card"><div class="card-title"><div><span class="eyebrow">حالة البنية</span><h2>حالة الأنظمة</h2></div><span class="shield">◆</span></div>
+   <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من آخر نبضة</small></div><span id="mt5Status" class="state pending">يفحص</span></div>
+   <div class="status-row"><div><b>التداول الآلي</b><small>لا توجد واجهة تحكم تداول مرتبطة حالياً</small></div><span class="state muted">غير مربوط</span></div>
+   <div class="status-row"><div><b>الذكاء الاصطناعي</b><small>لا توجد خدمة تحليل متصلة حالياً</small></div><span class="state muted">غير مربوط</span></div>
+   <div class="status-row"><div><b>محرك التداول</b><small>بانتظار دمج واجهة المحرك</small></div><span class="state muted">غير مربوط</span></div>
+  </article>
+ </section>
+ <section class="grid-lower">
+  <article class="card"><div class="card-title"><div><span class="eyebrow">إدارة رأس المال</span><h2>مؤشر المخاطر والحماية</h2></div><span class="icon-tile">⬡</span></div><div class="empty-state"><span class="empty-icon">⌁</span><b>بانتظار ربط نظام الحماية</b><p>سيظهر هنا مستوى المخاطر، حد الخسارة اليومي، وحالة حماية الأرباح عند توفر بيانات المحرك الفعلية.</p></div></article>
+  <article class="card"><div class="card-title"><div><span class="eyebrow">إدارة الصفقات</span><h2>نظام التعافي</h2></div><span class="icon-tile">⟳</span></div><div class="empty-state"><span class="empty-icon">⟳</span><b>بانتظار ربط نظام التعافي</b><p>سيظهر اتجاه التعافي، عدد صفقاته، وحالته دون افتراض أنه يعمل قبل اختبار المحرك.</p></div></article>
+  <article class="card daily-card"><div class="card-title"><div><span class="eyebrow">ملخص الأداء</span><h2>أداء اليوم</h2></div><span class="icon-tile">▥</span></div><div class="daily-grid"><div><small>أرباح اليوم</small><b>—</b></div><div><small>خسائر اليوم</small><b>—</b></div><div><small>صافي اليوم</small><b>—</b></div><div><small>عدد الصفقات</small><b>—</b></div></div><p class="muted">لا تتوفر حالياً واجهة سجل الصفقات اليومية.</p></article>
+ </section>
+ <footer>AL-ZOOL GOLD SNIPER <span>•</span> لوحة القيادة · البيانات غير المتاحة لا تُعرض كأرقام تقديرية</footer>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/dashboard.js?v=1"></script>
+</body></html>
