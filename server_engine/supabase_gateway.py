@@ -307,6 +307,19 @@ class EngineGateway:
                 terminal_payload=(terminal.get("payload") or {})
                 live_payload["history"]=terminal_payload.get("history") or []
                 live={"payload":live_payload,"received_at":live.get("received_at")}
+                decision_payload=dict(decision_payload or {})
+                if decision_payload:
+                    tf=str(decision_payload.get("timeframe") or "")
+                    tf_seconds={"PERIOD_M1":60,"PERIOD_M2":120,"PERIOD_M3":180,
+                                "PERIOD_M4":240,"PERIOD_M5":300,"PERIOD_M6":360,
+                                "PERIOD_M10":600,"PERIOD_M12":720,"PERIOD_M15":900,
+                                "PERIOD_M20":1200,"PERIOD_M30":1800,"PERIOD_H1":3600,
+                                "PERIOD_H2":7200,"PERIOD_H3":10800,"PERIOD_H4":14400,
+                                "PERIOD_H6":21600,"PERIOD_H8":28800,"PERIOD_H12":43200,
+                                "PERIOD_D1":86400}
+                    max_signal_age=max(120,tf_seconds.get(tf,60)*2)
+                    if time.time()-float(decision_payload.get("created_at",0) or 0)>max_signal_age:
+                        decision_payload={}
                 plan=build_management_command(settings,live,market_decision=decision_payload)
         action=str(plan.get("action","WAIT"))
         command_id=str(plan.get("command_id") or uuid.uuid4().hex)
