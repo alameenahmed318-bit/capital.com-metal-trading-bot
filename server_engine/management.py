@@ -179,6 +179,9 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     direction = str(decision.get("decision") or "").upper()
     confidence = _number(decision.get("confidence"))
     candles = decision.get("candles") or []
+    spread_points = _number(tick.get("spread_points"))
+    spread_limit = _number(settings.get("max_spread_points"))
+    entry_spread_ok = spread_limit <= 0 or spread_points <= spread_limit
     forming = payload.get("forming_candle") or {}
     atr = _atr(candles)
 
@@ -254,7 +257,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     for kind in ("addon", "cooling"):
         if buys and sells:
             continue
-        if not _truth(settings, kind + "_enabled"):
+        if not _truth(settings, kind + "_enabled") or not entry_spread_ok:
             continue
         tag = "AZS_ADDON" if kind == "addon" else "AZS_COOLING"
         tagged = [p for p in positions if tag in str(p.get("comment", ""))]
@@ -307,7 +310,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                            ticket=order.get("ticket"), key="cancel_" + str(order.get("ticket")))
 
     # Candle-follow breakout orders are generated centrally, one command at a time.
-    if _truth(settings, "candle_chase_enabled"):
+    if _truth(settings, "candle_chase_enabled") and entry_spread_ok:
         candle = forming
         candle_open = _number(candle.get("open"))
         candle_high = _number(candle.get("high"))
@@ -329,7 +332,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 distance = max(_number(settings.get("pending_distance"), 2.0),
                                _number(payload.get("stops_level")) * _number(payload.get("point")))
                 lots = _volume(_number(settings.get("lot"), 0.01), payload)
-                if lots > 0 and not buy_exists and len(candle_orders) < chase_max:
+                if lots > 0 and _truth(settings, "allow_buy", True) and not buy_exists and len(candle_orders) < chase_max:
                     price = candle_high + distance
                     tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
                                    if chase_max == 1 else _number(settings.get("candle_chase_buy_target"), 1.0))
@@ -337,7 +340,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                     return command("PLACE_PENDING", "أمر متابعة شمعة شراء محسوب مركزياً",
                                    direction="BUY", lots=lots, price=price, tp=tp,
                                    comment="AZS_CANDLE_BUY", key="candle_buy_" + candle_time)
-                if lots > 0 and not sell_exists and len(candle_orders) < chase_max:
+                if lots > 0 and _truth(settings, "allow_sell", True) and not sell_exists and len(candle_orders) < chase_max:
                     price = candle_low - distance
                     tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
                                    if chase_max == 1 else _number(settings.get("candle_chase_sell_target"), 1.0))
@@ -349,8 +352,6 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     # Main BUY/SELL entries are decided and sized centrally.
     if direction in ("BUY", "SELL"):
         side_allowed = _truth(settings, "allow_buy", True) if direction == "BUY" else _truth(settings, "allow_sell", True)
-        spread_points = _number(tick.get("spread_points"))
-        spread_limit = _number(settings.get("max_spread_points"))
         max_positions = int(_number(settings.get("max_positions"), 0))
         current_total = count + len(orders)
         opposite_position = bool(sells if direction == "BUY" else buys)
@@ -358,7 +359,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             int(_number(o.get("type"), -1)) in ((3, 5, 7) if direction == "BUY" else (2, 4, 6))
             for o in orders)
         opposite_exists = opposite_position or opposite_pending
-        permitted = side_allowed and (spread_limit <= 0 or spread_points <= spread_limit)
+        permitted = side_allowed and entry_spread_ok
         permitted = permitted and (not _truth(settings, "one_direction_only", True) or not opposite_exists)
         permitted = permitted and (max_positions <= 0 or current_total < max_positions)
         if permitted:
