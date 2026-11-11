@@ -676,7 +676,10 @@ bool CheckTradingControl(const bool force=false)
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
-   // Dashboard pause blocks new entries only. Existing positions, SL/TP and\n   // pending orders remain untouched until an explicit server command changes them.\n   g_trading_enabled=JsonBool(response,"trading_enabled",false);\n   return g_trading_enabled;
+   // Dashboard pause blocks new entries only. Existing positions, SL/TP and
+   // pending orders remain untouched until an explicit server command changes them.
+   g_trading_enabled=JsonBool(response,"trading_enabled",false);
+   return g_trading_enabled;
 }
 
 bool PollCentralSettings()
