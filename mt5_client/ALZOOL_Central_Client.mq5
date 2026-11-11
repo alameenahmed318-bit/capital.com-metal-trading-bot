@@ -1098,14 +1098,6 @@ void PollCentralManagement()
           uint rc=trade.ResultRetcode();
           executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED ||
                             rc==TRADE_RETCODE_DONE_PARTIAL);
-          if(executed)
-          {
-             string event_payload="{\"command_id\":\""+JsonSafe(command_id)+
-                "\",\"side\":\""+direction+"\",\"symbol\":\""+JsonSafe(_Symbol)+
-                "\",\"volume\":"+DoubleToString(lots,4)+
-                ",\"reason_ar\":\""+JsonSafe(JsonString(response,"reason"))+"\"}";
-             SendSignalEvent(command_id+"_central-order","ORDER_SENT",event_payload);
-          }
        }
     }
     else if(action=="CANCEL_PENDING")
@@ -1165,6 +1157,21 @@ void PollCentralManagement()
    if(executed)
    {
       GlobalVariableSet(dedupe_key,(double)TimeCurrent());
+      if(action=="OPEN_MARKET" || action=="PLACE_PENDING")
+      {
+         string event_type="ORDER_SENT";
+         if(comment=="AZS_ADDON") event_type="ADDON_OPENED";
+         else if(comment=="AZS_COOLING") event_type="COOLING_OPENED";
+         string event_payload="{\"command_id\":\""+JsonSafe(command_id)+
+            "\",\"side\":\""+direction+"\",\"symbol\":\""+JsonSafe(_Symbol)+
+            "\",\"volume\":"+DoubleToString(lots,4)+
+            ",\"price\":"+DoubleToString(price,_Digits)+
+            ",\"reason_ar\":\""+JsonSafe(JsonString(response,"reason"))+"\"}";
+         SendSignalEvent(command_id+"_central-execution",event_type,event_payload);
+      }
+      else if(action=="CANCEL_PENDING" || action=="MODIFY_SL")
+         SendSignalEvent(command_id+"_central-protection","PROTECTION",
+                         "{\"command_id\":\""+JsonSafe(command_id)+"\",\"action\":\""+action+"\"}");
       Print("AL-ZOOL central management executed: ",action," command=",command_id);
    }
    else
