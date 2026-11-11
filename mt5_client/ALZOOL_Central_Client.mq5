@@ -894,22 +894,16 @@ void PollCentralEngine()
    if(g_last_market_poll_ms>0 && now_ms-g_last_market_poll_ms<interval_ms) return;
    g_last_market_poll_ms=now_ms;
    if(!CheckCentralHealth()) return;
-
    string decision,decision_id,reason;
    double confidence=0.0;
    int strategy_id=0;
    if(!RequestCentralDecision(decision,decision_id,reason,confidence,strategy_id)) return;
-   g_last_decision_id=decision_id;
-   if(decision=="WAIT")
-   {
-      g_status="Central WAIT / "+DoubleToString(confidence*100.0,1)+"%";
-      g_last_reason=reason;
-      GlobalVariableSet(g_global_bar_key,(double)g_last_bar_time);
-      return;
-   }
-   // All entries are queued by the central planner. MT5 never decides or sizes a trade.
-   g_status="Central signal received; waiting for signed execution command";
+   // Market signal is telemetry/cache only. Signed management commands execute trades.
+   g_last_decision=decision;
    g_last_reason=reason;
+   g_last_confidence=confidence;
+   g_last_strategy_id=strategy_id;
+   g_status="Central decision received: "+decision+" / awaiting execution command";
 }
 
 int OnInit()
@@ -947,10 +941,6 @@ bool VerifyManagementCommand(const string response)
    double sl=JsonNumber(response,"sl",0.0);
    double tp=JsonNumber(response,"tp",0.0);
    double lots=JsonNumber(response,"lots",0.0);
-   double sl=JsonNumber(response,"sl",0.0);
-   double tp=JsonNumber(response,"tp",0.0);
-    double sl=JsonNumber(response,"sl",0.0);
-    double tp=JsonNumber(response,"tp",0.0);
    double price=JsonNumber(response,"price",0.0);
    double expires=JsonNumber(response,"expires_at",0.0);
    if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
@@ -1088,12 +1078,12 @@ void PollCentralManagement()
          {
             ENUM_POSITION_TYPE side=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
             double old_sl=PositionGetDouble(POSITION_SL);
-            double tp=PositionGetDouble(POSITION_TP);
+            double existing_tp=PositionGetDouble(POSITION_TP);
             bool improves=(side==POSITION_TYPE_BUY ? sl>old_sl+_Point :
                            (old_sl<=0.0 || sl<old_sl-_Point));
             if(improves && ((side==POSITION_TYPE_BUY && sl<SymbolInfoDouble(_Symbol,SYMBOL_BID)) ||
                             (side==POSITION_TYPE_SELL && sl>SymbolInfoDouble(_Symbol,SYMBOL_ASK))))
-               executed=trade.PositionModify(position_ticket,NormalizeDouble(sl,_Digits),tp);
+               executed=trade.PositionModify(position_ticket,NormalizeDouble(sl,_Digits),existing_tp);
          }
       }
    }
