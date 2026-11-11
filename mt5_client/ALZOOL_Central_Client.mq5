@@ -4,7 +4,7 @@
 //| All trading controls and settings are owned by the central tool.  |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.09"
+#property version   "1.10"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
@@ -1436,7 +1436,7 @@ void SendLiveState()
 
    string body="{\"sequence\":"+IntegerToString((long)sequence)+
       ",\"source_time\":"+IntegerToString((long)tick.time)+
-      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
+      ",\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"point\":"+DoubleToString(_Point,10)+",";
    body+="\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+
       "\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+
       "\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+
@@ -2186,6 +2186,114 @@ void ManageCandleChase()
    }
 }
 
+bool VerifyManagementCommand(const string response)
+{
+   string signed_payload=JsonString(response,"signed_payload");
+   string supplied=JsonString(response,"signature");
+   string client_id=JsonString(response,"client_id");
+   string command_id=JsonString(response,"command_id");
+   string action=JsonString(response,"action");
+   string ticket=JsonString(response,"ticket");
+   double sl=JsonNumber(response,"sl",0.0);
+   double tp=JsonNumber(response,"tp",0.0);
+   double expires=JsonNumber(response,"expires_at",0.0);
+   if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
+      command_id=="" || expires<=0.0 || (double)TimeGMT()>=expires)
+      return false;
+   if(action!="WAIT" && action!="CLOSE_ALL" && action!="CLOSE_POSITION" && action!="MODIFY_SL")
+      return false;
+   string expected_payload=client_id+"|"+command_id+"|"+action+"|"+ticket+"|"+
+      DoubleToString(sl,8)+"|"+DoubleToString(tp,8)+"|"+DoubleToString(expires,6);
+   if(expected_payload!=signed_payload) return false;
+   string expected="";
+   if(!HMAC_SHA256_HEX(signed_payload,InpEngineToken,expected)) return false;
+   StringToLower(expected);
+   StringToLower(supplied);
+   return expected==supplied;
+}
+
+void PollCentralManagement()
+{
+   if(InpEngineId=="" || InpEngineToken=="" || !g_server_online) return;
+   char data[],result[];
+   ArrayResize(data,0);
+   string headers="Accept: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string response_headers;
+   ResetLastError();
+   int http=WebRequest("GET",ServerBaseUrl()+"/v1/management/"+InpEngineId,
+                       headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
+   if(http!=200)
+   {
+      if(http==-1) Print("AL-ZOOL central management request failed. err=",GetLastError());
+      return;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   if(!VerifyManagementCommand(response))
+   {
+      Print("AL-ZOOL rejected unsigned, expired, or malformed central management command");
+      return;
+   }
+   string action=JsonString(response,"action");
+   string command_id=JsonString(response,"command_id");
+   string ticket_text=JsonString(response,"ticket");
+   double sl=JsonNumber(response,"sl",0.0);
+   string dedupe_key="AZ_CMD_"+command_id;
+   if(action=="WAIT" || GlobalVariableCheck(dedupe_key)) return;
+
+   bool executed=false;
+   trade.SetExpertMagicNumber(ALZOOL_MAGIC);
+   if(action=="CLOSE_ALL")
+   {
+      bool all_ok=true;
+      int matched=0;
+      for(int i=PositionsTotal()-1;i>=0;i--)
+      {
+         ulong position_ticket=PositionGetTicket(i);
+         if(position_ticket==0 || !PositionSelectByTicket(position_ticket)) continue;
+         if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+            (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
+         matched++;
+         if(!trade.PositionClose(position_ticket))
+         {
+            all_ok=false;
+            Print("AL-ZOOL central CLOSE_ALL failed ticket=",position_ticket,
+                  " retcode=",trade.ResultRetcode()," ",trade.ResultRetcodeDescription());
+         }
+      }
+      executed=(matched>0 && all_ok);
+   }
+   else
+   {
+      ulong position_ticket=(ulong)StringToInteger(ticket_text);
+      if(position_ticket>0 && PositionSelectByTicket(position_ticket) &&
+         PositionGetString(POSITION_SYMBOL)==_Symbol &&
+         (ulong)PositionGetInteger(POSITION_MAGIC)==ALZOOL_MAGIC)
+      {
+         if(action=="CLOSE_POSITION")
+            executed=trade.PositionClose(position_ticket);
+         else if(action=="MODIFY_SL" && sl>0.0)
+         {
+            ENUM_POSITION_TYPE side=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+            double old_sl=PositionGetDouble(POSITION_SL);
+            double tp=PositionGetDouble(POSITION_TP);
+            bool improves=(side==POSITION_TYPE_BUY ? sl>old_sl+_Point :
+                           (old_sl<=0.0 || sl<old_sl-_Point));
+            if(improves && ((side==POSITION_TYPE_BUY && sl<SymbolInfoDouble(_Symbol,SYMBOL_BID)) ||
+                            (side==POSITION_TYPE_SELL && sl>SymbolInfoDouble(_Symbol,SYMBOL_ASK))))
+               executed=trade.PositionModify(position_ticket,NormalizeDouble(sl,_Digits),tp);
+         }
+      }
+   }
+   if(executed)
+   {
+      GlobalVariableSet(dedupe_key,(double)TimeCurrent());
+      Print("AL-ZOOL central management executed: ",action," command=",command_id);
+   }
+   else
+      Print("AL-ZOOL central management not completed: ",action,
+            " retcode=",trade.ResultRetcode()," ",trade.ResultRetcodeDescription());
+}
+
 void OnTimer()
 {
    // Live MT5 snapshot is sent first, independently of slower maintenance work.
@@ -2198,13 +2306,11 @@ void OnTimer()
    last_maintenance_ms=now_ms;
 
    PollCentralSettings();
-   ManageSettingsProfitLoss();
-   ManageLocalProtection();
    FlushPendingOutcomes();
    SendTerminalState();
    CheckCentralHealth();
-   if(!g_server_online) CancelOurPendingOrders();
    CheckTradingControl();
+   PollCentralManagement();
    PollCentralEngine();
    ManageAiLossGuard();
    ManageConfirmedReversal();
