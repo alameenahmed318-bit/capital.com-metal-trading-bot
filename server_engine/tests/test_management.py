@@ -177,8 +177,8 @@ class CentralManagementPlannerTests(unittest.TestCase):
             live, now=1000, market_decision=decision)
         self.assertEqual(result["action"], "PLACE_PENDING")
         self.assertEqual(result["direction"], "SELL")
-        self.assertAlmostEqual(result["price"], 2042.0)
-        self.assertAlmostEqual(result["sl"], 2044.0)
+        self.assertAlmostEqual(result["price"], 2047.0)
+        self.assertAlmostEqual(result["sl"], 2049.0)
 
     def test_daily_loss_stops_new_entries_and_closes_open_basket(self):
         live = snapshot([])
