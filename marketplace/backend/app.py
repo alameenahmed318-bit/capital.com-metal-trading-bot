@@ -111,9 +111,9 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         for key in allowed:
             if key not in item: continue
             value=item[key]
-            if key in ("symbol","comment","ticket","magic"):
+            if key in ("symbol","comment","ticket","magic","position_id"):
                 row[key]=str(value)[:120]
-            elif key in ("type","state","entry","reason"):
+            elif key in ("type","state","entry","reason","deal_type"):
                 try: row[key]=int(value)
                 except (TypeError,ValueError,OverflowError): row[key]=0
             elif key=="time":
@@ -184,10 +184,40 @@ class Handler(SimpleHTTPRequestHandler):
                 connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
                 account=(item or {}).get("account",{}) if connected else {}
                 positions=(item or {}).get("positions",[]) if connected else []
+                deals=(item or {}).get("closed_deals",[]) if connected else []
+                uae=timezone(timedelta(hours=4))
+                today=datetime.now(uae).date()
+                by_position={}
+                daily_by_position={}
+                daily_profit=daily_loss=0.0
+                for deal in deals:
+                    stamp=int(deal.get("time",0) or 0)
+                    if stamp<=0: continue
+                    closed_at=datetime.fromtimestamp(stamp,timezone.utc)
+                    pid=str(deal.get("position_id") or deal.get("ticket") or stamp)
+                    net=finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+finite_number(deal.get("swap"))+finite_number(deal.get("fee"))
+                    row=by_position.setdefault(pid,{"position_id":pid,"symbol":deal.get("symbol",""),"type":deal.get("type",0),"volume":0.0,"net":0.0,"time":stamp,"ticket":deal.get("ticket","")})
+                    row["net"]+=net
+                    row["volume"]+=finite_number(deal.get("volume"))
+                    row["time"]=max(row["time"],stamp)
+                    if closed_at.astimezone(uae).date()==today:
+                        daily_profit+=max(net,0.0)
+                        daily_loss+=min(net,0.0)
+                        drow=daily_by_position.setdefault(pid,{"net":0.0,"time":stamp})
+                        drow["net"]+=net
+                        drow["time"]=max(drow["time"],stamp)
+                closed=list(by_position.values())
+                wins=sum(1 for row in closed if row["net"]>0)
+                win_rate=(wins/len(closed)*100.0) if closed else None
+                daily_net=daily_profit+daily_loss
+                daily_count=len(daily_by_position)
+                closed.sort(key=lambda row:row["time"],reverse=True)
                 return self.send_json(200,{"connected":connected,
                     "balance":account.get("balance"),"equity":account.get("equity"),
                     "floating_pl":account.get("profit"),"currency":account.get("currency"),
-                    "open_trades":len(positions),"win_rate":None,
+                    "open_trades":len(positions),"win_rate":win_rate,
+                    "closed_count":len(closed),"closed_trades":closed[:20],
+                    "daily":{"profit":daily_profit,"loss":daily_loss,"net":daily_net,"trades":daily_count},
                     "account":account,"positions":positions,
                     "orders":(item or {}).get("orders",[]) if connected else [],
                     "symbol":(item or {}).get("symbol") if connected else None,
@@ -244,6 +274,7 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
+                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),500)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
@@ -256,11 +287,12 @@ class Handler(SimpleHTTPRequestHandler):
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
-                    "positions":positions,"orders":orders,"closed_candles":candles,
+                    "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
                     "forming_candle":forming,"tick":safe_tick,
                     "received_at":now,"last_seen":now.isoformat()}
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
+                    "closed_deals_received":len(closed_deals),
                     "candles_received":len(candles)})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
