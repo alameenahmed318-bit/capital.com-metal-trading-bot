@@ -160,6 +160,8 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
     point = _number(payload.get("point"))
     if positions and _truth(settings, "trailing_enabled", True) and point > 0:
         start, distance = _number(settings.get("trail_start"), 3), _number(settings.get("trail_distance"), 3)
+        if _truth(settings, "require_broker_stops", True):
+            distance = max(distance, _number(payload.get("stops_level")) * point)
         if distance > 0:
             for p in positions:
                 side = int(_number(p.get("type"), -1))
