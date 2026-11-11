@@ -376,8 +376,12 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             chase_max = int(_number(settings.get("candle_chase_max_orders"), 1))
             if len(candle_orders) < chase_max:
                 cooldown = _number(settings.get("candle_chase_cooldown"), 0.0)
-                last_chase = max([_number(o.get("time_setup") or o.get("time")) for o in candle_orders] or [0.0])
-                cooldown_active = cooldown > 0 and last_chase > 0 and now - last_chase < cooldown
+                chase_times = [_number(o.get("time_setup") or o.get("time")) for o in candle_orders]
+                chase_times += [_number(d.get("time")) for d in (payload.get("history") or [])
+                                if isinstance(d, dict) and "AZS_CANDLE" in str(d.get("comment", ""))]
+                last_chase = max(chase_times or [0.0])
+                market_now = _number(payload.get("source_time"), now)
+                cooldown_active = cooldown > 0 and last_chase > 0 and 0 <= market_now - last_chase < cooldown
                 candle_time = str(candle.get("time") or payload.get("sequence", "0"))
                 buy_exists = any(int(_number(o.get("type"), -1)) in (0, 2, 4, 6) for o in candle_orders)
                 sell_exists = any(int(_number(o.get("type"), -1)) in (1, 3, 5, 7) for o in candle_orders)
