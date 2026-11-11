@@ -12,7 +12,7 @@ OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
 CONNECTIONS={}
 
-def sb(method,path,payload=None,bearer=None,admin=False):
+def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
     key=SUPABASE_SERVICE_ROLE_KEY if admin else SUPABASE_ANON_KEY
     if not key: raise RuntimeError("Supabase key is not configured")
@@ -20,6 +20,7 @@ def sb(method,path,payload=None,bearer=None,admin=False):
     data=None
     if payload is not None:
         headers["Content-Type"]="application/json"; data=json.dumps(payload).encode()
+    if prefer: headers["Prefer"]=prefer
     req=urllib.request.Request(SUPABASE_URL+path,data=data,headers=headers,method=method)
     try:
         with urllib.request.urlopen(req,timeout=20) as r:
@@ -197,6 +198,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 if (u.get("email") or "").lower()==OWNER_EMAIL:
                     item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    client_id=(item or {}).get("client_id","")
                 else:
                     lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
                     item=CONNECTIONS.get(client_id) if client_id else None
@@ -204,6 +206,17 @@ class Handler(SimpleHTTPRequestHandler):
                 account=(item or {}).get("account",{}) if connected else {}
                 positions=(item or {}).get("positions",[]) if connected else []
                 deals=(item or {}).get("closed_deals",[]) if connected else []
+                # Durable 30-day history; memory is only a fallback if DB is unavailable.
+                if client_id:
+                    cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
+                    try:
+                        stored=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                            "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+
+                            "&select=payload&order=deal_time.desc&limit=2000",admin=True)
+                        if isinstance(stored,list):
+                            deals=[row.get("payload",{}) for row in stored if isinstance(row,dict) and isinstance(row.get("payload"),dict)]
+                    except Exception as history_error:
+                        print("CLOSED_HISTORY_READ_WARNING:",str(history_error)[:180],flush=True)
                 uae=timezone(timedelta(hours=4))
                 today=datetime.now(uae).date()
                 by_position={}
@@ -294,6 +307,19 @@ class Handler(SimpleHTTPRequestHandler):
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
                 closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),200)
+                # Persist MT5 history so closed trades survive Render restarts/deploys.
+                if closed_deals:
+                    persisted=[]
+                    for deal in closed_deals:
+                        deal_id=str(deal.get("ticket") or "")
+                        stamp=int(deal.get("time") or 0)
+                        if not deal_id or stamp<=0: continue
+                        persisted.append({"client_id":client_id,"deal_id":deal_id,
+                            "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
+                            "payload":deal})
+                    if persisted:
+                        sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
+                           persisted,admin=True,prefer="resolution=merge-duplicates")
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
