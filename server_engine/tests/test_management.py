@@ -1,7 +1,10 @@
 import unittest
+import sys
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from management import build_management_command
-from supabase_gateway import EngineGateway
+from server_engine.supabase_gateway import EngineGateway
 
 
 def snapshot(positions, bid=2050.0, ask=2050.2, point=0.01):
