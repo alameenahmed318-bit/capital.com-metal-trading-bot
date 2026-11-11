@@ -1,15 +1,13 @@
-"""Server-side position management planner.
+"""Central AL-ZOOL trade-management planner.
 
-The planner is deliberately pure: it converts dashboard settings and the latest
-MT5 snapshot into one broker action. It never connects to a broker or executes
-orders. MT5 remains the execution adapter.
+All trading decisions are made here from dashboard settings and MT5 telemetry.
+The MT5 expert advisor is an execution/telemetry adapter only.
 """
 from __future__ import annotations
 
 import math
 import time
 import uuid
-
 
 ALZOOL_MAGIC = "26110801"
 
@@ -22,100 +20,193 @@ def _number(value, default=0.0):
         return default
 
 
-def build_management_command(settings, live_state, *, now=None):
-    """Return one prioritized, deterministic management instruction or WAIT.
+def _truth(settings, key, default=False):
+    value = settings.get(key, default)
+    return value is True or value == 1 or value == "true"
 
-    Only AL-ZOOL positions on the chart symbol are managed. Monetary targets
-    use the account currency as reported by MT5.
-    """
+
+def _owned(payload):
+    symbol = str(payload.get("symbol") or "")
+    result = []
+    for item in payload.get("positions") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("magic", "")) != ALZOOL_MAGIC:
+            continue
+        if str(item.get("symbol", "")) != symbol or not item.get("ticket"):
+            continue
+        result.append(item)
+    return result
+
+
+def _volume(lots, payload, cap=0.0):
+    """Normalize to broker volume step; broker min/max are telemetry, not hidden limits."""
+    step = _number(payload.get("volume_step"), 0.01)
+    minimum = _number(payload.get("volume_min"), step)
+    maximum = _number(payload.get("volume_max"), 100.0)
+    if step <= 0 or minimum <= 0 or maximum <= 0:
+        return 0.0
+    requested = max(0.0, _number(lots))
+    if cap > 0:
+        requested = min(requested, cap)
+    normalized = math.ceil((requested - 1e-10) / step) * step
+    if normalized < minimum - 1e-9 or normalized > maximum + 1e-9:
+        return 0.0
+    precision = max(0, min(8, len(str(step).split(".")[-1].rstrip("0"))))
+    return round(normalized, precision)
+
+
+def _atr(candles):
+    if not isinstance(candles, list) or len(candles) < 15:
+        return 0.0
+    ranges = []
+    for i in range(1, len(candles)):
+        c, prev = candles[i], candles[i - 1]
+        hi, lo, pc = _number(c.get("high")), _number(c.get("low")), _number(prev.get("close"))
+        if hi <= 0 or lo <= 0:
+            return 0.0
+        ranges.append(max(hi - lo, abs(hi - pc), abs(lo - pc)))
+    return sum(ranges[-14:]) / min(14, len(ranges))
+
+
+def build_management_command(settings, live_state, *, now=None, market_decision=None):
+    """Return one prioritized signed-command candidate; no broker API is called."""
     now = time.time() if now is None else float(now)
     payload = (live_state or {}).get("payload") or live_state or {}
-    account = payload.get("account") or {}
-    tick = payload.get("tick") or {}
     symbol = str(payload.get("symbol") or "")
-    positions = payload.get("positions") or []
-    if not symbol or not isinstance(positions, list):
-        return {"action": "WAIT", "reason": "بيانات الحساب أو الصفقات غير متاحة"}
+    positions = _owned(payload)
+    orders = [o for o in (payload.get("orders") or [])
+              if isinstance(o, dict) and str(o.get("symbol", "")) == symbol
+              and str(o.get("magic", "")) == ALZOOL_MAGIC]
+    tick = payload.get("tick") or {}
+    bid, ask = _number(tick.get("bid")), _number(tick.get("ask"))
+    if not symbol or bid <= 0 or ask < bid:
+        return {"action": "WAIT", "reason": "بيانات السعر أو الرمز غير متاحة"}
 
-    owned = []
-    for position in positions:
-        if not isinstance(position, dict):
-            continue
-        if str(position.get("magic", "")) != ALZOOL_MAGIC:
-            continue
-        if str(position.get("symbol", "")) != symbol:
-            continue
-        ticket = str(position.get("ticket", "")).strip()
-        if not ticket:
-            continue
-        owned.append(position)
+    def command(action, reason, *, ticket="", sl=0.0, tp=0.0,
+                direction="", lots=0.0, price=0.0, comment=""):
+        seq = str(payload.get("sequence", "0"))
+        # Stable per live snapshot: repeated polls cannot issue duplicate orders.
+        identity = "|".join((seq, action, str(ticket), direction, str(comment)))
+        command_id = uuid.uuid5(uuid.NAMESPACE_URL, identity).hex
+        return {"action": action, "command_id": command_id, "ticket": str(ticket),
+                "sl": float(sl), "tp": float(tp), "direction": direction,
+                "lots": float(lots), "price": float(price), "comment": comment,
+                "reason": reason, "expires_at": now + 8.0}
 
-    if not owned:
-        return {"action": "WAIT", "reason": "لا توجد صفقات AL-ZOOL مفتوحة"}
-
-    # Respect the dashboard master switch: pausing trading does not alter
-    # existing positions, their SL/TP, or pending orders.
-    if not bool(settings.get("_trading_enabled", False)):
+    if not _truth(settings, "_trading_enabled"):
         return {"action": "WAIT", "reason": "التداول متوقف من لوحة التحكم"}
 
-    floating = sum(_number(p.get("profit")) + _number(p.get("swap")) for p in owned)
-    count = len(owned)
+    floating = sum(_number(p.get("profit")) + _number(p.get("swap")) for p in positions)
+    count = len(positions)
 
-    def command(action, reason, ticket="", sl=0.0, tp=0.0):
-        return {
-            "action": action,
-            "command_id": uuid.uuid4().hex,
-            "ticket": str(ticket),
-            "sl": float(sl),
-            "tp": float(tp),
-            "reason": reason,
-            "expires_at": now + 8.0,
-        }
-
-    # Highest priority: configured account basket loss protection.
-    if bool(settings.get("global_loss_enabled", True)):
+    if positions and _truth(settings, "global_loss_enabled", True):
         limit = abs(_number(settings.get("global_loss_amount"), 50.0))
         if limit > 0 and floating <= -limit:
-            return command("CLOSE_ALL", "تم بلوغ حد الخسارة الإجمالية المحدد في لوحة التحكم")
-
-    # Then configured per-position and basket profit exits.
-    if count == 1 and bool(settings.get("per_trade_profit_enabled", True)):
+            return command("CLOSE_ALL", "تم بلوغ حد الخسارة الإجمالية من لوحة التحكم")
+    if count == 1 and _truth(settings, "per_trade_profit_enabled", True):
         target = _number(settings.get("per_trade_profit_target"), 2.0)
         if target > 0 and floating >= target:
-            return command("CLOSE_ALL", "تحقق هدف ربح الصفقة المحدد في لوحة التحكم")
-    if count >= 2 and bool(settings.get("global_profit_enabled", True)):
+            return command("CLOSE_ALL", "تحقق هدف ربح الصفقة")
+    if count >= 2 and _truth(settings, "global_profit_enabled", True):
         target = _number(settings.get("profit_target"), 1.0)
         if target > 0 and floating >= target:
-            return command("CLOSE_ALL", "تحقق هدف ربح السلة المحدد في لوحة التحكم")
+            return command("CLOSE_ALL", "تحقق هدف ربح السلة")
 
-    # Trailing-stop decisions are made centrally. The EA only applies the SL.
-    if bool(settings.get("trailing_enabled", True)):
-        bid = _number(tick.get("bid"))
-        ask = _number(tick.get("ask"))
-        point = _number(payload.get("point"))
-        if point <= 0:
-            point = _number(payload.get("point_size"))
-        # MT5 telemetry sends prices but not point size in older clients.
-        # Do not guess digits/point size: WAIT until telemetry provides it.
-        if bid > 0 and ask >= bid and point > 0:
-            start = _number(settings.get("trail_start"), 3.0)
-            distance = _number(settings.get("trail_distance"), 3.0)
-            if distance > 0:
-                for position in owned:
-                    side = int(_number(position.get("type"), -1))
-                    opened = _number(position.get("open_price"))
-                    old_sl = _number(position.get("sl"))
-                    tp = _number(position.get("tp"))
-                    ticket = str(position.get("ticket"))
-                    if side == 0 and bid - opened >= start:
-                        candidate = bid - distance
-                        if candidate > old_sl + point:
-                            return command("MODIFY_SL", "تحديث وقف الخسارة المتحرك من المحرك المركزي",
-                                           ticket=ticket, sl=candidate, tp=tp)
-                    elif side == 1 and opened - ask >= start:
-                        candidate = ask + distance
-                        if old_sl <= 0 or candidate < old_sl - point:
-                            return command("MODIFY_SL", "تحديث وقف الخسارة المتحرك من المحرك المركزي",
-                                           ticket=ticket, sl=candidate, tp=tp)
+    # Central trailing-stop calculation; MT5 only applies the returned price.
+    point = _number(payload.get("point"))
+    if positions and _truth(settings, "trailing_enabled", True) and point > 0:
+        start, distance = _number(settings.get("trail_start"), 3), _number(settings.get("trail_distance"), 3)
+        if distance > 0:
+            for p in positions:
+                side = int(_number(p.get("type"), -1))
+                opened, old_sl, tp = _number(p.get("open_price")), _number(p.get("sl")), _number(p.get("tp"))
+                if side == 0 and bid - opened >= start:
+                    candidate = bid - distance
+                    if candidate > old_sl + point:
+                        return command("MODIFY_SL", "وقف متحرك محسوب مركزياً", ticket=p["ticket"], sl=candidate, tp=tp)
+                elif side == 1 and opened - ask >= start:
+                    candidate = ask + distance
+                    if old_sl <= 0 or candidate < old_sl - point:
+                        return command("MODIFY_SL", "وقف متحرك محسوب مركزياً", ticket=p["ticket"], sl=candidate, tp=tp)
 
-    return {"action": "WAIT", "reason": "لا يوجد أمر إدارة جديد"}
+    if not positions:
+        return {"action": "WAIT", "reason": "لا توجد صفقات AL-ZOOL لإدارتها"}
+    buys = [p for p in positions if int(_number(p.get("type"), -1)) == 0]
+    sells = [p for p in positions if int(_number(p.get("type"), -1)) == 1]
+    if buys and sells:
+        return {"action": "WAIT", "reason": "السلة تحتوي الاتجاهين؛ لا يضاف تعزيز أو تبريد تلقائياً"}
+
+    decision = market_decision or {}
+    direction = str(decision.get("decision") or "").upper()
+    confidence = _number(decision.get("confidence"))
+    candles = decision.get("candles") or []
+    forming = payload.get("forming_candle") or {}
+    atr = _atr(candles)
+
+    # Recovery basket target is independent of whether a new recovery entry is due.
+    if _truth(settings, "recovery_enabled") and _number(settings.get("recovery_target_profit")) > 0:
+        if floating >= _number(settings.get("recovery_target_profit")):
+            return command("CLOSE_ALL", "تحقق هدف ربح سلة التعافي")
+
+    # Recovery entry: server chooses direction and lot from the complete open basket.
+    if _truth(settings, "recovery_enabled"):
+        recovery_positions = [p for p in positions if "AZR_RECOVERY" in str(p.get("comment", ""))]
+        minimum = int(_number(settings.get("recovery_min_positions"), 3))
+        trigger = abs(_number(settings.get("recovery_trigger_loss"), 10))
+        if count >= minimum and floating <= -trigger and not recovery_positions and direction in ("BUY", "SELL"):
+            min_conf = _number(settings.get("recovery_min_confidence"), .65)
+            body = _number(forming.get("close")) - _number(forming.get("open"))
+            candle_agrees = body > 0 if direction == "BUY" else body < 0
+            if confidence >= min_conf and candle_agrees:
+                total_lots = sum(_number(p.get("volume")) for p in positions)
+                mode = str(settings.get("recovery_mode", "AUTO")).upper()
+                requested = (_number(settings.get("recovery_manual_lot"), .01) if mode == "MANUAL"
+                             else total_lots + _number(payload.get("volume_step"), .01))
+                cap = _number(settings.get("recovery_max_lot")) if mode == "MANUAL" else 0.0
+                lots = _volume(requested, payload, cap)
+                if lots > 0:
+                    return command("OPEN_MARKET", "تعافٍ مركزي: اللوت محسوب من مجموع لوتات السلة",
+                                   direction=direction, lots=lots, comment="AZR_RECOVERY")
+
+    # Add-on and cooling use separate quotas and separate most-recent anchors.
+    for kind in ("addon", "cooling"):
+        if not _truth(settings, kind + "_enabled"):
+            continue
+        tag = "AZS_ADDON" if kind == "addon" else "AZS_COOLING"
+        tagged = [p for p in positions if tag in str(p.get("comment", ""))]
+        maximum = int(_number(settings.get(kind + "_max"), 0))
+        if maximum > 0 and len(tagged) >= maximum:
+            continue
+        side_positions = buys if buys else sells
+        anchor_position = max(tagged or side_positions, key=lambda p: _number(p.get("time")))
+        anchor = _number(anchor_position.get("price_current")) or _number(anchor_position.get("open_price"))
+        quote = bid if direction == "BUY" or buys else ask
+        basket_direction = "BUY" if buys else "SELL"
+        if kind == "addon":
+            distance = _number(settings.get("addon_step"), 2.0)
+            movement = quote - anchor if basket_direction == "BUY" else anchor - quote
+            smart_ok = (not _truth(settings, "addon_smart_enabled") or
+                        (confidence >= .60 and ((direction == basket_direction) and
+                         ((_number(forming.get("close")) > _number(forming.get("open"))) if basket_direction == "BUY"
+                          else (_number(forming.get("close")) < _number(forming.get("open")))))))
+        else:
+            distance = _number(settings.get("cooling_step"), 3.0)
+            movement = anchor - quote if basket_direction == "BUY" else quote - anchor
+            smart_ok = (not _truth(settings, "cooling_smart_enabled") or
+                        (confidence >= .68 and direction != basket_direction and
+                         ((_number(forming.get("close")) > _number(forming.get("open"))) if basket_direction == "BUY"
+                          else (_number(forming.get("close")) < _number(forming.get("open"))))))
+        if movement < distance or not smart_ok:
+            continue
+        multiplier_enabled = _truth(settings, kind + "_multiplier_enabled", True)
+        multiplier = _number(settings.get(kind + "_multiplier"), 1.2) if multiplier_enabled else 1.0
+        lot = _number(settings.get("lot"), .01) * (multiplier ** (len(tagged) + 1))
+        if _truth(settings, kind + "_smart_enabled"):
+            lot *= .85 + .30 * min(1.0, max(0.0, confidence))
+        lots = _volume(lot, payload, _number(settings.get(kind + "_max_lot")))
+        if lots > 0:
+            return command("OPEN_MARKET", ("تعزيز مركزي" if kind == "addon" else "تبريد مركزي"),
+                           direction=basket_direction, lots=lots, comment=tag)
+
+    return {"action": "WAIT", "reason": "لا يوجد أمر إدارة جديد من لوحة التحكم"}
