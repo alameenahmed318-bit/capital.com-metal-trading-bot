@@ -2207,8 +2207,9 @@ bool VerifyManagementCommand(const string response)
    if(signed_payload=="" || supplied=="" || client_id!=InpEngineId ||
       command_id=="" || expires<=0.0 || (double)TimeGMT()>=expires) return false;
    if(action!="WAIT" && action!="CLOSE_ALL" && action!="CLOSE_POSITION" &&
-      action!="MODIFY_SL" && action!="OPEN_MARKET") return false;
-   if(action=="OPEN_MARKET" && ((direction!="BUY" && direction!="SELL") || lots<=0.0 || comment=="")) return false;
+      action!="MODIFY_SL" && action!="OPEN_MARKET" && action!="PLACE_PENDING") return false;
+   if((action=="OPEN_MARKET" || action=="PLACE_PENDING") && ((direction!="BUY" && direction!="SELL") || lots<=0.0 || comment=="")) return false;
+   if(action=="PLACE_PENDING" && price<=0.0) return false;
    string expected_payload=client_id+"|"+command_id+"|"+action+"|"+ticket+"|"+
       DoubleToString(sl,8)+"|"+DoubleToString(tp,8)+"|"+direction+"|"+
       DoubleToString(lots,8)+"|"+DoubleToString(price,8)+"|"+comment+"|"+DoubleToString(expires,6);
@@ -2247,6 +2248,7 @@ void PollCentralManagement()
    double lots=JsonNumber(response,"lots",0.0);
    double sl=JsonNumber(response,"sl",0.0);
    double tp=JsonNumber(response,"tp",0.0);
+   double price=JsonNumber(response,"price",0.0);
    string dedupe_key="AZ_CMD_"+command_id;
    if(action=="WAIT" || GlobalVariableCheck(dedupe_key)) return;
 
@@ -2282,8 +2284,12 @@ void PollCentralManagement()
        {
           trade.SetDeviationInPoints(20);
           trade.SetTypeFillingBySymbol(_Symbol);
-          if(direction=="BUY") executed=trade.Buy(lots,_Symbol,0.0,sl,tp,comment);
-          else if(direction=="SELL") executed=trade.Sell(lots,_Symbol,0.0,sl,tp,comment);
+          bool sent=false;
+          if(direction=="BUY") sent=trade.Buy(lots,_Symbol,0.0,sl,tp,comment);
+          else if(direction=="SELL") sent=trade.Sell(lots,_Symbol,0.0,sl,tp,comment);
+          uint rc=trade.ResultRetcode();
+          executed=sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED ||
+                            rc==TRADE_RETCODE_DONE_PARTIAL);
           if(executed)
           {
              string event_payload="{\"command_id\":\""+JsonSafe(command_id)+
@@ -2292,6 +2298,23 @@ void PollCentralManagement()
                 ",\"reason_ar\":\""+JsonSafe(JsonString(response,"reason"))+"\"}";
              SendSignalEvent(command_id+"_central-order","ORDER_SENT",event_payload);
           }
+       }
+    }
+    else if(action=="PLACE_PENDING")
+    {
+       double vmin=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+       double vmax=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+       double vstep=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+       MqlTick current_tick;
+       if(lots>=vmin-1e-8 && lots<=vmax+1e-8 && vstep>0.0 &&
+          MathAbs(lots/vstep-MathRound(lots/vstep))<0.0001 &&
+          SymbolInfoTick(_Symbol,current_tick))
+       {
+          trade.SetTypeFillingBySymbol(_Symbol);
+          if(direction=="BUY" && price>current_tick.ask)
+             executed=trade.BuyStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
+          else if(direction=="SELL" && price<current_tick.bid)
+             executed=trade.SellStop(lots,NormalizeDouble(price,_Digits),_Symbol,sl,tp,ORDER_TIME_GTC,0,comment);
        }
     }
     else
