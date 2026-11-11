@@ -4,7 +4,7 @@
 //| All trading controls and settings are owned by the central tool.  |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.08"
+#property version   "1.09"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
