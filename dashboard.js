@@ -70,6 +70,8 @@ async function refresh(){
  }catch(e){
   $("balanceMeta").textContent="تعذر تحميل بيانات الحساب";
   $("floatingMeta").textContent=e.message;
+  $("dailyMeta").textContent="تعذر جلب سجل الصفقات: "+e.message;
+  $("closedTrades").innerHTML="<tr><td colspan='5' class='empty-cell'>تعذر تحميل سجل MT5: "+escapeHtml(e.message)+"</td></tr>";
  }
 }
 
