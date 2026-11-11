@@ -3,7 +3,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from server_engine.openai_ai import analyze_market, OpenAIAnalysisError
+from openai_ai import analyze_market, OpenAIAnalysisError
 
 
 class FakeResponse:
