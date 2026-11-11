@@ -226,7 +226,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 if lots > 0:
                     return command("OPEN_MARKET", "تعافٍ مركزي: اللوت محسوب من مجموع لوتات السلة",
                                    direction=direction, lots=lots, comment="AZR_RECOVERY",
-                                    key="recovery_" + "_".join(sorted(str(p.get("ticket")) for p in positions)))
+                                    key="recovery_" + str((candles[-1] or {}).get("time", payload.get("sequence", "0"))) + "_" + "_".join(sorted(str(p.get("ticket")) for p in positions)))
 
     # Add-on and cooling use separate quotas and separate most-recent anchors.
     for kind in ("addon", "cooling"):
