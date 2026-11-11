@@ -1,6 +1,6 @@
 import unittest
 
-from server_engine.management import build_management_command
+from management import build_management_command
 
 
 def snapshot(positions, bid=2050.0, ask=2050.2, point=0.01):
