@@ -155,6 +155,16 @@ class EngineGateway:
             previous_result = self._ai_results.get(client_id) or {}
             if previous_key == request_key and previous_result.get("status") == "ready":
                 return
+            # Billing/quota errors cannot be fixed by repeatedly retrying the
+            # same candle. Wait for a new candle or a server restart/config fix.
+            permanent_quota_error = str(previous_result.get("error_code") or "").startswith(
+                ("api_http_429_credit_balance_exhausted",
+                 "api_http_429_insufficient_quota",
+                 "api_http_429_organization_spend_limit_exceeded",
+                 "api_http_429_project_spend_limit_exceeded",
+                 "api_http_429_organization_usage_limit_exceeded"))
+            if previous_key == request_key and permanent_quota_error:
+                return
             last_attempt = self._ai_last_attempt.get(client_id, 0.0)
             if previous_key == request_key and now - last_attempt < 30.0:
                 return
