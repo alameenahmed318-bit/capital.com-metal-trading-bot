@@ -425,19 +425,9 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0 || tick.ask<tick.bid) return false;
    g_last_market_bid=tick.bid; g_last_market_ask=tick.ask;
 
-   string strategy_mode="AUTO";
-   int selected_strategy_id=0;
-   if(StringFind(g_cfg_strategy_mode,"HUNTER")==0) strategy_mode="HUNTER";
-   else if(StringFind(g_cfg_strategy_mode,"SNIPER")==0) strategy_mode="SNIPER";
-   else if(StringLen(g_cfg_strategy_mode)>0 && StringGetCharacter(g_cfg_strategy_mode,0)>='0' && StringGetCharacter(g_cfg_strategy_mode,0)<='9')
-      selected_strategy_id=(int)StringToInteger(g_cfg_strategy_mode);
-   int open_buys=0,open_sells=0;
-   if(g_cfg_adaptive_strategy_switch && CountOurPositions(open_buys,open_sells)>0)
-   {
-      strategy_mode="AUTO"; selected_strategy_id=0;
-   }
-   body="{\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
-   body+="\"strategy_mode\":\""+strategy_mode+"\",\"selected_strategy_id\":"+IntegerToString(selected_strategy_id)+",";
+   // Strategy mode and selection are enforced by the central dashboard.
+   body="{\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",");
+   body+="\"strategy_mode\":\"AUTO\",\"selected_strategy_id\":0,";
    body+="\"bid\":"+DoubleToString(tick.bid,_Digits)+",";
    body+="\"ask\":"+DoubleToString(tick.ask,_Digits)+",";
    body+="\"candles\":[";
@@ -536,13 +526,6 @@ bool RequestCentralDecision(string &decision,string &decision_id,string &reason,
 
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return false;
-   double spread=(tick.ask-tick.bid)/_Point;
-   if(g_cfg_max_spread_points>0 && spread>g_cfg_max_spread_points)
-   {
-      g_status="Spread protection";
-      g_last_bar_time=bar_time;
-      return false;
-   }
 
    string url=ServerBaseUrl()+"/v1/market/"+InpEngineId;
    string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
