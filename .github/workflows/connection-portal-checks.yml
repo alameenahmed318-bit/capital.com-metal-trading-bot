@@ -1,0 +1,25 @@
+name: AL-ZOOL Connection Portal Checks
+on:
+  push:
+    branches: [rebuild/connection-and-licensing-only-2026-11-11]
+  pull_request:
+    branches: [alzool-gold-sniper-web]
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check Python syntax
+        run: python -m py_compile marketplace/backend/app.py
+      - name: Check browser JavaScript syntax
+        run: node --check app.js
+      - name: Confirm MT5 client contains no trade API
+        run: |
+          ! grep -E '#include <Trade/Trade.mqh>|CTrade[[:space:]]|OrderSend[[:space:]]*\(|PositionClose[[:space:]]*\(|PositionModify[[:space:]]*\(' mt5_client/ALZOOL_Central_Client.mq5
