@@ -336,6 +336,8 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                     price = candle_high + distance
                     tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
                                    if chase_max == 1 else _number(settings.get("candle_chase_buy_target"), 1.0))
+                    if _truth(settings, "require_broker_stops", True):
+                        tp_distance = max(tp_distance, _number(payload.get("stops_level")) * _number(payload.get("point")))
                     tp = price + tp_distance if tp_distance > 0 else 0.0
                     return command("PLACE_PENDING", "أمر متابعة شمعة شراء محسوب مركزياً",
                                    direction="BUY", lots=lots, price=price, tp=tp,
@@ -344,6 +346,8 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                     price = candle_low - distance
                     tp_distance = (_number(settings.get("candle_chase_single_target"), 0.5)
                                    if chase_max == 1 else _number(settings.get("candle_chase_sell_target"), 1.0))
+                    if _truth(settings, "require_broker_stops", True):
+                        tp_distance = max(tp_distance, _number(payload.get("stops_level")) * _number(payload.get("point")))
                     tp = price - tp_distance if tp_distance > 0 else 0.0
                     return command("PLACE_PENDING", "أمر متابعة شمعة بيع محسوب مركزياً",
                                    direction="SELL", lots=lots, price=price, tp=tp,
