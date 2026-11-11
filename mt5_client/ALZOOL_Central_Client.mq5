@@ -1603,7 +1603,6 @@ bool SendRecoveryVolume(const string direction,const double requested_lots,const
 
 void ManageSmartRecovery()
 {
-   if(!g_cfg_recovery_enabled) return;
    int buys=0,sells=0;
    int total=CountOurPositions(buys,sells);
    if(total<=0)
@@ -1614,6 +1613,7 @@ void ManageSmartRecovery()
       if(g_recovery_high_key!="") GlobalVariableDel(g_recovery_high_key);
       return;
    }
+   if(!g_cfg_recovery_enabled) return;
 
    int recovery_open=0;
    double floating=0.0,total_open_lots=0.0;
