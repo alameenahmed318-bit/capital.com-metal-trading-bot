@@ -8,7 +8,8 @@ DASHBOARD = (ROOT / "app.js").read_text(encoding="utf-8")
 EA = (ROOT / "mt5_client" / "ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
 
 # Every saved trading control must be parsed by the MT5 execution adapter.
-NOT_YET_IMPLEMENTED_IN_EA = set()
+SERVER_ONLY_SETTINGS = {"learning_enabled", "learning_rate_percent"}
+NOT_YET_IMPLEMENTED_IN_EA = SERVER_ONLY_SETTINGS
 
 
 class DashboardSettingsContractTests(unittest.TestCase):
@@ -18,11 +19,13 @@ class DashboardSettingsContractTests(unittest.TestCase):
         ui_fields = set(re.findall(r'\["([a-z_]+)","[^"]+","(?:bool|number|select|strategy)"\]', DASHBOARD))
         self.assertEqual(server_keys, ui_fields)
 
-    def test_every_non_deferred_setting_is_consumed_by_mt5_client(self):
+    def test_only_explicit_server_side_learning_settings_are_not_parsed_by_mt5(self):
         defaults_line = GATEWAY.split("BASIC_SETTINGS_DEFAULTS = ", 1)[1].splitlines()[0]
         server_keys = set(re.findall(r'"([a-z_]+)"\s*:', defaults_line))
         missing = {key for key in server_keys if f'"{key}"' not in EA}
-        self.assertEqual(missing, NOT_YET_IMPLEMENTED_IN_EA)
+        self.assertEqual(missing, SERVER_ONLY_SETTINGS)
+        self.assertIn('"learning_enabled"', GATEWAY)
+        self.assertIn('"learning_rate_percent"', GATEWAY)
 
     def test_mt5_inputs_are_connector_credentials_only(self):
         inputs = set(re.findall(r'^input\s+\w+\s+(Inp\w+)', EA, re.MULTILINE))
