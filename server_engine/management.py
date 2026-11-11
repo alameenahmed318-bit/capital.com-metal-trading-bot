@@ -104,8 +104,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 "lots": float(lots), "price": float(price), "comment": comment,
                 "reason": reason, "expires_at": now + 8.0}
 
-    if not _truth(settings, "_trading_enabled"):
-        return {"action": "WAIT", "reason": "التداول متوقف من لوحة التحكم"}
+    trading_enabled = _truth(settings, "_trading_enabled")
 
     floating = sum(_number(p.get("profit")) + _number(p.get("swap")) for p in positions)
     count = len(positions)
@@ -199,7 +198,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
             return command("CLOSE_ALL", "تحقق هدف ربح سلة التعافي")
 
     # Recovery entry: server chooses direction and lot from the complete open basket.
-    if _truth(settings, "recovery_enabled"):
+    if trading_enabled and _truth(settings, "recovery_enabled"):
         recovery_positions = [p for p in positions if "AZR_RECOVERY" in str(p.get("comment", ""))]
         minimum = int(_number(settings.get("recovery_min_positions"), 3))
         trigger = abs(_number(settings.get("recovery_trigger_loss"), 10))
@@ -230,6 +229,8 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
 
     # Add-on and cooling use separate quotas and separate most-recent anchors.
     for kind in ("addon", "cooling"):
+        if not trading_enabled:
+            continue
         if buys and sells:
             continue
         if not _truth(settings, kind + "_enabled"):
@@ -273,7 +274,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
 
     # Cancel stale candle-follow orders or orders contradicted by the latest server signal.
     forming_time = _number(forming.get("time"))
-    for order in orders:
+    for order in (orders if trading_enabled else []):
         order_type = int(_number(order.get("type"), -1))
         order_comment = str(order.get("comment", ""))
         setup_time = _number(order.get("time_setup"))
@@ -285,7 +286,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                            ticket=order.get("ticket"), key="cancel_" + str(order.get("ticket")))
 
     # Candle-follow breakout orders are generated centrally, one command at a time.
-    if _truth(settings, "candle_chase_enabled"):
+    if trading_enabled and _truth(settings, "candle_chase_enabled"):
         candle = forming
         candle_open = _number(candle.get("open"))
         candle_high = _number(candle.get("high"))
@@ -321,7 +322,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                                    comment="AZS_CANDLE_SELL", key="candle_sell_" + candle_time)
 
     # Main BUY/SELL entries are decided and sized centrally.
-    if direction in ("BUY", "SELL"):
+    if trading_enabled and direction in ("BUY", "SELL"):
         side_allowed = _truth(settings, "allow_buy", True) if direction == "BUY" else _truth(settings, "allow_sell", True)
         spread_points = _number(tick.get("spread_points"))
         spread_limit = _number(settings.get("max_spread_points"))
