@@ -356,8 +356,8 @@ class CentralManagementPlannerTests(unittest.TestCase):
     def test_recovery_opposite_direction_is_explicitly_selected(self):
         settings, live, market = self._recovery_fixture("SELL", "OPPOSITE")
         live["payload"]["forming_candle"] = {"open": 2051, "close": 2050}
-        market["candles"] = [{"time": 2000 + i, "open": 2050, "high": 2053,
-                              "low": 2049, "close": 2051} for i in range(15)]
+        market["candles"] = [{"time": 2000 + i, "open": 2053, "high": 2055,
+                              "low": 2051, "close": 2053} for i in range(15)]
         result = build_management_command(settings, live, now=1000, market_decision=market)
         self.assertEqual(result["action"], "OPEN_MARKET")
         self.assertEqual(result["direction"], "SELL")
@@ -365,8 +365,8 @@ class CentralManagementPlannerTests(unittest.TestCase):
     def test_recovery_both_directions_follows_central_market_signal(self):
         settings, live, market = self._recovery_fixture("SELL", "BOTH")
         live["payload"]["forming_candle"] = {"open": 2051, "close": 2050}
-        market["candles"] = [{"time": 2000 + i, "open": 2050, "high": 2053,
-                              "low": 2049, "close": 2051} for i in range(15)]
+        market["candles"] = [{"time": 2000 + i, "open": 2053, "high": 2055,
+                              "low": 2051, "close": 2053} for i in range(15)]
         result = build_management_command(settings, live, now=1000, market_decision=market)
         self.assertEqual(result["action"], "OPEN_MARKET")
         self.assertEqual(result["direction"], "SELL")
