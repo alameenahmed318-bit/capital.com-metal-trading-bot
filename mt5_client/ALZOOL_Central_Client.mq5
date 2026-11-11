@@ -829,6 +829,12 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    if(!SymbolInfoTick(_Symbol,tick)) return false;
 
    double stop_distance=g_cfg_fixed_sl_distance;
+   if(lot_override<=0.0 && g_cfg_ai_risk_enabled && !g_cfg_fixed_sl_enabled)
+   {
+      g_status="AI risk sizing requires fixed stop loss to be enabled in dashboard";
+      RecordBlockedSignal(decision_id,"ai-risk-no-stop","حساب اللوت حسب المخاطرة يحتاج تفعيل وقف الخسارة الثابت من لوحة التحكم");
+      return false;
+   }
    double requested_lots=(lot_override>0.0 ? lot_override : g_cfg_lot);
    if(lot_override<=0.0 && g_cfg_ai_risk_enabled)
       requested_lots=CalculateRiskLots(stop_distance);
