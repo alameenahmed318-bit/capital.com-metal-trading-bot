@@ -2245,6 +2245,8 @@ void PollCentralManagement()
    string direction=JsonString(response,"direction");
    string comment=JsonString(response,"comment");
    double lots=JsonNumber(response,"lots",0.0);
+   double sl=JsonNumber(response,"sl",0.0);
+   double tp=JsonNumber(response,"tp",0.0);
    string dedupe_key="AZ_CMD_"+command_id;
    if(action=="WAIT" || GlobalVariableCheck(dedupe_key)) return;
 
