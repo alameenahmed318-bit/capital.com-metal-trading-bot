@@ -1,6 +1,7 @@
 import unittest
 
 from management import build_management_command
+from supabase_gateway import EngineGateway
 
 
 def snapshot(positions, bid=2050.0, ask=2050.2, point=0.01):
@@ -22,6 +23,16 @@ def position(ticket="1001", *, side=0, volume=0.01, opened=2040.0,
 
 
 class CentralManagementPlannerTests(unittest.TestCase):
+    def test_gateway_accepts_broker_gold_symbol_suffix(self):
+        candles = [{"time": 1000 + i, "open": 2049, "high": 2051,
+                    "low": 2048, "close": 2050} for i in range(65)]
+        normalized, bid, ask = EngineGateway._validate_market({
+            "symbol": "XAUUSDm", "bid": 2050.0, "ask": 2050.2,
+            "candles": candles})
+        self.assertEqual(len(normalized), 65)
+        self.assertEqual(bid, 2050.0)
+        self.assertEqual(ask, 2050.2)
+
     def test_disabled_master_switch_does_not_touch_open_positions(self):
         result = build_management_command(
             {"_trading_enabled": False, "global_loss_enabled": True,
