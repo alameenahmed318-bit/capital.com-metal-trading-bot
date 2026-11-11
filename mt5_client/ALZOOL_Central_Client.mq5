@@ -72,13 +72,14 @@ bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_en
 bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true,g_cfg_ai_loss_guard=false;
 bool g_cfg_allow_buy=true,g_cfg_allow_sell=true,g_cfg_require_broker_stops=true;
 bool g_cfg_ai_risk_enabled=false,g_cfg_smart_profit=false;
-bool g_cfg_candle_chase_enabled=false,g_cfg_candle_chase_sl_enabled=false;
+bool g_cfg_candle_chase_enabled=false,g_cfg_candle_chase_sl_enabled=false,g_cfg_reverse_protection_enabled=false;
 double g_cfg_max_spread_points=0.0,g_cfg_ai_risk_percent=0.5,g_cfg_ai_max_lot=0.05;
 double g_cfg_candle_chase_min_move=0.1,g_cfg_candle_chase_buy_target=1.0;
 double g_cfg_candle_chase_sell_target=1.0,g_cfg_candle_chase_single_target=0.5,g_cfg_candle_chase_sl_distance=3.0;
 int g_cfg_candle_chase_cooldown=2,g_cfg_candle_chase_max_orders=1;
 ulong g_last_chase_buy_ms=0,g_last_chase_sell_ms=0;
 string g_recovery_count_key="",g_recovery_low_key="",g_recovery_high_key="";
+string g_reversal_trigger_key="",g_reversal_side_key="";
 double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
 bool g_context_buy_trap=false,g_context_sell_trap=false;
 string g_context_regime="";
@@ -744,6 +745,7 @@ bool PollCentralSettings()
    g_cfg_ai_risk_percent=JsonNumber(response,"ai_risk_percent",0.5);
    g_cfg_ai_max_lot=JsonNumber(response,"ai_max_lot",0.05);
    g_cfg_smart_profit=JsonBool(response,"smart_profit_enabled",false);
+   g_cfg_reverse_protection_enabled=JsonBool(response,"reverse_protection_enabled",false);
    g_cfg_candle_chase_enabled=JsonBool(response,"candle_chase_enabled",false);
    g_cfg_candle_chase_min_move=JsonNumber(response,"candle_chase_min_move",0.1);
    g_cfg_candle_chase_cooldown=(int)JsonNumber(response,"candle_chase_cooldown",2);
@@ -1532,6 +1534,8 @@ int OnInit()
    g_recovery_count_key="AZ_REC_COUNT_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
    g_recovery_low_key="AZ_REC_LOW_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
    g_recovery_high_key="AZ_REC_HIGH_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
+   g_reversal_trigger_key="AZ_REV_PRICE_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
+   g_reversal_side_key="AZ_REV_SIDE_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
    if(!GlobalVariableCheck(g_recovery_count_key)) GlobalVariableSet(g_recovery_count_key,0.0);
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
@@ -1886,6 +1890,78 @@ void ManageAddonCooling()
       AddonCoolingWait("تم بلوغ الحد الأقصى للصفقات الإضافية");
 }
 
+void ManageConfirmedReversal()
+{
+   if(!g_settings_loaded || !g_cfg_reverse_protection_enabled) return;
+   int buys=0,sells=0;
+   int total=CountOurPositions(buys,sells);
+   if(total<=0)
+   {
+      if(g_reversal_trigger_key!="") GlobalVariableDel(g_reversal_trigger_key);
+      if(g_reversal_side_key!="") GlobalVariableDel(g_reversal_side_key);
+      return;
+   }
+   if(buys>0 && sells>0) return;
+   if(!g_server_online || !g_decision_verified || g_decision_expires_at<=0.0 ||
+      (double)TimeGMT()>=g_decision_expires_at || g_last_confidence<0.65) return;
+
+   string basket_side=(buys>0 ? "BUY" : "SELL");
+   string opposite=(basket_side=="BUY" ? "SELL" : "BUY");
+   if(g_last_decision!=opposite)
+   {
+      if(g_reversal_trigger_key!="") GlobalVariableDel(g_reversal_trigger_key);
+      if(g_reversal_side_key!="") GlobalVariableDel(g_reversal_side_key);
+      return;
+   }
+
+   double weighted=0.0,volume=0.0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if((basket_side=="BUY" && type!=POSITION_TYPE_BUY) || (basket_side=="SELL" && type!=POSITION_TYPE_SELL)) continue;
+      double v=PositionGetDouble(POSITION_VOLUME);
+      weighted+=PositionGetDouble(POSITION_PRICE_OPEN)*v;
+      volume+=v;
+   }
+   if(volume<=0.0) return;
+   double average=weighted/volume;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) return;
+   double current=(basket_side=="BUY" ? tick.bid : tick.ask);
+   double adverse=(basket_side=="BUY" ? average-current : current-average);
+   double trigger_price=0.0;
+   int stored_side=(g_reversal_side_key!="" && GlobalVariableCheck(g_reversal_side_key)
+                   ? (int)GlobalVariableGet(g_reversal_side_key) : 0);
+   if(g_reversal_trigger_key!="" && GlobalVariableCheck(g_reversal_trigger_key) && stored_side==(basket_side=="BUY" ? 1 : -1))
+      trigger_price=GlobalVariableGet(g_reversal_trigger_key);
+
+   if(trigger_price<=0.0)
+   {
+      if(adverse<g_cfg_reverse_trigger) return;
+      trigger_price=current;
+      if(g_reversal_trigger_key!="") GlobalVariableSet(g_reversal_trigger_key,trigger_price);
+      if(g_reversal_side_key!="") GlobalVariableSet(g_reversal_side_key,(basket_side=="BUY" ? 1.0 : -1.0));
+      g_status="انعكاس محتمل: تم بلوغ مسافة التفعيل؛ ننتظر استمرار الحركة";
+      Print("AL-ZOOL reversal watch started. side=",basket_side," trigger_price=",DoubleToString(trigger_price,_Digits));
+      return;
+   }
+
+   bool continued=(basket_side=="BUY"
+                   ? current<=trigger_price-g_cfg_reverse_continue
+                   : current>=trigger_price+g_cfg_reverse_continue);
+   if(!continued) return;
+
+   string reason="إغلاق سلة "+basket_side+" بعد تأكيد استمرار الانعكاس المعاكس "+opposite;
+   Print("AL-ZOOL confirmed reversal: ",reason,"; trigger=",DoubleToString(g_cfg_reverse_trigger,2),
+         "; continuation=",DoubleToString(g_cfg_reverse_continue,2));
+   CloseOurPositions(reason);
+   if(g_reversal_trigger_key!="") GlobalVariableDel(g_reversal_trigger_key);
+   if(g_reversal_side_key!="") GlobalVariableDel(g_reversal_side_key);
+}
+
 void ManageCandleChase()
 {
    if(!g_settings_loaded || !g_cfg_candle_chase_enabled) return;
@@ -2032,6 +2108,7 @@ void OnTimer()
    CheckTradingControl();
    PollCentralEngine();
    ManageAiLossGuard();
+   ManageConfirmedReversal();
    ManageCandleChase();
    ManageSmartRecovery();
    ManageAddonCooling();
