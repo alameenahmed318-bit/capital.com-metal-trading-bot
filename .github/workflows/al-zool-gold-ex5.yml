@@ -1,11 +1,9 @@
 name: Build AL-ZOOL GOLD EX5
-
 on:
   workflow_dispatch:
   push:
     paths:
       - "AL-ZOOL/AL_ZOOL_GOLD.mq5"
-      - "mt5_client/ALZOOL_Central_Client.mq5"
       - ".github/workflows/al-zool-gold-ex5.yml"
 
 permissions:
@@ -28,8 +26,6 @@ jobs:
         run: |
           mkdir -p compiler/MQ5/Experts/AL-ZOOL
           cp AL-ZOOL/AL_ZOOL_GOLD.mq5 compiler/MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.mq5
-          mkdir -p compiler/MQ5/Experts/AL-ZOOL-Central
-          cp mt5_client/ALZOOL_Central_Client.mq5 compiler/MQ5/Experts/AL-ZOOL-Central/ALZOOL_Central_Client.mq5
 
       - name: Compile MQ5 to EX5
         run: |
@@ -40,17 +36,10 @@ jobs:
             --libraries MQ5/Libraries \
             --output MQ5/Experts \
             MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.mq5
-          ./Development/compile.sh \
-            --include MQ5/Include \
-            --libraries MQ5/Libraries \
-            --output MQ5/Experts \
-            MQ5/Experts/AL-ZOOL-Central/ALZOOL_Central_Client.mq5
 
       - name: Upload EX5 artifact
         uses: actions/upload-artifact@v4
         with:
           name: AL-ZOOL-GOLD-EX5
-          path: |
-            compiler/MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.ex5
-            compiler/MQ5/Experts/AL-ZOOL-Central/ALZOOL_Central_Client.ex5
+          path: compiler/MQ5/Experts/AL-ZOOL/AL_ZOOL_GOLD.ex5
           if-no-files-found: error
