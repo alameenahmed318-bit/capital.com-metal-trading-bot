@@ -283,5 +283,43 @@ class CentralManagementPlannerTests(unittest.TestCase):
         self.assertEqual(result["ticket"], "9002")
 
 
+    def test_main_signal_opens_when_addon_and_cooling_enabled_but_no_positions(self):
+        live = snapshot([])
+        live["payload"].update({
+            "volume_step": 0.01, "volume_min": 0.01, "volume_max": 10,
+            "point": 0.01, "tick_value": 1, "tick_size": 0.01,
+        })
+        settings = {
+            "_trading_enabled": True,
+            "allow_buy": True,
+            "allow_sell": True,
+            "lot": 0.01,
+            "order_mode": "Market Order",
+            "one_direction_only": True,
+            "max_positions": 0,
+            "max_spread_points": 0,
+            "addon_enabled": True,
+            "cooling_enabled": True,
+            "fixed_sl_enabled": False,
+            "global_loss_enabled": False,
+            "per_trade_profit_enabled": False,
+            "global_profit_enabled": False,
+            "trailing_enabled": False,
+            "recovery_enabled": False,
+        }
+        decision = {
+            "decision": "BUY",
+            "confidence": 1.0,
+            "strategy_id": 1,
+            "reason_ar": "اختبار إشارة شراء",
+            "candles": [],
+        }
+        result = build_management_command(settings, live, now=1000,
+                                          market_decision=decision)
+        self.assertEqual(result["action"], "OPEN_MARKET")
+        self.assertEqual(result["direction"], "BUY")
+        self.assertAlmostEqual(result["lots"], 0.01)
+
+
 if __name__ == "__main__":
     unittest.main()
