@@ -306,7 +306,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         setup_time = _number(order.get("time_setup"))
         stale_candle = "AZS_CANDLE" in order_comment and forming_time > 0 and setup_time > 0 and setup_time < forming_time
         pending_direction = "BUY" if order_type in (2, 4, 6) else "SELL" if order_type in (3, 5, 7) else ""
-        contradicted = direction in ("BUY", "SELL") and pending_direction and pending_direction != direction
+        contradicted = ("AZS_CANDLE" not in order_comment and direction in ("BUY", "SELL") and pending_direction and pending_direction != direction)
         if stale_candle or contradicted:
             return command("CANCEL_PENDING", "إلغاء أمر معلق قديم أو مخالف لقرار السيرفر",
                            ticket=order.get("ticket"), key="cancel_" + str(order.get("ticket")))
