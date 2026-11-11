@@ -113,7 +113,18 @@ def analyze_market(api_key: str, model: str, market_context: dict, *, timeout: f
         with send(request, timeout=timeout) as response:
             raw = response.read()
     except urllib.error.HTTPError as exc:
-        raise OpenAIAnalysisError("api_http_" + str(exc.code)) from None
+        # Keep the provider's machine-readable reason so the dashboard can
+        # distinguish exhausted credits/spend limits from temporary throttling.
+        # Never persist or print the raw response body or request headers.
+        try:
+            error_data = json.loads(exc.read().decode("utf-8", "replace"))
+            error_info = error_data.get("error") if isinstance(error_data, dict) else {}
+            error_info = error_info if isinstance(error_info, dict) else {}
+            provider_code = str(error_info.get("code") or error_info.get("type") or "unknown")
+            provider_code = "".join(ch for ch in provider_code.lower() if ch.isalnum() or ch == "_")[:64]
+        except Exception:
+            provider_code = "unknown"
+        raise OpenAIAnalysisError("api_http_" + str(exc.code) + "_" + provider_code) from None
     except (urllib.error.URLError, TimeoutError, OSError):
         raise OpenAIAnalysisError("api_connection_error") from None
     try:
