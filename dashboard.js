@@ -125,7 +125,7 @@ async function runAiAnalysis(){
  }catch(e){showAiError(e.message||"تعذر إكمال التحليل.");}
  finally{btn.disabled=false;btn.textContent="تحليل الذهب الآن";}
 }
-$("aiAnalyzeBtn").addEventListener("click",runAiAnalysis);
+const aiAnalyzeButton=$("aiAnalyzeBtn");if(aiAnalyzeButton)aiAnalyzeButton.addEventListener("click",runAiAnalysis);
 
 $("refreshBtn").addEventListener("click",refresh);
 boot();
