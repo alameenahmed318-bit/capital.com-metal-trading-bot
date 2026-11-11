@@ -72,6 +72,61 @@ async function refresh(){
   $("floatingMeta").textContent=e.message;
  }
 }
+
+const OLLAMA_URL="http://127.0.0.1:11434";
+const OLLAMA_MODEL="qwen2.5:3b";
+function aiState(message,kind="muted"){const el=$("aiStatus");if(el){el.textContent=message;el.className="state "+kind;}}
+async function checkLocalOllama(){
+ try{
+  const response=await fetch(OLLAMA_URL+"/api/tags",{signal:AbortSignal.timeout(4500)});
+  if(!response.ok)throw new Error("Ollama HTTP "+response.status);
+  const data=await response.json();
+  const models=Array.isArray(data.models)?data.models:[];
+  const found=models.some(m=>String(m.name||"").split(":")[0]===OLLAMA_MODEL.split(":")[0] && String(m.name||"").includes(":3b"));
+  if(found){aiState("جاهز","pending");$("aiHelp").textContent="Ollama يعمل والنموذج "+OLLAMA_MODEL+" موجود على هذا الجهاز.";}
+  else{aiState("النموذج غير مثبت","muted");$("aiHelp").textContent="Ollama يعمل، لكن النموذج "+OLLAMA_MODEL+" غير موجود. ثبّت النموذج أولاً.";}
+  return found;
+ }catch(e){
+  aiState("غير متصل","muted");
+  $("aiHelp").textContent="تعذر الوصول إلى Ollama المحلي. شغّل Ollama واسمح لهذا الموقع بالاتصال به عبر OLLAMA_ORIGINS.";
+  return false;
+ }
+}
+function showAiError(message){$("aiResult").innerHTML="<div class='ai-error'>"+escapeHtml(message)+"</div>";}
+async function runAiAnalysis(){
+ const btn=$("aiAnalyzeBtn");btn.disabled=true;btn.textContent="جارٍ التحليل…";
+ $("aiResult").innerHTML="<div class='ai-placeholder'>يتم فحص Ollama وجلب آخر شموع الذهب من MT5…</div>";
+ try{
+  const ready=await checkLocalOllama();
+  if(!ready)throw new Error("Ollama غير جاهز أو النموذج qwen2.5:3b غير مثبت. شغّل Ollama وتأكد من تثبيت النموذج.");
+  const context=await api("/api/market/context");
+  if(!Array.isArray(context.candles)||context.candles.length<20)throw new Error("بيانات الشموع غير كافية. افتح شارت الذهب في MT5 وانتظر وصول 20 شمعة مغلقة على الأقل.");
+  const compact={
+   symbol:context.symbol,timeframe:context.timeframe,tick:context.tick,
+   candles:context.candles.slice(-120).map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.tick_volume}))
+  };
+  const systemPrompt="أنت محلل فني للذهب XAUUSD. حلل البيانات المرفقة فقط ولا تخترع أسعاراً أو أخباراً أو مؤشرات غير محسوبة. أخرج JSON صالحاً فقط وبالعربية بهذه المفاتيح: signal ويكون BUY أو SELL أو WAIT، confidence رقم من 0 إلى 100، trend وصف قصير، momentum وصف قصير، support قيمة أو غير واضح، resistance قيمة أو غير واضح، reasons مصفوفة من 2 إلى 4 أسباب محددة مستندة إلى الشموع، risk_note تنبيه مختصر. لا تدّعِ ضمان الربح. إذا كانت البيانات متضاربة أو غير كافية اختر WAIT وثقة منخفضة. هذا تحليل استشاري فقط وليس أمراً بتنفيذ صفقة.";
+  const response=await fetch(OLLAMA_URL+"/api/chat",{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({model:OLLAMA_MODEL,stream:false,format:"json",options:{temperature:0.15},messages:[{role:"system",content:systemPrompt},{role:"user",content:JSON.stringify(compact)}]}),
+   signal:AbortSignal.timeout(90000)
+  });
+  if(!response.ok)throw new Error("فشل طلب التحليل من Ollama: HTTP "+response.status);
+  const result=await response.json();
+  const raw=result.message?.content||"";
+  let parsed;try{parsed=JSON.parse(raw);}catch(e){throw new Error("النموذج لم يُرجع JSON صالحاً. أعد المحاولة.");}
+  const signal=String(parsed.signal||"WAIT").toUpperCase();
+  const safeSignal=["BUY","SELL","WAIT"].includes(signal)?signal:"WAIT";
+  const label=safeSignal==="BUY"?"شراء":safeSignal==="SELL"?"بيع":"انتظار";
+  const reasons=Array.isArray(parsed.reasons)?parsed.reasons.slice(0,4):[];
+  const facts=[["الاتجاه",parsed.trend],["الزخم",parsed.momentum],["الدعم",parsed.support],["المقاومة",parsed.resistance]].map(([k,v])=>"<div><small>"+k+"</small><b>"+escapeHtml(v??"غير واضح")+"</b></div>").join("");
+  $("aiResult").innerHTML="<div class='ai-result-head'><span class='ai-signal "+safeSignal.toLowerCase()+"'>"+label+"</span><span class='ai-confidence'>درجة ثقة النموذج: "+escapeHtml(parsed.confidence??"—")+"%</span></div><div class='ai-facts'>"+facts+"</div><b style='font-size:11px'>أسباب القرار</b><ul class='ai-reasons'>"+(reasons.length?reasons.map(x=>"<li>"+escapeHtml(x)+"</li>").join(""):"<li>لم يقدم النموذج أسباباً مفصلة.</li>")+"</ul><div class='ai-risk'>"+escapeHtml(parsed.risk_note||"التحليل غير مضمون ولا ينفذ أوامر تداول.")+"</div>";
+  aiState("تحليل جاهز","pending");
+ }catch(e){showAiError(e.message||"تعذر إكمال التحليل.");}
+ finally{btn.disabled=false;btn.textContent="تحليل الذهب الآن";}
+}
+$("aiAnalyzeBtn").addEventListener("click",runAiAnalysis);
+
 $("refreshBtn").addEventListener("click",refresh);
 boot();
 setInterval(()=>{if(accessToken)refresh();},10000);
