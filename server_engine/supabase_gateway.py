@@ -458,7 +458,7 @@ class EngineGateway:
             epoch=float(data.get("source_time",0) or 0)
             source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
         except (TypeError,ValueError,OverflowError,OSError): source_time=None
-        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","point")}
+        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","point","volume_step","volume_min","volume_max")}
         received=datetime.now(timezone.utc).isoformat()
         row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
              "received_at":received,"updated_at":received}
