@@ -249,6 +249,26 @@ class CentralManagementPlannerTests(unittest.TestCase):
         self.assertEqual(second["action"], "PLACE_PENDING")
         self.assertEqual(second["direction"], "SELL")
 
+    def test_existing_pending_stop_is_repriced_from_dashboard_distance(self):
+        live = snapshot([])
+        live["payload"].update({"volume_step": 0.01, "volume_min": 0.01,
+                                "volume_max": 100})
+        live["payload"]["orders"] = [{"ticket": "9010", "symbol": "XAUUSD",
+            "type": 4, "magic": "26110801", "comment": "AZS17",
+            "price": 2055.0, "sl": 2052.0, "tp": 0.0, "time_setup": 500}]
+        decision = {"decision": "BUY", "confidence": 0.8}
+        result = build_management_command(
+            {"_trading_enabled": True, "global_loss_enabled": False,
+             "per_trade_profit_enabled": False, "global_profit_enabled": False,
+             "trailing_enabled": False, "order_mode": "Pending Order",
+             "pending_distance": 2, "fixed_sl_enabled": True,
+             "fixed_sl_distance": 3, "one_direction_only": True},
+            live, now=1000, market_decision=decision)
+        self.assertEqual(result["action"], "MODIFY_PENDING")
+        self.assertEqual(result["ticket"], "9010")
+        self.assertAlmostEqual(result["price"], 2052.2)
+        self.assertAlmostEqual(result["sl"], 2049.2)
+
     def test_stale_candle_pending_order_is_cancelled_centrally(self):
         live = snapshot([])
         live["payload"]["forming_candle"] = {"time": 700, "open": 2050,
