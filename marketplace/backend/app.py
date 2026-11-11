@@ -172,6 +172,25 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"clients":rows})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/market/context":
+            try:
+                u=current_user(token_of(self)); fresh=admin_user(u["id"])
+                if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                else:
+                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                    item=CONNECTIONS.get(client_id) if client_id else None
+                connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
+                if not connected:
+                    return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة. تحقق من اتصال الطرفية."})
+                candles=(item or {}).get("closed_candles",[])
+                # MT5 sends series data newest-first; return oldest-first for analysis.
+                return self.send_json(200,{"symbol":item.get("symbol"),"timeframe":item.get("timeframe"),
+                    "tick":item.get("tick",{}),"forming_candle":item.get("forming_candle"),
+                    "candles":list(reversed(candles)),"received_at":item["last_seen"]})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/dashboard/summary":
             try:
                 u=current_user(token_of(self)); fresh=admin_user(u["id"])
