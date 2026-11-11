@@ -426,7 +426,7 @@ bool BuildMarketPayload(string &body,datetime &bar_time)
    g_last_market_bid=tick.bid; g_last_market_ask=tick.ask;
 
    // Strategy mode and selection are enforced by the central dashboard.
-   body="{\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",");
+   body="{\"symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",";
    body+="\"strategy_mode\":\"AUTO\",\"selected_strategy_id\":0,";
    body+="\"bid\":"+DoubleToString(tick.bid,_Digits)+",";
    body+="\"ask\":"+DoubleToString(tick.ask,_Digits)+",";
