@@ -197,8 +197,13 @@ class Handler(SimpleHTTPRequestHandler):
                 u=current_user(token_of(self)); fresh=admin_user(u["id"])
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    # Resolve the owner's stable licensed client_id from Supabase first.
+                    # CONNECTIONS is intentionally ephemeral and may be empty after a Render restart.
+                    lic=license_for_user(u["id"])
                     item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
+                    client_id=(lic or {}).get("client_id") or (item or {}).get("client_id","")
+                    if client_id:
+                        item=CONNECTIONS.get(client_id) or item
                 else:
                     lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
                     item=CONNECTIONS.get(client_id) if client_id else None
