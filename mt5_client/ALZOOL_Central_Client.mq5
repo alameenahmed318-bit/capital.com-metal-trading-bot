@@ -1074,11 +1074,13 @@ void PollCentralManagement()
          if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
             (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
          matched++;
-         if(!trade.PositionClose(position_ticket))
+         bool sent=trade.PositionClose(position_ticket);
+         uint close_rc=trade.ResultRetcode();
+         if(!sent || (close_rc!=TRADE_RETCODE_DONE && close_rc!=TRADE_RETCODE_DONE_PARTIAL))
          {
             all_ok=false;
             Print("AL-ZOOL central CLOSE_ALL failed ticket=",position_ticket,
-                  " retcode=",trade.ResultRetcode()," ",trade.ResultRetcodeDescription());
+                  " retcode=",close_rc," ",trade.ResultRetcodeDescription());
          }
       }
       executed=(matched>0 && all_ok);
@@ -1141,7 +1143,11 @@ void PollCentralManagement()
          (ulong)PositionGetInteger(POSITION_MAGIC)==ALZOOL_MAGIC)
       {
          if(action=="CLOSE_POSITION")
-            executed=trade.PositionClose(position_ticket);
+         {
+            bool sent=trade.PositionClose(position_ticket);
+            uint close_rc=trade.ResultRetcode();
+            executed=sent && (close_rc==TRADE_RETCODE_DONE || close_rc==TRADE_RETCODE_DONE_PARTIAL);
+         }
          else if(action=="MODIFY_SL" && sl>0.0)
          {
             ENUM_POSITION_TYPE side=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
@@ -1151,7 +1157,10 @@ void PollCentralManagement()
                            (old_sl<=0.0 || sl<old_sl-_Point));
             if(improves && ((side==POSITION_TYPE_BUY && sl<SymbolInfoDouble(_Symbol,SYMBOL_BID)) ||
                             (side==POSITION_TYPE_SELL && sl>SymbolInfoDouble(_Symbol,SYMBOL_ASK))))
-               executed=trade.PositionModify(position_ticket,NormalizeDouble(sl,_Digits),existing_tp);
+            {
+               bool sent=trade.PositionModify(position_ticket,NormalizeDouble(sl,_Digits),existing_tp);
+               executed=sent && trade.ResultRetcode()==TRADE_RETCODE_DONE;
+            }
          }
       }
    }
