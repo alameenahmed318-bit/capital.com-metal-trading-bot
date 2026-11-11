@@ -4,7 +4,7 @@
 //| All trading controls and settings are owned by the central tool.  |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.07"
+#property version   "1.08"
 #property description "AL-ZOOL central decision client for MetaTrader 5"
 
 #include <Trade/Trade.mqh>
@@ -71,7 +71,9 @@ int g_cfg_max_positions=0;
 bool g_cfg_global_profit=true, g_cfg_per_trade_profit=true, g_cfg_global_loss_enabled=true;
 bool g_cfg_fixed_sl_enabled=true, g_cfg_trailing=true, g_cfg_one_direction=true,g_cfg_ai_loss_guard=false;
 bool g_cfg_allow_buy=true,g_cfg_allow_sell=true,g_cfg_require_broker_stops=true;
-double g_cfg_max_spread_points=0.0;
+bool g_cfg_ai_risk_enabled=false,g_cfg_smart_profit=false;
+double g_cfg_max_spread_points=0.0,g_cfg_ai_risk_percent=0.5,g_cfg_ai_max_lot=0.05;
+string g_recovery_count_key="",g_recovery_low_key="",g_recovery_high_key="";
 double g_context_buy_quality=0.0,g_context_sell_quality=0.0;
 bool g_context_buy_trap=false,g_context_sell_trap=false;
 string g_context_regime="";
@@ -312,6 +314,22 @@ double NormalizeLots(double lots)
    if(step<0.01) digits=3;
    if(step<0.001) digits=4;
    return NormalizeDouble(lots,digits);
+}
+
+double CalculateRiskLots(const double stop_distance)
+{
+   if(stop_distance<=0.0 || g_cfg_ai_risk_percent<=0.0 || g_cfg_ai_max_lot<=0.0) return 0.0;
+   double tick_size=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE);
+   double tick_value=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_VALUE_LOSS);
+   if(tick_value<=0.0) tick_value=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_VALUE);
+   if(tick_size<=0.0 || tick_value<=0.0) return 0.0;
+   double risk_money=AccountInfoDouble(ACCOUNT_BALANCE)*g_cfg_ai_risk_percent/100.0;
+   double loss_per_lot=(stop_distance/tick_size)*tick_value;
+   if(risk_money<=0.0 || loss_per_lot<=0.0) return 0.0;
+   double raw=MathMin(g_cfg_ai_max_lot,risk_money/loss_per_lot);
+   double minv=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   if(raw<minv-1e-8) return 0.0;
+   return NormalizeLots(raw);
 }
 
 double NormalizeCappedLots(const double requested,const double cap)
@@ -717,6 +735,10 @@ bool PollCentralSettings()
    g_cfg_allow_sell=JsonBool(response,"allow_sell",true);
    g_cfg_max_spread_points=JsonNumber(response,"max_spread_points",0.0);
    g_cfg_require_broker_stops=JsonBool(response,"require_broker_stops",true);
+   g_cfg_ai_risk_enabled=JsonBool(response,"ai_risk_enabled",false);
+   g_cfg_ai_risk_percent=JsonNumber(response,"ai_risk_percent",0.5);
+   g_cfg_ai_max_lot=JsonNumber(response,"ai_max_lot",0.05);
+   g_cfg_smart_profit=JsonBool(response,"smart_profit_enabled",false);
    g_cfg_global_profit=JsonBool(response,"global_profit_enabled",true);
    g_cfg_per_trade_profit=JsonBool(response,"per_trade_profit_enabled",true);
    g_cfg_global_loss_enabled=JsonBool(response,"global_loss_enabled",true);
@@ -729,7 +751,8 @@ bool PollCentralSettings()
    g_cfg_adaptive_strategy_switch=JsonBool(response,"adaptive_strategy_switch",false);
    g_cfg_strategy_mode=JsonString(response,"strategy_mode");
    if(g_cfg_strategy_mode=="") g_cfg_strategy_mode="AUTO — Best current fit";
-   if(g_cfg_max_spread_points<0 || g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
+   if(g_cfg_max_spread_points<0 || g_cfg_ai_risk_percent<0.05 || g_cfg_ai_risk_percent>2.0 || g_cfg_ai_max_lot<=0 ||
+      g_cfg_profit_target<0 || g_cfg_per_trade_target<0 || g_cfg_loss_limit<0 || g_cfg_global_loss<0 ||
       g_cfg_fixed_sl_distance<=0 || g_cfg_trail_start<0 || g_cfg_trail_distance<=0 || g_cfg_pending_distance<=0 ||
       g_cfg_addon_step<=0 || g_cfg_cooling_step<=0 || g_cfg_addon_multiplier<1 || g_cfg_cooling_multiplier<1 ||
       g_cfg_addon_max<0 || g_cfg_cooling_max<0 ||
@@ -805,10 +828,12 @@ bool PlaceCentralTrade(const string direction,const string decision_id,
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick)) return false;
 
-   double lots=NormalizeLots(lot_override>0.0 ? lot_override : g_cfg_lot);
-   if(lots<=0.0) { g_status="Invalid lot size"; return false; }
-
    double stop_distance=g_cfg_fixed_sl_distance;
+   double requested_lots=(lot_override>0.0 ? lot_override : g_cfg_lot);
+   if(lot_override<=0.0 && g_cfg_ai_risk_enabled)
+      requested_lots=CalculateRiskLots(stop_distance);
+   double lots=NormalizeLots(requested_lots);
+   if(lots<=0.0) { g_status=(g_cfg_ai_risk_enabled && lot_override<=0.0 ? "AI risk lot below broker minimum or unavailable tick value" : "Invalid lot size"); return false; }
    double target_distance=0.0;
    long stops_level=SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL);
    double min_distance=(double)stops_level*_Point;
@@ -1220,14 +1245,32 @@ void ManageSettingsProfitLoss()
       g_daily_loss_paused=true;
       return;
    }
-   if(count==1 && g_cfg_per_trade_profit && g_cfg_per_trade_target>0.0 && floating>=g_cfg_per_trade_target)
+   double profit_factor=1.0;
+   if(g_cfg_smart_profit)
    {
-      CloseOurPositions("Single-position profit target reached");
+      string side="BUY";
+      for(int i=PositionsTotal()-1;i>=0;i--)
+      {
+         ulong ticket=PositionGetTicket(i);
+         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+         if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=ALZOOL_MAGIC) continue;
+         side=(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY ? "BUY" : "SELL");
+         break;
+      }
+      double strength=0.0,volatility=1.0; bool trend=false,reversal=false;
+      if(GetSmartCandleMetrics(side,strength,volatility,trend,reversal,true))
+         profit_factor=MathMax(0.75,MathMin(1.50,volatility));
+   }
+   double single_target=g_cfg_per_trade_target*profit_factor;
+   double basket_target=g_cfg_profit_target*profit_factor;
+   if(count==1 && g_cfg_per_trade_profit && single_target>0.0 && floating>=single_target)
+   {
+      CloseOurPositions("Single-position profit target reached / smart factor "+DoubleToString(profit_factor,2));
       return;
    }
-   if(count>=2 && g_cfg_global_profit && g_cfg_profit_target>0.0 && floating>=g_cfg_profit_target)
+   if(count>=2 && g_cfg_global_profit && basket_target>0.0 && floating>=basket_target)
    {
-      CloseOurPositions("Combined profit target reached");
+      CloseOurPositions("Combined profit target reached / smart factor "+DoubleToString(profit_factor,2));
       return;
    }
 }
@@ -1461,6 +1504,10 @@ int OnInit()
    }
 
    g_global_bar_key="AZ_CENTRAL_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
+   g_recovery_count_key="AZ_REC_COUNT_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
+   g_recovery_low_key="AZ_REC_LOW_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
+   g_recovery_high_key="AZ_REC_HIGH_"+_Symbol+"_"+IntegerToString((long)ALZOOL_MAGIC);
+   if(!GlobalVariableCheck(g_recovery_count_key)) GlobalVariableSet(g_recovery_count_key,0.0);
    if(GlobalVariableCheck(g_global_bar_key))
       g_last_bar_time=(datetime)GlobalVariableGet(g_global_bar_key);
 
@@ -1552,7 +1599,14 @@ void ManageSmartRecovery()
    if(!g_cfg_recovery_enabled) return;
    int buys=0,sells=0;
    int total=CountOurPositions(buys,sells);
-   if(total<=0) { g_last_recovery_bar_time=0; return; }
+   if(total<=0)
+   {
+      g_last_recovery_bar_time=0;
+      if(g_recovery_count_key!="") GlobalVariableSet(g_recovery_count_key,0.0);
+      if(g_recovery_low_key!="") GlobalVariableDel(g_recovery_low_key);
+      if(g_recovery_high_key!="") GlobalVariableDel(g_recovery_high_key);
+      return;
+   }
 
    int recovery_open=0;
    double floating=0.0,total_open_lots=0.0;
@@ -1583,12 +1637,36 @@ void ManageSmartRecovery()
    // Exactly one recovery order per basket: do not compound another recovery
    // entry while the first recovery position is still open.
    if(recovery_open>0) { RecoveryWait("صفقة التعافي موجودة بالفعل؛ ننتظر إغلاق السلة على الهدف"); return; }
+   double recovery_count=(g_recovery_count_key!="" && GlobalVariableCheck(g_recovery_count_key) ? GlobalVariableGet(g_recovery_count_key) : 0.0);
+   if(recovery_count>=g_cfg_recovery_max_entries)
+   { RecoveryWait("تم بلوغ عدد محاولات التعافي المحدد لهذه السلة"); return; }
 
    // Recovery follows the current market direction, independently of basket side.
    string direction=g_last_decision;
    if(direction!="BUY" && direction!="SELL")
       direction=(g_context_buy_quality>=g_context_sell_quality ? "BUY" : "SELL");
 
+   MqlTick recovery_tick;
+   double recovery_atr=0.0;
+   if(!SymbolInfoTick(_Symbol,recovery_tick) || !GetATR(recovery_atr))
+   { RecoveryWait("بيانات السعر أو ATR غير متاحة للتعافي"); return; }
+   double adverse_extreme=(direction=="BUY"
+      ? (g_recovery_low_key!="" && GlobalVariableCheck(g_recovery_low_key) ? GlobalVariableGet(g_recovery_low_key) : recovery_tick.bid)
+      : (g_recovery_high_key!="" && GlobalVariableCheck(g_recovery_high_key) ? GlobalVariableGet(g_recovery_high_key) : recovery_tick.ask));
+   if(direction=="BUY")
+   {
+      adverse_extreme=MathMin(adverse_extreme,recovery_tick.bid);
+      if(g_recovery_low_key!="") GlobalVariableSet(g_recovery_low_key,adverse_extreme);
+      if(recovery_tick.bid-adverse_extreme<recovery_atr*g_cfg_recovery_atr_distance)
+      { RecoveryWait("لم تكتمل مسافة الارتداد المحددة بالـ ATR"); return; }
+   }
+   else
+   {
+      adverse_extreme=MathMax(adverse_extreme,recovery_tick.ask);
+      if(g_recovery_high_key!="") GlobalVariableSet(g_recovery_high_key,adverse_extreme);
+      if(adverse_extreme-recovery_tick.ask<recovery_atr*g_cfg_recovery_atr_distance)
+      { RecoveryWait("لم تكتمل مسافة الارتداد المحددة بالـ ATR"); return; }
+   }
    double strength=0.0,volatility=1.0;
    bool trend=false,reversal=false;
    if(!GetSmartCandleMetrics(direction,strength,volatility,trend,reversal,true) || !reversal)
@@ -1613,16 +1691,22 @@ void ManageSmartRecovery()
 
    // User-defined rule: sum the lots of ALL open basket positions, then add
    // exactly one broker volume step (normally 0.01 lot).
-   double requested=NormalizeDouble(MathCeil((total_open_lots+step)/step-1e-8)*step,volume_digits);
+   double requested=(g_cfg_recovery_mode=="MANUAL"
+      ? g_cfg_recovery_manual_lot
+      : NormalizeDouble(MathCeil((total_open_lots+step)/step-1e-8)*step,volume_digits));
+   if(g_cfg_recovery_mode=="MANUAL" && g_cfg_recovery_max_lot>0.0)
+      requested=MathMin(requested,g_cfg_recovery_max_lot);
    string id=g_last_decision_id+"_REC_"+IntegerToString((long)TimeCurrent())+"_"+
              IntegerToString((long)GetTickCount64());
-   string why="تعافٍ مستقل "+direction+"؛ مجموع لوتات السلة="+DoubleToString(total_open_lots,volume_digits)+
-              "؛ لوت التعافي="+DoubleToString(requested,volume_digits)+
-              " (مجموع اللوتات + خطوة واحدة)";
+   string why=(g_cfg_recovery_mode=="MANUAL"
+      ? "تعافٍ يدوي "+direction+"؛ اللوت المحدد="+DoubleToString(requested,volume_digits)
+      : "تعافٍ آلي "+direction+"؛ مجموع لوتات السلة="+DoubleToString(total_open_lots,volume_digits)+
+        "؛ لوت التعافي="+DoubleToString(requested,volume_digits)+" (مجموع اللوتات + خطوة واحدة)");
    if(SendRecoveryVolume(direction,requested,id,why))
    {
       g_last_recovery_entry_ms=GetTickCount64();
       g_last_recovery_bar_time=iTime(_Symbol,PERIOD_CURRENT,0);
+      if(g_recovery_count_key!="") GlobalVariableSet(g_recovery_count_key,recovery_count+1.0);
       g_status="Smart recovery opened / "+direction+" / lot "+DoubleToString(requested,volume_digits);
       Print("AL-ZOOL recovery opened ",direction," basket_lots=",DoubleToString(total_open_lots,volume_digits),
             " recovery_lot=",DoubleToString(requested,volume_digits));
