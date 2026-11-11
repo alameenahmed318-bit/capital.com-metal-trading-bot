@@ -196,7 +196,7 @@ class Handler(SimpleHTTPRequestHandler):
                     closed_at=datetime.fromtimestamp(stamp,timezone.utc)
                     pid=str(deal.get("position_id") or deal.get("ticket") or stamp)
                     net=finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+finite_number(deal.get("swap"))+finite_number(deal.get("fee"))
-                    row=by_position.setdefault(pid,{"position_id":pid,"symbol":deal.get("symbol",""),"type":deal.get("type",0),"volume":0.0,"net":0.0,"time":stamp,"ticket":deal.get("ticket","")})
+                    row=by_position.setdefault(pid,{"position_id":pid,"symbol":deal.get("symbol",""),"type":(0 if deal.get("deal_type",deal.get("type",0))==1 else 1),"volume":0.0,"net":0.0,"time":stamp,"ticket":deal.get("ticket","")})
                     row["net"]+=net
                     row["volume"]+=finite_number(deal.get("volume"))
                     row["time"]=max(row["time"],stamp)
@@ -274,7 +274,7 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
-                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),500)
+                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),200)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
