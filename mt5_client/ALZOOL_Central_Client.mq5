@@ -849,28 +849,64 @@ void SendLiveState()
 void SendTerminalState()
 {
    ulong now_ms=GetTickCount64();
-   // Account/history payloads are larger; refresh every 5 seconds, not every timer tick.
    if(g_last_terminal_state_ms>0 && now_ms-g_last_terminal_state_ms<5000) return;
    g_last_terminal_state_ms=now_ms;
    if(InpEngineId=="" || InpEngineToken=="") return;
-   string body="{\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+"\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+"\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+"\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
+
+   string body="{\"account\":{\"login\":\""+(string)AccountInfoInteger(ACCOUNT_LOGIN)+
+      "\",\"server\":\""+JsonSafe(AccountInfoString(ACCOUNT_SERVER))+
+      "\",\"currency\":\""+JsonSafe(AccountInfoString(ACCOUNT_CURRENCY))+
+      "\",\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+
+      ",\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+
+      ",\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+
+      ",\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+
+      ",\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},\"positions\":[";
    int n=0;
-   for(int i=PositionsTotal()-1;i>=0 && n<200;i--){
-      ulong t=PositionGetTicket(i); if(t==0 || !PositionSelectByTicket(t)) continue;
+   for(int i=PositionsTotal()-1;i>=0 && n<200;i--)
+   {
+      ulong t=PositionGetTicket(i);
+      if(t==0 || !PositionSelectByTicket(t)) continue;
       if(n++>0) body+=",";
-      body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(PositionGetString(POSITION_SYMBOL))+"\",\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE))+",\"volume\":"+DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+",\"open_price\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN),_Digits)+",\"price_current\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT),_Digits)+",\"sl\":"+DoubleToString(PositionGetDouble(POSITION_SL),_Digits)+",\"tp\":"+DoubleToString(PositionGetDouble(POSITION_TP),_Digits)+",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+"\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
-          "\",\"comment\":\""+JsonSafe(PositionGetString(POSITION_COMMENT))+"\",
-          "\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
-   for(int j=OrdersTotal()-1;j>=0 && n<200;j--){
-      ulong t=OrderGetTicket(j); if(t==0) continue;
+      body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(PositionGetString(POSITION_SYMBOL))+
+         "\",\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE))+
+         ",\"volume\":"+DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+
+         ",\"open_price\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN),_Digits)+
+         ",\"price_current\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT),_Digits)+
+         ",\"sl\":"+DoubleToString(PositionGetDouble(POSITION_SL),_Digits)+
+         ",\"tp\":"+DoubleToString(PositionGetDouble(POSITION_TP),_Digits)+
+         ",\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+
+         ",\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+
+         ",\"magic\":\""+(string)PositionGetInteger(POSITION_MAGIC)+
+         "\",\"comment\":\""+JsonSafe(PositionGetString(POSITION_COMMENT))+
+         "\",\"time\":"+IntegerToString((long)PositionGetInteger(POSITION_TIME))+"}";
+   }
+   body+="],\"orders\":[";
+   n=0;
+   for(int j=OrdersTotal()-1;j>=0 && n<200;j--)
+   {
+      ulong t=OrderGetTicket(j);
+      if(t==0) continue;
       if(n++>0) body+=",";
-      body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(OrderGetString(ORDER_SYMBOL))+"\",\"type\":"+IntegerToString((int)OrderGetInteger(ORDER_TYPE))+",\"state\":"+IntegerToString((int)OrderGetInteger(ORDER_STATE))+",\"volume\":"+DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT),2)+",\"price\":"+DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN),_Digits)+",\"sl\":"+DoubleToString(OrderGetDouble(ORDER_SL),_Digits)+",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+",\"magic\":\""+(string)OrderGetInteger(ORDER_MAGIC)+"\",\"time_setup\":"+IntegerToString((long)OrderGetInteger(ORDER_TIME_SETUP))+"}";
+      body+="{\"ticket\":\""+(string)t+"\",\"symbol\":\""+JsonSafe(OrderGetString(ORDER_SYMBOL))+
+         "\",\"type\":"+IntegerToString((int)OrderGetInteger(ORDER_TYPE))+
+         ",\"state\":"+IntegerToString((int)OrderGetInteger(ORDER_STATE))+
+         ",\"volume\":"+DoubleToString(OrderGetDouble(ORDER_VOLUME_CURRENT),2)+
+         ",\"price\":"+DoubleToString(OrderGetDouble(ORDER_PRICE_OPEN),_Digits)+
+         ",\"sl\":"+DoubleToString(OrderGetDouble(ORDER_SL),_Digits)+
+         ",\"tp\":"+DoubleToString(OrderGetDouble(ORDER_TP),_Digits)+
+         ",\"magic\":\""+(string)OrderGetInteger(ORDER_MAGIC)+
+         "\",\"comment\":\""+JsonSafe(OrderGetString(ORDER_COMMENT))+
+         "\",\"time_setup\":"+IntegerToString((long)OrderGetInteger(ORDER_TIME_SETUP))+"}";
    }
    body+="],\"history\":[";
-   datetime from_time=TimeCurrent()-86400*30; HistorySelect(from_time,TimeCurrent());
-   int deals=HistoryDealsTotal(); n=0;
-   for(int k=deals-1;k>=0 && n<200;k--){
-      ulong d=HistoryDealGetTicket(k); if(d==0) continue;
+   datetime from_time=TimeCurrent()-86400*30;
+   HistorySelect(from_time,TimeCurrent());
+   int deals=HistoryDealsTotal();
+   n=0;
+   for(int k=deals-1;k>=0 && n<200;k--)
+   {
+      ulong d=HistoryDealGetTicket(k);
+      if(d==0) continue;
       if((ulong)HistoryDealGetInteger(d,DEAL_MAGIC)!=ALZOOL_MAGIC) continue;
       if(HistoryDealGetString(d,DEAL_SYMBOL)!=_Symbol) continue;
       if(n++>0) body+=",";
@@ -878,12 +914,43 @@ void SendTerminalState()
       double deal_commission=HistoryDealGetDouble(d,DEAL_COMMISSION);
       double deal_swap=HistoryDealGetDouble(d,DEAL_SWAP);
       double deal_fee=HistoryDealGetDouble(d,DEAL_FEE);
-      body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+"\",\"order\":\""+(string)HistoryDealGetInteger(d,DEAL_ORDER)+"\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+"\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+",\"profit\":"+DoubleToString(deal_profit,2)+",\"commission\":"+DoubleToString(deal_commission,2)+",\"swap\":"+DoubleToString(deal_swap,2)+",\"fee\":"+DoubleToString(deal_fee,2)+",\"net_profit\":"+DoubleToString(deal_profit+deal_commission+deal_swap+deal_fee,2)+",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
+      body+="{\"ticket\":\""+(string)d+"\",\"position_id\":\""+(string)HistoryDealGetInteger(d,DEAL_POSITION_ID)+
+         "\",\"order\":\""+(string)HistoryDealGetInteger(d,DEAL_ORDER)+
+         "\",\"symbol\":\""+JsonSafe(HistoryDealGetString(d,DEAL_SYMBOL))+
+         "\",\"type\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_TYPE))+
+         ",\"entry\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_ENTRY))+
+         ",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(d,DEAL_REASON))+
+         ",\"volume\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_VOLUME),2)+
+         ",\"price\":"+DoubleToString(HistoryDealGetDouble(d,DEAL_PRICE),_Digits)+
+         ",\"profit\":"+DoubleToString(deal_profit,2)+
+         ",\"commission\":"+DoubleToString(deal_commission,2)+
+         ",\"swap\":"+DoubleToString(deal_swap,2)+
+         ",\"fee\":"+DoubleToString(deal_fee,2)+
+         ",\"net_profit\":"+DoubleToString(deal_profit+deal_commission+deal_swap+deal_fee,2)+
+         ",\"magic\":\""+(string)ALZOOL_MAGIC+
+         "\",\"time\":"+IntegerToString((long)HistoryDealGetInteger(d,DEAL_TIME))+"}";
    }
-   body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+"\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\",\"magic\":\""+(string)ALZOOL_MAGIC+"\",\"server_url\":\""+JsonSafe(ServerBaseUrl())+"\",\"engine_id\":\""+JsonSafe(InpEngineId)+"\",\"engine_status\":\""+JsonSafe(g_status)+"\",\"last_decision\":\""+JsonSafe(g_last_decision)+"\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+"\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+",\"confidence\":"+DoubleToString(g_last_confidence,4)+",\"server_online\":"+(g_server_online?"true":"false")+",\"request_seconds\":"+IntegerToString(ALZOOL_REQUEST_SECONDS)+",\"bars_to_send\":"+IntegerToString(ALZOOL_BARS_TO_SEND)+"},\"events\":[]";
-   char data[],result[]; StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8); if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n",response_headers;
-   int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
+   body+="],\"settings\":{\"chart_symbol\":\""+JsonSafe(_Symbol)+
+      "\",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+
+      "\",\"magic\":\""+(string)ALZOOL_MAGIC+
+      "\",\"server_url\":\""+JsonSafe(ServerBaseUrl())+
+      "\",\"engine_id\":\""+JsonSafe(InpEngineId)+
+      "\",\"engine_status\":\""+JsonSafe(g_status)+
+      "\",\"last_decision\":\""+JsonSafe(g_last_decision)+
+      "\",\"last_strategy\":\""+JsonSafe(g_last_strategy_name)+
+      "\",\"last_strategy_id\":"+IntegerToString(g_last_strategy_id)+
+      ",\"confidence\":"+DoubleToString(g_last_confidence,4)+
+      ",\"server_online\":"+(g_server_online?"true":"false")+
+      ",\"request_seconds\":"+IntegerToString(ALZOOL_REQUEST_SECONDS)+
+      ",\"bars_to_send\":"+IntegerToString(ALZOOL_BARS_TO_SEND)+"},\"events\":[]}";
+
+   char data[],result[];
+   StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string response_headers;
+   int http=WebRequest("POST",ServerBaseUrl()+"/v1/terminal-state/"+InpEngineId,
+                       headers,MathMin(InpHttpTimeoutMs,1800),data,result,response_headers);
    if(http!=200) Print("AL-ZOOL telemetry upload failed. HTTP=",http," err=",GetLastError());
 }
 
