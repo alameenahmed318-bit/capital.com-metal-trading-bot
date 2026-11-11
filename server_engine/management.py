@@ -180,7 +180,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 return command(action, str(decision.get("reason_ar") or "إشارة مركزية من محرك الاستراتيجيات"),
                                direction=direction, lots=lots, price=entry_price if pending else 0.0,
                                comment="AZS" + str(decision.get("strategy_id") or 0),
-                               key=str(decision.get("decision_id") or payload.get("sequence", "0")))
+                               key=str(direction) + "_" + str((candles[-1] or {}).get("time", payload.get("sequence", "0"))))
 
     # Recovery basket target is independent of whether a new recovery entry is due.
     if _truth(settings, "recovery_enabled") and _number(settings.get("recovery_target_profit")) > 0:
@@ -205,7 +205,7 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
                 lots = _volume(requested, payload, cap)
                 if lots > 0:
                     return command("OPEN_MARKET", "تعافٍ مركزي: اللوت محسوب من مجموع لوتات السلة",
-                                   direction=direction, lots=lots, comment="AZR_RECOVERY")
+                                   direction=direction, lots=lots, comment="AZR_RECOVERY",\n                                   key="recovery_" + "_".join(sorted(str(p.get("ticket")) for p in positions)))
 
     # Add-on and cooling use separate quotas and separate most-recent anchors.
     for kind in ("addon", "cooling"):
@@ -245,6 +245,6 @@ def build_management_command(settings, live_state, *, now=None, market_decision=
         lots = _volume(lot, payload, _number(settings.get(kind + "_max_lot")))
         if lots > 0:
             return command("OPEN_MARKET", ("تعزيز مركزي" if kind == "addon" else "تبريد مركزي"),
-                           direction=basket_direction, lots=lots, comment=tag)
+                           direction=basket_direction, lots=lots, comment=tag,\n                           key=kind + "_" + str(anchor_position.get("ticket")))
 
     return {"action": "WAIT", "reason": "لا يوجد أمر إدارة جديد من لوحة التحكم"}
