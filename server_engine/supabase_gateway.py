@@ -697,6 +697,19 @@ class EngineGateway:
             source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
         except (TypeError,ValueError,OverflowError,OSError): source_time=None
         payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","closed_candles","symbol","timeframe","sequence","source_time","point","volume_step","volume_min","volume_max","tick_value","tick_size","stops_level","day_start")}
+        # MT5 sends the 65-bar window only when a new candle closes. Preserve
+        # the last validated window on ordinary tick heartbeats so the server
+        # can continue analysis without retransmitting the same bars every tick.
+        previous_live = self._live_cache.get(client_id) or {}
+        previous_payload = previous_live.get("payload") or {}
+        if not previous_payload.get("closed_candles"):
+            previous_rows = self._request(
+                "GET", "alzool_engine_live_state?client_id=eq." +
+                urllib.parse.quote(client_id, safe="") +
+                "&select=payload&order=received_at.desc&limit=1")
+            previous_payload = (previous_rows[0].get("payload") or {}) if previous_rows else {}
+        if not payload.get("closed_candles") and previous_payload.get("closed_candles"):
+            payload["closed_candles"] = previous_payload["closed_candles"]
         received=datetime.now(timezone.utc).isoformat()
         row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
              "received_at":received,"updated_at":received}
