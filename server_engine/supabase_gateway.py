@@ -262,6 +262,44 @@ class EngineGateway:
         if time.time()-float(payload.get("created_at",0))>TTL_SECONDS: return {kind:None,"reason":"expired"}
         return {"analysis":payload.get("analysis"),"decision_id":payload.get("decision_id")} if kind=="analysis" else payload
 
+    def management_command(self, client_id, token):
+        """Create a short-lived signed broker instruction from central settings."""
+        client=self._client(client_id,token)
+        if not client:
+            raise PermissionError("client authorization failed")
+        settings=self.settings_for_client(client_id,token)
+        settings["_trading_enabled"]=bool(client.get("trading_enabled",False))
+        live=self._live_cache.get(client_id)
+        if live is None:
+            cid=urllib.parse.quote(client_id,safe="")
+            rows=self._request("GET","alzool_engine_live_state?client_id=eq."+cid+
+                               "&select=payload,sequence,source_time,received_at&order=received_at.desc&limit=1")
+            live=rows[0] if rows else None
+        if not live:
+            plan={"action":"WAIT","reason":"لا توجد بيانات MT5 حديثة"}
+        else:
+            received=live.get("received_at")
+            try:
+                age=time.time()-datetime.fromisoformat(received.replace("Z","+00:00")).timestamp()
+            except Exception:
+                age=999999
+            if age>5:
+                plan={"action":"WAIT","reason":"بيانات MT5 قديمة؛ لا يصدر أمر إدارة"}
+            else:
+                from .management import build_management_command
+                plan=build_management_command(settings,live)
+        action=str(plan.get("action","WAIT"))
+        command_id=str(plan.get("command_id") or uuid.uuid4().hex)
+        ticket=str(plan.get("ticket",""))
+        sl=float(plan.get("sl",0.0) or 0.0)
+        tp=float(plan.get("tp",0.0) or 0.0)
+        expires=float(plan.get("expires_at",time.time()+5.0))
+        signed=(f"{client_id}|{command_id}|{action}|{ticket}|{sl:.8f}|{tp:.8f}|{expires:.6f}")
+        signature=hmac.new(token.encode("utf-8"),signed.encode("utf-8"),hashlib.sha256).hexdigest()
+        return {**plan,"client_id":client_id,"command_id":command_id,
+                "ticket":ticket,"sl":sl,"tp":tp,"expires_at":expires,
+                "signed_payload":signed,"signature":signature}
+
     def status_for_user(self, user_id, stale_after=5):
         """Report MT5 connected from one-second terminal telemetry, not candle decisions."""
         rows=self._request("GET","alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,revoked,expires_at,trading_enabled,trading_settings&limit=1")
