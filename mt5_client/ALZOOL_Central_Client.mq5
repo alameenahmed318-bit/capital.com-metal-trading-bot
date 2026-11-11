@@ -74,6 +74,7 @@ bool g_cfg_allow_buy=true,g_cfg_allow_sell=true,g_cfg_require_broker_stops=true;
 bool g_cfg_ai_risk_enabled=false,g_cfg_smart_profit=false;
 bool g_cfg_candle_chase_enabled=false,g_cfg_candle_chase_sl_enabled=false,g_cfg_reverse_protection_enabled=false;
 double g_cfg_max_spread_points=0.0,g_cfg_ai_risk_percent=0.5,g_cfg_ai_max_lot=0.05;
+double g_cfg_reverse_trigger=5.0,g_cfg_reverse_continue=2.0;
 double g_cfg_candle_chase_min_move=0.1,g_cfg_candle_chase_buy_target=1.0;
 double g_cfg_candle_chase_sell_target=1.0,g_cfg_candle_chase_single_target=0.5,g_cfg_candle_chase_sl_distance=3.0;
 int g_cfg_candle_chase_cooldown=2,g_cfg_candle_chase_max_orders=1;
@@ -746,6 +747,8 @@ bool PollCentralSettings()
    g_cfg_ai_max_lot=JsonNumber(response,"ai_max_lot",0.05);
    g_cfg_smart_profit=JsonBool(response,"smart_profit_enabled",false);
    g_cfg_reverse_protection_enabled=JsonBool(response,"reverse_protection_enabled",false);
+   g_cfg_reverse_trigger=JsonNumber(response,"reverse_trigger",5.0);
+   g_cfg_reverse_continue=JsonNumber(response,"reverse_continue",2.0);
    g_cfg_candle_chase_enabled=JsonBool(response,"candle_chase_enabled",false);
    g_cfg_candle_chase_min_move=JsonNumber(response,"candle_chase_min_move",0.1);
    g_cfg_candle_chase_cooldown=(int)JsonNumber(response,"candle_chase_cooldown",2);
@@ -776,6 +779,7 @@ bool PollCentralSettings()
       g_cfg_recovery_manual_lot<=0 || g_cfg_recovery_max_lot<=0 || g_cfg_recovery_trigger_loss<=0 ||
       g_cfg_recovery_target_profit<0 || g_cfg_recovery_min_positions<2 || g_cfg_recovery_atr_distance<=0 ||
       g_cfg_recovery_min_confidence<0.50 || g_cfg_recovery_min_confidence>0.95 || g_cfg_recovery_max_entries<1 ||
+      g_cfg_reverse_trigger<=0 || g_cfg_reverse_continue<=0 ||
       g_cfg_candle_chase_min_move<=0 || g_cfg_candle_chase_cooldown<0 ||
       g_cfg_candle_chase_buy_target<0 || g_cfg_candle_chase_sell_target<0 ||
       g_cfg_candle_chase_single_target<0 || g_cfg_candle_chase_sl_distance<=0 ||
@@ -1892,7 +1896,13 @@ void ManageAddonCooling()
 
 void ManageConfirmedReversal()
 {
-   if(!g_settings_loaded || !g_cfg_reverse_protection_enabled) return;
+   if(!g_settings_loaded) return;
+   if(!g_cfg_reverse_protection_enabled)
+   {
+      if(g_reversal_trigger_key!="") GlobalVariableDel(g_reversal_trigger_key);
+      if(g_reversal_side_key!="") GlobalVariableDel(g_reversal_side_key);
+      return;
+   }
    int buys=0,sells=0;
    int total=CountOurPositions(buys,sells);
    if(total<=0)
