@@ -31,6 +31,18 @@ class DashboardSettingsContractTests(unittest.TestCase):
             "InpServerSymbol", "InpHttpTimeoutMs",
         })
 
+    def test_recovery_can_follow_opposite_side_without_ordinary_entry_filters(self):
+        self.assertIn('if(!recovery_order && direction=="BUY" && !g_cfg_allow_buy)', EA)
+        self.assertIn('if(!recovery_order && direction=="SELL" && !g_cfg_allow_sell)', EA)
+        self.assertIn('if(!recovery_order && g_cfg_max_spread_points>0', EA)
+        self.assertIn('!GetATR(atr) && !recovery_order && !management_order', EA)
+
+    def test_candle_follow_and_reversal_protection_are_wired(self):
+        self.assertIn("void ManageCandleChase()", EA)
+        self.assertIn("void ManageConfirmedReversal()", EA)
+        self.assertIn("ManageCandleChase();", EA)
+        self.assertIn("ManageConfirmedReversal();", EA)
+
 
 if __name__ == "__main__":
     unittest.main()
