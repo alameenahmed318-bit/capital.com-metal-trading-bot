@@ -13,6 +13,10 @@ class FakeSupabaseLearningGateway(EngineGateway):
         self.saved = {}
         self.weights = {}
         self.weight_writes = 0
+        self.learning_settings = {"learning_enabled": True, "learning_rate_percent": 4.0}
+
+    def settings_for_client(self, client_id, token):
+        return dict(self.learning_settings)
 
     def _client(self, client_id, token):
         return {"user_id": "user-1"} if client_id == "client-1" and token == "token-1" else None
@@ -56,6 +60,25 @@ class SupabaseLearningPipelineTests(unittest.TestCase):
         )
         self.assertFalse(result["duplicate"])
         self.assertAlmostEqual(self.gateway.weights[27], 0.96)
+
+    def test_learning_rate_is_configurable(self):
+        self.gateway.learning_settings["learning_rate_percent"] = 10.0
+        result = self.gateway.outcome(
+            "client-1", "token-1",
+            {"deal_id": "position-90003", "strategy_id": 31, "pnl": 2.0},
+        )
+        self.assertTrue(result["trained"])
+        self.assertAlmostEqual(self.gateway.weights[31], 1.10)
+
+    def test_disabled_learning_records_outcome_without_changing_weight(self):
+        self.gateway.learning_settings["learning_enabled"] = False
+        result = self.gateway.outcome(
+            "client-1", "token-1",
+            {"deal_id": "position-90004", "strategy_id": 32, "pnl": 2.0},
+        )
+        self.assertFalse(result["trained"])
+        self.assertEqual(self.gateway.weight_writes, 0)
+        self.assertEqual(len(self.gateway.saved), 1)
 
     def test_invalid_learning_payload_is_rejected(self):
         with self.assertRaises(ValueError):
