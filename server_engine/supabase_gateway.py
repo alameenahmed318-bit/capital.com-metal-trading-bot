@@ -100,8 +100,8 @@ class EngineGateway:
 
     @staticmethod
     def _validate_market(data):
-        if not isinstance(data,dict) or data.get("symbol")!="XAUUSD":
-            raise ValueError("symbol must be XAUUSD")
+        if not isinstance(data,dict) or not isinstance(data.get("symbol"),str) or not data.get("symbol").strip():
+            raise ValueError("a valid broker symbol is required")
         candles=data.get("candles")
         if not isinstance(candles,list) or not 65<=len(candles)<=300:
             raise ValueError("candles must contain 65..300 closed bars")
@@ -462,7 +462,7 @@ class EngineGateway:
             epoch=float(data.get("source_time",0) or 0)
             source_time=datetime.fromtimestamp(epoch,timezone.utc).isoformat() if epoch>0 else None
         except (TypeError,ValueError,OverflowError,OSError): source_time=None
-        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","point","volume_step","volume_min","volume_max")}
+        payload={k:data.get(k) for k in ("account","positions","orders","tick","forming_candle","symbol","timeframe","sequence","point","volume_step","volume_min","volume_max","tick_value","tick_size","stops_level")}
         received=datetime.now(timezone.utc).isoformat()
         row={"client_id":client_id,"payload":payload,"sequence":sequence,"source_time":source_time,
              "received_at":received,"updated_at":received}
