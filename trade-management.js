@@ -148,6 +148,24 @@ async function refresh(){
  }catch(e){$("serviceState").textContent="تعذر تحميل البيانات";$("dataNotice").innerHTML="<b>تعذر تحديث بيانات التداول</b><span>"+esc(e.message)+"</span>";$("floatingMeta").textContent=e.message;}
  finally{refreshBusy=false;$("refreshBtn").disabled=false;}
 }
+
+function normalizePmDigits(input){
+ const map={"٠":"0","١":"1","٢":"2","٣":"3","٤":"4","٥":"5","٦":"6","٧":"7","٨":"8","٩":"9","۰":"0","۱":"1","۲":"2","۳":"3","۴":"4","۵":"5","۶":"6","۷":"7","۸":"8","۹":"9"};
+ let value=String(input.value||"").replace(/[٠-٩۰-۹]/g,ch=>map[ch]);
+ value=value.replace(/[^0-9.]/g,"");
+ if(input.inputMode==="numeric") value=value.replace(/\./g,"");
+ const dot=value.indexOf(".");
+ if(dot>=0) value=value.slice(0,dot+1)+value.slice(dot+1).replace(/\./g,"");
+ if(value!==input.value) input.value=value;
+}
+["addonMax","addonLot","addonDistance","coolingMax","coolingLot","coolingDistance"].forEach(id=>{
+ const field=$(id);
+ field.setAttribute("lang","en-US");
+ field.setAttribute("dir","ltr");
+ field.addEventListener("input",()=>normalizePmDigits(field));
+ field.addEventListener("change",()=>normalizePmDigits(field));
+});
+
 async function boot(){
  try{
   const cfg=await fetch("/api/config").then(r=>r.json());
