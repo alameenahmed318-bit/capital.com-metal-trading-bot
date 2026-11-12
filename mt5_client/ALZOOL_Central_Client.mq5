@@ -144,26 +144,29 @@ void EvaluateAutoClose()
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       groupNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
    }
-   // Group rule has priority: with 2+ positions, reaching its target closes all.
-   if(g_groupCloseEnabled && total>=2 && groupNet>=g_groupProfitTarget)
+   // With 2+ open positions, ONLY the combined group target is evaluated.
+   // Never fall through to the single-position rule in a multi-position account.
+   if(total>=2)
    {
-      Print("AL-ZOOL GROUP PROFIT TARGET reached: ",DoubleToString(groupNet,2),
-            " >= ",DoubleToString(g_groupProfitTarget,2),". Closing all open positions.");
-      for(int j=PositionsTotal()-1;j>=0;j--)
+      if(g_groupCloseEnabled && groupNet>=g_groupProfitTarget)
       {
-         ulong ticket=PositionGetTicket(j);
-         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-         ClosePositionTicket(ticket,"group");
+         Print("AL-ZOOL GROUP PROFIT TARGET reached: ",DoubleToString(groupNet,2),
+               " >= ",DoubleToString(g_groupProfitTarget,2),". Closing all open positions.");
+         for(int j=PositionsTotal()-1;j>=0;j--)
+         {
+            ulong ticket=PositionGetTicket(j);
+            if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+            ClosePositionTicket(ticket,"group");
+         }
       }
       return;
    }
-   // Independent single-position target: close only the qualifying position.
-   if(g_singleCloseEnabled)
+   // Exactly one open position: apply the single-position target to that position only.
+   if(total==1 && g_singleCloseEnabled)
    {
-      for(int k=PositionsTotal()-1;k>=0;k--)
+      ulong ticket=PositionGetTicket(0);
+      if(ticket>0 && PositionSelectByTicket(ticket))
       {
-         ulong ticket=PositionGetTicket(k);
-         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
          double net=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
          if(net>=g_singleProfitTarget)
          {
