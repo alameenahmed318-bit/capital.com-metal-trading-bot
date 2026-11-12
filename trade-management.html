@@ -34,7 +34,7 @@
   <article class="kpi"><div class="kpi-head"><span>حقوق الحساب</span><i>◈</i></div><strong id="equity">—</strong><small id="balanceMeta">الرصيد —</small></article>
  </section>
  <nav class="section-nav" aria-label="أقسام إدارة التداول">
-  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#pending">الأوامر المعلقة</a>
+  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#pending">الأوامر المعلقة</a>
  </nav>
  <section class="card" id="autoClose">
   <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>أهداف الإغلاق التلقائي</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
@@ -80,6 +80,34 @@
   </div>
   <p class="section-note">الجدول التالي يعرض وقف الخسارة وجني الأرباح الموجودين فعليًا على كل صفقة. إعداداتك أعلاه تتحكم في الوقف الأولي للصفقات الجديدة فقط؛ لا تعدّل الصفقات المفتوحة بأثر رجعي.</p>
   <div class="table-scroll"><table><thead><tr><th>التذكرة</th><th>الرمز</th><th>وقف الخسارة</th><th>جني الأرباح</th><th>حالة الحماية</th></tr></thead><tbody id="protectionBody"><tr><td colspan="5" class="empty-cell">لا توجد بيانات بعد</td></tr></tbody></table></div>
+ </section>
+ <section class="card" id="positionManagement">
+  <div class="card-title"><div><span class="eyebrow">إدارة الإضافات</span><h2>التعزيز والتبريد</h2></div><span class="read-only">نفس اتجاه الصفقة الأصلية فقط</span></div>
+  <div class="pm-mode-row">
+   <label for="pmMode">طريقة التحكم</label>
+   <select id="pmMode"><option value="AI">AI تلقائي</option><option value="MANUAL">يدوي</option></select>
+   <p class="section-note" id="pmModeHelp">في وضع AI يختار المحرك توقيت الإضافة واللوت والمسافة. في الوضع اليدوي تحدد الشروط واللوت والمسافة، والتنفيذ تلقائي عند تحققها.</p>
+  </div>
+  <div class="close-grid pm-grid">
+   <article class="close-option pm-option">
+    <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
+    <label for="addonMax">الحد الأقصى لعدد صفقات التعزيز</label><input id="addonMax" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" lang="en" dir="ltr">
+    <div class="pm-manual-fields">
+     <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="number" min="0.01" max="100" step="0.01" value="0.01" inputmode="decimal" lang="en" dir="ltr">
+     <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="number" min="1" max="100000000" step="1" value="100" inputmode="numeric" lang="en" dir="ltr">
+    </div>
+   </article>
+   <article class="close-option pm-option">
+    <div class="close-option-head"><div><b>التبريد</b><small>إضافات مستقلة لتبريد متوسط الدخول</small></div><label class="switch"><input type="checkbox" id="coolingEnabled"><span></span></label></div>
+    <label for="coolingMax">الحد الأقصى لعدد صفقات التبريد</label><input id="coolingMax" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" lang="en" dir="ltr">
+    <div class="pm-manual-fields">
+     <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="number" min="0.01" max="100" step="0.01" value="0.01" inputmode="decimal" lang="en" dir="ltr">
+     <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="number" min="1" max="100000000" step="1" value="100" inputmode="numeric" lang="en" dir="ltr">
+    </div>
+   </article>
+  </div>
+  <div class="close-actions"><button id="savePositionManagement" class="refresh">حفظ إعدادات التعزيز والتبريد</button><span id="pmMessage" role="status">التعزيز والتبريد متوقفان حتى تفعّلهما.</span></div>
+  <p class="section-note">الحد الأقصى الذي تحدده إلزامي في وضعَي AI واليدوي. لا تُفتح صفقة عكسية، ولا يُضاف أي حد خسارة عائمة خاص بهذه الصفحة. لا يعمل التنفيذ إلا عند تشغيل التداول الآلي واتصال عميل MT5 المحدّث.</p>
  </section>
  <section class="card" id="pending">
   <div class="card-title"><div><span class="eyebrow">أوامر الطرفية</span><h2>الأوامر المعلقة</h2></div><span class="count-chip" id="ordersLabel">0 أمر</span></div>
