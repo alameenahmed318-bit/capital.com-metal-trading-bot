@@ -34,28 +34,35 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const money=v=>Number(v||0).toFixed(2);
 async function api(path){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
 function profile(runs){
- const map={};for(const run of runs)for(const x of [...(run.strategy_results||[]),...(run.combination_results||[])]){
+ const latest=(runs||[])[0];if(!latest)return {models:[],comparableRuns:0};
+ const same=(a,b)=>Math.abs(Number(a||0)-Number(b||0))<1e-8;
+ const comparable=(runs||[]).filter(run=>
+  run.symbol===latest.symbol&&run.timeframe===latest.timeframe&&
+  String(run.account_currency||"")===String(latest.account_currency||"")&&
+  same(run.lot_size,latest.lot_size)&&same(run.commission_per_lot,latest.commission_per_lot)&&
+  same(run.slippage_points,latest.slippage_points));
+ const map={};for(const run of comparable)for(const x of [...(run.strategy_results||[]),...(run.combination_results||[])]){
   const v=x.validation||{};if(!v.n)continue;const p=map[x.id]||(map[x.id]={id:x.id,name:x.name,n:0,net:0,gross:0,spread:0,slippage:0,commission:0,grossWins:0,grossLoss:0,regimes:{}});
   p.n+=Number(v.n||0);p.net+=Number(v.net||0);p.gross+=Number(v.gross||0);p.spread+=Number(v.spread||0);p.slippage+=Number(v.slippage||0);p.commission+=Number(v.commission||0);p.grossWins+=Number(v.grossWins||0);p.grossLoss+=Number(v.grossLoss||0);
   for(const [key,value] of Object.entries(v.regimes||{})){const z=p.regimes[key]||(p.regimes[key]={n:0,net:0,wins:0});z.n+=Number(value.n||0);z.net+=Number(value.net||0);z.wins+=Number(value.wins||0);}
  }
- return Object.values(map).map(x=>({...x,pf:x.grossLoss?x.grossWins/x.grossLoss:x.grossWins>0?999:0})).sort((a,b)=>b.net-a.net);
+ return {models:Object.values(map).map(x=>({...x,pf:x.grossLoss?x.grossWins/x.grossLoss:x.grossWins>0?999:0})).sort((a,b)=>b.net-a.net),comparableRuns:comparable.length,latest};
 }
 function modelTable(rows){if(!rows.length)return "<div class='learn-note'>لا توجد نتائج تحقق كافية بعد. شغّل اختبارًا واحدًا على الأقل.</div>";
- return "<table class='learn-table'><thead><tr><th>النموذج</th><th>صفقات التحقق</th><th>صافي التحقق</th><th>معامل الربح</th><th>تشخيص الخسارة</th><th>حالة التعلم</th></tr></thead><tbody>"+rows.slice(0,15).map(x=>{const cause=x.net>=0?"أداء موجب":x.gross<0?"الإشارة عكست حركة السوق": "تكاليف التداول أكلت الربح";return "<tr><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+(x.pf===999?"∞":x.pf.toFixed(2))+"</td><td>"+cause+"</td><td>"+(x.n>=30&&x.net<0&&x.pf<.9?"كبح الإشارة":x.n<30?"عينة غير كافية":"مراقبة")+"</td></tr>"}).join("")+"</tbody></table>";
+ return "<table class='learn-table'><thead><tr><th>النموذج</th><th>صفقات التحقق</th><th>صافي التحقق</th><th>معامل الربح</th><th>تشخيص الخسارة</th><th>حالة التعلم</th></tr></thead><tbody>"+rows.slice(0,15).map(x=>{const costs=Number(x.spread||0)+Number(x.slippage||0)+Number(x.commission||0);const cause=x.net>=0?"أداء موجب":x.gross<0?"الإشارة عكست حركة السوق":x.gross>0&&costs>0?"تكاليف التداول أكلت الربح": "بيانات التشخيص غير مكتملة";return "<tr><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+(x.pf===999?"∞":x.pf.toFixed(2))+"</td><td>"+cause+"</td><td>"+(x.n>=30&&x.net<0&&x.pf<.9?"كبح الإشارة":x.n<30?"عينة غير كافية":"مراقبة")+"</td></tr>"}).join("")+"</tbody></table>";
 }
 async function load(){
  try{
   const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الاتصال غير مكتملة");
   const client=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await client.auth.getSession();
   if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");
-  const d=await api("/api/backtest/learning?limit=20"),runs=d.runs||[],p=profile(runs);
+  const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models;
   $("serviceState").textContent="تم التحقق من الحساب";$("runCount").textContent=String(d.count||0);
   $("suppressedCount").textContent=String(p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length);
   $("runsTable").innerHTML=runs.length?"<table class='learn-table'><thead><tr><th>التاريخ</th><th>الرمز / الفريم</th><th>الشموع</th><th>نقاط التحقق</th><th>صافي الاستراتيجيات</th><th>إشارات تم كبحها</th></tr></thead><tbody>"+runs.map(r=>"<tr><td>"+new Date(r.created_at).toLocaleString("ar-AE")+"</td><td>"+esc(r.symbol)+" / "+esc(r.timeframe)+"</td><td>"+Number(r.candle_count||0)+"</td><td>"+Number(r.validation_points||0)+"</td><td class='"+(Number(r.summary?.validation_strategy_net_sum||0)>=0?"positive":"negative")+"'>"+money(r.summary?.validation_strategy_net_sum)+" "+esc(r.account_currency)+"</td><td>"+Number(r.summary?.suppressed_signals||0)+"</td></tr>").join("")+"</tbody></table>":"<div class='learn-note'>لا توجد جولات محفوظة بعد. ابدأ أول اختبار من مختبر الاختبار التاريخي.</div>";
   $("bestTable").innerHTML=modelTable(p.filter(x=>x.n>0));
   $("weakTable").innerHTML=modelTable(p.filter(x=>x.n>0).sort((a,b)=>a.net-b.net).slice(0,15));
-  $("learningStatus").textContent="تم تحميل "+runs.length+" جولة من آخر 20 جولة. يتم استخدام نتائج التحقق السابقة فقط لبناء سياسة التكيّف. عدد النماذج التي تستوفي شروط كبح الإشارة: "+p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length+".";
+  $("learningStatus").textContent="تم تحميل "+runs.length+" جولة؛ تمت مقارنة "+profileData.comparableRuns+" جولة متوافقة مع آخر اختبار (نفس الرمز والفريم والعملة واللوت والتكاليف). تُستخدم نتائج التحقق فقط لبناء سياسة التكيّف. عدد النماذج التي تستوفي شروط كبح الإشارة: "+p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length+".";
  }catch(e){$("serviceState").textContent="تعذر تحميل الذاكرة";$("learningStatus").textContent=e.message}
 }
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});load();
