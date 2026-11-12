@@ -26,7 +26,7 @@ async function boot(){
  }
 }
 async function refresh(){
- $("clock").textContent=new Intl.DateTimeFormat("ar-AE",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
+ $("clock").textContent=new Intl.DateTimeFormat("en-AE",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
  const fmt=v=>v==null?"—":new Intl.NumberFormat("en-US",{maximumFractionDigits:2}).format(v);
  try{
   const d=await api("/api/connection/status");
