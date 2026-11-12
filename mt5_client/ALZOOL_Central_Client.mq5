@@ -409,26 +409,31 @@ void OnDeinit(const int reason)
 }
 void OnTimer()
 {
-   static ulong lastHealth=0;
    ulong now=GetTickCount64();
-   if(lastHealth==0 || now-lastHealth>=60000)
+   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
    {
-      g_online=HttpGet(BaseUrl()+"/health");
-      lastHealth=now;
+      PollTradeSettings();
+      g_lastSettingsPollMs=now;
    }
-   bool sent=SendLiveSnapshot();
-   if(sent) g_online=true;
+   if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
+   {
+      bool sent=SendLiveSnapshot();
+      if(sent) g_online=true;
+      g_lastSnapshotMs=now;
+   }
    if(g_lastHistoryAttempt==0 || TimeCurrent()-g_lastHistoryAttempt>=InpHistoryUploadMinutes*60)
    {
       g_lastHistoryAttempt=TimeCurrent();
       SendHistoricalBatch();
    }
-   Comment("AL-ZOOL MT5 LIVE DATA CLIENT\n",g_status,
-           "\nServer: ",BaseUrl(),
-           "\nSymbol: ",_Symbol," | TF: ",EnumToString((ENUM_TIMEFRAMES)_Period),
-           "\nOpen positions: ",IntegerToString(PositionsTotal()),
-           " | Pending orders: ",IntegerToString(OrdersTotal()),
-           "\nTrading execution: DISABLED");
+   Comment("AL-ZOOL MT5 LIVE CLIENT\n",g_status,
+           "\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
+           " / group ",(g_groupCloseEnabled?"ON":"OFF"),
+           "\nPositions: ",IntegerToString(PositionsTotal()),
+           " | Pending: ",IntegerToString(OrdersTotal()));
 }
-void OnTick() {}
-// This client reports data only. It cannot open, close, or modify trades.
+void OnTick()
+{
+   EvaluateAutoClose();
+}
+// Profit targets are evaluated locally on every incoming market tick.
