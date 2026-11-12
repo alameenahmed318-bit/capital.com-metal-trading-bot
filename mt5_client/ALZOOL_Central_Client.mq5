@@ -146,7 +146,7 @@ bool PollTradeSettings()
    string slEnabled=JsonField(response,"stop_loss_enabled");
    if(StringLen(slEnabled)>0) g_serverStopLossEnabled=(StringFind(slEnabled,"true")==0 || StringFind(slEnabled,"1")==0);
    string slMode=JsonField(response,"stop_loss_mode");
-   StringReplace(slMode,"\\\"","");
+   StringReplace(slMode,"\"","");
    if(slMode=="POINTS" || slMode=="ATR") g_serverStopLossMode=slMode;
    double slValue=JsonDouble(response,"stop_loss_value",g_serverStopLossValue);
    if(slValue>0.0) g_serverStopLossValue=slValue;
