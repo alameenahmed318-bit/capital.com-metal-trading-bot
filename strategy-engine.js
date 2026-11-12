@@ -224,6 +224,153 @@
     {id:"atr-squeeze-release",name:"انكماش ATR ثم توسع التقلب",family:"volatility",evaluate:c=>{const a=atrSeries(c.candles,14),now=a.at(-1),prior=a.slice(-11,-1).filter(Number.isFinite),avg=prior.length?prior.reduce((x,y)=>x+y,0)/prior.length:0,compressed=avg>0&&prior.slice(-5).every(x=>x<avg*.85),release=compressed&&now>avg*1.05,body=c.close-Number(c.last.open);return {signal:release&&body>0?SIGNALS.BUY:release&&body<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:release?68:0,reasons:["فحص انكماش ATR14 السابق ثم توسع التقلب الحالي"]};}}
   ];
 
+
+  // Batch 5: strategies 061-200. These are separately numbered parameter
+  // configurations of established indicators, each with its own evaluation.
+  const smaValue=(v,p)=>v.length<p?null:v.slice(-p).reduce((a,b)=>a+b,0)/p;
+  const rsiValue=(v,p)=>{
+    if(v.length<p+1)return null;let g=0,l=0;
+    for(let i=v.length-p;i<v.length;i++){const d=v[i]-v[i-1];g+=Math.max(0,d);l+=Math.max(0,-d);}
+    g/=p;l/=p;return l===0?100:100-100/(1+g/l);
+  };
+  const macdValues=(v,fast,slow,signal)=>{
+    const line=[];
+    for(let i=slow-1;i<v.length;i++){const part=v.slice(0,i+1);line.push(ema(part,fast)-ema(part,slow));}
+    if(line.length<signal+1)return null;
+    const sig=ema(line,signal);
+    return {line:line.at(-1),signal:sig,previous:ema(line.slice(0,-1),signal)};
+  };
+  const bollinger=(v,p,dev)=>{
+    if(v.length<p)return null;const a=v.slice(-p),m=a.reduce((x,y)=>x+y,0)/p;
+    const sd=Math.sqrt(a.reduce((x,y)=>x+(y-m)**2,0)/p);
+    return {mid:m,upper:m+dev*sd,lower:m-dev*sd};
+  };
+  const cciValue=(rows,p)=>{
+    if(rows.length<p)return null;const a=rows.slice(-p).map(x=>(Number(x.high)+Number(x.low)+Number(x.close))/3);
+    const m=a.reduce((x,y)=>x+y,0)/p,md=a.reduce((x,y)=>x+Math.abs(y-m),0)/p;
+    return md?(a.at(-1)-m)/(.015*md):0;
+  };
+  const williamsValue=(rows,p)=>{
+    if(rows.length<p)return null;const a=rows.slice(-p),h=Math.max(...a.map(x=>Number(x.high))),l=Math.min(...a.map(x=>Number(x.low)));
+    return h===l?-50:(h-Number(a.at(-1).close))/(h-l)*-100;
+  };
+  const atrValue=(rows,p)=>{
+    if(rows.length<p+1)return null;let sum=0;
+    for(let i=rows.length-p;i<rows.length;i++)sum+=trueRangeAt(rows,i);
+    return sum/p;
+  };
+  const volumeOf=x=>Number(x.tick_volume??x.volume??NaN);
+  const numbered=(number,slug,name,family,evaluate)=>({
+    id:"strategy-"+String(number).padStart(3,"0")+"-"+slug,
+    name:String(number).padStart(3,"0")+" — "+name,
+    family,evaluate
+  });
+  const batchFiveStrategies=[];
+  const maConfigs=[
+    ["SMA",5,20],["SMA",5,30],["SMA",5,50],["SMA",8,21],["SMA",8,34],
+    ["SMA",10,20],["SMA",10,30],["SMA",10,50],["SMA",15,30],["SMA",15,40],
+    ["SMA",15,50],["SMA",20,40],["SMA",20,50],["SMA",20,60],["SMA",25,50],
+    ["EMA",5,20],["EMA",8,21],["EMA",8,34],["EMA",10,30],["EMA",12,26]
+  ];
+  maConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(61+i,"ma-"+q.join("-").toLowerCase(),q[0]+" "+q[1]+"/"+q[2]+" Crossover","trend",c=>{
+    const v=c.candles.map(x=>Number(x.close)),fn=q[0]==="EMA"?ema:smaValue,a=fn(v,q[1]),b=fn(v,q[2]);
+    return {signal:a===null||b===null?SIGNALS.WAIT:a>b?SIGNALS.BUY:a<b?SIGNALS.SELL:SIGNALS.WAIT,confidence:a===null||b===null?0:66,reasons:["تقاطع "+q[0]+q[1]+" مع "+q[0]+q[2]]};
+  })));
+  const rsiConfigs=[
+    [7,25,75],[7,30,70],[7,35,65],[7,40,60],[9,25,75],
+    [9,30,70],[9,35,65],[9,40,60],[10,30,70],[10,35,65],
+    [14,25,75],[14,30,70],[14,35,65],[14,40,60],[14,20,80],
+    [21,25,75],[21,30,70],[21,35,65],[21,40,60],[21,20,80]
+  ];
+  rsiConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(81+i,"rsi-"+q.join("-"),"RSI "+q[0]+" / "+q[1]+"-"+q[2],"momentum",c=>{
+    const v=c.candles.map(x=>Number(x.close)),r=rsiValue(v,q[0]);
+    return {signal:r===null?SIGNALS.WAIT:r<=q[1]?SIGNALS.BUY:r>=q[2]?SIGNALS.SELL:SIGNALS.WAIT,confidence:r===null?0:Math.min(78,60+Math.max(q[1]-r,r-q[2],0)),reasons:["RSI"+q[0]+" = "+(r===null?"غير متاح":r.toFixed(1))+"؛ حدود "+q[1]+"/"+q[2]]};
+  })));
+  const macdConfigs=[
+    [5,13,4],[5,20,5],[6,19,5],[7,21,5],[8,17,5],
+    [8,21,6],[9,21,7],[10,22,7],[10,30,8],[11,24,7],
+    [12,26,9],[12,30,9],[13,26,8],[14,28,9],[15,30,9],
+    [16,32,9],[18,36,9],[20,40,9],[5,35,5],[8,34,13]
+  ];
+  macdConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(101+i,"macd-"+q.join("-"),"MACD "+q.join("/"),"momentum",c=>{
+    const v=c.candles.map(x=>Number(x.close)),m=macdValues(v,q[0],q[1],q[2]);
+    return {signal:!m?SIGNALS.WAIT:m.line>m.signal&&m.line>0?SIGNALS.BUY:m.line<m.signal&&m.line<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:m?68:0,reasons:["MACD "+q.join("/")+"؛ الخط "+(m?m.line.toFixed(4):"غير متاح")+" وخط الإشارة "+(m?m.signal.toFixed(4):"—")]};
+  })));
+  const bbConfigs=[
+    [10,1.5],[10,2],[10,2.5],[10,3],[14,1.5],
+    [14,2],[14,2.5],[14,3],[20,1.5],[20,2],
+    [20,2.5],[20,3],[24,1.5],[24,2],[24,2.5],
+    [24,3],[30,1.5],[30,2],[30,2.5],[30,3]
+  ];
+  bbConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(121+i,"bollinger-"+q.join("-"),"Bollinger Bands "+q[0]+"/"+q[1],"volatility",c=>{
+    const v=c.candles.map(x=>Number(x.close)),b=bollinger(v,q[0],q[1]),prev=Number(c.candles.at(-2).close);
+    if(!b)return {signal:SIGNALS.WAIT,confidence:0,reasons:["بيانات بولنجر غير كافية"]};
+    const breakout=c.close>b.upper?SIGNALS.BUY:c.close<b.lower?SIGNALS.SELL:SIGNALS.WAIT;
+    const reentry=prev<b.lower&&c.close>b.lower?SIGNALS.BUY:prev>b.upper&&c.close<b.upper?SIGNALS.SELL:SIGNALS.WAIT;
+    const sig=i%2===0?breakout:reentry;
+    return {signal:sig,confidence:sig===SIGNALS.WAIT?0:68,reasons:[i%2===0?"إغلاق خارج حدود Bollinger":"عودة السعر من خارج Bollinger إلى داخل النطاق", "الفترة "+q[0]+" والانحراف "+q[1]]};
+  })));
+  const donchianPeriods=[8,10,12,15,18,20,24,28,30,35,40,45,50,55,60];
+  donchianPeriods.forEach((p,i)=>batchFiveStrategies.push(numbered(141+i,"donchian-"+p,"Donchian Channel Breakout "+p,"breakout",c=>{
+    const a=c.candles.slice(-(p+1),-1);if(a.length<p)return {signal:SIGNALS.WAIT,confidence:0,reasons:["بيانات القناة غير كافية"]};
+    const h=Math.max(...a.map(x=>Number(x.high))),l=Math.min(...a.map(x=>Number(x.low)));
+    return {signal:c.close>h?SIGNALS.BUY:c.close<l?SIGNALS.SELL:SIGNALS.WAIT,confidence:c.close>h||c.close<l?Math.min(80,65+p/5):0,reasons:["كسر أعلى/أدنى "+p+" شمعة سابقة"]};
+  })));
+  const cciConfigs=[
+    [10,100], [10,150], [14,100],[14,150],[14,200],
+    [20,80],[20,100],[20,150],[20,200],[25,100],
+    [25,150],[30,100],[30,150],[40,100],[40,150]
+  ];
+  cciConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(156+i,"cci-"+q.join("-"),"CCI "+q[0]+" / ±"+q[1],"momentum",c=>{
+    const v=cciValue(c.candles,q[0]),t=q[1];
+    return {signal:v===null?SIGNALS.WAIT:v>t?SIGNALS.BUY:v< -t?SIGNALS.SELL:SIGNALS.WAIT,confidence:v===null?0:Math.abs(v)>=t?67:0,reasons:["CCI"+q[0]+" = "+(v===null?"غير متاح":v.toFixed(1))+"؛ العتبة ±"+t]};
+  })));
+  const williamsConfigs=[
+    [7, -20,-80],[10,-20,-80],[14,-20,-80],[14,-15,-85],[14,-25,-75],
+    [20,-20,-80],[20,-15,-85],[21,-20,-80],[28,-20,-80],[28,-10,-90],
+    [35,-20,-80],[35,-15,-85],[40,-20,-80],[50,-20,-80],[50,-10,-90]
+  ];
+  williamsConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(171+i,"williams-r-"+q.join("-").replaceAll("-","m"),"Williams %R "+q[0]+" / "+q[1]+".."+q[2],"momentum",c=>{
+    const v=williamsValue(c.candles,q[0]);
+    return {signal:v===null?SIGNALS.WAIT:v<=q[2]?SIGNALS.BUY:v>=q[1]?SIGNALS.SELL:SIGNALS.WAIT,confidence:v===null?0:66,reasons:["Williams %R"+q[0]+" = "+(v===null?"غير متاح":v.toFixed(1))]};
+  })));
+  const rocPeriods=[5,8,10,14,20];
+  rocPeriods.forEach((p,i)=>batchFiveStrategies.push(numbered(186+i,"roc-"+p,"Rate of Change "+p,"momentum",c=>{
+    const v=c.candles.map(x=>Number(x.close)),base=v.at(-(p+1)),roc=base?((c.close-base)/base)*100:null;
+    return {signal:roc===null?SIGNALS.WAIT:roc>0?SIGNALS.BUY:roc<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:roc===null?0:Math.min(72,55+Math.abs(roc)*10),reasons:["ROC"+p+" = "+(roc===null?"غير متاح":roc.toFixed(3)+"%")]};
+  })));
+  const atrConfigs=[[7,1.2],[10,1.5],[14,1.5],[14,2],[20,2]];
+  atrConfigs.forEach((q,i)=>batchFiveStrategies.push(numbered(191+i,"atr-channel-"+q.join("-"),"ATR Channel "+q[0]+" / "+q[1],"volatility",c=>{
+    const a=atrValue(c.candles,q[0]),mid=ema(c.candles.map(x=>Number(x.close)),20);
+    if(a===null||mid===null)return {signal:SIGNALS.WAIT,confidence:0,reasons:["بيانات ATR غير كافية"]};
+    const upper=mid+a*q[1],lower=mid-a*q[1];
+    return {signal:c.close>upper?SIGNALS.BUY:c.close<lower?SIGNALS.SELL:SIGNALS.WAIT,confidence:c.close>upper||c.close<lower?69:0,reasons:["قناة EMA20 ± ATR"+q[0]+" × "+q[1]]};
+  })));
+  const volumeConfigs=["obv-slope-5","obv-slope-10","mfi-14","cmf-20","vwma-20"];
+  volumeConfigs.forEach((mode,i)=>batchFiveStrategies.push(numbered(196+i,mode,"تحليل الحجم "+mode.toUpperCase(),"volume",c=>{
+    const r=c.candles,vols=r.map(volumeOf),valid=vols.every(Number.isFinite)&&vols.some(x=>x>0);
+    if(!valid)return {signal:SIGNALS.WAIT,confidence:0,reasons:["بيانات Tick Volume/Volume غير متاحة؛ لا تصدر الاستراتيجية إشارة"]};
+    if(mode.startsWith("obv")){
+      const n=Number(mode.split("-").at(-1)),obv=[0];
+      for(let j=1;j<r.length;j++)obv.push(obv[j-1]+(Number(r[j].close)>Number(r[j-1].close)?vols[j]:Number(r[j].close)<Number(r[j-1].close)?-vols[j]:0));
+      const delta=obv.at(-1)-obv.at(-(n+1));
+      return {signal:delta>0?SIGNALS.BUY:delta<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:delta===0?0:64,reasons:["اتجاه OBV خلال "+n+" شموع"]};
+    }
+    if(mode==="mfi-14"){
+      let pos=0,neg=0;for(let j=r.length-14;j<r.length;j++){if(j<1)continue;const tp=x=>(Number(x.high)+Number(x.low)+Number(x.close))/3,flow=tp(r[j])*vols[j];if(tp(r[j])>tp(r[j-1]))pos+=flow;else if(tp(r[j])<tp(r[j-1]))neg+=flow;}
+      const mfi=neg===0?100:100-100/(1+pos/neg);
+      return {signal:mfi<20?SIGNALS.BUY:mfi>80?SIGNALS.SELL:SIGNALS.WAIT,confidence:mfi<20||mfi>80?66:0,reasons:["Money Flow Index 14 = "+mfi.toFixed(1)]};
+    }
+    if(mode==="cmf-20"){
+      const p=r.slice(-20);let mf=0,v=0;for(let j=0;j<p.length;j++){const x=p[j],h=Number(x.high),l=Number(x.low),cl=Number(x.close),vv=vols.at(-20+j),mult=h===l?0:((cl-l)-(h-cl))/(h-l);mf+=mult*vv;v+=vv;}
+      const cmf=v?mf/v:0;return {signal:cmf>.05?SIGNALS.BUY:cmf<-.05?SIGNALS.SELL:SIGNALS.WAIT,confidence:Math.abs(cmf)>.05?65:0,reasons:["Chaikin Money Flow 20 = "+cmf.toFixed(3)]};
+    }
+    const p=r.slice(-20);let pv=0,v=0;for(const x of p){const vv=volumeOf(x),tp=(Number(x.high)+Number(x.low)+Number(x.close))/3;pv+=tp*vv;v+=vv;}
+    const vwma=v?pv/v:null;return {signal:vwma===null?SIGNALS.WAIT:c.close>vwma?SIGNALS.BUY:c.close<vwma?SIGNALS.SELL:SIGNALS.WAIT,confidence:vwma===null?0:61,reasons:["السعر مقابل VWMA20 "+(vwma===null?"غير متاح":vwma.toFixed(3))]};
+  })));
+  if(batchFiveStrategies.length!==140)throw new Error("Batch 5 must contain exactly 140 strategies; got "+batchFiveStrategies.length);
+
+
   const registry = new Map();
   function register(strategy) {
     if (!strategy || !strategy.id || !strategy.name || !strategy.family || typeof strategy.evaluate !== "function")
@@ -236,6 +383,7 @@
   extraStrategies.forEach(register);
   batchThreeStrategies.forEach(register);
   batchFourStrategies.forEach(register);
+  batchFiveStrategies.forEach(register);
 
   function evaluate(market) {
     const candles = Array.isArray(market && market.candles) ? market.candles : [];
