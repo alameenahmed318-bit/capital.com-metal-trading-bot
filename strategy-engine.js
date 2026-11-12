@@ -145,9 +145,14 @@
     }
     const context = Object.freeze({ ...z, market });
     const votes = Array.from(registry.values()).map(strategy => {
-      const result = strategy.evaluate(context);
-      return { id: strategy.id, name: strategy.name, family: strategy.family,
-        vote: result.signal, why: result.reasons.join("؛ "), confidence: result.confidence };
+      try {
+        const result = strategy.evaluate(context);
+        return { id: strategy.id, name: strategy.name, family: strategy.family,
+          vote: result.signal, why: (result.reasons || []).join("؛ "), confidence: result.confidence || 0 };
+      } catch (error) {
+        return { id: strategy.id, name: strategy.name, family: strategy.family,
+          vote: SIGNALS.WAIT, why: "تعذر تقييم هذه الاستراتيجية: " + String(error && error.message || error), confidence: 0 };
+      }
     });
     const buy = votes.filter(vote => vote.vote === SIGNALS.BUY).length;
     const sell = votes.filter(vote => vote.vote === SIGNALS.SELL).length;
