@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#11121b"><title>AL-ZOOL | إدارة التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/trade-management.css?v=2">
+<link rel="stylesheet" href="/trade-management.css?v=3">
 </head>
 <body>
 <div class="shell">
@@ -40,12 +40,12 @@
    <article class="close-option">
     <div class="close-option-head"><div><b>الخيار الأول · الصفقة الفردية</b><small>يغلق الصفقة التي تصل وحدها إلى هدف الربح المحدد</small></div><label class="switch"><input type="checkbox" id="singleEnabled"><span></span></label></div>
     <label for="singleTarget">هدف ربح الصفقة الواحدة — بعملة الحساب</label>
-    <input id="singleTarget" type="number" min="0.01" step="0.01" value="1">
+    <input id="singleTarget" type="text" inputmode="decimal" lang="en" dir="ltr" min="0.01" step="0.01" value="1">
    </article>
    <article class="close-option">
     <div class="close-option-head"><div><b>الخيار الثاني · مجموعة الصفقات</b><small>لا يعمل إلا عند وجود صفقتين مفتوحتين أو أكثر، ويغلقها كلها</small></div><label class="switch"><input type="checkbox" id="groupEnabled"><span></span></label></div>
     <label for="groupTarget">هدف ربح إجمالي المجموعة — بعملة الحساب</label>
-    <input id="groupTarget" type="number" min="0.01" step="0.01" value="5">
+    <input id="groupTarget" type="text" inputmode="decimal" lang="en" dir="ltr" min="0.01" step="0.01" value="5">
    </article>
   </div>
   <div class="close-actions"><button id="saveCloseSettings" class="refresh">حفظ إعدادات الإغلاق</button><span id="closeSettingsMessage" role="status">الخياران متوقفان افتراضيًا حتى تفعّلهما بنفسك.</span></div>
@@ -74,5 +74,6 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=3"></script>
+<script src="/numbers-en.js?v=1"></script>
 </body></html>
