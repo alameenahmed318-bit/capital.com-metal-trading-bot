@@ -36,7 +36,7 @@
   </article>
   <article class="card status-card"><div class="card-title"><div><span class="eyebrow">حالة البنية</span><h2>حالة الأنظمة</h2></div><span class="shield">◆</span></div>
    <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من آخر نبضة</small></div><span id="mt5Status" class="state pending">يفحص</span></div>
-   <div class="status-row"><div><b>التداول الآلي</b><small>لا توجد واجهة تحكم تداول مرتبطة حالياً</small></div><span class="state muted">غير مربوط</span></div>
+   <div class="status-row auto-trading-row"><div><b>التداول الآلي</b><small id="autoTradingHelp">تحكم مباشر في السماح بفتح صفقات جديدة</small></div><label class="auto-switch" aria-label="تفعيل التداول الآلي"><input type="checkbox" id="autoTradingEnabled" disabled><span></span></label><span id="autoTradingState" class="state muted">جارٍ الفحص</span></div><p class="auto-note">عند الإيقاف لا تُفتح صفقات جديدة، وتستمر إدارة الصفقات المفتوحة وأهداف الإغلاق. يلزم اتصال MT5 وتفعيل Algo Trading.</p>
    <p class="muted" id="dailyMeta">الأرقام من الصفقات المغلقة في MT5 بتوقيت الإمارات.</p></article>
  </section>
  <section class="card history-card"><div class="card-title"><div><span class="eyebrow">سجل MT5</span><h2>آخر الصفقات المغلقة</h2></div><span class="market-tag">آخر 30 يوماً</span></div><div class="table-scroll"><table class="history-table"><thead><tr><th>الوقت</th><th>الرمز</th><th>الاتجاه</th><th>الحجم</th><th>الصافي</th></tr></thead><tbody id="closedTrades"><tr><td colspan="5" class="empty-cell">بانتظار سجل الصفقات المغلقة من MT5</td></tr></tbody></table></div></section>
