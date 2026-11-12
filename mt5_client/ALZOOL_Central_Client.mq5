@@ -1,11 +1,14 @@
 //+------------------------------------------------------------------+
 //| AL-ZOOL MT5 LIVE DATA CLIENT                                      |
-//| Sends account, positions, pending orders, tick and candles only.  |
-//| Keeps the existing licence/connection protocol. NO trade actions.|
+//| Sends MT5 telemetry and applies user-configured profit closes.    |
+//| Existing licence protocol retained; closes are evaluated locally. |
 //+------------------------------------------------------------------+
 #property strict
-#property version "2.20"
-#property description "AL-ZOOL MT5 live telemetry client - no trade execution"
+#include <Trade/Trade.mqh>
+
+CTrade g_trade;
+#property version "2.30"
+#property description "AL-ZOOL MT5 telemetry and local profit protection"
 
 input group "بيانات الاتصال بالخادم"
 input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
@@ -21,6 +24,9 @@ input int InpHistoryUploadMinutes = 15;
 bool g_online=false;
 datetime g_lastHistoryAttempt=0;
 string g_status="بدء الاتصال";
+bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
+double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
+ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0;
 
 string BaseUrl()
 {
@@ -56,6 +62,98 @@ bool HttpGet(const string url)
       return false;
    }
    return true;
+}
+string JsonField(const string json,const string key)
+{
+   string needle="\\""+key+"\\":";
+   int p=StringFind(json,needle);
+   if(p<0) return "";
+   p+=StringLen(needle);
+   while(p<StringLen(json) && (StringGetCharacter(json,p)==32 || StringGetCharacter(json,p)==9)) p++;
+   int e=p;
+   while(e<StringLen(json) && StringGetCharacter(json,e)!=44 && StringGetCharacter(json,e)!=125) e++;
+   return StringSubstr(json,p,e-p);
+}
+bool JsonBool(const string json,const string key)
+{
+   string v=JsonField(json,key);
+   return (StringFind(v,"true")==0 || StringFind(v,"1")==0);
+}
+double JsonDouble(const string json,const string key,double fallback)
+{
+   string v=JsonField(json,key);
+   if(StringLen(v)==0) return fallback;
+   double n=StringToDouble(v);
+   return (MathIsValidNumber(n) ? n : fallback);
+}
+bool PollTradeSettings()
+{
+   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   char data[],result[];
+   ArrayResize(data,0);
+   string headers="Authorization: Bearer "+InpEngineToken+"\\r\\n";
+   string response_headers;
+   ResetLastError();
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
+                       headers,1500,data,result,response_headers);
+   if(code!=200)
+   {
+      Print("AL-ZOOL trade settings poll failed: HTTP=",code," err=",GetLastError());
+      return false;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   g_singleCloseEnabled=JsonBool(response,"single_enabled");
+   g_groupCloseEnabled=JsonBool(response,"group_enabled");
+   g_singleProfitTarget=JsonDouble(response,"single_profit_target",1.0);
+   g_groupProfitTarget=JsonDouble(response,"group_profit_target",5.0);
+   if(g_singleProfitTarget<=0) g_singleCloseEnabled=false;
+   if(g_groupProfitTarget<=0) g_groupCloseEnabled=false;
+   return true;
+}
+void EvaluateAutoClose()
+{
+   int total=PositionsTotal();
+   if(total<=0) return;
+   double groupNet=0.0;
+   for(int i=total-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      groupNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+   }
+   // Group rule has priority: with 2+ positions, reaching its target closes all.
+   if(g_groupCloseEnabled && total>=2 && groupNet>=g_groupProfitTarget)
+   {
+      Print("AL-ZOOL GROUP PROFIT TARGET reached: ",DoubleToString(groupNet,2),
+            " >= ",DoubleToString(g_groupProfitTarget,2),". Closing all open positions.");
+      for(int j=PositionsTotal()-1;j>=0;j--)
+      {
+         ulong ticket=PositionGetTicket(j);
+         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+         if(!g_trade.PositionClose(ticket))
+            Print("AL-ZOOL group close failed ticket ",ticket," retcode=",g_trade.ResultRetcode(),
+                  " ",g_trade.ResultRetcodeDescription());
+      }
+      return;
+   }
+   // Independent single-position target: close only the qualifying position.
+   if(g_singleCloseEnabled)
+   {
+      for(int k=PositionsTotal()-1;k>=0;k--)
+      {
+         ulong ticket=PositionGetTicket(k);
+         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+         double net=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+         if(net>=g_singleProfitTarget)
+         {
+            Print("AL-ZOOL SINGLE PROFIT TARGET reached ticket ",ticket,": ",
+                  DoubleToString(net,2)," >= ",DoubleToString(g_singleProfitTarget,2));
+            if(!g_trade.PositionClose(ticket))
+               Print("AL-ZOOL single close failed ticket ",ticket," retcode=",g_trade.ResultRetcode(),
+                     " ",g_trade.ResultRetcodeDescription());
+         }
+      }
+   }
 }
 void AppendCandle(string &out,const MqlRates &bar,int digits)
 {
@@ -298,9 +396,10 @@ int OnInit()
       Print("AL-ZOOL: heartbeat >=5s, live candles 20..120, history 20..10000, history interval >=5 minutes");
       return INIT_PARAMETERS_INCORRECT;
    }
-   EventSetTimer(InpHeartbeatSeconds);
-   g_status="تم تشغيل عميل البيانات المباشرة";
-   Print("AL-ZOOL LIVE TELEMETRY: account/positions/orders/candles only. No trading functions.");
+   g_trade.SetAsyncMode(false);
+   EventSetTimer(1);
+   g_status="تم تشغيل بيانات MT5 وحماية الأرباح المحلية";
+   Print("AL-ZOOL MT5 client started: local profit protection is OFF until enabled in Trade Management.");
    return INIT_SUCCEEDED;
 }
 void OnDeinit(const int reason)
