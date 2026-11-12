@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#11121b"><title>AL-ZOOL | إدارة التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/trade-management.css?v=1">
+<link rel="stylesheet" href="/trade-management.css?v=2">
 </head>
 <body>
 <div class="shell">
@@ -34,6 +34,23 @@
  <nav class="section-nav" aria-label="أقسام إدارة التداول">
   <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#pending">الأوامر المعلقة</a>
  </nav>
+ <section class="card" id="autoClose">
+  <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>أهداف الإغلاق التلقائي</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
+  <div class="close-grid">
+   <article class="close-option">
+    <div class="close-option-head"><div><b>الخيار الأول · الصفقة الفردية</b><small>يغلق الصفقة التي تصل وحدها إلى هدف الربح المحدد</small></div><label class="switch"><input type="checkbox" id="singleEnabled"><span></span></label></div>
+    <label for="singleTarget">هدف ربح الصفقة الواحدة — بعملة الحساب</label>
+    <input id="singleTarget" type="number" min="0.01" step="0.01" value="1">
+   </article>
+   <article class="close-option">
+    <div class="close-option-head"><div><b>الخيار الثاني · مجموعة الصفقات</b><small>لا يعمل إلا عند وجود صفقتين مفتوحتين أو أكثر، ويغلقها كلها</small></div><label class="switch"><input type="checkbox" id="groupEnabled"><span></span></label></div>
+    <label for="groupTarget">هدف ربح إجمالي المجموعة — بعملة الحساب</label>
+    <input id="groupTarget" type="number" min="0.01" step="0.01" value="5">
+   </article>
+  </div>
+  <div class="close-actions"><button id="saveCloseSettings" class="refresh">حفظ إعدادات الإغلاق</button><span id="closeSettingsMessage" role="status">الخياران متوقفان افتراضيًا حتى تفعّلهما بنفسك.</span></div>
+  <p class="section-note">عند تفعيل الخيارين معًا، يملك هدف المجموعة أولوية إذا تحقق مع وجود صفقتين أو أكثر. تُحسب الأهداف بصافي الربح العائم (الربح + السواب) بعملة الحساب. التنفيذ يتم داخل MT5 عند وصول tick، وليس من المتصفح؛ يلزم تثبيت نسخة عميل MT5 المحدّثة وتفعيل Algo Trading. لا يوجد ضمان لسعر الإغلاق أو انعدام الانزلاق.</p>
+ </section>
  <section class="card" id="positions">
   <div class="card-title"><div><span class="eyebrow">مراكز الحساب</span><h2>الصفقات المفتوحة</h2></div><span class="count-chip" id="positionsLabel">0 صفقة</span></div>
   <div class="table-scroll"><table><thead><tr><th>التذكرة</th><th>الرمز</th><th>الاتجاه</th><th>اللوت</th><th>سعر الدخول</th><th>السعر الحالي</th><th>وقف الخسارة</th><th>جني الربح</th><th>الربح العائم</th></tr></thead><tbody id="positionsBody"><tr><td colspan="9" class="empty-cell">بانتظار بيانات الصفقات من MT5</td></tr></tbody></table></div>
@@ -57,5 +74,5 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=2"></script>
 </body></html>
