@@ -1,12 +1,45 @@
-let supabaseClient=null,accessToken=null;
+let supabaseClient=null,accessToken=null,mt5Connected=false,autoTradingBusy=false;
 const $=id=>document.getElementById(id);
-async function api(path){
- const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{}});
+async function api(path,options={}){
+ const headers={...(accessToken?{Authorization:"Bearer "+accessToken}:{}),...(options.headers||{})};
+ const r=await fetch(path,{...options,headers});
  const d=await r.json().catch(()=>({}));
  if(!r.ok)throw new Error(d.error||"API "+r.status);
  return d;
 }
 function setState(id,text,kind){const el=$(id);el.textContent=text;el.className="state "+kind;}
+async function refreshAutoTrading(){
+ const toggle=$("autoTradingEnabled"),state=$("autoTradingState"),help=$("autoTradingHelp");
+ if(!toggle||!state||!help)return;
+ try{
+  const d=await api("/api/auto-trading");
+  toggle.checked=!!d.trading_enabled;
+  toggle.disabled=!mt5Connected||autoTradingBusy;
+  state.textContent=d.trading_enabled?"مفعّل":"متوقف";
+  state.className="state "+(d.trading_enabled?"active":"muted");
+  help.textContent=mt5Connected?"التحكم مربوط بالخادم وMT5": "اتصل بـ MT5 أولاً لتفعيل التداول الآلي";
+ }catch(e){
+  toggle.disabled=true;state.textContent="غير مربوط";state.className="state muted";help.textContent=e.message;
+ }
+}
+async function changeAutoTrading(){
+ const toggle=$("autoTradingEnabled");if(!toggle||autoTradingBusy)return;
+ const requested=toggle.checked;autoTradingBusy=true;toggle.disabled=true;
+ try{
+  const d=await api("/api/auto-trading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled:requested})});
+  toggle.checked=!!d.trading_enabled;
+  $("autoTradingState").textContent=d.trading_enabled?"مفعّل":"متوقف";
+  $("autoTradingState").className="state "+(d.trading_enabled?"active":"muted");
+  $("autoTradingHelp").textContent=d.message||"تم حفظ حالة التداول الآلي";
+ }catch(e){
+  toggle.checked=!requested;
+  $("autoTradingState").textContent="لم يتم التغيير";
+  $("autoTradingState").className="state muted";
+  $("autoTradingHelp").textContent=e.message;
+ }finally{
+  autoTradingBusy=false;toggle.disabled=!mt5Connected;
+ }
+}
 function setFloatingColor(el,value){el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");const n=Number(value);el.classList.add(!Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative");}
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 async function boot(){
@@ -30,6 +63,7 @@ async function refresh(){
  const fmt=v=>v==null?"—":new Intl.NumberFormat("en-US",{maximumFractionDigits:2}).format(v);
  try{
   const d=await api("/api/connection/status");
+  mt5Connected=!!d.connected;
   if(d.connected){
    setState("mt5Status","متصل","pending");
    const a=d.connection?.account||{};
@@ -130,6 +164,7 @@ async function runAiAnalysis(){
  finally{btn.disabled=false;btn.textContent="تحليل الذهب الآن";}
 }
 const aiAnalyzeButton=$("aiAnalyzeBtn");if(aiAnalyzeButton)aiAnalyzeButton.addEventListener("click",runAiAnalysis);
+const autoTradingToggle=$("autoTradingEnabled");if(autoTradingToggle)autoTradingToggle.addEventListener("change",changeAutoTrading);
 
 $("refreshBtn").addEventListener("click",refresh);
 boot();
