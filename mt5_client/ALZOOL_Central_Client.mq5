@@ -110,6 +110,19 @@ bool PollTradeSettings()
    if(g_groupProfitTarget<=0) g_groupCloseEnabled=false;
    return true;
 }
+bool ClosePositionTicket(const ulong ticket,const string scope)
+{
+   bool sent=g_trade.PositionClose(ticket);
+   uint retcode=g_trade.ResultRetcode();
+   if(!sent || (retcode!=TRADE_RETCODE_DONE && retcode!=TRADE_RETCODE_DONE_PARTIAL))
+   {
+      Print("AL-ZOOL ",scope," close failed ticket ",ticket,
+            " retcode=",retcode," ",g_trade.ResultRetcodeDescription());
+      return false;
+   }
+   Print("AL-ZOOL ",scope," close accepted ticket ",ticket," retcode=",retcode);
+   return true;
+}
 void EvaluateAutoClose()
 {
    int total=PositionsTotal();
@@ -130,9 +143,7 @@ void EvaluateAutoClose()
       {
          ulong ticket=PositionGetTicket(j);
          if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-         if(!g_trade.PositionClose(ticket))
-            Print("AL-ZOOL group close failed ticket ",ticket," retcode=",g_trade.ResultRetcode(),
-                  " ",g_trade.ResultRetcodeDescription());
+         ClosePositionTicket(ticket,"group");
       }
       return;
    }
@@ -148,9 +159,7 @@ void EvaluateAutoClose()
          {
             Print("AL-ZOOL SINGLE PROFIT TARGET reached ticket ",ticket,": ",
                   DoubleToString(net,2)," >= ",DoubleToString(g_singleProfitTarget,2));
-            if(!g_trade.PositionClose(ticket))
-               Print("AL-ZOOL single close failed ticket ",ticket," retcode=",g_trade.ResultRetcode(),
-                     " ",g_trade.ResultRetcodeDescription());
+            ClosePositionTicket(ticket,"single");
          }
       }
    }
