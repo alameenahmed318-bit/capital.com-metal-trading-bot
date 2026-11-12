@@ -35,7 +35,7 @@ async function applyLearningOverlay(fast,market){
  try{
   if(!learningCache||Date.now()-learningFetchedAt>60000){const data=await api("/api/backtest/learning?limit=20");learningCache=data.runs||[];learningFetchedAt=Date.now()}
   const candidates=learningCache.filter(r=>r.symbol===market.symbol&&r.timeframe===market.timeframe&&String(r.account_currency||"")===String(market.account_currency||""));
-  const latest=candidates[0],same=(a,b)=>Math.abs(Number(a||0)-Number(b||0))<1e-8,sim=latest?.diagnostics?.simulation||{};
+  const latest=candidates.find(r=>r.diagnostics?.simulation),same=(a,b)=>Math.abs(Number(a||0)-Number(b||0))<1e-8,sim=latest?.diagnostics?.simulation||{};
   const runs=latest?candidates.filter(r=>{
    const x=r.diagnostics?.simulation||{};
    return same(r.lot_size,latest.lot_size)&&same(r.commission_per_lot,latest.commission_per_lot)&&same(r.slippage_points,latest.slippage_points)&&
