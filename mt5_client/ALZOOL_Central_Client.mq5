@@ -89,7 +89,8 @@ bool SendHistoricalBatch()
    body+=",\"point_size\":"+JNum(point,10);
    body+=",\"tick_size\":"+JNum(tick_size,10);
    body+=",\"tick_value\":"+JNum(tick_value,10);
-   body+=",\"contract_size\":"+JNum(contract_size,8)+"}";
+   body+=",\"contract_size\":"+JNum(contract_size,8);
+   body+=",\"account_currency\":\""+JsonEscape(AccountInfoString(ACCOUNT_CURRENCY))+"\"}";
    body+=",\"candles\":[";
    int sent=0;
    // MQL5 series indexing: highest index is oldest, so upload chronologically.
