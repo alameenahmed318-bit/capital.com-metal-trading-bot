@@ -79,7 +79,7 @@ async function boot(){
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
   await api("/api/access/check");
-  await loadCloseSettings();
+  try{await loadCloseSettings();}catch(settingsError){$("closeSettingsMessage").textContent=settingsError.message;}
   await refresh();
  }catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+esc(e.message)+" — ارجع إلى صفحة الدخول.</span>";}
 }
