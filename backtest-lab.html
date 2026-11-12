@@ -57,7 +57,11 @@ function buildLearningPolicy(runs,current){
   run.symbol===current.symbol&&run.timeframe===current.timeframe&&
   String(run.account_currency||"")===String(current.account_currency||"")&&
   same(run.lot_size,current.lot_size)&&same(run.commission_per_lot,current.commission_per_lot)&&
-  same(run.slippage_points,current.slippage_points));
+  same(run.slippage_points,current.slippage_points)&&
+  same(run.diagnostics?.simulation?.stop_atr,current.stop_atr)&&
+  same(run.diagnostics?.simulation?.target_atr,current.target_atr)&&
+  same(run.diagnostics?.simulation?.trailing_atr,current.trailing_atr)&&
+  same(run.diagnostics?.simulation?.max_holding_bars,current.max_holding_bars));
  for(const run of comparable.slice(0,20)){
   for(const item of [...(run.strategy_results||[]),...(run.combination_results||[])]){
    const v=item.validation||{};if(!v.n)continue;
@@ -164,7 +168,7 @@ async function run(){
   const combinations=new Map();let strategyTrades=0,strategyNet=0,suppressedSignals=0;
   const currency=candles.at(-1).currency||"عملة الحساب";
   const priorLearning=await api("/api/backtest/learning?limit=100");
-  const policy=buildLearningPolicy(priorLearning.runs||[],{symbol,timeframe:tf,account_currency:currency,lot_size:lot,commission_per_lot:commission,slippage_points:slippage});
+  const policy=buildLearningPolicy(priorLearning.runs||[],{symbol,timeframe:tf,account_currency:currency,lot_size:lot,commission_per_lot:commission,slippage_points:slippage,stop_atr:slAtr,target_atr:tpAtr,trailing_atr:trailAtr,max_holding_bars:maxHoldBars});
   const start=50,end=candles.length-1,points=end-start,validationStart=start+Math.floor(points*.7);
   const strategyPositions=new Map(),comboPositions=new Map();
   for(let i=start;i<end;i++){
