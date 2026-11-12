@@ -202,7 +202,7 @@ class Handler(SimpleHTTPRequestHandler):
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path in ("/health","/api/health"):
-            return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Licensing","mt5_connection_api":True,"trading_engine":False})
+            return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Central Strategy Execution","mt5_connection_api":True,"trading_engine":True,"execution_location":"licensed MT5 terminal"})
         if path=="/api/config":
             return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
         if path=="/api/access/check":
@@ -325,13 +325,16 @@ class Handler(SimpleHTTPRequestHandler):
             if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                 return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
             decision=item.get("strategy_decision") or {}
-            return self.send_json(200,{"signal":decision.get("decision","WAIT"),
-                "confidence":decision.get("confidence",0.0),
-                "reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
-                "strategy_name":decision.get("strategy_name",""),
-                "bar_time":decision.get("bar_time",0),
-                "execution_ready":False,
-                "message":"إشارة تحليلية فقط؛ تنفيذ أوامر التداول غير مفعّل في هذا الإصدار"})
+            confidence=finite_number(decision.get("confidence",0.0))
+            signal=str(decision.get("decision","WAIT"))
+            strategy_id=int(finite_number(decision.get("strategy_id",0)))
+            ready=(signal in ("BUY","SELL") and confidence>=0.55 and
+                   1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
+            return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
+                "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
+                "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
+                "bar_time":decision.get("bar_time",0),"execution_ready":ready,"minimum_confidence":0.55,
+                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else "لا توجد إشارة مستوفية لشروط الدخول"})
         if path=="/api/market/context":
             try:
                 import time
