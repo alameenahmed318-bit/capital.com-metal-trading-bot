@@ -12,7 +12,7 @@
 <script>
 let accessToken=null,autoTimer=null,analysisRunning=false,autoEnabled=false,aiRunning=false,lastAiAt=0;
 const $=id=>document.getElementById(id),OLLAMA_URL="http://127.0.0.1:11434",MODEL="qwen2.5:3b";
-let diagStarted=0,diagRows=[];
+let diagStarted=0,diagRows=[],learningCache=null,learningFetchedAt=0;
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function diagReset(){diagStarted=performance.now();diagRows=[];diagRender()}
 function diagAdd(name,start,detail=""){diagRows.push({name,ms:Math.round(performance.now()-start),detail});diagRender()}
@@ -33,7 +33,8 @@ if(target)target.innerHTML="<b>شرح AI المساعد (لا يغيّر الإ�
 async function applyLearningOverlay(fast,market){
  const rawSignal=fast.signal,weights={},totals={};
  try{
-  const data=await api("/api/backtest/learning?limit=20"),runs=(data.runs||[]).filter(r=>r.symbol===market.symbol&&r.timeframe===market.timeframe&&String(r.account_currency||"")===String(market.account_currency||""));
+  if(!learningCache||Date.now()-learningFetchedAt>60000){const data=await api("/api/backtest/learning?limit=20");learningCache=data.runs||[];learningFetchedAt=Date.now()}
+  const runs=learningCache.filter(r=>r.symbol===market.symbol&&r.timeframe===market.timeframe&&String(r.account_currency||"")===String(market.account_currency||""));
   for(const run of runs){
    for(const model of [...(run.strategy_results||[]),...(run.combination_results||[])]){
     const v=model.validation||{};if(!Number(v.n||0))continue;
