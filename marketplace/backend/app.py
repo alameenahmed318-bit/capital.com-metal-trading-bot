@@ -215,7 +215,7 @@ class Handler(SimpleHTTPRequestHandler):
                         "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management,updated_at&limit=1",admin=True)
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
-                    "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0},"updated_at":None
+                    "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0},"updated_at":None}
                 return self.send_json(200,{"client_id":client_id,"settings":settings})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
