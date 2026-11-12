@@ -7,7 +7,7 @@
 <section class="card ai-card"><div class="card-title"><div><span class="eyebrow">LOCAL MODEL</span><h2>محرك Qwen 2.5 · 3B</h2></div><span class="market-tag">Ollama · محلي</span></div><div class="ai-toolbar"><div><b id="aiModelLabel">qwen2.5:3b</b><small id="aiHelp">يتم التحقق من Ollama وبيانات MT5…</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="aiAnalyzeBtn" class="refresh" type="button">تحليل الذهب الآن</button><button id="autoToggleBtn" class="refresh" type="button">إيقاف التحليل التلقائي</button><button id="diagToggleBtn" class="refresh" type="button">تشخيص سبب التأخير</button></div></div><div id="aiResult" class="ai-result"><div class="ai-placeholder">جارٍ التحقق من تسجيل الدخول واتصال النموذج المحلي.</div></div><div id="diagPanel" style="display:none;margin-top:14px;padding:14px;border:1px solid #34364a;border-radius:12px;background:#171824"><b>تشخيص أداء التحليل</b><div id="diagSummary" style="margin-top:8px;color:#c8c8d8;font-size:13px">لم يبدأ التشخيص بعد.</div><ol id="diagRows" style="margin:8px 18px 0 0;color:#c8c8d8;font-size:12px;line-height:1.9"></ol></div><p class="chart-foot">يعتمد التحليل على آخر 100 شمعة مستلمة من MT5 عند توفرها. لا توجد ضمانات للربح، ولا يتم تنفيذ أي قرار تلقائياً.</p></section>
 <footer>AL-ZOOL GOLD SNIPER <span>•</span> صفحة تحليل الذهب المستقلة</footer></main></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/strategy-engine.js?v=1"></script>
+<script src="/strategy-engine.js?v=2"></script>
 <script>
 let accessToken=null,autoTimer=null,analysisRunning=false,autoEnabled=false,aiRunning=false,lastAiAt=0;
 const $=id=>document.getElementById(id),OLLAMA_URL="http://127.0.0.1:11434",MODEL="qwen2.5:3b";
