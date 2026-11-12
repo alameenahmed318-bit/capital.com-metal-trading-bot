@@ -493,26 +493,40 @@ class Handler(SimpleHTTPRequestHandler):
                     pid=str(deal.get("position_id") or deal.get("ticket") or record.get("deal_time") or "")
                     if not pid: continue
                     row=grouped.setdefault(pid,{"position_id":pid,"symbol":str(deal.get("symbol") or ""),
-                        "side":"غير محدد","volume":0.0,"net":0.0,"time":0,"ticket":str(deal.get("ticket") or "")})
+                        "side":"غير محدد","volume":0.0,"open_volume":0.0,"close_volume":0.0,
+                        "side_priority":0,"net":0.0,"time":0,"ticket":str(deal.get("ticket") or "")})
                     net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
                          finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
                     row["net"]+=net
                     entry=int(finite_number(deal.get("entry"),-1))
                     deal_type=int(finite_number(deal.get("deal_type",deal.get("type",-1)),-1))
+                    volume=finite_number(deal.get("volume"))
                     if entry==0:
                         row["side"]="شراء" if deal_type==0 else "بيع" if deal_type==1 else row["side"]
-                        row["volume"]+=finite_number(deal.get("volume"))
-                    elif row["volume"]==0:
-                        row["volume"]=max(row["volume"],finite_number(deal.get("volume")))
+                        row["side_priority"]=2
+                        row["open_volume"]+=volume
+                    elif entry in (1,3):
+                        if row["side_priority"]<2:
+                            row["side"]="شراء" if deal_type==1 else "بيع" if deal_type==0 else row["side"]
+                            row["side_priority"]=1
+                        row["close_volume"]+=volume
                     stamp=int(finite_number(deal.get("time")))
                     if not stamp and record.get("deal_time"):
                         try: stamp=int(datetime.fromisoformat(record["deal_time"].replace("Z","+00:00")).timestamp())
                         except Exception: stamp=0
                     row["time"]=max(row["time"],stamp)
                     if not row["symbol"]: row["symbol"]=str(deal.get("symbol") or "")
+                for row in grouped.values():
+                    row["volume"]=row.pop("open_volume") or row.pop("close_volume")
+                    row.pop("side_priority",None)
+                    row.pop("close_volume",None)
                 trades=sorted(grouped.values(),key=lambda x:x["time"],reverse=True)
                 item=CONNECTIONS.get(client_id)
                 currency=((item or {}).get("account") or {}).get("currency","")
+                if not currency:
+                    currency_rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        "&select=account_currency&order=uploaded_at.desc&limit=1",admin=True)
+                    currency=currency_rows[0].get("account_currency","") if currency_rows else ""
                 wins=sum(1 for x in trades if x["net"]>0)
                 return self.send_json(200,{"trades":trades,"count":len(trades),"deal_rows":len(records),
                     "win_rate":(wins/len(trades)*100) if trades else None,
