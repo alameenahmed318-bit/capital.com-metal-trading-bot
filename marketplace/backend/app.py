@@ -340,6 +340,7 @@ class Handler(SimpleHTTPRequestHandler):
                 candles=(item or {}).get("closed_candles",[])
                 # MT5 sends series data newest-first; return oldest-first for analysis.
                 result={"symbol":item.get("symbol"),"timeframe":item.get("timeframe"),
+                    "account_currency":str((item.get("account") or {}).get("currency",""))[:12],
                     "tick":item.get("tick",{}),"forming_candle":item.get("forming_candle"),
                     "candles":list(reversed(candles)),"received_at":item["last_seen"],
                     "diagnostics":{"auth_ms":round((t_user-t0)*1000),"ban_check_ms":round((t_admin-t_user)*1000),"ban_check_source":"fresh_auth_user_record",
