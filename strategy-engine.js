@@ -121,6 +121,109 @@
     {id:"doji-indecision",name:"شمعة دوجي وتردد السوق",family:"candles",evaluate:c=>{const n=c.last,o=Number(n.open),cl=Number(n.close),h=Number(n.high),l=Number(n.low),range=Math.max(h-l,1e-8),ratio=Math.abs(cl-o)/range;return {signal:SIGNALS.WAIT,confidence:ratio<.1?35:0,reasons:[ratio<.1?"شمعة دوجي: السوق متردد، لا إشارة اتجاهية":"لا يوجد دوجي واضح"]};}}
   ];
 
+
+  // Batch 4: 20 established technical-analysis methods (40 -> 60).
+  // Helpers use only the OHLCV candles actually supplied by MT5.
+  function candleRangeMid(rows, period) {
+    const p=rows.slice(-period);
+    if(p.length<period)return null;
+    return (Math.max(...p.map(x=>Number(x.high)))+Math.min(...p.map(x=>Number(x.low))))/2;
+  }
+  function trueRangeAt(rows,i) {
+    const x=rows[i],prev=rows[i-1];
+    return Math.max(Number(x.high)-Number(x.low),Math.abs(Number(x.high)-Number(prev.close)),Math.abs(Number(x.low)-Number(prev.close)));
+  }
+  function atrSeries(rows,period=10) {
+    if(rows.length<period+1)return [];
+    const out=[];let value=0;
+    for(let i=1;i<=period;i++)value+=trueRangeAt(rows,i);
+    value/=period;out[period]=value;
+    for(let i=period+1;i<rows.length;i++){value=((value*(period-1))+trueRangeAt(rows,i))/period;out[i]=value;}
+    return out;
+  }
+  function rsiSeries(values,period=14) {
+    const out=[];
+    for(let i=period;i<values.length;i++){
+      let gain=0,loss=0;
+      for(let j=i-period+1;j<=i;j++){const d=values[j]-values[j-1];gain+=Math.max(0,d);loss+=Math.max(0,-d);}
+      gain/=period;loss/=period;out[i]=loss===0?100:100-100/(1+gain/loss);
+    }
+    return out;
+  }
+  function stochasticKD(rows,index,period=14) {
+    const vals=[];
+    for(let i=Math.max(0,index-period+1);i<=index;i++){
+      const p=rows.slice(Math.max(0,i-2),i+1);
+      const hh=Math.max(...p.map(x=>Number(x.high))),ll=Math.min(...p.map(x=>Number(x.low)));
+      vals.push(hh===ll?50:(Number(rows[i].close)-ll)/(hh-ll)*100);
+    }
+    const k=vals.at(-1),prev=vals.at(-2);
+    return {k,prev,d:vals.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,vals.length)};
+  }
+  function psarDirection(rows) {
+    if(rows.length<5)return 0;
+    let bull=Number(rows[1].close)>=Number(rows[0].close),af=.02,ep=bull?Number(rows[1].high):Number(rows[1].low),sar=bull?Number(rows[0].low):Number(rows[0].high);
+    for(let i=2;i<rows.length;i++){
+      const prev=rows[i-1],cur=rows[i];
+      sar=sar+af*(ep-sar);
+      if(bull){
+        sar=Math.min(sar,Number(prev.low),Number(rows[i-2].low));
+        if(Number(cur.low)<sar){bull=false;sar=ep;ep=Number(cur.low);af=.02;}
+        else if(Number(cur.high)>ep){ep=Number(cur.high);af=Math.min(.2,af+.02);}
+      }else{
+        sar=Math.max(sar,Number(prev.high),Number(rows[i-2].high));
+        if(Number(cur.high)>sar){bull=true;sar=ep;ep=Number(cur.high);af=.02;}
+        else if(Number(cur.low)<ep){ep=Number(cur.low);af=Math.min(.2,af+.02);}
+      }
+    }
+    return bull?1:-1;
+  }
+  function supertrendDirection(rows,period=10,mult=3) {
+    const ats=atrSeries(rows,period);if(!ats.length)return 0;
+    let trend=1,upper=0,lower=0;
+    for(let i=period;i<rows.length;i++){
+      const mid=(Number(rows[i].high)+Number(rows[i].low))/2,atr=ats[i];
+      const basicUpper=mid+mult*atr,basicLower=mid-mult*atr;
+      upper=(i===period||basicUpper<upper||Number(rows[i-1].close)>upper)?basicUpper:upper;
+      lower=(i===period||basicLower>lower||Number(rows[i-1].close)<lower)?basicLower:lower;
+      if(trend===1&&Number(rows[i].close)<lower)trend=-1;
+      else if(trend===-1&&Number(rows[i].close)>upper)trend=1;
+    }
+    return trend;
+  }
+  function heikinAshi(rows) {
+    const out=[];let prevOpen=(Number(rows[0].open)+Number(rows[0].close))/2,prevClose=(Number(rows[0].open)+Number(rows[0].high)+Number(rows[0].low)+Number(rows[0].close))/4;
+    for(let i=0;i<rows.length;i++){
+      const x=rows[i],close=(Number(x.open)+Number(x.high)+Number(x.low)+Number(x.close))/4;
+      const open=i===0?prevOpen:(prevOpen+prevClose)/2;
+      out.push({open,close,high:Math.max(Number(x.high),open,close),low:Math.min(Number(x.low),open,close)});
+      prevOpen=open;prevClose=close;
+    }
+    return out;
+  }
+  const batchFourStrategies = [
+    {id:"ichimoku-tenkan-kijun",name:"تقاطع إيشيموكو Tenkan/Kijun",family:"trend",evaluate:c=>{const r=c.candles,t=candleRangeMid(r,9),k=candleRangeMid(r,26),pt=candleRangeMid(r.slice(0,-1),9),pk=candleRangeMid(r.slice(0,-1),26),buy=pt<=pk&&t>k,sell=pt>=pk&&t<k;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?72:0,reasons:["تقاطع خط التحويل 9 مع خط الأساس 26"]};}},
+    {id:"ichimoku-cloud-breakout",name:"اختراق سحابة إيشيموكو",family:"breakout",evaluate:c=>{const r=c.candles,a=(candleRangeMid(r,9)+candleRangeMid(r,26))/2,b=candleRangeMid(r,52),top=Math.max(a,b),bottom=Math.min(a,b);return {signal:c.close>top?SIGNALS.BUY:c.close<bottom?SIGNALS.SELL:SIGNALS.WAIT,confidence:c.close>top||c.close<bottom?74:0,reasons:["إغلاق السعر خارج سحابة Kumo المحسوبة"]};}},
+    {id:"ichimoku-price-kumo",name:"موقع السعر داخل/خارج Kumo",family:"trend",evaluate:c=>{const r=c.candles,a=(candleRangeMid(r,9)+candleRangeMid(r,26))/2,b=candleRangeMid(r,52),top=Math.max(a,b),bottom=Math.min(a,b);return {signal:c.close>top?SIGNALS.BUY:c.close<bottom?SIGNALS.SELL:SIGNALS.WAIT,confidence:c.close>top||c.close<bottom?62:0,reasons:["اتجاه السعر بالنسبة إلى حدود السحابة"]};}},
+    {id:"ichimoku-chikou-confirm",name:"تأكيد خط Chikou",family:"trend",evaluate:c=>{const r=c.candles,ref=Number(r.at(-27).close),buy=c.close>ref&&c.close>c.e20,sell=c.close<ref&&c.close<c.e20;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?63:0,reasons:["مقارنة الإغلاق الحالي بإغلاق 26 شمعة سابقة مع EMA20"]};}},
+    {id:"supertrend-10-3",name:"مؤشر Supertrend 10/3",family:"trend",evaluate:c=>{const d=supertrendDirection(c.candles,10,3);return {signal:d>0?SIGNALS.BUY:d<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:d?70:0,reasons:["اتجاه Supertrend باستخدام ATR10 ومضاعف 3"]};}},
+    {id:"parabolic-sar",name:"Parabolic SAR",family:"trend",evaluate:c=>{const r=c.candles,dir=psarDirection(r),n=r.at(-1),prior=r.at(-2),bull=dir>0&&Number(n.close)>Number(n.open)&&Number(prior.close)>=Number(prior.open),bear=dir<0&&Number(n.close)<Number(n.open)&&Number(prior.close)<=Number(prior.open);return {signal:bull?SIGNALS.BUY:bear?SIGNALS.SELL:SIGNALS.WAIT,confidence:bull||bear?66:0,reasons:["اتجاه Parabolic SAR مع تأكيد آخر شمعتين"]};}},
+    {id:"heikin-ashi-trend",name:"اتجاه شموع Heikin-Ashi",family:"candles",evaluate:c=>{const h=heikinAshi(c.candles).slice(-3),up=h.every(x=>x.close>x.open),dn=h.every(x=>x.close<x.open);return {signal:up?SIGNALS.BUY:dn?SIGNALS.SELL:SIGNALS.WAIT,confidence:up||dn?67:0,reasons:["ثلاث شموع Heikin-Ashi متتالية في اتجاه واحد"]};}},
+    {id:"three-white-soldiers",name:"نموذج الجنود الثلاثة",family:"candles",evaluate:c=>{const r=c.candles.slice(-3),ok=r.every(x=>Number(x.close)>Number(x.open))&&r[1].close>r[0].close&&r[2].close>r[1].close&&r[1].open>r[0].open&&r[1].open<r[0].close&&r[2].open>r[1].open&&r[2].open<r[1].close;return {signal:ok?SIGNALS.BUY:SIGNALS.WAIT,confidence:ok?72:0,reasons:["ثلاث شموع صاعدة بأجسام متدرجة وافتتاح داخل الجسم السابق"]};}},
+    {id:"three-black-crows",name:"نموذج الغربان الثلاثة",family:"candles",evaluate:c=>{const r=c.candles.slice(-3),ok=r.every(x=>Number(x.close)<Number(x.open))&&r[1].close<r[0].close&&r[2].close<r[1].close&&r[1].open<r[0].open&&r[1].open>r[0].close&&r[2].open<r[1].open&&r[2].open>r[1].close;return {signal:ok?SIGNALS.SELL:SIGNALS.WAIT,confidence:ok?72:0,reasons:["ثلاث شموع هابطة بأجسام متدرجة وافتتاح داخل الجسم السابق"]};}},
+    {id:"tweezer-bottom",name:"قاع الملقط Tweezer Bottom",family:"reversal",evaluate:c=>{const a=c.candles.at(-2),b=c.last,tol=(c.atr||0)*.12,match=Math.abs(Number(a.low)-Number(b.low))<=tol&&Number(a.close)<Number(a.open)&&Number(b.close)>Number(b.open);return {signal:match?SIGNALS.BUY:SIGNALS.WAIT,confidence:match?66:0,reasons:["قاعان متقاربان مع انعكاس الشمعة الثانية صعوداً"]};}},
+    {id:"tweezer-top",name:"قمة الملقط Tweezer Top",family:"reversal",evaluate:c=>{const a=c.candles.at(-2),b=c.last,tol=(c.atr||0)*.12,match=Math.abs(Number(a.high)-Number(b.high))<=tol&&Number(a.close)>Number(a.open)&&Number(b.close)<Number(b.open);return {signal:match?SIGNALS.SELL:SIGNALS.WAIT,confidence:match?66:0,reasons:["قمتان متقاربتان مع انعكاس الشمعة الثانية هبوطاً"]};}},
+    {id:"bullish-harami",name:"نموذج Harami صاعد",family:"candles",evaluate:c=>{const a=c.candles.at(-2),b=c.last,ao=Number(a.open),ac=Number(a.close),bo=Number(b.open),bc=Number(b.close),ok=ac<ao&&bc>bo&&bo>ac&&bc<ao;return {signal:ok?SIGNALS.BUY:SIGNALS.WAIT,confidence:ok?65:0,reasons:["جسم الشمعة الصاعدة محصور داخل جسم الشمعة الهابطة السابقة"]};}},
+    {id:"bearish-harami",name:"نموذج Harami هابط",family:"candles",evaluate:c=>{const a=c.candles.at(-2),b=c.last,ao=Number(a.open),ac=Number(a.close),bo=Number(b.open),bc=Number(b.close),ok=ac>ao&&bc<bo&&bo<ac&&bc>ao;return {signal:ok?SIGNALS.SELL:SIGNALS.WAIT,confidence:ok?65:0,reasons:["جسم الشمعة الهابطة محصور داخل جسم الشمعة الصاعدة السابقة"]};}},
+    {id:"bollinger-squeeze-breakout",name:"انفراج بولنجر بعد الانكماش",family:"breakout",evaluate:c=>{const r=c.candles.map(x=>Number(x.close)),band=i=>{const v=r.slice(i-19,i+1),m=v.reduce((a,b)=>a+b,0)/20,sd=Math.sqrt(v.reduce((a,b)=>a+(b-m)**2,0)/20);return {m,sd,width:m?4*sd/m:0};},now=band(r.length-1),old=band(r.length-6),squeeze=old.width>0&&now.width>old.width*1.2&&old.width<.012;return {signal:squeeze&&c.close>now.m+2*now.sd?SIGNALS.BUY:squeeze&&c.close<now.m-2*now.sd?SIGNALS.SELL:SIGNALS.WAIT,confidence:squeeze?70:0,reasons:["اتساع عرض بولنجر بعد انكماش سابق مع تأكيد إغلاق خارج النطاق"]};}},
+    {id:"donchian-midline",name:"اتجاه منتصف قناة دونشيان",family:"trend",evaluate:c=>{const r=c.candles.slice(-20),mid=(Math.max(...r.map(x=>Number(x.high)))+Math.min(...r.map(x=>Number(x.low))))/2,prev=c.candles.slice(-25,-5),old=(Math.max(...prev.map(x=>Number(x.high)))+Math.min(...prev.map(x=>Number(x.low))))/2;return {signal:c.close>mid&&mid>old?SIGNALS.BUY:c.close<mid&&mid<old?SIGNALS.SELL:SIGNALS.WAIT,confidence:c.close>mid&&mid>old||c.close<mid&&mid<old?62:0,reasons:["موقع السعر وميل منتصف قناة دونشيان 20"]};}},
+    {id:"ema-ribbon-alignment",name:"اصطفاف شريط EMA 8/13/21/34",family:"trend",evaluate:c=>{const v=c.candles.map(x=>Number(x.close)),a=ema(v,8),b=ema(v,13),d=ema(v,21),e=ema(v,34),up=a>b&&b>d&&d>e,down=a<b&&b<d&&d<e;return {signal:up?SIGNALS.BUY:down?SIGNALS.SELL:SIGNALS.WAIT,confidence:up||down?70:0,reasons:["اصطفاف أربعة متوسطات أسية قصيرة ومتوسطة"]};}},
+    {id:"rsi-divergence-regular",name:"الدايفرجنس الكلاسيكي RSI",family:"reversal",evaluate:c=>{const r=c.candles.slice(-40),cl=r.map(x=>Number(x.close)),rs=rsiSeries(cl,14),lowA=Math.min(...cl.slice(0,20)),lowB=Math.min(...cl.slice(20)),iA=cl.indexOf(lowA),iB=20+cl.slice(20).indexOf(lowB),highA=Math.max(...cl.slice(0,20)),highB=Math.max(...cl.slice(20)),jA=cl.indexOf(highA),jB=20+cl.slice(20).indexOf(highB),bull=lowB<lowA&&rs[iB]>rs[iA],bear=highB>highA&&rs[jB]<rs[jA];return {signal:bull?SIGNALS.BUY:bear?SIGNALS.SELL:SIGNALS.WAIT,confidence:bull||bear?68:0,reasons:["مقارنة قمم/قيعان السعر مع RSI14 عبر نافذتين"]};}},
+    {id:"stochastic-kd-cross",name:"تقاطع Stochastic %K/%D",family:"momentum",evaluate:c=>{const r=c.candles,now=stochasticKD(r,r.length-1),prev=stochasticKD(r,r.length-2),buy=prev.k<=prev.d&&now.k>now.d&&now.k<35,sell=prev.k>=prev.d&&now.k<now.d&&now.k>65;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?67:0,reasons:["تقاطع %K و%D مع فلتر مناطق التشبع"]};}},
+    {id:"volume-spike-confirmation",name:"تأكيد اندفاع حجم التداول",family:"volume",evaluate:c=>{const r=c.candles,vol=x=>Number(x.tick_volume??x.volume??NaN),v=vol(r.at(-1)),base=r.slice(-21,-1).map(vol).filter(Number.isFinite),avg=base.length?base.reduce((a,b)=>a+b,0)/base.length:0,body=c.close-Number(c.last.open),valid=Number.isFinite(v)&&avg>0,spike=valid&&v>avg*1.8;return {signal:spike&&body>0?SIGNALS.BUY:spike&&body<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:spike?65:0,reasons:[valid?"حجم الشمعة "+v+" مقابل متوسط "+avg.toFixed(1):"بيانات Tick Volume غير متاحة؛ لا يمكن تأكيد الحجم"]};}},
+    {id:"atr-squeeze-release",name:"انكماش ATR ثم توسع التقلب",family:"volatility",evaluate:c=>{const a=atrSeries(c.candles,14),now=a.at(-1),prior=a.slice(-11,-1).filter(Number.isFinite),avg=prior.length?prior.reduce((x,y)=>x+y,0)/prior.length:0,compressed=avg>0&&prior.slice(-5).every(x=>x<avg*.85),release=compressed&&now>avg*1.05,body=c.close-Number(c.last.open);return {signal:release&&body>0?SIGNALS.BUY:release&&body<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:release?68:0,reasons:["فحص انكماش ATR14 السابق ثم توسع التقلب الحالي"]};}}
+  ];
+
   const registry = new Map();
   function register(strategy) {
     if (!strategy || !strategy.id || !strategy.name || !strategy.family || typeof strategy.evaluate !== "function")
@@ -132,6 +235,7 @@
   strategies.forEach(register);
   extraStrategies.forEach(register);
   batchThreeStrategies.forEach(register);
+  batchFourStrategies.forEach(register);
 
   function evaluate(market) {
     const candles = Array.isArray(market && market.candles) ? market.candles : [];
