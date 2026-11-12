@@ -140,11 +140,15 @@ async function run(){
     const x=strategies.get(vote.id);addTrade(x,vote.vote,exitBar,lot,commission,slippage,phase,regime);
     strategyTrades++;
    }
+   const adjustedVotes=new Map(result.votes.map(v=>[v.id,v.vote]));
    for(const combo of result.combinations){
     if(!combinations.has(combo.id))combinations.set(combo.id,{...metrics(),id:combo.id,name:"تركيبة "+String(combo.number).padStart(4,"0")});
+    const memberVotes=(combo.members||[]).map(m=>adjustedVotes.get(m.id)||"WAIT");
+    const buys=memberVotes.filter(v=>v==="BUY").length,sells=memberVotes.filter(v=>v==="SELL").length;
+    const learnedSignal=buys>=3&&buys>sells?"BUY":sells>=3&&sells>buys?"SELL":"WAIT";
     const learned=policy[combo.id];
-    if((combo.signal==="BUY"||combo.signal==="SELL")&&learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){suppressedSignals++;continue;}
-    if(combo.signal==="BUY"||combo.signal==="SELL")addTrade(combinations.get(combo.id),combo.signal,exitBar,lot,commission,slippage,phase,regime);
+    if((learnedSignal==="BUY"||learnedSignal==="SELL")&&learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){suppressedSignals++;continue;}
+    if(learnedSignal==="BUY"||learnedSignal==="SELL")addTrade(combinations.get(combo.id),learnedSignal,exitBar,lot,commission,slippage,phase,regime);
    }
    $("progressBar").style.width=Math.round((i-start+1)/points*100)+"%";
    setState("اختبار "+(i-start+1)+" من "+points+" نقطة · "+tf);
