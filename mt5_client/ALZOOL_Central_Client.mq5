@@ -42,6 +42,12 @@ double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
 bool g_serverStopLossEnabled=true;
 string g_serverStopLossMode="ATR";
 double g_serverStopLossValue=1.8;
+string g_pmMode="AI";
+bool g_addonEnabled=false,g_coolingEnabled=false;
+int g_addonMax=0,g_coolingMax=0;
+double g_addonManualLot=0.01,g_coolingManualLot=0.01;
+double g_addonManualDistance=0.0,g_coolingManualDistance=0.0;
+int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
 double g_aiConfidence=0.0;
@@ -150,6 +156,17 @@ bool PollTradeSettings()
    if(slMode=="POINTS" || slMode=="ATR") g_serverStopLossMode=slMode;
    double slValue=JsonDouble(response,"stop_loss_value",g_serverStopLossValue);
    if(slValue>0.0) g_serverStopLossValue=slValue;
+   string pmMode=JsonField(response,"mode");
+   StringReplace(pmMode,"\\"","");
+   if(pmMode=="AI" || pmMode=="MANUAL") g_pmMode=pmMode;
+   g_addonEnabled=JsonBool(response,"addon_enabled");
+   g_coolingEnabled=JsonBool(response,"cooling_enabled");
+   g_addonMax=(int)MathMax(0,MathMin(100,JsonDouble(response,"addon_max",0)));
+   g_coolingMax=(int)MathMax(0,MathMin(100,JsonDouble(response,"cooling_max",0)));
+   g_addonManualLot=JsonDouble(response,"addon_lot",0.01);
+   g_coolingManualLot=JsonDouble(response,"cooling_lot",0.01);
+   g_addonManualDistance=JsonDouble(response,"addon_distance_points",0);
+   g_coolingManualDistance=JsonDouble(response,"cooling_distance_points",0);
    return true;
 }
 bool PollCentralDecision()
@@ -273,6 +290,120 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
       g_status="رفض الوسيط أمر الدخول: "+g_trade.ResultRetcodeDescription();
       Print("AL-ZOOL ENTRY REJECTED: ",g_trade.ResultRetcode()," ",g_trade.ResultRetcodeDescription());
    }
+}
+void ManagePositionAddons()
+{
+   if(!g_serverTradingEnabled || !InpEnableCentralTrading ||
+      (!g_addonEnabled && !g_coolingEnabled) || g_atrHandle==INVALID_HANDLE) return;
+   double atr[]; ArraySetAsSeries(atr,true);
+   if(CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0) return;
+   MqlTick tick; if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<tick.bid) return;
+
+   int buyCount=0,sellCount=0,addonCount=0,coolingCount=0;
+   double buyNet=0.0,sellNet=0.0,lastBuyPrice=0.0,lastSellPrice=0.0;
+   datetime lastBuyTime=0,lastSellTime=0;
+   double baseBuyLot=0.0,baseSellLot=0.0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
+         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpTradeMagic) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      string comment=PositionGetString(POSITION_COMMENT);
+      double volume=PositionGetDouble(POSITION_VOLUME);
+      datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
+      if(StringFind(comment,"ALZOOL-ADD")==0) addonCount++;
+      if(StringFind(comment,"ALZOOL-COOL")==0) coolingCount++;
+      if(type==POSITION_TYPE_BUY)
+      {
+         buyCount++; buyNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+         if(opened>=lastBuyTime){lastBuyTime=opened;lastBuyPrice=PositionGetDouble(POSITION_PRICE_OPEN);}
+         if(baseBuyLot==0.0 && StringFind(comment,"ALZOOL-ADD")<0 && StringFind(comment,"ALZOOL-COOL")<0) baseBuyLot=volume;
+      }
+      else if(type==POSITION_TYPE_SELL)
+      {
+         sellCount++; sellNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+         if(opened>=lastSellTime){lastSellTime=opened;lastSellPrice=PositionGetDouble(POSITION_PRICE_OPEN);}
+         if(baseSellLot==0.0 && StringFind(comment,"ALZOOL-ADD")<0 && StringFind(comment,"ALZOOL-COOL")<0) baseSellLot=volume;
+      }
+   }
+   if(PositionsTotal()>=InpMaxOpenPositions) return;
+   double emaFast[],emaSlow[]; ArraySetAsSeries(emaFast,true); ArraySetAsSeries(emaSlow,true);
+   bool haveTrend=(g_emaFastHandle!=INVALID_HANDLE && g_emaSlowHandle!=INVALID_HANDLE &&
+                   CopyBuffer(g_emaFastHandle,0,1,1,emaFast)==1 &&
+                   CopyBuffer(g_emaSlowHandle,0,1,1,emaSlow)==1);
+   string chosen=""; ENUM_POSITION_TYPE side=POSITION_TYPE_BUY;
+   double lots=0.0,distancePoints=0.0,lastPrice=0.0,baseLot=0.0;
+   int sideCount=0;
+   if(g_pmMode=="AI")
+   {
+      if(!haveTrend) return;
+      bool trendUp=emaFast[0]>emaSlow[0];
+      // AI classifies continuation pullbacks as add-ons and counter-trend drawdown as cooling.
+      if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice && trendUp && g_addonEnabled && addonCount<g_addonMax)
+      { chosen="ADD";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;distancePoints=(atr[0]*0.8)/_Point; }
+      else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice && !trendUp && g_addonEnabled && addonCount<g_addonMax)
+      { chosen="ADD";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;distancePoints=(atr[0]*0.8)/_Point; }
+      else if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice && !trendUp && g_coolingEnabled && coolingCount<g_coolingMax)
+      { chosen="COOL";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;distancePoints=(atr[0]*1.2)/_Point; }
+      else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice && trendUp && g_coolingEnabled && coolingCount<g_coolingMax)
+      { chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;distancePoints=(atr[0]*1.2)/_Point; }
+      if(chosen!="")
+      {
+         double volatilityRatio=atr[0]/MathMax(1.0,(tick.bid+tick.ask)*0.5);
+         double factor=(volatilityRatio>0.001?0.40:(volatilityRatio>0.0005?0.55:0.70));
+         lots=NormalizeTradeLots(baseLot*factor);
+      }
+   }
+   else
+   {
+      if(g_addonEnabled && addonCount<g_addonMax)
+      {
+         if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice){chosen="ADD";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;}
+         else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice){chosen="ADD";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;}
+         if(chosen=="ADD"){lots=NormalizeTradeLots(g_addonManualLot);distancePoints=g_addonManualDistance;}
+      }
+      if(chosen=="" && g_coolingEnabled && coolingCount<g_coolingMax)
+      {
+         if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice){chosen="COOL";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;}
+         else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice){chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;}
+         if(chosen=="COOL"){lots=NormalizeTradeLots(g_coolingManualLot);distancePoints=g_coolingManualDistance;}
+      }
+   }
+   if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
+   double adverse=(side==POSITION_TYPE_BUY?(lastPrice-tick.ask)/_Point:(tick.bid-lastPrice)/_Point);
+   if(adverse<distancePoints) return;
+   double minDist=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
+   int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+   double slDist=0.0,sl=0.0,tp=0.0;
+   if(g_serverStopLossEnabled)
+   {
+      slDist=(g_serverStopLossMode=="POINTS")?g_serverStopLossValue*_Point:atr[0]*g_serverStopLossValue;
+      slDist=MathMax(slDist,minDist+_Point);
+   }
+   double tpDist=MathMax(atr[0]*InpTakeProfitATR,minDist+_Point);
+   g_trade.SetExpertMagicNumber(InpTradeMagic);g_trade.SetDeviationInPoints(InpDeviationPoints);
+   g_trade.SetTypeFillingBySymbol(_Symbol);
+   bool sent=false;
+   if(side==POSITION_TYPE_BUY)
+   {
+      if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.ask-slDist,digits);
+      tp=NormalizeDouble(tick.ask+tpDist,digits);
+      sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-"+chosen);
+   }
+   else
+   {
+      if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.bid+slDist,digits);
+      tp=NormalizeDouble(tick.bid-tpDist,digits);
+      sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-"+chosen);
+   }
+   uint rc=g_trade.ResultRetcode();
+   if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
+      Print("AL-ZOOL ",chosen," accepted direction=",(side==POSITION_TYPE_BUY?"BUY":"SELL"),
+            " lot=",DoubleToString(lots,2)," adverse_points=",DoubleToString(adverse,1),
+            " dynamic_distance=",DoubleToString(distancePoints,1));
+   else Print("AL-ZOOL ",chosen," rejected: ",g_trade.ResultRetcodeDescription());
 }
 void ManageEntryTrailing()
 {
@@ -614,6 +745,10 @@ int OnInit()
    g_trade.SetTypeFillingBySymbol(_Symbol);
    g_atrHandle=iATR(_Symbol,(ENUM_TIMEFRAMES)_Period,InpATRPeriod);
    if(g_atrHandle==INVALID_HANDLE) { Print("AL-ZOOL ATR init failed: ",GetLastError()); return INIT_FAILED; }
+   g_emaFastHandle=iMA(_Symbol,(ENUM_TIMEFRAMES)_Period,9,0,MODE_EMA,PRICE_CLOSE);
+   g_emaSlowHandle=iMA(_Symbol,(ENUM_TIMEFRAMES)_Period,21,0,MODE_EMA,PRICE_CLOSE);
+   if(g_emaFastHandle==INVALID_HANDLE || g_emaSlowHandle==INVALID_HANDLE)
+   { Print("AL-ZOOL EMA handles unavailable; AI add-on mode will wait for valid data."); }
    g_executionBarKey="ALZOOL_EXEC_"+_Symbol+"_"+EnumToString((ENUM_TIMEFRAMES)_Period)+"_"+(string)InpTradeMagic;
    EventSetTimer(1);
    g_status="تم تشغيل بيانات MT5 وحماية الأرباح المحلية";
@@ -626,12 +761,15 @@ void OnDeinit(const int reason)
 {
    EventKillTimer();
    if(g_atrHandle!=INVALID_HANDLE) IndicatorRelease(g_atrHandle);
+   if(g_emaFastHandle!=INVALID_HANDLE) IndicatorRelease(g_emaFastHandle);
+   if(g_emaSlowHandle!=INVALID_HANDLE) IndicatorRelease(g_emaSlowHandle);
    Comment("");
 }
 void OnTimer()
 {
    EvaluateAutoClose();
    ManageEntryTrailing();
+   ManagePositionAddons();
    ulong now=GetTickCount64();
    if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
    {
