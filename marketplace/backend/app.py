@@ -324,9 +324,14 @@ class Handler(SimpleHTTPRequestHandler):
             item=CONNECTIONS.get(client_id)
             if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                 return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
-            decision=item.get("strategy_decision")
-            return self.send_json(200,{"decision":decision,"execution_ready":False,
-                "message":"تحليل مركزي فقط؛ لم يتم تفعيل إرسال أوامر التداول بعد"})
+            decision=item.get("strategy_decision") or {}
+            return self.send_json(200,{"signal":decision.get("decision","WAIT"),
+                "confidence":decision.get("confidence",0.0),
+                "reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
+                "strategy_name":decision.get("strategy_name",""),
+                "bar_time":decision.get("bar_time",0),
+                "execution_ready":False,
+                "message":"إشارة تحليلية فقط؛ تنفيذ أوامر التداول غير مفعّل في هذا الإصدار"})
         if path=="/api/market/context":
             try:
                 import time
