@@ -365,7 +365,7 @@ void ManagePositionAddons()
    // Add-ons/cooling must follow the one-way direction lock too.
    int accountBuys=0,accountSells=0;
    GetAccountDirectionCounts(accountBuys,accountSells);
-   if(accountBuys>0 && accountSells>0) return;
+   if(InpBlockOppositePositions && accountBuys>0 && accountSells>0) return;
    double emaFast[],emaSlow[]; ArraySetAsSeries(emaFast,true); ArraySetAsSeries(emaSlow,true);
    bool haveTrend=(g_emaFastHandle!=INVALID_HANDLE && g_emaSlowHandle!=INVALID_HANDLE &&
                    CopyBuffer(g_emaFastHandle,0,1,1,emaFast)==1 &&
@@ -422,8 +422,8 @@ void ManagePositionAddons()
       }
    }
    if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
-   if(side==POSITION_TYPE_BUY && accountSells>0) return;
-   if(side==POSITION_TYPE_SELL && accountBuys>0) return;
+   if(InpBlockOppositePositions && side==POSITION_TYPE_BUY && accountSells>0) return;
+   if(InpBlockOppositePositions && side==POSITION_TYPE_SELL && accountBuys>0) return;
    double adverse=(side==POSITION_TYPE_BUY?(lastPrice-tick.ask)/_Point:(tick.bid-lastPrice)/_Point);
    if(adverse<distancePoints) return;
    double minDist=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
