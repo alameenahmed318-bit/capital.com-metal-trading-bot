@@ -185,7 +185,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "&select=trading_enabled&limit=1",admin=True)
             settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                                            "group_enabled":False,"group_profit_target":5,
-                                           "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0}
+                                           "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0}}
             settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
             return self.send_json(200,settings)
         if path=="/api/auto-trading":
