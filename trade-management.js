@@ -95,7 +95,11 @@ async function savePositionManagement(){
  }
  $("savePositionManagement").disabled=true;$("pmMessage").textContent="جارٍ حفظ إعدادات التعزيز والتبريد…";
  try{
-  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({position_management:cfg})});
+  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   single_enabled:$("singleEnabled").checked,single_profit_target:Number($("singleTarget").value),
+   group_enabled:$("groupEnabled").checked,group_profit_target:Number($("groupTarget").value),
+   position_management:cfg
+  })});
   $("pmMessage").textContent="تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.";
  }catch(e){$("pmMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("savePositionManagement").disabled=false;}
