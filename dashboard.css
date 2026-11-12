@@ -5,3 +5,14 @@
 
 /* Shared MT5 floating P/L colors: match closed-trade history exactly. */
 .kpi strong.pnl-positive{color:#76d8d1}.kpi strong.pnl-negative{color:#f08b9b}.kpi strong.pnl-neutral{color:#c5c3d4}
+
+.auto-trading-row{align-items:center}
+.auto-switch{position:relative;display:inline-flex;width:46px;height:26px;flex:0 0 46px}
+.auto-switch input{opacity:0;width:0;height:0}
+.auto-switch span{position:absolute;inset:0;border-radius:30px;background:#45475a;cursor:pointer;transition:.2s}
+.auto-switch span:before{content:"";position:absolute;width:18px;height:18px;right:4px;top:4px;border-radius:50%;background:#fff;transition:.2s}
+.auto-switch input:checked+span{background:#9a7bf5}
+.auto-switch input:checked+span:before{transform:translateX(-20px)}
+.auto-switch input:disabled+span{opacity:.45;cursor:not-allowed}
+.auto-note{font-size:10px;color:var(--muted);line-height:1.8;margin:8px 0 0}
+.state.active{color:#76d8d1;border-color:#35615e;background:#1d3433}
