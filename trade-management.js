@@ -9,8 +9,36 @@ async function loadCloseSettings(){
  $("groupEnabled").checked=!!s.group_enabled;
  $("singleTarget").value=Number(s.single_profit_target??1).toFixed(2);
  $("groupTarget").value=Number(s.group_profit_target??5).toFixed(2);
+ $("stopLossEnabled").checked=s.stop_loss_enabled!==false;
+ $("stopLossMode").value=(s.stop_loss_mode==="POINTS"?"POINTS":"ATR");
+ $("stopLossValue").value=Number(s.stop_loss_value??1.8).toString();
  $("closeEngineState").textContent="الإعدادات محفوظة · "+(d.client_id?"مرتبطة بعميل MT5":"غير مرتبطة");
  $("closeSettingsMessage").textContent="الأهداف بعملة حساب MT5: "+(s.currency||"عملة الحساب");
+ $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
+ updateStopLossHelp();
+}
+function updateStopLossHelp(){
+ const mode=$("stopLossMode").value;
+ $("stopLossHelp").textContent=mode==="ATR"
+  ?"حسب ATR: القيمة مضاعف لمؤشر ATR. عند إيقاف الخيار لن يُرسل وقف خسارة أولي للصفقات الجديدة. التريلينغ الحالي لا يتغير."
+  :"بالنقاط: القيمة عدد نقاط الرمز (_Point). عند إيقاف الخيار لن يُرسل وقف خسارة أولي للصفقات الجديدة. التريلينغ الحالي لا يتغير.";
+}
+async function saveProtectionSettings(){
+ const value=Number($("stopLossValue").value),mode=$("stopLossMode").value;
+ if(!Number.isFinite(value)||value<=0||value>1000000){$("protectionSettingsMessage").textContent="أدخل قيمة وقف خسارة أكبر من صفر.";return;}
+ if(mode!=="ATR"&&mode!=="POINTS"){ $("protectionSettingsMessage").textContent="اختر نوع وقف خسارة صحيح.";return;}
+ $("saveProtectionSettings").disabled=true;
+ $("protectionSettingsMessage").textContent="جارٍ حفظ إعدادات وقف الخسارة…";
+ try{
+  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   single_enabled:$("singleEnabled").checked,single_profit_target:Number($("singleTarget").value),
+   group_enabled:$("groupEnabled").checked,group_profit_target:Number($("groupTarget").value),
+   stop_loss_enabled:$("stopLossEnabled").checked,stop_loss_mode:mode,stop_loss_value:value
+  })});
+  $("protectionSettingsMessage").textContent="تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.";
+  $("closeEngineState").textContent="الإعدادات محفوظة على الخادم";
+ }catch(e){$("protectionSettingsMessage").textContent="تعذر الحفظ: "+e.message;}
+ finally{$("saveProtectionSettings").disabled=false;}
 }
 async function saveCloseSettings(){
  const single=Number($("singleTarget").value),group=Number($("groupTarget").value);
@@ -85,4 +113,6 @@ async function boot(){
 }
 $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
+$("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
+$("stopLossMode").addEventListener("change",updateStopLossHelp);
 boot();setInterval(()=>{if(accessToken)refresh();},2000);
