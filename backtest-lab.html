@@ -130,7 +130,7 @@ async function run(){
    const history=candles.slice(0,i+1),current=Number(history.at(-1).close);
    const point=Number(history.at(-1).point_size||0),spread=Number(history.at(-1).spread_points||0)*point;
    const result=window.ALZOOLStrategyEngine.evaluate({candles:history,tick:{bid:current,ask:current+Math.max(spread,0.000001)}});
-   if(result.votes.length!==200||result.combinations.length!==1000)throw Error("فشل تحقق عدد الاستراتيجيات أو التركيبات.");
+   if(result.votes.length!==200||result.combinations.length!==1000||!result.combinationCoverage||result.combinationCoverage.coveredStrategies!==200||result.combinations.some(x=>x.members.length!==5||new Set(x.members.map(m=>m.id)).size!==5))throw Error("فشل تحقق عدد الاستراتيجيات أو تغطية جميع الاستراتيجيات داخل التركيبات الـ1000.");
    const exitBar=candles[i+1],phase=i>=validationStart?"validation":"training";
    const regime=classifyRegime(result.z,spread,point);
    for(const vote of result.votes){
