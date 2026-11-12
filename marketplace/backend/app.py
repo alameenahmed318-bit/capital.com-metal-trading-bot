@@ -616,6 +616,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if not lic or lic.get("revoked"): return self.send_json(409,{"error":"لا يوجد ترخيص تداول مرتبط بهذا الحساب"})
                 enabled=data.get("enabled")
                 if not isinstance(enabled,bool): return self.send_json(400,{"error":"قيمة التفعيل غير صحيحة"})
+                if enabled:
+                    live=CONNECTIONS.get(lic["client_id"])
+                    if not live or (datetime.now(timezone.utc)-live["received_at"]).total_seconds()>30:
+                        return self.send_json(409,{"error":"لا يمكن تفعيل التداول قبل اتصال MT5 واستلام بيانات حديثة"})
                 changed=sb("PATCH","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(lic["client_id"],safe=""),
                     {"trading_enabled":enabled},admin=True,prefer="return=representation")
                 if not changed: return self.send_json(409,{"error":"تعذر حفظ حالة التداول الآلي"})
