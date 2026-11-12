@@ -41,7 +41,11 @@ function profile(runs){
   run.symbol===latest.symbol&&run.timeframe===latest.timeframe&&
   String(run.account_currency||"")===String(latest.account_currency||"")&&
   same(run.lot_size,latest.lot_size)&&same(run.commission_per_lot,latest.commission_per_lot)&&
-  same(run.slippage_points,latest.slippage_points));
+  same(run.slippage_points,latest.slippage_points)&&
+  same(run.diagnostics?.simulation?.stop_atr,latest.diagnostics?.simulation?.stop_atr)&&
+  same(run.diagnostics?.simulation?.target_atr,latest.diagnostics?.simulation?.target_atr)&&
+  same(run.diagnostics?.simulation?.trailing_atr,latest.diagnostics?.simulation?.trailing_atr)&&
+  same(run.diagnostics?.simulation?.max_holding_bars,latest.diagnostics?.simulation?.max_holding_bars));
  const map={};for(const run of comparable)for(const x of [...(run.strategy_results||[]),...(run.combination_results||[])]){
   const v=x.validation||{};if(!v.n)continue;const p=map[x.id]||(map[x.id]={id:x.id,name:x.name,n:0,net:0,gross:0,spread:0,slippage:0,commission:0,grossWins:0,grossLoss:0,regimes:{}});
   p.n+=Number(v.n||0);p.net+=Number(v.net||0);p.gross+=Number(v.gross||0);p.spread+=Number(v.spread||0);p.slippage+=Number(v.slippage||0);p.commission+=Number(v.commission||0);p.grossWins+=Number(v.grossWins||0);p.grossLoss+=Number(v.grossLoss||0);
