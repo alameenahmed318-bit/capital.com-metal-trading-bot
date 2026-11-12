@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#11121b"><title>AL-ZOOL | إدارة التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/trade-management.css?v=6">
+<link rel="stylesheet" href="/trade-management.css?v=7">
 </head>
 <body>
 <div class="shell">
@@ -91,18 +91,18 @@
   <div class="close-grid pm-grid">
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
-    <label for="addonMax">الحد الأقصى لعدد صفقات التعزيز</label><input id="addonMax" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" lang="en" dir="ltr">
+    <label for="addonMax">الحد الأقصى لعدد صفقات التعزيز</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
-     <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="number" min="0.01" max="100" step="0.01" value="0.01" inputmode="decimal" lang="en" dir="ltr">
-     <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="number" min="1" max="100000000" step="1" value="100" inputmode="numeric" lang="en" dir="ltr">
+     <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+     <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التبريد</b><small>إضافات مستقلة لتبريد متوسط الدخول</small></div><label class="switch"><input type="checkbox" id="coolingEnabled"><span></span></label></div>
-    <label for="coolingMax">الحد الأقصى لعدد صفقات التبريد</label><input id="coolingMax" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" lang="en" dir="ltr">
+    <label for="coolingMax">الحد الأقصى لعدد صفقات التبريد</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
-     <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="number" min="0.01" max="100" step="0.01" value="0.01" inputmode="decimal" lang="en" dir="ltr">
-     <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="number" min="1" max="100000000" step="1" value="100" inputmode="numeric" lang="en" dir="ltr">
+     <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+     <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
   </div>
@@ -117,6 +117,6 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=6"></script>
 <script src="/numbers-en.js?v=1"></script>
 </body></html>
