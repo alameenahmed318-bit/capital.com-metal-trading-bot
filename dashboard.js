@@ -14,7 +14,7 @@ async function refreshAutoTrading(){
  try{
   const d=await api("/api/auto-trading");
   toggle.checked=!!d.trading_enabled;
-  toggle.disabled=!mt5Connected||autoTradingBusy;
+  toggle.disabled=(!mt5Connected&&!d.trading_enabled)||autoTradingBusy;
   state.textContent=d.trading_enabled?"مفعّل":"متوقف";
   state.className="state "+(d.trading_enabled?"active":"muted");
   help.textContent=mt5Connected?"التحكم مربوط بالخادم وMT5": "اتصل بـ MT5 أولاً لتفعيل التداول الآلي";
@@ -37,7 +37,7 @@ async function changeAutoTrading(){
   $("autoTradingState").className="state muted";
   $("autoTradingHelp").textContent=e.message;
  }finally{
-  autoTradingBusy=false;toggle.disabled=!mt5Connected;
+  autoTradingBusy=false;toggle.disabled=(!mt5Connected&&!toggle.checked);
  }
 }
 function setFloatingColor(el,value){el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");const n=Number(value);el.classList.add(!Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative");}
@@ -73,9 +73,11 @@ async function refresh(){
    $("mt5Meta").textContent="لم تصل نبضة خلال آخر 30 ثانية";
   }
  }catch(e){
+  mt5Connected=false;
   setState("mt5Status","غير متاح","muted");
   $("mt5Meta").textContent=e.message;
  }
+ await refreshAutoTrading();
  try{
   const s=await api("/api/dashboard/summary");
   const currency=s.currency||"";
