@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#11121b"><title>AL-ZOOL | ذاكرة وتعلّم AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/dashboard.css?v=2">
+<style>
+.learn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.learn-stat,.learn-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}.learn-stat small{display:block;color:var(--muted);font-size:11px}.learn-stat strong{display:block;font-size:23px;margin-top:7px;overflow-wrap:anywhere}.learn-card{margin:14px 0}.learn-card h2{font-size:17px;margin:0 0 12px}.learn-note{font-size:12px;line-height:1.9;color:var(--muted);padding:12px;border:1px solid var(--line);border-radius:11px;margin:12px 0}.learn-table-wrap{overflow:auto}.learn-table{width:100%;border-collapse:collapse;min-width:640px;font-size:12px}.learn-table th,.learn-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.learn-table th{color:var(--muted);font-weight:600}.positive{color:#48c99a}.negative{color:#ff7888}.muted{color:var(--muted)}.learn-actions{display:flex;gap:10px;flex-wrap:wrap}.learn-actions a{display:inline-flex;padding:9px 13px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;font-size:12px}
+@media(max-width:900px){.learn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.learn-stat strong{font-size:19px}}
+</style></head>
+<body><div class="shell"><aside class="sidebar">
+<a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+<div class="side-label">القائمة الرئيسية</div>
+<a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a><a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a><a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a><a class="nav" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a><a class="nav active" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a>
+<div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+<main class="main"><header class="topbar"><div><div class="eyebrow">ADAPTIVE STRATEGY MEMORY</div><h1>ذاكرة وتعلّم AI</h1><p>حفظ جولات الاختبار، تشخيص النتائج، وتحسين قرارات النماذج تدريجيًا</p></div><div class="top-actions"><a class="refresh" href="/backtest-lab.html">تشغيل اختبار جديد</a></div></header>
+<section class="learn-grid">
+<article class="learn-stat"><small>جولات الاختبار المحفوظة</small><strong id="runCount">—</strong></article>
+<article class="learn-stat"><small>نماذج تم كبح إشاراتها وفق التحقق السابق</small><strong id="suppressedCount">—</strong></article>
+<article class="learn-stat"><small>الاستراتيجيات المسجلة</small><strong>200</strong></article>
+<article class="learn-stat"><small>التركيبات المسجلة</small><strong>1000</strong></article>
+</section>
+<section class="learn-card"><h2>كيف يتعلم النظام؟</h2>
+<div class="learn-note">كل جولة تُحفظ في قاعدة البيانات. يعتمد النظام على نتائج آخر 20 جولة، ويستخدم نتائج قسم التحقق فقط لبناء ملف أداء سابق. إذا سجل النموذج 30 صفقة تحقق على الأقل، وصافيًا سلبيًا ومعامل ربح أقل من 0.90، يتم تحويل إشارته إلى انتظار في الجولة التالية. وتُعاد حساب أصوات التركيبات بعد تعديل أصوات الاستراتيجيات. لا يحذف أي استراتيجية أو تركيبة، ولا يفتح أو يغلق صفقات MT5.</div>
+<div class="learn-actions"><a href="/backtest-lab.html">الذهاب إلى مختبر الاختبار</a><a href="/dashboard.html">العودة للوحة القيادة</a><a href="#" id="reloadBtn">تحديث السجل</a></div></section>
+<section class="learn-card"><h2>آخر جولات التعلم</h2><div class="learn-table-wrap" id="runsTable"><div class="learn-note">جارٍ تحميل سجل التعلم…</div></div></section>
+<section class="learn-card"><h2>أفضل النماذج في آخر جولة تحقق</h2><div class="learn-table-wrap" id="bestTable"><div class="learn-note">بانتظار نتائج الاختبار.</div></div></section>
+<section class="learn-card"><h2>النماذج التي تحتاج مراجعة</h2><div class="learn-table-wrap" id="weakTable"><div class="learn-note">بانتظار نتائج الاختبار.</div></div></section>
+<section class="learn-note" id="learningStatus">ملاحظة: التعلم الحالي تكيف إحصائي قائم على أداء الاختبارات السابقة، وليس تدريبًا لنموذج عصبي جديد. لا يُعتمد أي نموذج على نتيجة التدريب وحدها؛ يلزم تحقق مستقل وبيانات تاريخية كافية.</section>
+</main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $=id=>document.getElementById(id);let accessToken=null;
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=v=>Number(v||0).toFixed(2);
+async function api(path){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
+function profile(runs){
+ const map={};for(const run of runs)for(const x of [...(run.strategy_results||[]),...(run.combination_results||[])]){
+  const v=x.validation||{};if(!v.n)continue;const p=map[x.id]||(map[x.id]={id:x.id,name:x.name,n:0,net:0,grossWins:0,grossLoss:0});
+  p.n+=Number(v.n||0);p.net+=Number(v.net||0);p.grossWins+=Number(v.grossWins||0);p.grossLoss+=Number(v.grossLoss||0);
+ }
+ return Object.values(map).map(x=>({...x,pf:x.grossLoss?x.grossWins/x.grossLoss:x.grossWins>0?999:0})).sort((a,b)=>b.net-a.net);
+}
+function modelTable(rows){if(!rows.length)return "<div class='learn-note'>لا توجد نتائج تحقق كافية بعد. شغّل اختبارًا واحدًا على الأقل.</div>";
+ return "<table class='learn-table'><thead><tr><th>النموذج</th><th>صفقات التحقق</th><th>صافي التحقق</th><th>معامل الربح</th><th>حالة التعلم</th></tr></thead><tbody>"+rows.slice(0,15).map(x=>"<tr><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+(x.pf===999?"∞":x.pf.toFixed(2))+"</td><td>"+(x.n>=30&&x.net<0&&x.pf<.9?"كبح الإشارة":x.n<30?"عينة غير كافية":"مراقبة")+"</td></tr>").join("")+"</tbody></table>";
+}
+async function load(){
+ try{
+  const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الاتصال غير مكتملة");
+  const client=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await client.auth.getSession();
+  if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");
+  const d=await api("/api/backtest/learning?limit=20"),runs=d.runs||[],p=profile(runs);
+  $("serviceState").textContent="تم التحقق من الحساب";$("runCount").textContent=String(d.count||0);
+  $("suppressedCount").textContent=String(p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length);
+  $("runsTable").innerHTML=runs.length?"<table class='learn-table'><thead><tr><th>التاريخ</th><th>الرمز / الفريم</th><th>الشموع</th><th>نقاط التحقق</th><th>صافي الاستراتيجيات</th><th>إشارات تم كبحها</th></tr></thead><tbody>"+runs.map(r=>"<tr><td>"+new Date(r.created_at).toLocaleString("ar-AE")+"</td><td>"+esc(r.symbol)+" / "+esc(r.timeframe)+"</td><td>"+Number(r.candle_count||0)+"</td><td>"+Number(r.validation_points||0)+"</td><td class='"+(Number(r.summary?.validation_strategy_net_sum||0)>=0?"positive":"negative")+"'>"+money(r.summary?.validation_strategy_net_sum)+" "+esc(r.account_currency)+"</td><td>"+Number(r.summary?.suppressed_signals||0)+"</td></tr>").join("")+"</tbody></table>":"<div class='learn-note'>لا توجد جولات محفوظة بعد. ابدأ أول اختبار من مختبر الاختبار التاريخي.</div>";
+  $("bestTable").innerHTML=modelTable(p.filter(x=>x.n>0));
+  $("weakTable").innerHTML=modelTable(p.filter(x=>x.n>0).sort((a,b)=>a.net-b.net).slice(0,15));
+  $("learningStatus").textContent="تم تحميل "+runs.length+" جولة من آخر 20 جولة. يتم استخدام نتائج التحقق السابقة فقط لبناء سياسة التكيّف. عدد النماذج التي تستوفي شروط كبح الإشارة: "+p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length+".";
+ }catch(e){$("serviceState").textContent="تعذر تحميل الذاكرة";$("learningStatus").textContent=e.message}
+}
+$("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});load();
+</script></body></html>
