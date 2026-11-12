@@ -14,8 +14,12 @@ input string InpEngineToken = "";
 input int InpHttpTimeoutMs = 8000;
 input int InpHeartbeatSeconds = 5;
 input int InpCandlesToSend = 120;
+input group "الأرشيف التاريخي للاختبار"
+input int InpHistoricalCandlesToSend = 5000;
+input int InpHistoryUploadMinutes = 15;
 
 bool g_online=false;
+datetime g_lastHistoryAttempt=0;
 string g_status="بدء الاتصال";
 
 string BaseUrl()
@@ -62,6 +66,66 @@ void AppendCandle(string &out,const MqlRates &bar,int digits)
    out+=",\"close\":"+JNum(bar.close,digits);
    out+=",\"tick_volume\":"+IntegerToString((long)bar.tick_volume)+"}";
 }
+bool SendHistoricalBatch()
+{
+   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   MqlRates rates[];
+   ArraySetAsSeries(rates,true);
+   int wanted=(int)MathMax(20,MathMin(10000,InpHistoricalCandlesToSend));
+   int copied=CopyRates(_Symbol,(ENUM_TIMEFRAMES)_Period,1,wanted,rates);
+   if(copied<20)
+   {
+      Print("AL-ZOOL history upload skipped: only ",copied," closed bars are available.");
+      return false;
+   }
+
+   double point=SymbolInfoDouble(_Symbol,SYMBOL_POINT);
+   double tick_size=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE);
+   double tick_value=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_VALUE);
+   double contract_size=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_CONTRACT_SIZE);
+   string body="{\"symbol\":\""+JsonEscape(_Symbol)+"\"";
+   body+=",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\"";
+   body+=",\"metadata\":{\"digits\":"+IntegerToString(_Digits);
+   body+=",\"point_size\":"+JNum(point,10);
+   body+=",\"tick_size\":"+JNum(tick_size,10);
+   body+=",\"tick_value\":"+JNum(tick_value,10);
+   body+=",\"contract_size\":"+JNum(contract_size,8)+"}";
+   body+=",\"candles\":[";
+   int sent=0;
+   // MQL5 series indexing: highest index is oldest, so upload chronologically.
+   for(int i=copied-1;i>=0;i--)
+   {
+      if(sent>0) body+=",";
+      body+="{\"time\":"+IntegerToString((long)rates[i].time);
+      body+=",\"open\":"+JNum(rates[i].open,_Digits);
+      body+=",\"high\":"+JNum(rates[i].high,_Digits);
+      body+=",\"low\":"+JNum(rates[i].low,_Digits);
+      body+=",\"close\":"+JNum(rates[i].close,_Digits);
+      body+=",\"tick_volume\":"+IntegerToString((long)rates[i].tick_volume);
+      body+=",\"spread_points\":"+IntegerToString((int)rates[i].spread)+"}";
+      sent++;
+   }
+   body+="]}";
+
+   char data[],result[];
+   StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string response_headers;
+   ResetLastError();
+   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-history/batch/"+InpEngineId,
+                       headers,30000,data,result,response_headers);
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   if(code!=200)
+   {
+      Print("AL-ZOOL historical upload failed: HTTP=",code," err=",GetLastError(),
+            " body=",StringSubstr(response,0,400));
+      return false;
+   }
+   Print("AL-ZOOL historical candles uploaded: ",sent," bars. ",StringSubstr(response,0,250));
+   return true;
+}
+
 bool SendLiveSnapshot()
 {
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
@@ -227,9 +291,10 @@ bool SendLiveSnapshot()
 
 int OnInit()
 {
-   if(InpHeartbeatSeconds<5 || InpCandlesToSend<20 || InpCandlesToSend>120)
+   if(InpHeartbeatSeconds<5 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
+      InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5)
    {
-      Print("AL-ZOOL: heartbeat must be >=5 seconds and candles 20..120");
+      Print("AL-ZOOL: heartbeat >=5s, live candles 20..120, history 20..10000, history interval >=5 minutes");
       return INIT_PARAMETERS_INCORRECT;
    }
    EventSetTimer(InpHeartbeatSeconds);
@@ -253,6 +318,11 @@ void OnTimer()
    }
    bool sent=SendLiveSnapshot();
    if(sent) g_online=true;
+   if(g_lastHistoryAttempt==0 || TimeCurrent()-g_lastHistoryAttempt>=InpHistoryUploadMinutes*60)
+   {
+      g_lastHistoryAttempt=TimeCurrent();
+      SendHistoricalBatch();
+   }
    Comment("AL-ZOOL MT5 LIVE DATA CLIENT\n",g_status,
            "\nServer: ",BaseUrl(),
            "\nSymbol: ",_Symbol," | TF: ",EnumToString((ENUM_TIMEFRAMES)_Period),
