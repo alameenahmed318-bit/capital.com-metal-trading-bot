@@ -25,7 +25,6 @@ input int InpMaxOpenPositions = 10;
 input bool InpBlockOppositePositions = true;
 input int InpATRPeriod = 14;
 input double InpStopLossATR = 1.8;
-input double InpTakeProfitATR = 1.2;
 input bool InpUseTrailing = true;
 input double InpTrailStartATR = 1.0;
 input double InpTrailDistanceATR = 0.8;
@@ -287,7 +286,6 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
              : atr[0]*g_serverStopLossValue;
       slDist=MathMax(slDist,minDist+_Point);
    }
-   double tpDist=MathMax(atr[0]*InpTakeProfitATR,minDist+_Point);
    double sl=0.0,tp=0.0;
    g_trade.SetExpertMagicNumber(InpTradeMagic);
    g_trade.SetDeviationInPoints(InpDeviationPoints);
@@ -296,13 +294,11 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    if(direction=="BUY")
    {
       if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.ask-slDist,digits);
-      tp=NormalizeDouble(tick.ask+tpDist,digits);
       sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId));
    }
    else
    {
       if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.bid+slDist,digits);
-      tp=NormalizeDouble(tick.bid-tpDist,digits);
       sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId));
    }
    uint rc=g_trade.ResultRetcode();
@@ -434,20 +430,17 @@ void ManagePositionAddons()
       slDist=(g_serverStopLossMode=="POINTS")?g_serverStopLossValue*_Point:atr[0]*g_serverStopLossValue;
       slDist=MathMax(slDist,minDist+_Point);
    }
-   double tpDist=MathMax(atr[0]*InpTakeProfitATR,minDist+_Point);
    g_trade.SetExpertMagicNumber(InpTradeMagic);g_trade.SetDeviationInPoints(InpDeviationPoints);
    g_trade.SetTypeFillingBySymbol(_Symbol);
    bool sent=false;
    if(side==POSITION_TYPE_BUY)
    {
       if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.ask-slDist,digits);
-      tp=NormalizeDouble(tick.ask+tpDist,digits);
       sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-"+chosen);
    }
    else
    {
       if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.bid+slDist,digits);
-      tp=NormalizeDouble(tick.bid-tpDist,digits);
       sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-"+chosen);
    }
    uint rc=g_trade.ResultRetcode();
@@ -787,7 +780,7 @@ int OnInit()
    if(InpHeartbeatSeconds<5 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
       InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5 ||
       InpTradeLots<=0 || InpMaxOpenPositions<1 || InpATRPeriod<2 ||
-      InpStopLossATR<=0 || InpTakeProfitATR<=0 || InpTrailStartATR<=0 || InpTrailDistanceATR<=0)
+      InpStopLossATR<=0 || InpTrailStartATR<=0 || InpTrailDistanceATR<=0)
    {
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
       return INIT_PARAMETERS_INCORRECT;
