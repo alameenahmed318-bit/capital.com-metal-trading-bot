@@ -131,6 +131,7 @@ def clean_historical_candles(rows, metadata, client_id, symbol, timeframe):
     tick_size=max(0.0,finite_number(metadata.get("tick_size")))
     tick_value=max(0.0,finite_number(metadata.get("tick_value")))
     contract_size=max(0.0,finite_number(metadata.get("contract_size")))
+    account_currency=str(metadata.get("account_currency") or "")[:12]
     cleaned=[]
     for item in rows[:10000]:
         if not isinstance(item,dict): continue
@@ -149,7 +150,7 @@ def clean_historical_candles(rows, metadata, client_id, symbol, timeframe):
             "tick_volume":max(0,int(finite_number(item.get("tick_volume")))),
             "spread_points":max(0,int(finite_number(item.get("spread_points")))),
             "point_size":point,"tick_size":tick_size,"tick_value":tick_value,
-            "contract_size":contract_size,"digits":digits
+            "contract_size":contract_size,"digits":digits,"account_currency":account_currency
         })
     return cleaned
 
@@ -238,7 +239,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if days:
                     cutoff=(datetime.now(timezone.utc)-timedelta(days=days)).isoformat()
                     query+="&candle_time=gte."+urllib.parse.quote(cutoff,safe="")
-                query+="&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume,spread_points,point_size,tick_size,tick_value,contract_size,digits&order=candle_time.asc"
+                query+="&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume,spread_points,point_size,tick_size,tick_value,contract_size,digits,account_currency&order=candle_time.asc"
                 rows=[]; offset=0
                 while len(rows)<row_limit:
                     page=sb("GET",query+"&limit=1000&offset="+str(offset),admin=True)
@@ -256,7 +257,7 @@ class Handler(SimpleHTTPRequestHandler):
                         "spread_points":int(finite_number(row.get("spread_points"))),
                         "point_size":finite_number(row.get("point_size")),"tick_size":finite_number(row.get("tick_size")),
                         "tick_value":finite_number(row.get("tick_value")),"contract_size":finite_number(row.get("contract_size")),
-                        "digits":int(finite_number(row.get("digits"),2))})
+                        "digits":int(finite_number(row.get("digits"),2)),"currency":str(row.get("account_currency") or "")})
                 return self.send_json(200,{"symbol":symbol,"timeframe":timeframe,"days":days,"count":len(candles),
                     "available_timeframes":available_timeframes,"available_symbols":available_symbols,"candles":candles,
                     "history_source":"MT5 historical rates saved in Supabase","max_rows":row_limit})
