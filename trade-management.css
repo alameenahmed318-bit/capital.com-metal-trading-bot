@@ -10,3 +10,12 @@
 .sl-settings-grid input,.sl-settings-grid select{display:block;width:100%;margin-top:7px;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#12131d;color:var(--ink);font:inherit;font-size:13px}
 .sl-settings-grid input{text-align:left;direction:ltr}
 @media(max-width:600px){.sl-settings-grid{grid-template-columns:1fr}}
+
+/* Add-on and cooling controls */
+.pm-mode-row{display:grid;grid-template-columns:140px minmax(180px,280px);gap:10px;align-items:center;margin:16px 0;padding:14px;border:1px solid var(--line,#e5e7eb);border-radius:14px}
+.pm-mode-row .section-note{grid-column:1/-1;margin:0}
+.pm-grid{align-items:stretch}
+.pm-option{display:flex;flex-direction:column;gap:10px}
+.pm-option input[type=number],#pmMode{width:100%;min-height:42px;border:1px solid var(--line,#e5e7eb);border-radius:10px;padding:8px 10px;background:var(--surface,#fff);color:inherit}
+.pm-manual-fields{display:grid;grid-template-columns:1fr;gap:8px}
+@media(max-width:680px){.pm-mode-row{grid-template-columns:1fr}.pm-mode-row .section-note{grid-column:auto}}
