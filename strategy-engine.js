@@ -125,8 +125,9 @@
     });
     const buy = votes.filter(vote => vote.vote === SIGNALS.BUY).length;
     const sell = votes.filter(vote => vote.vote === SIGNALS.SELL).length;
-    const signal = buy >= 3 && buy - sell >= 2 ? SIGNALS.BUY :
-      sell >= 3 && sell - buy >= 2 ? SIGNALS.SELL : SIGNALS.WAIT;
+    const quorum = Math.max(3, Math.ceil(votes.length * 0.35));
+    const signal = buy >= quorum && buy - sell >= 2 ? SIGNALS.BUY :
+      sell >= quorum && sell - buy >= 2 ? SIGNALS.SELL : SIGNALS.WAIT;
     let confidence = Math.round(Math.max(buy, sell) / votes.length * 100);
     if (signal === SIGNALS.WAIT) confidence = Math.round(Math.max(buy, sell) / votes.length * 70);
     return {
