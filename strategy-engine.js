@@ -376,7 +376,10 @@
     if (!strategy || !strategy.id || !strategy.name || !strategy.family || typeof strategy.evaluate !== "function")
       throw new TypeError("Invalid strategy contract");
     if (registry.has(strategy.id)) throw new Error("Duplicate strategy id: " + strategy.id);
-    registry.set(strategy.id, Object.freeze(strategy));
+    const ordinal = registry.size + 1;
+    const cleanName = String(strategy.name).replace(/^\\d{3}\\s*[—-]\\s*/, "");
+    const numberedStrategy = { ...strategy, name: String(ordinal).padStart(3, "0") + " — " + cleanName };
+    registry.set(strategy.id, Object.freeze(numberedStrategy));
     return strategy.id;
   }
   strategies.forEach(register);
