@@ -73,6 +73,7 @@ async function applyLearningOverlay(fast,market){
   fast.combinationCounts={total:(fast.combinations||[]).length,buy:fast.combinations.filter(x=>x.signal==="BUY").length,sell:fast.combinations.filter(x=>x.signal==="SELL").length,wait:fast.combinations.filter(x=>x.signal==="WAIT").length};
   fast.topCombinations=fast.combinations.filter(x=>x.signal!=="WAIT").sort((a,b)=>b.confidence-a.confidence||Math.abs(b.buy-b.sell)-Math.abs(a.buy-a.sell)).slice(0,12);
   fast.learningMeta={active:qualified>0,runCount:runs.length,qualified,rawSignal,weightedSignal:fast.signal,weightedBuy:fast.weightedBuy,weightedSell:fast.weightedSell};
+  fast.reasons=["بعد أوزان التعلم: شراء "+fast.weightedBuy+" مقابل بيع "+fast.weightedSell+" نقطة وزن؛ قبل التعلم: "+rawSignal+".",...fast.reasons.slice(1)];
  }catch(e){fast.learningMeta={active:false,error:e.message,rawSignal,weightedSignal:rawSignal};}
  return fast;
 }
