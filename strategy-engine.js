@@ -93,7 +93,6 @@
     {id:"resistance-rejection",name:"رفض المقاومة القريبة",family:"support_resistance",evaluate:c=>{const near=Math.abs(Number(c.last.high)-c.high30)<=(c.atr||0)*.2,down=c.close<Number(c.last.open);return {signal:near&&down?SIGNALS.SELL:SIGNALS.WAIT,confidence:near&&down?61:0,reasons:["تفاعل السعر مع قمة 30 شمعة"]};}},
     {id:"five-candle-roc",name:"زخم التغير 5 شموع",family:"momentum",evaluate:c=>{const v=c.candles.map(x=>Number(x.close)),d=v.at(-1)-v.at(-6);return {signal:d>0?SIGNALS.BUY:d<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:d===0?0:58,reasons:["التغير خلال 5 شموع: "+d.toFixed(3)]};}},
     {id:"macd-alignment",name:"توافق MACD",family:"momentum",evaluate:c=>{const v=c.candles.map(x=>Number(x.close)),line=ema(v,12)-ema(v,26),hist=ema(v.slice(-40).map((_,i)=>{const q=v.slice(0,v.length-39+i);return ema(q,12)-ema(q,26)}),9),buy=line>0&&line>hist,sell=line<0&&line<hist;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?66:0,reasons:["مقارنة خط MACD بخط الإشارة"]};}},
-    {id:"candle-body-pressure",name:"قوة جسم الشمعة",family:"candles",evaluate:c=>{const n=c.last,body=c.close-Number(n.open),range=Math.max(Number(n.high)-Number(n.low),1e-8),ratio=Math.abs(body)/range,ok=ratio>=.7;return {signal:ok?(body>0?SIGNALS.BUY:SIGNALS.SELL):SIGNALS.WAIT,confidence:ok?60:0,reasons:["قوة جسم الشمعة "+(ratio*100).toFixed(0)+"% من مداها"]};}}
   ];
 
 
@@ -387,12 +386,13 @@
   batchThreeStrategies.forEach(register);
   batchFourStrategies.forEach(register);
   batchFiveStrategies.forEach(register);
+  if (registry.size !== 200) throw new Error("Strategy registry integrity error: expected 200, got " + registry.size);
 
   // 1,000 deterministic five-strategy portfolios built from the 200 registered strategies.
   // Each portfolio is evaluated from the same live votes; this is analysis, not order execution.
   function buildCombinations(votes) {
     if (votes.length !== 200 || registry.size !== 200)
-      throw new Error("The combination lab requires exactly 200 registered strategies.");
+      throw new Error("The combination lab requires exactly 200 registered strategies (registered: " + registry.size + ", votes: " + votes.length + ").");
     const out = [];
     // Build 1,000 guaranteed-unique five-member sets. The first two indices
     // form a unique pair (0..39 with 25 choices each); the remaining three
