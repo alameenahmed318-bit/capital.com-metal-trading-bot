@@ -409,6 +409,7 @@ void OnDeinit(const int reason)
 }
 void OnTimer()
 {
+   EvaluateAutoClose();
    ulong now=GetTickCount64();
    if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
    {
@@ -436,4 +437,4 @@ void OnTick()
 {
    EvaluateAutoClose();
 }
-// Profit targets are evaluated locally on every incoming market tick.
+// Profit targets are evaluated locally on market ticks and a one-second timer.
