@@ -7,8 +7,8 @@ async function loadCloseSettings(){
  const d=await api("/api/trade-management/settings"),s=d.settings||{};
  $("singleEnabled").checked=!!s.single_enabled;
  $("groupEnabled").checked=!!s.group_enabled;
- $("singleTarget").value=Number(s.single_profit_target||1);
- $("groupTarget").value=Number(s.group_profit_target||5);
+ $("singleTarget").value=Number(s.single_profit_target??1).toFixed(2);
+ $("groupTarget").value=Number(s.group_profit_target??5).toFixed(2);
  $("closeEngineState").textContent="الإعدادات محفوظة · "+(d.client_id?"مرتبطة بعميل MT5":"غير مرتبطة");
  $("closeSettingsMessage").textContent="الأهداف بعملة حساب MT5: "+(s.currency||"عملة الحساب");
 }
