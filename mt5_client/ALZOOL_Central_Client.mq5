@@ -22,6 +22,7 @@ input bool InpEnableCentralTrading = true;
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
 input int InpMaxOpenPositions = 10;
+input bool InpBlockOppositePositions = true;
 input int InpATRPeriod = 14;
 input double InpStopLossATR = 1.8;
 input double InpTakeProfitATR = 1.2;
@@ -231,11 +232,37 @@ int CountAlzoolPositions()
    }
    return count;
 }
+// Returns account-wide open BUY/SELL counts, regardless of symbol or magic number.
+void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
+{
+   buyPositions=0; sellPositions=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if(type==POSITION_TYPE_BUY) buyPositions++;
+      else if(type==POSITION_TYPE_SELL) sellPositions++;
+   }
+}
+bool IsAccountDirectionAllowed(const string direction)
+{
+   if(!InpBlockOppositePositions) return true;
+   int buys=0,sells=0;
+   GetAccountDirectionCounts(buys,sells);
+   // If both sides already exist, fail closed: do not add any new exposure.
+   if(buys>0 && sells>0) return false;
+   if(direction=="BUY") return (sells==0);
+   if(direction=="SELL") return (buys==0);
+   return false;
+}
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,
                          const int strategyId,const string reason)
 {
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       confidence<0.55 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
+   if(!IsAccountDirectionAllowed(direction))
+   { g_status="قفل الاتجاه الواحد: توجد صفقات في الاتجاه المعاكس"; return; }
    datetime currentBar=iTime(_Symbol,(ENUM_TIMEFRAMES)_Period,0);
    if(currentBar<=0 || (long)currentBar<=decisionBar) return;
    if(g_executionBarKey!="" && GlobalVariableCheck(g_executionBarKey) &&
@@ -300,6 +327,7 @@ void ManagePositionAddons()
    MqlTick tick; if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<tick.bid) return;
 
    int buyCount=0,sellCount=0,addonCount=0,coolingCount=0;
+   int buyAddonCount=0,sellAddonCount=0;
    double buyNet=0.0,sellNet=0.0,lastBuyPrice=0.0,lastSellPrice=0.0;
    datetime lastBuyTime=0,lastSellTime=0;
    double baseBuyLot=0.0,baseSellLot=0.0;
@@ -313,7 +341,12 @@ void ManagePositionAddons()
       string comment=PositionGetString(POSITION_COMMENT);
       double volume=PositionGetDouble(POSITION_VOLUME);
       datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
-      if(StringFind(comment,"ALZOOL-ADD")==0) addonCount++;
+      if(StringFind(comment,"ALZOOL-ADD")==0)
+      {
+         addonCount++;
+         if(type==POSITION_TYPE_BUY) buyAddonCount++;
+         else if(type==POSITION_TYPE_SELL) sellAddonCount++;
+      }
       if(StringFind(comment,"ALZOOL-COOL")==0) coolingCount++;
       if(type==POSITION_TYPE_BUY)
       {
@@ -329,6 +362,10 @@ void ManagePositionAddons()
       }
    }
    if(PositionsTotal()>=InpMaxOpenPositions) return;
+   // Add-ons/cooling must follow the one-way direction lock too.
+   int accountBuys=0,accountSells=0;
+   GetAccountDirectionCounts(accountBuys,accountSells);
+   if(accountBuys>0 && accountSells>0) return;
    double emaFast[],emaSlow[]; ArraySetAsSeries(emaFast,true); ArraySetAsSeries(emaSlow,true);
    bool haveTrend=(g_emaFastHandle!=INVALID_HANDLE && g_emaSlowHandle!=INVALID_HANDLE &&
                    CopyBuffer(g_emaFastHandle,0,1,1,emaFast)==1 &&
@@ -351,9 +388,18 @@ void ManagePositionAddons()
       { chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;distancePoints=(atr[0]*1.2)/_Point; }
       if(chosen!="")
       {
-         double volatilityRatio=atr[0]/MathMax(1.0,(tick.bid+tick.ask)*0.5);
-         double factor=(volatilityRatio>0.001?0.40:(volatilityRatio>0.0005?0.55:0.70));
-         lots=NormalizeTradeLots(baseLot*factor);
+         if(chosen=="ADD")
+         {
+            // Linear AI add-on sizing: 0.01, 0.02, 0.03, 0.04 ... per direction.
+            int nextAddon=(side==POSITION_TYPE_BUY?buyAddonCount:sellAddonCount)+1;
+            lots=NormalizeTradeLots(0.01*nextAddon);
+         }
+         else
+         {
+            double volatilityRatio=atr[0]/MathMax(1.0,(tick.bid+tick.ask)*0.5);
+            double factor=(volatilityRatio>0.001?0.40:(volatilityRatio>0.0005?0.55:0.70));
+            lots=NormalizeTradeLots(baseLot*factor);
+         }
       }
    }
    else
@@ -376,6 +422,8 @@ void ManagePositionAddons()
       }
    }
    if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
+   if(side==POSITION_TYPE_BUY && accountSells>0) return;
+   if(side==POSITION_TYPE_SELL && accountBuys>0) return;
    double adverse=(side==POSITION_TYPE_BUY?(lastPrice-tick.ask)/_Point:(tick.bid-lastPrice)/_Point);
    if(adverse<distancePoints) return;
    double minDist=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
