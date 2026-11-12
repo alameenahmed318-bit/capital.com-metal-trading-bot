@@ -65,7 +65,7 @@ bool HttpGet(const string url)
 }
 string JsonField(const string json,const string key)
 {
-   string needle="\\""+key+"\\":";
+   string needle="\""+key+"\":";
    int p=StringFind(json,needle);
    if(p<0) return "";
    p+=StringLen(needle);
@@ -91,7 +91,7 @@ bool PollTradeSettings()
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
    char data[],result[];
    ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\\r\\n";
+   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
    string response_headers;
    ResetLastError();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
