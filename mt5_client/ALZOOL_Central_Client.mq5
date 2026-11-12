@@ -7,7 +7,7 @@
 #include <Trade/Trade.mqh>
 
 CTrade g_trade;
-#property version "2.30"
+#property version "2.31"
 #property description "AL-ZOOL MT5 telemetry and local profit protection"
 
 input group "بيانات الاتصال بالخادم"
@@ -65,13 +65,23 @@ bool HttpGet(const string url)
 }
 string JsonField(const string json,const string key)
 {
-   string needle="\""+key+"\":";
+   // Accept normal JSON spacing (for example: "single_enabled": false)
+   // as well as compact JSON. The backend serializer inserts a space after ':'.
+   string needle="\""+key+"\"";
    int p=StringFind(json,needle);
    if(p<0) return "";
    p+=StringLen(needle);
-   while(p<StringLen(json) && (StringGetCharacter(json,p)==32 || StringGetCharacter(json,p)==9)) p++;
+   while(p<StringLen(json) &&
+         (StringGetCharacter(json,p)==32 || StringGetCharacter(json,p)==9 ||
+          StringGetCharacter(json,p)==10 || StringGetCharacter(json,p)==13)) p++;
+   if(p>=StringLen(json) || StringGetCharacter(json,p)!=58) return "";
+   p++;
+   while(p<StringLen(json) &&
+         (StringGetCharacter(json,p)==32 || StringGetCharacter(json,p)==9 ||
+          StringGetCharacter(json,p)==10 || StringGetCharacter(json,p)==13)) p++;
    int e=p;
-   while(e<StringLen(json) && StringGetCharacter(json,e)!=44 && StringGetCharacter(json,e)!=125) e++;
+   while(e<StringLen(json) && StringGetCharacter(json,e)!=44 &&
+         StringGetCharacter(json,e)!=125 && StringGetCharacter(json,e)!=93) e++;
    return StringSubstr(json,p,e-p);
 }
 bool JsonBool(const string json,const string key)
