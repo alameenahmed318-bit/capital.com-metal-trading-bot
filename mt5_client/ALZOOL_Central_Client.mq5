@@ -492,12 +492,12 @@ void OnTimer()
       g_lastHistoryAttempt=TimeCurrent();
       SendHistoricalBatch();
    }
-   Comment("AL-ZOOL MT5 LIVE CLIENT\\n",g_status,
-           "\\nCentral AI: ",g_aiSignal," (",DoubleToString(g_aiConfidence*100.0,1),"%)",
-           "\\n",g_aiReason,
-           "\\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
+   Comment("AL-ZOOL MT5 LIVE CLIENT\n",g_status,
+           "\nCentral AI: ",g_aiSignal," (",DoubleToString(g_aiConfidence*100.0,1),"%)",
+           "\n",g_aiReason,
+           "\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
            " / group ",(g_groupCloseEnabled?"ON":"OFF"),
-           "\\nPositions: ",IntegerToString(PositionsTotal()),
+           "\nPositions: ",IntegerToString(PositionsTotal()),
            " | Pending: ",IntegerToString(OrdersTotal()));
 }
 void OnTick()
