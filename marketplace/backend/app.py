@@ -180,11 +180,12 @@ class Handler(SimpleHTTPRequestHandler):
             if not validate_license(client_id,token_of(self)):
                 return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
             rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=single_enabled,single_profit_target,group_enabled,group_profit_target&limit=1",admin=True)
+                    "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value&limit=1",admin=True)
             clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=trading_enabled&limit=1",admin=True)
             settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
-                                           "group_enabled":False,"group_profit_target":5}
+                                           "group_enabled":False,"group_profit_target":5,
+                                           "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8}
             settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
             return self.send_json(200,settings)
         if path=="/api/auto-trading":
@@ -211,9 +212,10 @@ class Handler(SimpleHTTPRequestHandler):
                     lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                        "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,updated_at&limit=1",admin=True)
+                        "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,updated_at&limit=1",admin=True)
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
-                    "group_enabled":False,"group_profit_target":5,"updated_at":None}
+                    "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
+                    "stop_loss_mode":"ATR","stop_loss_value":1.8,"updated_at":None}
                 return self.send_json(200,{"client_id":client_id,"settings":settings})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
@@ -642,9 +644,21 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"أهداف الربح يجب أن تكون أرقامًا موجبة وبعملة الحساب"})
                 if single_target>100000000 or group_target>100000000:
                     return self.send_json(400,{"error":"قيمة هدف الربح أكبر من الحد المسموح"})
+                existing=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=stop_loss_enabled,stop_loss_mode,stop_loss_value&limit=1",admin=True)
+                prior=existing[0] if existing else {"stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8}
+                stop_loss_enabled=data.get("stop_loss_enabled",prior.get("stop_loss_enabled")) is True
+                stop_loss_mode=str(data.get("stop_loss_mode",prior.get("stop_loss_mode","ATR"))).upper()
+                stop_loss_value=finite_number(data.get("stop_loss_value",prior.get("stop_loss_value",1.8)),0)
+                if stop_loss_mode not in ("POINTS","ATR"):
+                    return self.send_json(400,{"error":"نوع وقف الخسارة غير صالح"})
+                if not math.isfinite(stop_loss_value) or stop_loss_value<=0 or stop_loss_value>1000000:
+                    return self.send_json(400,{"error":"قيمة وقف الخسارة يجب أن تكون أكبر من صفر"})
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
-                     "group_profit_target":group_target,"updated_at":datetime.now(timezone.utc).isoformat()}
+                     "group_profit_target":group_target,"stop_loss_enabled":stop_loss_enabled,
+                     "stop_loss_mode":stop_loss_mode,"stop_loss_value":stop_loss_value,
+                     "updated_at":datetime.now(timezone.utc).isoformat()}
                 saved=sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",row,admin=True,
                          prefer="resolution=merge-duplicates,return=representation")
                 return self.send_json(200,{"saved":True,"settings":saved[0] if isinstance(saved,list) and saved else row})
