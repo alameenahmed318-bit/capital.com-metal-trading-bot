@@ -7,6 +7,7 @@ async function api(path){
  return d;
 }
 function setState(id,text,kind){const el=$(id);el.textContent=text;el.className="state "+kind;}
+function setFloatingColor(el,value){el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");const n=Number(value);el.classList.add(!Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative");}
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 async function boot(){
  try{
@@ -46,6 +47,7 @@ async function refresh(){
   const currency=s.currency||"";
   $("balance").textContent=s.balance==null?"—":fmt(s.balance)+" "+currency;
   $("floating").textContent=s.floating_pl==null?"—":fmt(s.floating_pl)+" "+currency;
+  setFloatingColor($("floating"),s.floating_pl);
   $("openTrades").textContent=s.open_trades==null?"—":fmt(s.open_trades);
   $("winRate").textContent=s.win_rate==null?"—":fmt(s.win_rate)+"%";
   $("balanceMeta").textContent=s.equity==null?"لا توجد بيانات حقوق الحساب":"حقوق الحساب: "+fmt(s.equity)+" "+currency;
