@@ -2,7 +2,30 @@ let supabaseClient=null,accessToken=null,refreshBusy=false;
 const $=id=>document.getElementById(id);
 const fmt=(v,d=2)=>v==null||!Number.isFinite(Number(v))?"—":new Intl.NumberFormat("en-US",{minimumFractionDigits:0,maximumFractionDigits:d}).format(Number(v));
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function api(path){return fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{}}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"API "+r.status);return d;});}
+function api(path,options={}){const headers={...(accessToken?{Authorization:"Bearer "+accessToken}:{}) ,...(options.headers||{})};return fetch(path,{...options,headers}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"API "+r.status);return d;});}
+async function loadCloseSettings(){
+ const d=await api("/api/trade-management/settings"),s=d.settings||{};
+ $("singleEnabled").checked=!!s.single_enabled;
+ $("groupEnabled").checked=!!s.group_enabled;
+ $("singleTarget").value=Number(s.single_profit_target||1);
+ $("groupTarget").value=Number(s.group_profit_target||5);
+ $("closeEngineState").textContent="الإعدادات محفوظة · "+(d.client_id?"مرتبطة بعميل MT5":"غير مرتبطة");
+ $("closeSettingsMessage").textContent="الأهداف بعملة حساب MT5: "+(s.currency||"عملة الحساب");
+}
+async function saveCloseSettings(){
+ const single=Number($("singleTarget").value),group=Number($("groupTarget").value);
+ if(!Number.isFinite(single)||single<=0||!Number.isFinite(group)||group<=0){$("closeSettingsMessage").textContent="أدخل هدفَي ربح موجبين.";return;}
+ $("saveCloseSettings").disabled=true;$("closeSettingsMessage").textContent="جارٍ حفظ الإعدادات…";
+ try{
+  const d=await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   single_enabled:$("singleEnabled").checked,single_profit_target:single,
+   group_enabled:$("groupEnabled").checked,group_profit_target:group
+  })});
+  $("closeSettingsMessage").textContent="تم حفظ الإعدادات بنجاح. ستصل إلى MT5 عند اتصال عميل MT5 المحدّث.";
+  $("closeEngineState").textContent="الإعدادات محفوظة على الخادم";
+ }catch(e){$("closeSettingsMessage").textContent="تعذر الحفظ: "+e.message;}
+ finally{$("saveCloseSettings").disabled=false;}
+}
 function pnlClass(v){const n=Number(v);return !Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative";}
 function money(v,c){return v==null?"—":fmt(v)+" "+esc(c||"");}
 function setPnl(el,v,c){el.textContent=money(v,c);el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");el.classList.add(pnlClass(v));}
@@ -56,8 +79,10 @@ async function boot(){
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
   await api("/api/access/check");
+  await loadCloseSettings();
   await refresh();
  }catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+esc(e.message)+" — ارجع إلى صفحة الدخول.</span>";}
 }
 $("refreshBtn").addEventListener("click",refresh);
-boot();setInterval(()=>{if(accessToken)refresh();},5000);
+$("saveCloseSettings").addEventListener("click",saveCloseSettings);
+boot();setInterval(()=>{if(accessToken)refresh();},2000);
