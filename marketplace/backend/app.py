@@ -229,7 +229,7 @@ class Handler(SimpleHTTPRequestHandler):
                     meta_rows.extend(meta_page); meta_offset+=len(meta_page)
                     if len(meta_page)<1000: break
                 available_timeframes=[]; available_symbols=[]
-                for row in meta_rows if isinstance(meta_rows,list) else []:
+                for row in meta_rows:
                     tf=str(row.get("timeframe") or "")
                     sym=str(row.get("symbol") or "")
                     if tf and tf not in available_timeframes: available_timeframes.append(tf)
