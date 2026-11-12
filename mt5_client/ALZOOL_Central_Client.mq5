@@ -157,7 +157,7 @@ bool PollTradeSettings()
    double slValue=JsonDouble(response,"stop_loss_value",g_serverStopLossValue);
    if(slValue>0.0) g_serverStopLossValue=slValue;
    string pmMode=JsonField(response,"mode");
-   StringReplace(pmMode,"\\"","");
+   StringReplace(pmMode,CharToString(34),"");
    if(pmMode=="AI" || pmMode=="MANUAL") g_pmMode=pmMode;
    g_addonEnabled=JsonBool(response,"addon_enabled");
    g_coolingEnabled=JsonBool(response,"cooling_enabled");
@@ -358,17 +358,21 @@ void ManagePositionAddons()
    }
    else
    {
-      if(g_addonEnabled && addonCount<g_addonMax)
+      if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice)
       {
-         if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice){chosen="ADD";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;}
-         else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice){chosen="ADD";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;}
-         if(chosen=="ADD"){lots=NormalizeTradeLots(g_addonManualLot);distancePoints=g_addonManualDistance;}
+         double adverseBuy=(lastBuyPrice-tick.ask)/_Point;
+         if(g_addonEnabled && addonCount<g_addonMax && adverseBuy>=g_addonManualDistance)
+         {chosen="ADD";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;lots=NormalizeTradeLots(g_addonManualLot);distancePoints=g_addonManualDistance;}
+         else if(g_coolingEnabled && coolingCount<g_coolingMax && adverseBuy>=g_coolingManualDistance)
+         {chosen="COOL";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;lots=NormalizeTradeLots(g_coolingManualLot);distancePoints=g_coolingManualDistance;}
       }
-      if(chosen=="" && g_coolingEnabled && coolingCount<g_coolingMax)
+      if(chosen=="" && sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice)
       {
-         if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice){chosen="COOL";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;}
-         else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice){chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;}
-         if(chosen=="COOL"){lots=NormalizeTradeLots(g_coolingManualLot);distancePoints=g_coolingManualDistance;}
+         double adverseSell=(tick.bid-lastSellPrice)/_Point;
+         if(g_addonEnabled && addonCount<g_addonMax && adverseSell>=g_addonManualDistance)
+         {chosen="ADD";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;lots=NormalizeTradeLots(g_addonManualLot);distancePoints=g_addonManualDistance;}
+         else if(g_coolingEnabled && coolingCount<g_coolingMax && adverseSell>=g_coolingManualDistance)
+         {chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;lots=NormalizeTradeLots(g_coolingManualLot);distancePoints=g_coolingManualDistance;}
       }
    }
    if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
