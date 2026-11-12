@@ -124,6 +124,35 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         cleaned.append(row)
     return cleaned
 
+def clean_historical_candles(rows, metadata, client_id, symbol, timeframe):
+    if not isinstance(rows,list): return []
+    digits=max(0,min(10,int(finite_number(metadata.get("digits",2),2))))
+    point=max(0.0,finite_number(metadata.get("point_size")))
+    tick_size=max(0.0,finite_number(metadata.get("tick_size")))
+    tick_value=max(0.0,finite_number(metadata.get("tick_value")))
+    contract_size=max(0.0,finite_number(metadata.get("contract_size")))
+    cleaned=[]
+    for item in rows[:10000]:
+        if not isinstance(item,dict): continue
+        stamp=int(finite_number(item.get("time")))
+        if stamp<=0: continue
+        o=finite_number(item.get("open"),float("nan"))
+        h=finite_number(item.get("high"),float("nan"))
+        l=finite_number(item.get("low"),float("nan"))
+        c=finite_number(item.get("close"),float("nan"))
+        if not all(math.isfinite(x) for x in (o,h,l,c)): continue
+        if h<l or h<max(o,c) or l>min(o,c): continue
+        cleaned.append({
+            "client_id":client_id,"symbol":symbol,"timeframe":timeframe,
+            "candle_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
+            "candle_open":o,"candle_high":h,"candle_low":l,"candle_close":c,
+            "tick_volume":max(0,int(finite_number(item.get("tick_volume")))),
+            "spread_points":max(0,int(finite_number(item.get("spread_points")))),
+            "point_size":point,"tick_size":tick_size,"tick_value":tick_value,
+            "contract_size":contract_size,"digits":digits
+        })
+    return cleaned
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs): super().__init__(*args,directory=str(ROOT),**kwargs)
     def log_message(self,fmt,*args): print("WEB:",fmt%args)
@@ -136,7 +165,7 @@ class Handler(SimpleHTTPRequestHandler):
         except (BrokenPipeError,ConnectionResetError): pass
     def read_json(self):
         n=int(self.headers.get("Content-Length","0"))
-        if n>100000: raise ValueError("حجم الطلب كبير")
+        if n>2000000: raise ValueError("حجم الطلب كبير")
         return json.loads(self.rfile.read(n) or b"{}")
     def do_OPTIONS(self):
         self.send_response(204); self.send_header("Allow","GET, POST, PATCH, DELETE, OPTIONS")
@@ -171,6 +200,66 @@ class Handler(SimpleHTTPRequestHandler):
                                  "created_at":u.get("created_at"),"active":not banned(u),
                                  "licensed":bool(lic and not lic.get("revoked")),"expires_at":lic.get("expires_at")})
                 return self.send_json(200,{"clients":rows})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/backtest/history":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                is_owner=(u.get("email") or "").lower()==OWNER_EMAIL
+                if is_owner:
+                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
+                    client_id=latest[0].get("client_id","") if latest else ""
+                else:
+                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                if not client_id:
+                    return self.send_json(409,{"error":"لا يوجد سجل تاريخي محفوظ لهذا الحساب بعد. حدّث عميل MT5 لإرسال التاريخ."})
+                params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                requested_days=int(finite_number((params.get("days") or ["90"])[0],90))
+                days=requested_days if requested_days in (0,7,30,90,180,365,730) else 90
+                requested_limit=int(finite_number((params.get("limit") or ["5000"])[0],5000))
+                row_limit=max(100,min(10000,requested_limit))
+                meta_rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=symbol,timeframe&order=uploaded_at.desc&limit=500",admin=True)
+                available_timeframes=[]; available_symbols=[]
+                for row in meta_rows if isinstance(meta_rows,list) else []:
+                    tf=str(row.get("timeframe") or "")
+                    sym=str(row.get("symbol") or "")
+                    if tf and tf not in available_timeframes: available_timeframes.append(tf)
+                    if sym and sym not in available_symbols: available_symbols.append(sym)
+                if not available_timeframes:
+                    return self.send_json(409,{"error":"لم تصل شموع تاريخية إلى قاعدة البيانات بعد. شغّل عميل MT5 المحدّث."})
+                timeframe=str((params.get("timeframe") or [available_timeframes[0]])[0])[:20]
+                symbol=str((params.get("symbol") or [available_symbols[0] if available_symbols else "XAUUSD"])[0])[:40]
+                if timeframe not in available_timeframes: return self.send_json(400,{"error":"الفريم المطلوب غير موجود ضمن البيانات المحفوظة","available_timeframes":available_timeframes})
+                if symbol not in available_symbols: return self.send_json(400,{"error":"الرمز المطلوب غير موجود ضمن البيانات المحفوظة","available_symbols":available_symbols})
+                query="/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")
+                query+="&symbol=eq."+urllib.parse.quote(symbol,safe="")+"&timeframe=eq."+urllib.parse.quote(timeframe,safe="")
+                if days:
+                    cutoff=(datetime.now(timezone.utc)-timedelta(days=days)).isoformat()
+                    query+="&candle_time=gte."+urllib.parse.quote(cutoff,safe="")
+                query+="&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume,spread_points,point_size,tick_size,tick_value,contract_size,digits&order=candle_time.asc"
+                rows=[]; offset=0
+                while len(rows)<row_limit:
+                    page=sb("GET",query+"&limit=1000&offset="+str(offset),admin=True)
+                    if not isinstance(page,list) or not page: break
+                    rows.extend(page); offset+=len(page)
+                    if len(page)<1000: break
+                rows=rows[:row_limit]
+                candles=[]
+                for row in rows:
+                    try: stamp=int(datetime.fromisoformat(row["candle_time"].replace("Z","+00:00")).timestamp())
+                    except Exception: continue
+                    candles.append({"time":stamp,"open":finite_number(row.get("candle_open")),
+                        "high":finite_number(row.get("candle_high")),"low":finite_number(row.get("candle_low")),
+                        "close":finite_number(row.get("candle_close")),"tick_volume":int(finite_number(row.get("tick_volume"))),
+                        "spread_points":int(finite_number(row.get("spread_points"))),
+                        "point_size":finite_number(row.get("point_size")),"tick_size":finite_number(row.get("tick_size")),
+                        "tick_value":finite_number(row.get("tick_value")),"contract_size":finite_number(row.get("contract_size")),
+                        "digits":int(finite_number(row.get("digits"),2))})
+                return self.send_json(200,{"symbol":symbol,"timeframe":timeframe,"days":days,"count":len(candles),
+                    "available_timeframes":available_timeframes,"available_symbols":available_symbols,"candles":candles,
+                    "history_source":"MT5 historical rates saved in Supabase","max_rows":row_limit})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/market/context":
@@ -307,6 +396,22 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path.startswith("/v1/terminal-history/batch/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                symbol=str(data.get("symbol") or "")[:40]
+                timeframe=str(data.get("timeframe") or "")[:20]
+                if not symbol or not timeframe: return self.send_json(400,{"error":"رمز السوق أو الفريم غير صالح"})
+                metadata=data.get("metadata") if isinstance(data.get("metadata"),dict) else {}
+                candles=clean_historical_candles(data.get("candles"),metadata,client_id,symbol,timeframe)
+                if not candles: return self.send_json(400,{"error":"لا توجد شموع تاريخية صالحة في الدفعة"})
+                saved=0
+                for start in range(0,len(candles),500):
+                    batch=candles[start:start+500]
+                    sb("POST","/rest/v1/alzool_engine_market_candles?on_conflict=client_id,symbol,timeframe,candle_time",
+                       batch,admin=True,prefer="resolution=merge-duplicates")
+                    saved+=len(batch)
+                return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
