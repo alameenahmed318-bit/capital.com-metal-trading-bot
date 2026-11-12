@@ -33,4 +33,5 @@ async function analyze(){if(analysisRunning)return;analysisRunning=true;const b=
 function startAutoAnalysis(){if(autoTimer)return;autoEnabled=true;$("autoToggleBtn").textContent="إيقاف التحليل التلقائي";$("aiHelp").textContent="المحرك السريع يتجدد كل 3 ثوانٍ؛ AI المساعد بحد أقصى مرة كل 60 ثانية.";analyze();autoTimer=setInterval(()=>{if(autoEnabled&&!analysisRunning)analyze()},3000)}
 function stopAutoAnalysis(){autoEnabled=false;if(autoTimer){clearInterval(autoTimer);autoTimer=null}$("autoToggleBtn").textContent="تشغيل التحليل التلقائي";$("aiHelp").textContent="التحليل التلقائي متوقف."}
 $("aiAnalyzeBtn").addEventListener("click",analyze);$("autoToggleBtn").addEventListener("click",()=>autoEnabled?stopAutoAnalysis():startAutoAnalysis());boot();
-</script></body></html>
+</script><script src="/numbers-en.js?v=1"></script>
+</body></html>
