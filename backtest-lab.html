@@ -173,6 +173,8 @@ async function run(){
    const result=window.ALZOOLStrategyEngine.evaluate({candles:history,tick:{bid:current,ask:current+Math.max(spread,0.000001)}});
    if(result.votes.length!==200||result.combinations.length!==1000||!result.combinationCoverage||result.combinationCoverage.coveredStrategies!==200||result.combinations.some(x=>x.members.length!==5||new Set(x.members.map(m=>m.id)).size!==5))throw Error("فشل تحقق عدد الاستراتيجيات أو تغطية جميع الاستراتيجيات داخل التركيبات الـ1000.");
    const bar=candles[i+1],phase=(i+1)>=validationStart?"validation":"training",regime=classifyRegime(result.z,spread,point);
+   // Remember positions present at candle open; never close and reopen the same model on one OHLC bar.
+   const hadStrategyPosition=new Set(strategyPositions.keys()),hadComboPosition=new Set(comboPositions.keys());
    // First manage positions that were already open before this candle.
    for(const [id,pos] of strategyPositions){const model=strategies.get(id);if(advanceModelPosition(model,pos,bar,i+1,lot,commission,slippage,maxHoldBars))strategyPositions.delete(id)}
    for(const [id,pos] of comboPositions){const model=combinations.get(id);if(advanceModelPosition(model,pos,bar,i+1,lot,commission,slippage,maxHoldBars))comboPositions.delete(id)}
@@ -181,7 +183,7 @@ async function run(){
     if(vote.vote!=="BUY"&&vote.vote!=="SELL")continue;
     const learned=policy[vote.id];
     if(learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){suppressedSignals++;continue;}
-    if(strategyPositions.has(vote.id))continue;
+    if(hadStrategyPosition.has(vote.id)||strategyPositions.has(vote.id))continue;
     const position=openModelPosition(vote.vote,bar,Number(result.z.atr||0),lot,slAtr,tpAtr,trailAtr,phase,regime,i+1);
     if(position){strategyPositions.set(vote.id,position);strategyTrades++}
    }
@@ -193,7 +195,7 @@ async function run(){
     const learnedSignal=buys>=3&&buys>sells?"BUY":sells>=3&&sells>buys?"SELL":"WAIT";
     const learned=policy[combo.id];
     if((learnedSignal==="BUY"||learnedSignal==="SELL")&&learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){suppressedSignals++;continue;}
-    if((learnedSignal==="BUY"||learnedSignal==="SELL")&&!comboPositions.has(combo.id)){
+    if((learnedSignal==="BUY"||learnedSignal==="SELL")&&!hadComboPosition.has(combo.id)&&!comboPositions.has(combo.id)){
       const position=openModelPosition(learnedSignal,bar,Number(result.z.atr||0),lot,slAtr,tpAtr,trailAtr,phase,regime,i+1);
       if(position)comboPositions.set(combo.id,position);
     }
