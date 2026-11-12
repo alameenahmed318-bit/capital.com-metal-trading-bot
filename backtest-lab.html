@@ -59,7 +59,7 @@ async function boot(){try{
   const {data}=await sb.auth.getSession();if(!data.session){location.href="/";return}
   accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";
   await loadHistoryMeta();
-}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";setState(e.message);$("strategyResults").innerHTML="<div class='lab-state'>"+esc(e.message)+"</div>"}}
+}catch(e){$("serviceState").textContent=accessToken?"الحساب متصل":"يتطلب تسجيل الدخول";setState(e.message);$("strategyResults").innerHTML="<div class='lab-state'>"+esc(e.message)+"</div>"}}
 function metrics(){return {n:0,wins:0,losses:0,gross:0,spread:0,slippage:0,commission:0,net:0,equity:0,peak:0,maxDD:0,grossWins:0,grossLoss:0}}
 function addTrade(x,signal,bar,lot,commissionPerLot,slippagePoints){
   const point=Number(bar.point_size||0),spreadPoints=Math.max(0,Number(bar.spread_points||0));
