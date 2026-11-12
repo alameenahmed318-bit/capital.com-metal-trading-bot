@@ -385,6 +385,36 @@
   batchFourStrategies.forEach(register);
   batchFiveStrategies.forEach(register);
 
+  // 1,000 deterministic five-strategy portfolios built from the 200 registered strategies.
+  // Each portfolio is evaluated from the same live votes; this is analysis, not order execution.
+  function buildCombinations(votes) {
+    if (votes.length !== 200 || registry.size !== 200)
+      throw new Error("The combination lab requires exactly 200 registered strategies.");
+    const out = [];
+    for (let stride = 1; stride <= 5; stride++) {
+      for (let start = 0; start < 200; start++) {
+        const indexes = Array.from({length:5}, (_,j) => (start + j * stride) % 200);
+        const members = indexes.map(index => votes[index]);
+        const buy = members.filter(v => v.vote === SIGNALS.BUY).length;
+        const sell = members.filter(v => v.vote === SIGNALS.SELL).length;
+        const wait = 5 - buy - sell;
+        const signal = buy >= 3 && buy > sell ? SIGNALS.BUY :
+          sell >= 3 && sell > buy ? SIGNALS.SELL : SIGNALS.WAIT;
+        const number = out.length + 1;
+        out.push({
+          id: "combo-" + String(number).padStart(4,"0"),
+          number, stride, signal,
+          confidence: Math.round(Math.max(buy,sell) * 20),
+          buy, sell, wait,
+          members: members.map(v => ({id:v.id,name:v.name,family:v.family,vote:v.vote}))
+        });
+      }
+    }
+    if (out.length !== 1000 || new Set(out.map(x => x.members.map(m=>m.id).sort().join("|"))).size !== 1000)
+      throw new Error("Combination generation integrity check failed.");
+    return out;
+  }
+
   function evaluate(market) {
     const candles = Array.isArray(market && market.candles) ? market.candles : [];
     const z = indicators(candles);
@@ -393,7 +423,8 @@
       return { signal: SIGNALS.WAIT, confidence: 0, z, buy: 0, sell: 0,
         votes: [{ id: "data-readiness", name: "كفاية البيانات", family: "system", vote: SIGNALS.WAIT,
           why: "نحتاج 50 شمعة مغلقة على الأقل وسعر Bid/Ask صالحاً." }],
-        reasons: ["البيانات غير كافية لتأكيد اتجاه موثوق."] };
+        combinations: [], combinationCounts: {total:0,buy:0,sell:0,wait:0},
+        topCombinations: [], reasons: ["البيانات غير كافية لتأكيد اتجاه موثوق."] };
     }
     const context = Object.freeze({ ...z, market });
     const votes = Array.from(registry.values()).map(strategy => {
@@ -408,13 +439,24 @@
     });
     const buy = votes.filter(vote => vote.vote === SIGNALS.BUY).length;
     const sell = votes.filter(vote => vote.vote === SIGNALS.SELL).length;
+    const combinations = buildCombinations(votes);
+    const combinationCounts = {
+      total: combinations.length,
+      buy: combinations.filter(x => x.signal === SIGNALS.BUY).length,
+      sell: combinations.filter(x => x.signal === SIGNALS.SELL).length,
+      wait: combinations.filter(x => x.signal === SIGNALS.WAIT).length
+    };
+    const topCombinations = combinations
+      .filter(x => x.signal !== SIGNALS.WAIT)
+      .sort((a,b) => b.confidence-a.confidence || Math.abs(b.buy-b.sell)-Math.abs(a.buy-a.sell))
+      .slice(0,12);
     const quorum = Math.max(3, Math.ceil(votes.length * 0.35));
     const signal = buy >= quorum && buy - sell >= 2 ? SIGNALS.BUY :
       sell >= quorum && sell - buy >= 2 ? SIGNALS.SELL : SIGNALS.WAIT;
     let confidence = Math.round(Math.max(buy, sell) / votes.length * 100);
     if (signal === SIGNALS.WAIT) confidence = Math.round(Math.max(buy, sell) / votes.length * 70);
     return {
-      signal, confidence, z, votes, buy, sell,
+      signal, confidence, z, votes, buy, sell, combinations, combinationCounts, topCombinations,
       reasons: ["تصويت " + buy + " من " + votes.length + " لصالح الشراء و" + sell + " لصالح البيع.",
         "EMA20: " + z.e20.toFixed(3) + " | EMA50: " + z.e50.toFixed(3) + " | RSI14: " + z.rsi.toFixed(1),
         "ATR14: " + (z.atr === null ? "غير متاح" : z.atr.toFixed(3)) +
@@ -425,6 +467,7 @@
   root.ALZOOLStrategyEngine = Object.freeze({
     evaluate, register, list: () => Array.from(registry.values()).map(({ id, name, family }) => ({ id, name, family })),
     families: () => Array.from(new Set(Array.from(registry.values(), item => item.family))),
-    get size() { return registry.size; }
+    get size() { return registry.size; },
+    get combinationCount() { return registry.size === 200 ? 1000 : 0; }
   });
 })(window);
