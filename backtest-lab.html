@@ -24,6 +24,10 @@
 <label>حجم اللوت<input id="lotSize" type="number" min="0.01" max="10" step="0.01" value="0.01"></label>
 <label>عمولة اللوت ذهاب وعودة<input id="commissionPerLot" type="number" min="0" step="0.01" value="0"></label>
 <label>الانزلاق السعري (نقاط لكل جهة)<input id="slippagePoints" type="number" min="0" step="0.1" value="0"></label>
+<label>وقف الخسارة (مضاعف ATR)<input id="slAtr" type="number" min="0.1" max="10" step="0.1" value="1.5"></label>
+<label>هدف الربح (مضاعف ATR)<input id="tpAtr" type="number" min="0.1" max="20" step="0.1" value="2"></label>
+<label>التريلينج (مضاعف ATR، صفر للتعطيل)<input id="trailAtr" type="number" min="0" max="10" step="0.1" value="1"></label>
+<label>أقصى مدة للصفقة (شموع)<input id="maxHoldBars" type="number" min="1" max="500" step="1" value="48"></label>
 <div class="lab-actions"><button id="runBtn" class="refresh" type="button">بدء الاختبار</button><span class="lab-tag" id="runStatus">جارٍ التحقق من الأرشيف</span></div>
 </div>
 <div class="lab-progress"><span id="progressBar"></span></div>
@@ -96,19 +100,46 @@ function accumulate(m,net,gross,spread,slippage,commission,regime){
   const r=m.regimes[regime]||(m.regimes[regime]={n:0,wins:0,net:0});
   r.n++;if(net>0)r.wins++;r.net+=net;
 }
-function addTrade(x,signal,bar,lot,commissionPerLot,slippagePoints,phase="training",regime="unknown"){
-  const point=Number(bar.point_size||0),spreadPoints=Math.max(0,Number(bar.spread_points||0));
-  const tickSize=Number(bar.tick_size||0),tickValue=Number(bar.tick_value||0),contract=Number(bar.contract_size||0);
+function openModelPosition(signal,bar,atr,lot,slAtr,tpAtr,trailAtr,phase,regime,index){
+  const point=Number(bar.point_size||0),tickSize=Number(bar.tick_size||0),tickValue=Number(bar.tick_value||0),contract=Number(bar.contract_size||0);
   const valuePerPrice=tickValue>0&&tickSize>0?tickValue/tickSize:contract>0?contract:null;
   if(!valuePerPrice)throw Error("بيانات Tick Value / Tick Size أو Contract Size غير متاحة من MT5؛ لا يمكن حساب الربح المالي بصورة مسؤولة.");
-  const direction=signal==="BUY"?1:-1,move=(Number(bar.close)-Number(bar.open))*direction;
-  const gross=move*valuePerPrice*lot;
-  const spread=spreadPoints*point*valuePerPrice*lot;
-  const slippage=2*slippagePoints*point*valuePerPrice*lot;
-  const commission=commissionPerLot*lot;
-  const net=gross-spread-slippage-commission;
-  accumulate(x,net,gross,spread,slippage,commission,regime);
-  accumulate(x[phase],net,gross,spread,slippage,commission,regime);
+  if(!(atr>0))return null;
+  const direction=signal==="BUY"?1:-1,entry=Number(bar.open);
+  if(!(entry>0))return null;
+  return {direction,entry,entryIndex:index,entrySpreadPrice:Math.max(0,Number(bar.spread_points||0))*point,
+    point,valuePerPrice,phase,regime,stop:entry-direction*atr*slAtr,target:entry+direction*atr*tpAtr,
+    trailDistance:trailAtr>0?atr*trailAtr:0,age:0};
+}
+function closeModelPosition(x,pos,bar,exitPrice,lot,commissionPerLot,slippagePoints){
+  const direction=pos.direction,move=(Number(exitPrice)-pos.entry)*direction,gross=move*pos.valuePerPrice*lot;
+  const exitPoint=Number(bar.point_size||pos.point||0),exitSpread=Math.max(0,Number(bar.spread_points||0))*exitPoint;
+  const spread=((pos.entrySpreadPrice+exitSpread)/2)*pos.valuePerPrice*lot;
+  const slippage=2*slippagePoints*Math.max(Number(pos.point||0),exitPoint)*pos.valuePerPrice*lot;
+  const commission=commissionPerLot*lot,net=gross-spread-slippage-commission;
+  accumulate(x,net,gross,spread,slippage,commission,pos.regime);
+  accumulate(x[pos.phase],net,gross,spread,slippage,commission,pos.regime);
+}
+function advanceModelPosition(x,pos,bar,index,lot,commissionPerLot,slippagePoints,maxHoldBars){
+  const o=Number(bar.open),h=Number(bar.high),l=Number(bar.low),cl=Number(bar.close);
+  let exit=null;
+  const stopHit=pos.direction===1?l<=pos.stop:h>=pos.stop;
+  const targetHit=pos.direction===1?h>=pos.target:l<=pos.target;
+  const gapStop=pos.direction===1?o<=pos.stop:o>=pos.stop;
+  const gapTarget=pos.direction===1?o>=pos.target:o<=pos.target;
+  // Conservative OHLC rule: if SL and TP are both touched in one candle, assume SL first.
+  if(gapStop)exit=o;
+  else if(gapTarget)exit=o;
+  else if(stopHit)exit=pos.stop;
+  else if(targetHit)exit=pos.target;
+  pos.age++;
+  if(exit===null&&pos.trailDistance>0){
+    if(pos.direction===1&&cl>pos.entry)pos.stop=Math.max(pos.stop,cl-pos.trailDistance);
+    if(pos.direction===-1&&cl<pos.entry)pos.stop=Math.min(pos.stop,cl+pos.trailDistance);
+  }
+  if(exit===null&&pos.age>=maxHoldBars)exit=cl;
+  if(exit!==null){closeModelPosition(x,pos,bar,exit,lot,commissionPerLot,slippagePoints);return true}
+  return false;
 }
 function money(v,currency){return Number(v||0).toFixed(2)+" "+(currency||"عملة الحساب")}
 function table(rows,currency){
@@ -127,26 +158,32 @@ async function run(){
   const h=await api("/api/backtest/history?"+qs.toString(),120000),candles=h.candles||[];
   if(candles.length<52)throw Error("البيانات غير كافية. المتاح "+candles.length+" شمعة؛ نحتاج 52 على الأقل.");
   const lot=Number($("lotSize").value),commission=Number($("commissionPerLot").value),slippage=Number($("slippagePoints").value);
-  if(!(lot>0&&lot<=10)||commission<0||slippage<0)throw Error("تحقق من اللوت والعمولة والانزلاق.");
+  const slAtr=Number($("slAtr").value),tpAtr=Number($("tpAtr").value),trailAtr=Number($("trailAtr").value),maxHoldBars=Math.floor(Number($("maxHoldBars").value));
+  if(!(lot>0&&lot<=10)||commission<0||slippage<0||!(slAtr>0)||!(tpAtr>0)||trailAtr<0||!Number.isFinite(maxHoldBars)||maxHoldBars<1||maxHoldBars>500)throw Error("تحقق من اللوت والتكاليف وإعدادات وقف الخسارة والهدف والتريلينج.");
   const strategies=new Map(window.ALZOOLStrategyEngine.list().map(x=>[x.id,{...metrics(),id:x.id,name:x.name}]));
   const combinations=new Map();let strategyTrades=0,strategyNet=0,suppressedSignals=0;
   const currency=candles.at(-1).currency||"عملة الحساب";
   const priorLearning=await api("/api/backtest/learning?limit=100");
   const policy=buildLearningPolicy(priorLearning.runs||[],{symbol,timeframe:tf,account_currency:currency,lot_size:lot,commission_per_lot:commission,slippage_points:slippage});
   const start=50,end=candles.length-1,points=end-start,validationStart=start+Math.floor(points*.7);
+  const strategyPositions=new Map(),comboPositions=new Map();
   for(let i=start;i<end;i++){
    const history=candles.slice(0,i+1),current=Number(history.at(-1).close);
    const point=Number(history.at(-1).point_size||0),spread=Number(history.at(-1).spread_points||0)*point;
    const result=window.ALZOOLStrategyEngine.evaluate({candles:history,tick:{bid:current,ask:current+Math.max(spread,0.000001)}});
    if(result.votes.length!==200||result.combinations.length!==1000||!result.combinationCoverage||result.combinationCoverage.coveredStrategies!==200||result.combinations.some(x=>x.members.length!==5||new Set(x.members.map(m=>m.id)).size!==5))throw Error("فشل تحقق عدد الاستراتيجيات أو تغطية جميع الاستراتيجيات داخل التركيبات الـ1000.");
-   const exitBar=candles[i+1],phase=i>=validationStart?"validation":"training";
-   const regime=classifyRegime(result.z,spread,point);
+   const bar=candles[i+1],phase=(i+1)>=validationStart?"validation":"training",regime=classifyRegime(result.z,spread,point);
+   // First manage positions that were already open before this candle.
+   for(const [id,pos] of strategyPositions){const model=strategies.get(id);if(advanceModelPosition(model,pos,bar,i+1,lot,commission,slippage,maxHoldBars))strategyPositions.delete(id)}
+   for(const [id,pos] of comboPositions){const model=combinations.get(id);if(advanceModelPosition(model,pos,bar,i+1,lot,commission,slippage,maxHoldBars))comboPositions.delete(id)}
+   // Then open new positions at this candle's open from signals known at the previous close.
    for(const vote of result.votes){
     if(vote.vote!=="BUY"&&vote.vote!=="SELL")continue;
     const learned=policy[vote.id];
-    if(learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){vote.vote="WAIT";suppressedSignals++;continue;}
-    const x=strategies.get(vote.id);addTrade(x,vote.vote,exitBar,lot,commission,slippage,phase,regime);
-    strategyTrades++;
+    if(learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){suppressedSignals++;continue;}
+    if(strategyPositions.has(vote.id))continue;
+    const position=openModelPosition(vote.vote,bar,Number(result.z.atr||0),lot,slAtr,tpAtr,trailAtr,phase,regime,i+1);
+    if(position){strategyPositions.set(vote.id,position);strategyTrades++}
    }
    const adjustedVotes=new Map(result.votes.map(v=>[v.id,v.vote]));
    for(const combo of result.combinations){
@@ -156,12 +193,19 @@ async function run(){
     const learnedSignal=buys>=3&&buys>sells?"BUY":sells>=3&&sells>buys?"SELL":"WAIT";
     const learned=policy[combo.id];
     if((learnedSignal==="BUY"||learnedSignal==="SELL")&&learned&&learned.n>=30&&learned.net<0&&learned.pf<0.90){suppressedSignals++;continue;}
-    if(learnedSignal==="BUY"||learnedSignal==="SELL")addTrade(combinations.get(combo.id),learnedSignal,exitBar,lot,commission,slippage,phase,regime);
+    if((learnedSignal==="BUY"||learnedSignal==="SELL")&&!comboPositions.has(combo.id)){
+      const position=openModelPosition(learnedSignal,bar,Number(result.z.atr||0),lot,slAtr,tpAtr,trailAtr,phase,regime,i+1);
+      if(position)comboPositions.set(combo.id,position);
+    }
    }
    $("progressBar").style.width=Math.round((i-start+1)/points*100)+"%";
    setState("اختبار "+(i-start+1)+" من "+points+" نقطة · "+tf);
    if((i-start)%20===0)await new Promise(r=>setTimeout(r,0));
   }
+  // Close any remaining positions at the final historical close; never leave open P/L uncounted.
+  const finalBar=candles.at(-1);
+  for(const [id,pos] of strategyPositions)closeModelPosition(strategies.get(id),pos,finalBar,Number(finalBar.close),lot,commission,slippage);
+  for(const [id,pos] of comboPositions)closeModelPosition(combinations.get(id),pos,finalBar,Number(finalBar.close),lot,commission,slippage);
   const ranked=map=>[...map.values()].filter(x=>x.n>0).sort((a,b)=>b.net-a.net||((b.grossLoss?b.grossWins/b.grossLoss:999)-(a.grossLoss?a.grossWins/a.grossLoss:999)));
   const sr=ranked(strategies),cr=ranked(combinations);
   for(const x of strategies.values())strategyNet+=x.net
@@ -170,7 +214,7 @@ async function run(){
   $("netProfit").className=strategyNet>=0?"positive":"negative";
   $("strategyResults").innerHTML=table(sr,currency);$("comboResults").innerHTML=table(cr,currency);
   const spreadNote=candles.some(x=>Number(x.spread_points)>0)?"السبريد التاريخي من MT5":"تنبيه: بعض/كل الشموع لا تحتوي قيمة سبريد تاريخية، وقد تكون تكلفة السبريد أقل من الواقع.";
-  $("methodNote").innerHTML="<b>نتيجة المنهجية:</b> الدخول عند افتتاح الشمعة التالية والخروج عند إغلاقها. "+esc(spreadNote)+"؛ العمولة "+commission.toFixed(2)+" لكل لوت ذهاب وعودة؛ اللوت "+lot+"؛ الانزلاق "+slippage+" نقطة لكل جهة. معامل الربح المعروض محسوب من صافي نتائج الصفقات بعد التكاليف. تم حساب قيمة السعر باستخدام Tick Value/Tick Size أو Contract Size المرسل من MT5. كل إشارة تُحسب كاختبار مستقل: دخول عند افتتاح الشمعة التالية وخروج عند إغلاقها؛ لذلك لا تمثل النتائج محفظة واحدة ولا تحاكي تداخل المراكز أو حد الصفقات أو التعزيز والتبريد أو الأوامر المعلقة. لا تشمل المحاكاة أوامر وقف/هدف متغيرة، التريلينج، السواب، إعادة التسعير أو تأخر التنفيذ. النتائج محاكاة اتجاهية تاريخية وليست ضماناً للربح.";
+  $("methodNote").innerHTML="<b>منهجية المحاكاة:</b> كل استراتيجية وكل تركيبة تدير مركزًا افتراضيًا مستقلًا واحدًا كحد أقصى. الإشارة تُحسب عند إغلاق الشمعة، والدخول عند افتتاح التالية. وقف الخسارة "+slAtr+" ATR، هدف الربح "+tpAtr+" ATR، التريلينج "+(trailAtr>0?trailAtr+" ATR":"معطل")+"، وأقصى مدة "+maxHoldBars+" شمعة. تُفحص High/Low لكل شمعة؛ وإذا لمس الوقف والهدف في الشمعة نفسها يُحتسب الوقف أولًا تحفظيًا. تُغلق المراكز المتبقية عند نهاية العينة. "+esc(spreadNote)+"؛ العمولة "+commission.toFixed(2)+" لكل لوت ذهاب وعودة؛ اللوت "+lot+"؛ الانزلاق "+slippage+" نقطة لكل جهة. الربح الصافي يخصم السبريد والانزلاق والعمولة. لا تشمل المحاكاة السواب أو إعادة التسعير أو تأخر التنفيذ أو تجميع كل الاستراتيجيات في حساب واحد، ولا تحاكي تعزيز/تبريد أو أوامر معلقة. النتائج محاكاة تاريخية وليست ضمانًا للربح.";
   const rounded=v=>Number.isFinite(Number(v))?Math.round(Number(v)*10000)/10000:0;
   const compactBucket=(b,includeRegimes=true)=>({n:b.n,wins:b.wins,losses:b.losses,gross:rounded(b.gross),spread:rounded(b.spread),slippage:rounded(b.slippage),commission:rounded(b.commission),net:rounded(b.net),grossWins:rounded(b.grossWins),grossLoss:rounded(b.grossLoss),maxDD:rounded(b.maxDD),...(includeRegimes?{regimes:Object.fromEntries(Object.entries(b.regimes||{}).map(([k,v])=>[k,{n:v.n,wins:v.wins,net:rounded(v.net)}]))}:{})});
   const serialise=(x,includeRegimes=true)=>({id:x.id,name:x.name,n:x.n,wins:x.wins,losses:x.losses,grossWins:rounded(x.grossWins),grossLoss:rounded(x.grossLoss),net:rounded(x.net),maxDD:rounded(x.maxDD),training:compactBucket(x.training,includeRegimes),validation:compactBucket(x.validation,includeRegimes)});
@@ -183,7 +227,7 @@ async function run(){
   const runRecord={run_key:"run-"+Date.now()+"-"+Math.random().toString(36).slice(2,8),symbol,timeframe:tf,period_days:days,candle_count:candles.length,test_points:points,validation_points:end-validationStart,lot_size:lot,commission_per_lot:commission,slippage_points:slippage,account_currency:currency,
     summary:{strategy_net_sum:strategyNet,validation_strategy_net_sum:validationNet,strategy_trade_count:strategyTrades,suppressed_signals:suppressedSignals,validation_start_index:validationStart,overall_strategy_count:200,overall_combination_count:1000},
     strategy_results:strategyRows,combination_results:comboRows,
-    diagnostics:{validation_share:0.30,policy_rules:"Only comparable prior runs (same symbol, timeframe, currency, lot and costs) validation metrics can suppress a model; minimum 30 trades, negative net and profit factor below 0.90.",regime_method:"EMA20/EMA50 trend plus historical spread bucket.",warning:"Independent model results are not one combined account portfolio."}};
+    diagnostics:{simulation:{stop_atr:slAtr,target_atr:tpAtr,trailing_atr:trailAtr,max_holding_bars:maxHoldBars,one_position_per_model:true,ohlc_intrabar_rule:"conservative_stop_first",end_of_sample:"close_at_final_candle"},validation_share:0.30,policy_rules:"Only comparable prior runs (same symbol, timeframe, currency, lot and costs) validation metrics can suppress a model; minimum 30 trades, negative net and profit factor below 0.90.",regime_method:"EMA20/EMA50 trend plus historical spread bucket.",warning:"Independent model results are not one combined account portfolio."}};
   const saved=await apiPostLearning(runRecord);
   $("methodNote").innerHTML+="<br><b>ذاكرة التعلم:</b> تم حفظ الجولة "+esc(runRecord.run_key)+". النصف الأول/70% للتدريب الوصفي وآخر 30% للتحقق؛ الجولة القادمة تستخدم نتائج التحقق السابقة فقط. تم كبح "+suppressedSignals+" إشارة بناءً على سجل سابق سلبي مؤكد.";
   $("progressBar").style.width="100%";setState("اكتمل الاختبار وحُفظت جولة التعلم · "+candles.length+" شمعة · "+tf+" · "+h.symbol);
