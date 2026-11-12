@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#11121b"><title>AL-ZOOL | مختبر الفرص</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/dashboard.css?v=2">
+<style>
+.op-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.op-stat,.op-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.op-stat small{display:block;color:var(--muted);font-size:11px}.op-stat strong{display:block;font-size:22px;margin-top:7px;overflow-wrap:anywhere}
+.op-card{margin:14px 0}.op-card h2{font-size:16px;margin:0 0 12px}.op-note{font-size:12px;line-height:1.9;color:var(--muted);padding:12px;border:1px solid var(--line);border-radius:11px;margin:12px 0}
+.op-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.op-actions button,.op-actions select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit}
+.op-table-wrap{overflow:auto}.op-table{width:100%;border-collapse:collapse;min-width:720px;font-size:12px}.op-table th,.op-table td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.op-table th{color:var(--muted);font-weight:600}
+.buy{color:#48c99a}.sell{color:#ff7888}.wait{color:var(--muted)}.op-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:850px){.op-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.op-columns{grid-template-columns:1fr}}
+</style></head>
+<body><div class="shell">
+<aside class="sidebar">
+<a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+<div class="side-label">القائمة الرئيسية</div>
+<a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a>
+<a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a>
+<a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a>
+<a class="nav active" href="/opportunities.html"><span>◉</span> مختبر الفرص</a>
+<a class="nav" href="/trade-history.html"><span>▤</span> سجل التداول</a>
+<a class="nav" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a>
+<a class="nav" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a>
+<div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+<main class="main">
+<header class="topbar"><div><div class="eyebrow">LIVE OPPORTUNITY MONITOR</div><h1>مختبر الفرص</h1><p>رصد فرص الذهب وأسباب القرار وحفظ سجل الإشارات دون تنفيذ تداول</p></div><div class="top-actions"><button class="refresh" id="refreshBtn">تحديث الآن</button><a class="avatar" href="/ai-analysis.html">AI</a></div></header>
+<section class="notice" id="marketStatus"><b>حالة السوق</b><span>بانتظار بيانات MT5.</span></section>
+<section class="op-grid">
+<article class="op-stat"><small>قرار المحرك</small><strong id="signal">—</strong></article>
+<article class="op-stat"><small>ثقة التصويت</small><strong id="confidence">—</strong></article>
+<article class="op-stat"><small>تصويت شراء / بيع</small><strong id="voteCounts">—</strong></article>
+<article class="op-stat"><small>الاستراتيجيات / التركيبات</small><strong id="modelCounts">200 / 1000</strong></article>
+</section>
+<section class="op-card"><div class="op-actions"><b>الفرصة الحالية</b><span class="market-tag" id="marketMeta">بانتظار التحليل</span><spacer></spacer><a class="refresh" href="/ai-analysis.html">فتح التحليل الكامل</a></div>
+<div class="op-note" id="mainReason">لم يصل تحليل بعد.</div>
+<div class="op-columns">
+<div><h2>أبرز الاستراتيجيات المؤيدة</h2><div class="op-table-wrap" id="topStrategies"><div class="op-note">بانتظار التصويت.</div></div></div>
+<div><h2>أبرز التركيبات</h2><div class="op-table-wrap" id="topCombinations"><div class="op-note">بانتظار التصويت.</div></div></div>
+</div></section>
+<section class="op-card"><div class="op-actions"><h2>سجل الفرص والإشارات</h2><select id="historyDays"><option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يوم</option><option value="90">آخر 90 يوم</option><option value="365">آخر سنة</option></select><button id="reloadHistory">تحديث السجل</button><span class="market-tag" id="historyCount">—</span></div>
+<div class="op-table-wrap" id="eventTable"><div class="op-note">جارٍ تحميل سجل الفرص…</div></div></section>
+<section class="op-note">المختبر يحلل الشموع المغلقة ويعرض تصويت 200 استراتيجية و1000 تركيبة. الإشارات استشارية فقط؛ لا تفتح أو تغلق أي صفقة. تُسجل القرارات مرة واحدة لكل شمعة/إشارة لتجنب تكرار السجلات.</section>
+</main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/strategy-engine.js?v=9"></script>
+<script>
+const $=id=>document.getElementById(id);let accessToken=null,busy=false,lastLogged="",events=[];
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path,options={}){const headers={...(options.headers||{}),...(accessToken?{Authorization:"Bearer "+accessToken}:{})};const r=await fetch(path,{...options,headers,signal:options.signal||AbortSignal.timeout(15000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
+function label(s){return s==="BUY"?"شراء":s==="SELL"?"بيع":"انتظار"}
+function tag(s){return s==="BUY"?"buy":s==="SELL"?"sell":"wait"}
+function showTable(rows,kind){if(!rows.length)return "<div class='op-note'>لا توجد إشارات مؤيدة في هذه اللحظة.</div>";if(kind==="strategy")return "<table class='op-table'><thead><tr><th>الاستراتيجية</th><th>التصويت</th><th>الثقة</th><th>السبب</th></tr></thead><tbody>"+rows.map(x=>"<tr><td>"+esc(x.name)+"</td><td class='"+tag(x.vote)+"'>"+label(x.vote)+"</td><td>"+Number(x.confidence||0)+"%</td><td>"+esc(x.why||"—")+"</td></tr>").join("")+"</tbody></table>";return "<table class='op-table'><thead><tr><th>التركيبة</th><th>التصويت</th><th>التوافق</th><th>الأعضاء</th></tr></thead><tbody>"+rows.map(x=>"<tr><td>"+String(x.number).padStart(4,"0")+"</td><td class='"+tag(x.signal)+"'>"+label(x.signal)+"</td><td>"+Number(x.confidence||0)+"%</td><td>"+x.members.map(m=>esc(m.name)).join(" + ")+"</td></tr>").join("")+"</tbody></table>"}
+async function saveOpportunity(fast,market){const candle=market.candles.at(-1),key=[market.symbol,market.timeframe,candle.time,fast.signal].join("-");if(key===lastLogged)return;lastLogged=key;const active=fast.votes.filter(x=>x.vote!=="WAIT").sort((a,b)=>Number(b.confidence||0)-Number(a.confidence||0)).slice(0,12);const payload={symbol:market.symbol,timeframe:market.timeframe,candle_time:candle.time,signal:fast.signal,decision:fast.signal,confidence:fast.confidence,bid:market.tick.bid,ask:market.tick.ask,buy_votes:fast.buy,sell_votes:fast.sell,wait_votes:fast.votes.length-fast.buy-fast.sell,strategy_count:fast.votes.length,combination_count:fast.combinationCounts.total,reasons:fast.reasons,reason_ar:fast.reasons.join("؛ "),top_strategies:active,top_combinations:(fast.topCombinations||[]).slice(0,8)};await api("/api/opportunities/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event_id:key,event_type:fast.signal==="WAIT"?"WAIT":"SIGNAL_CREATED",payload})})}
+async function analyze(){if(busy)return;busy=true;try{const m=await api("/api/market/context");const age=Date.now()-Date.parse(m.received_at||"");if(!Number.isFinite(age)||age>20000)throw Error("بيانات MT5 أقدم من 20 ثانية؛ انتظر تحديث الطرفية.");if(!Array.isArray(m.candles)||m.candles.length<50)throw Error("نحتاج 50 شمعة مغلقة على الأقل.");const fast=window.ALZOOLStrategyEngine.evaluate(m);$("signal").textContent=label(fast.signal);$("signal").className=tag(fast.signal);$("confidence").textContent=fast.confidence+"%";$("voteCounts").textContent=fast.buy+" / "+fast.sell+" / "+(fast.votes.length-fast.buy-fast.sell);$("modelCounts").textContent=fast.votes.length+" / "+(fast.combinationCounts?.total||0);$("marketMeta").textContent=m.symbol+" · "+m.timeframe+" · "+Number(m.tick.bid).toFixed(2);$("mainReason").textContent=(fast.reasons||[]).join(" | ");const active=fast.votes.filter(x=>x.vote!=="WAIT").sort((a,b)=>Number(b.confidence||0)-Number(a.confidence||0)).slice(0,12);$("topStrategies").innerHTML=showTable(active,"strategy");$("topCombinations").innerHTML=showTable((fast.topCombinations||[]).slice(0,12),"combo");$("marketStatus").innerHTML="<b>بيانات السوق متصلة</b><span>آخر تحديث MT5 قبل "+Math.max(0,Math.round(age/1000))+" ثانية · التحليل لا ينفذ أوامر.</span>";await saveOpportunity(fast,m)}catch(e){$("marketStatus").innerHTML="<b>تعذر تحديث الفرص</b><span>"+esc(e.message)+"</span>"}finally{busy=false}}
+async function loadEvents(){try{const d=await api("/api/opportunities/events?kind=opportunities&days="+$("historyDays").value+"&limit=200");events=d.events||[];$("historyCount").textContent=events.length+" حدث";$("eventTable").innerHTML=events.length?"<table class='op-table'><thead><tr><th>الوقت</th><th>الرمز / الفريم</th><th>القرار</th><th>الثقة</th><th>الاستراتيجية</th><th>السبب</th></tr></thead><tbody>"+events.map(e=>{const p=e.payload||{},s=p.signal||p.decision||"WAIT",dt=e.created_at?new Intl.DateTimeFormat("en-AE",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.created_at)):"—";return "<tr><td>"+esc(dt)+"</td><td>"+esc((p.symbol||"—")+" / "+(p.timeframe||"—"))+"</td><td class='"+tag(s)+"'>"+label(s)+"</td><td>"+(Number(p.confidence||0)>1?Number(p.confidence).toFixed(1):Math.round(Number(p.confidence||0)*100))+"%</td><td>"+esc(p.strategy_name||p.strategy||"مجلس الاستراتيجيات")+"</td><td>"+esc(p.reason_ar||p.reasons?.join("؛ ")||p.reason||"—")+"</td></tr>"}).join("")+"</tbody></table>":"<div class='op-note'>لا توجد أحداث محفوظة في هذه الفترة. شغّل مختبر الفرص واتركه مفتوحًا لتسجيل قرارات الشموع الجديدة.</div>"}catch(e){$("eventTable").innerHTML="<div class='op-note'>تعذر تحميل سجل الفرص: "+esc(e.message)+"</div>"}}
+async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await analyze();await loadEvents();setInterval(analyze,5000);setInterval(loadEvents,15000)}catch(e){$("serviceState").textContent="تعذر التحقق";$("marketStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
+$("refreshBtn").addEventListener("click",analyze);$("reloadHistory").addEventListener("click",loadEvents);$("historyDays").addEventListener("change",loadEvents);boot();
+</script><script src="/numbers-en.js?v=1"></script>
+</body></html>
