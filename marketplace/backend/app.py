@@ -181,9 +181,25 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
             rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=single_enabled,single_profit_target,group_enabled,group_profit_target&limit=1",admin=True)
+            clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=trading_enabled&limit=1",admin=True)
             settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                                            "group_enabled":False,"group_profit_target":5}
+            settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
             return self.send_json(200,settings)
+        if path=="/api/auto-trading":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"): return self.send_json(409,{"error":"لا يوجد ترخيص تداول مرتبط بهذا الحساب"})
+                rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(lic["client_id"],safe="")+
+                        "&select=trading_enabled&limit=1",admin=True)
+                enabled=bool(rows and rows[0].get("trading_enabled",False))
+                return self.send_json(200,{"trading_enabled":enabled,"client_id":lic["client_id"],
+                    "connected":bool(CONNECTIONS.get(lic["client_id"]) and (datetime.now(timezone.utc)-CONNECTIONS[lic["client_id"]]["received_at"]).total_seconds()<30)})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/trade-management/settings":
             try:
                 u=current_user(token_of(self))
@@ -328,13 +344,17 @@ class Handler(SimpleHTTPRequestHandler):
             confidence=finite_number(decision.get("confidence",0.0))
             signal=str(decision.get("decision","WAIT"))
             strategy_id=int(finite_number(decision.get("strategy_id",0)))
-            ready=(signal in ("BUY","SELL") and confidence>=0.55 and
+            clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=trading_enabled&limit=1",admin=True)
+            trading_enabled=bool(clients and clients[0].get("trading_enabled",False))
+            ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.55 and
                    1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
             return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
-                "bar_time":decision.get("bar_time",0),"execution_ready":ready,"minimum_confidence":0.55,
-                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else "لا توجد إشارة مستوفية لشروط الدخول"})
+                "bar_time":decision.get("bar_time",0),"execution_ready":ready,"trading_enabled":trading_enabled,
+                "minimum_confidence":0.55,
+                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
         if path=="/api/market/context":
             try:
                 import time
@@ -589,6 +609,18 @@ class Handler(SimpleHTTPRequestHandler):
                        batch,admin=True,prefer="resolution=merge-duplicates")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
+            if path=="/api/auto-trading":
+                u=current_user(token)
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"): return self.send_json(409,{"error":"لا يوجد ترخيص تداول مرتبط بهذا الحساب"})
+                enabled=data.get("enabled")
+                if not isinstance(enabled,bool): return self.send_json(400,{"error":"قيمة التفعيل غير صحيحة"})
+                changed=sb("PATCH","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(lic["client_id"],safe=""),
+                    {"trading_enabled":enabled},admin=True,prefer="return=representation")
+                if not changed: return self.send_json(409,{"error":"تعذر حفظ حالة التداول الآلي"})
+                return self.send_json(200,{"saved":True,"trading_enabled":enabled,"client_id":lic["client_id"],
+                    "message":"تم تفعيل التداول الآلي" if enabled else "تم إيقاف فتح صفقات جديدة"})
             if path=="/api/trade-management/settings":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
