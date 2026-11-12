@@ -26,7 +26,10 @@ datetime g_lastHistoryAttempt=0;
 string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
-ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0;
+ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
+string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
+double g_aiConfidence=0.0;
+long g_aiBarTime=0;
 
 string BaseUrl()
 {
@@ -120,6 +123,41 @@ bool PollTradeSettings()
    if(g_groupProfitTarget<=0) g_groupCloseEnabled=false;
    return true;
 }
+bool PollCentralDecision()
+{
+   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   char data[],result[];
+   ArrayResize(data,0);
+   string headers="Authorization: Bearer "+InpEngineToken+"\\r\\n";
+   string response_headers;
+   ResetLastError();
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+InpEngineId,
+                       headers,1500,data,result,response_headers);
+   if(code!=200)
+   {
+      if(code!=409) Print("AL-ZOOL central decision poll failed: HTTP=",code," err=",GetLastError());
+      return false;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   string signal=JsonField(response,"signal");
+   string reason=JsonField(response,"reason_ar");
+   string confidence=JsonField(response,"confidence");
+   string bar_time=JsonField(response,"bar_time");
+   StringReplace(signal,"\\\"","");
+   StringReplace(reason,"\\\"","");
+   if(signal!="BUY" && signal!="SELL") signal="WAIT";
+   double parsed_confidence=StringToDouble(confidence);
+   long parsed_bar=(long)StringToInteger(bar_time);
+   if(parsed_bar!=g_aiBarTime || signal!=g_aiSignal)
+      Print("AL-ZOOL CENTRAL AI: ",signal," | confidence=",DoubleToString(parsed_confidence*100.0,1),
+            "% | ",reason);
+   g_aiSignal=signal;
+   g_aiReason=reason;
+   g_aiConfidence=MathMax(0.0,MathMin(1.0,parsed_confidence));
+   g_aiBarTime=parsed_bar;
+   return true;
+}
+
 bool ClosePositionTicket(const ulong ticket,const string scope)
 {
    bool sent=g_trade.PositionClose(ticket);
@@ -438,6 +476,11 @@ void OnTimer()
       PollTradeSettings();
       g_lastSettingsPollMs=now;
    }
+   if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
+   {
+      PollCentralDecision();
+      g_lastDecisionPollMs=now;
+   }
    if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
    {
       bool sent=SendLiveSnapshot();
@@ -449,10 +492,12 @@ void OnTimer()
       g_lastHistoryAttempt=TimeCurrent();
       SendHistoricalBatch();
    }
-   Comment("AL-ZOOL MT5 LIVE CLIENT\n",g_status,
-           "\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
+   Comment("AL-ZOOL MT5 LIVE CLIENT\\n",g_status,
+           "\\nCentral AI: ",g_aiSignal," (",DoubleToString(g_aiConfidence*100.0,1),"%)",
+           "\\n",g_aiReason,
+           "\\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
            " / group ",(g_groupCloseEnabled?"ON":"OFF"),
-           "\nPositions: ",IntegerToString(PositionsTotal()),
+           "\\nPositions: ",IntegerToString(PositionsTotal()),
            " | Pending: ",IntegerToString(OrdersTotal()));
 }
 void OnTick()
