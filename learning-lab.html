@@ -35,13 +35,14 @@ const money=v=>Number(v||0).toFixed(2);
 async function api(path){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
 function profile(runs){
  const map={};for(const run of runs)for(const x of [...(run.strategy_results||[]),...(run.combination_results||[])]){
-  const v=x.validation||{};if(!v.n)continue;const p=map[x.id]||(map[x.id]={id:x.id,name:x.name,n:0,net:0,grossWins:0,grossLoss:0});
-  p.n+=Number(v.n||0);p.net+=Number(v.net||0);p.grossWins+=Number(v.grossWins||0);p.grossLoss+=Number(v.grossLoss||0);
+  const v=x.validation||{};if(!v.n)continue;const p=map[x.id]||(map[x.id]={id:x.id,name:x.name,n:0,net:0,gross:0,spread:0,slippage:0,commission:0,grossWins:0,grossLoss:0,regimes:{}});
+  p.n+=Number(v.n||0);p.net+=Number(v.net||0);p.gross+=Number(v.gross||0);p.spread+=Number(v.spread||0);p.slippage+=Number(v.slippage||0);p.commission+=Number(v.commission||0);p.grossWins+=Number(v.grossWins||0);p.grossLoss+=Number(v.grossLoss||0);
+  for(const [key,value] of Object.entries(v.regimes||{})){const z=p.regimes[key]||(p.regimes[key]={n:0,net:0,wins:0});z.n+=Number(value.n||0);z.net+=Number(value.net||0);z.wins+=Number(value.wins||0);}
  }
  return Object.values(map).map(x=>({...x,pf:x.grossLoss?x.grossWins/x.grossLoss:x.grossWins>0?999:0})).sort((a,b)=>b.net-a.net);
 }
 function modelTable(rows){if(!rows.length)return "<div class='learn-note'>لا توجد نتائج تحقق كافية بعد. شغّل اختبارًا واحدًا على الأقل.</div>";
- return "<table class='learn-table'><thead><tr><th>النموذج</th><th>صفقات التحقق</th><th>صافي التحقق</th><th>معامل الربح</th><th>حالة التعلم</th></tr></thead><tbody>"+rows.slice(0,15).map(x=>"<tr><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+(x.pf===999?"∞":x.pf.toFixed(2))+"</td><td>"+(x.n>=30&&x.net<0&&x.pf<.9?"كبح الإشارة":x.n<30?"عينة غير كافية":"مراقبة")+"</td></tr>").join("")+"</tbody></table>";
+ return "<table class='learn-table'><thead><tr><th>النموذج</th><th>صفقات التحقق</th><th>صافي التحقق</th><th>معامل الربح</th><th>تشخيص الخسارة</th><th>حالة التعلم</th></tr></thead><tbody>"+rows.slice(0,15).map(x=>{const cause=x.net>=0?"أداء موجب":x.gross<0?"الإشارة عكست حركة السوق": "تكاليف التداول أكلت الربح";return "<tr><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+(x.pf===999?"∞":x.pf.toFixed(2))+"</td><td>"+cause+"</td><td>"+(x.n>=30&&x.net<0&&x.pf<.9?"كبح الإشارة":x.n<30?"عينة غير كافية":"مراقبة")+"</td></tr>"}).join("")+"</tbody></table>";
 }
 async function load(){
  try{
