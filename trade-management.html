@@ -59,13 +59,26 @@
   <div class="mobile-list" id="positionsMobile"><div class="empty-state">بانتظار بيانات الصفقات من MT5</div></div>
  </section>
  <section class="card" id="protection">
-  <div class="card-title"><div><span class="eyebrow">مراقبة المخاطر</span><h2>الحماية ووقف الخسارة</h2></div><span class="read-only">عرض ومراقبة</span></div>
+  <div class="card-title"><div><span class="eyebrow">مراقبة المخاطر</span><h2>الحماية ووقف الخسارة</h2></div><span class="read-only">تحكم ومراقبة</span></div>
+  <div class="sl-settings-panel">
+   <div class="sl-settings-head"><div><b>إعداد وقف الخسارة للصفقات الجديدة</b><small>اختر تشغيله أو إيقافه وحدد المسافة بنفسك</small></div><label class="switch"><input type="checkbox" id="stopLossEnabled"><span></span></label></div>
+   <div class="sl-settings-grid">
+    <label>نوع وقف الخسارة
+     <select id="stopLossMode"><option value="ATR">حسب ATR</option><option value="POINTS">مسافة ثابتة بالنقاط</option></select>
+    </label>
+    <label>قيمة الوقف
+     <input id="stopLossValue" type="number" min="0.01" max="1000000" step="0.01" value="1.8" inputmode="decimal" lang="en" dir="ltr">
+    </label>
+   </div>
+   <p class="section-note" id="stopLossHelp">حسب ATR: القيمة مضاعف لمؤشر ATR. بالنقاط: القيمة عدد نقاط الرمز. عند إيقاف الخيار لن يُرسل وقف خسارة أولي للصفقات الجديدة. التريلينغ الحالي لا يتغير.</p>
+   <div class="close-actions"><button id="saveProtectionSettings" class="refresh">حفظ إعدادات وقف الخسارة</button><span id="protectionSettingsMessage" role="status">الإعدادات الحالية من الخادم.</span></div>
+  </div>
   <div class="protection-grid">
    <article class="protection-item"><span class="protection-icon">⌑</span><div><b>وقف الخسارة SL</b><small>حالة وقف الخسارة لكل صفقة مفتوحة</small></div><strong id="slCoverage">—</strong></article>
    <article class="protection-item"><span class="protection-icon">◇</span><div><b>جني الأرباح TP</b><small>حالة هدف الربح لكل صفقة مفتوحة</small></div><strong id="tpCoverage">—</strong></article>
    <article class="protection-item"><span class="protection-icon">◷</span><div><b>آخر تحديث من MT5</b><small>وقت وصول بيانات الحساب</small></div><strong id="lastSeen">—</strong></article>
   </div>
-  <p class="section-note">هذه المرحلة تعرض إعدادات الحماية الموجودة فعليًا على صفقات MT5. تعديل وقف الخسارة أو إغلاق الصفقات غير مفعّل هنا بعد، ولن يتم إرسال أي أمر تداول من هذه الصفحة.</p>
+  <p class="section-note">الجدول التالي يعرض وقف الخسارة وجني الأرباح الموجودين فعليًا على كل صفقة. إعداداتك أعلاه تتحكم في الوقف الأولي للصفقات الجديدة فقط؛ لا تعدّل الصفقات المفتوحة بأثر رجعي.</p>
   <div class="table-scroll"><table><thead><tr><th>التذكرة</th><th>الرمز</th><th>وقف الخسارة</th><th>جني الأرباح</th><th>حالة الحماية</th></tr></thead><tbody id="protectionBody"><tr><td colspan="5" class="empty-cell">لا توجد بيانات بعد</td></tr></tbody></table></div>
  </section>
  <section class="card" id="pending">
