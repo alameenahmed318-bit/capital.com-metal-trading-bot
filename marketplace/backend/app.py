@@ -269,6 +269,27 @@ class Handler(SimpleHTTPRequestHandler):
                     "history_source":"MT5 historical rates saved in Supabase","max_rows":row_limit})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/backtest/learning":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
+                    client_id=latest[0].get("client_id","") if latest else ""
+                    if not client_id:
+                        latest_run=sb("GET","/rest/v1/alzool_engine_learning_runs?select=client_id&order=created_at.desc&limit=1",admin=True)
+                        client_id=latest_run[0].get("client_id","") if latest_run else ""
+                else:
+                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                if not client_id: return self.send_json(200,{"runs":[],"count":0})
+                params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                limit=max(1,min(100,int(finite_number((params.get("limit") or ["30"])[0],30))))
+                rows=sb("GET","/rest/v1/alzool_engine_learning_runs?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
+                    "&order=created_at.desc&limit="+str(limit),admin=True)
+                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/market/context":
             try:
                 import time
@@ -419,6 +440,42 @@ class Handler(SimpleHTTPRequestHandler):
                        batch,admin=True,prefer="resolution=merge-duplicates")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
+            if path=="/api/backtest/learning":
+                u=current_user(token)
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
+                    client_id=latest[0].get("client_id","") if latest else ""
+                    if not client_id:
+                        latest_run=sb("GET","/rest/v1/alzool_engine_learning_runs?select=client_id&order=created_at.desc&limit=1",admin=True)
+                        client_id=latest_run[0].get("client_id","") if latest_run else ""
+                else:
+                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                if not client_id: return self.send_json(409,{"error":"لا يوجد ترخيص مرتبط لحفظ ذاكرة التعلم"})
+                run=data.get("run") if isinstance(data.get("run"),dict) else {}
+                run_key=str(run.get("run_key") or "")[:80]
+                symbol=str(run.get("symbol") or "")[:40]
+                timeframe=str(run.get("timeframe") or "")[:20]
+                strategies=run.get("strategy_results") if isinstance(run.get("strategy_results"),list) else []
+                combinations=run.get("combination_results") if isinstance(run.get("combination_results"),list) else []
+                if not run_key or not symbol or not timeframe or len(strategies)!=200 or len(combinations)!=1000:
+                    return self.send_json(400,{"error":"بيانات جولة التعلم غير مكتملة؛ يلزم 200 استراتيجية و1000 تركيبة"})
+                if len(json.dumps(run,ensure_ascii=False))>1800000:
+                    return self.send_json(413,{"error":"حجم سجل التعلم أكبر من الحد المسموح"})
+                row={"client_id":client_id,"run_key":run_key,"symbol":symbol,"timeframe":timeframe,
+                    "period_days":int(finite_number(run.get("period_days"),0)),
+                    "candle_count":int(finite_number(run.get("candle_count"),0)),
+                    "test_points":int(finite_number(run.get("test_points"),0)),
+                    "validation_points":int(finite_number(run.get("validation_points"),0)),
+                    "lot_size":finite_number(run.get("lot_size"),0.01),
+                    "commission_per_lot":finite_number(run.get("commission_per_lot"),0),
+                    "slippage_points":finite_number(run.get("slippage_points"),0),
+                    "account_currency":str(run.get("account_currency") or "")[:12],
+                    "summary":run.get("summary") if isinstance(run.get("summary"),dict) else {},
+                    "strategy_results":strategies,"combination_results":combinations,
+                    "diagnostics":run.get("diagnostics") if isinstance(run.get("diagnostics"),dict) else {}}
+                saved=sb("POST","/rest/v1/alzool_engine_learning_runs?on_conflict=client_id,run_key",row,admin=True,prefer="resolution=merge-duplicates,return=representation")
+                return self.send_json(200,{"saved":True,"run":saved[0] if isinstance(saved,list) and saved else {"run_key":run_key}})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
