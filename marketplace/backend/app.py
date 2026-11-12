@@ -432,6 +432,93 @@ class Handler(SimpleHTTPRequestHandler):
                     "last_seen":(item or {}).get("last_seen") if connected else None})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/opportunities/events":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    client_id=(item or {}).get("client_id","")
+                if not client_id: return self.send_json(200,{"events":[],"count":0})
+                params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                limit=max(1,min(500,int(finite_number((params.get("limit") or ["200"])[0],200))))
+                days=int(finite_number((params.get("days") or ["30"])[0],30))
+                days=days if days in (0,7,30,90,365) else 30
+                kind=str((params.get("kind") or ["opportunities"])[0])
+                event_types={
+                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_ANALYSIS"],
+                    "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED"]
+                }.get(kind)
+                query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")
+                if event_types:
+                    query+="&event_type=in."+urllib.parse.quote("("+",".join(event_types)+")",safe=",()")
+                if days:
+                    cutoff=(datetime.now(timezone.utc)-timedelta(days=days)).isoformat()
+                    query+="&created_at=gte."+urllib.parse.quote(cutoff,safe="")
+                query+="&select=event_id,event_type,payload,created_at&order=created_at.desc&limit="+str(limit)
+                rows=sb("GET",query,admin=True)
+                return self.send_json(200,{"events":rows if isinstance(rows,list) else [],
+                    "count":len(rows) if isinstance(rows,list) else 0,"client_id":client_id,"days":days,"kind":kind})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/trade-history":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
+                    latest=sb("GET","/rest/v1/alzool_engine_closed_deals?select=client_id&order=deal_time.desc&limit=1",admin=True)
+                    client_id=latest[0].get("client_id","") if latest else ""
+                if not client_id: return self.send_json(200,{"trades":[],"count":0,"currency":""})
+                params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                days=int(finite_number((params.get("days") or ["30"])[0],30))
+                days=days if days in (0,7,30,90,365) else 30
+                query="/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")
+                if days:
+                    cutoff=(datetime.now(timezone.utc)-timedelta(days=days)).isoformat()
+                    query+="&deal_time=gte."+urllib.parse.quote(cutoff,safe="")
+                query+="&select=deal_time,payload&order=deal_time.desc"
+                records=[]; offset=0
+                while len(records)<5000:
+                    page=sb("GET",query+"&limit=1000&offset="+str(offset),admin=True)
+                    if not isinstance(page,list) or not page: break
+                    records.extend(page); offset+=len(page)
+                    if len(page)<1000: break
+                grouped={}
+                for record in records[:5000]:
+                    deal=record.get("payload") if isinstance(record.get("payload"),dict) else {}
+                    pid=str(deal.get("position_id") or deal.get("ticket") or record.get("deal_time") or "")
+                    if not pid: continue
+                    row=grouped.setdefault(pid,{"position_id":pid,"symbol":str(deal.get("symbol") or ""),
+                        "side":"غير محدد","volume":0.0,"net":0.0,"time":0,"ticket":str(deal.get("ticket") or "")})
+                    net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
+                         finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
+                    row["net"]+=net
+                    entry=int(finite_number(deal.get("entry"),-1))
+                    deal_type=int(finite_number(deal.get("deal_type",deal.get("type",-1)),-1))
+                    if entry==0:
+                        row["side"]="شراء" if deal_type==0 else "بيع" if deal_type==1 else row["side"]
+                        row["volume"]+=finite_number(deal.get("volume"))
+                    elif row["volume"]==0:
+                        row["volume"]=max(row["volume"],finite_number(deal.get("volume")))
+                    stamp=int(finite_number(deal.get("time")))
+                    if not stamp and record.get("deal_time"):
+                        try: stamp=int(datetime.fromisoformat(record["deal_time"].replace("Z","+00:00")).timestamp())
+                        except Exception: stamp=0
+                    row["time"]=max(row["time"],stamp)
+                    if not row["symbol"]: row["symbol"]=str(deal.get("symbol") or "")
+                trades=sorted(grouped.values(),key=lambda x:x["time"],reverse=True)
+                item=CONNECTIONS.get(client_id)
+                currency=((item or {}).get("account") or {}).get("currency","")
+                wins=sum(1 for x in trades if x["net"]>0)
+                return self.send_json(200,{"trades":trades,"count":len(trades),"deal_rows":len(records),
+                    "win_rate":(wins/len(trades)*100) if trades else None,
+                    "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/connection/status":
             try:
                 u=current_user(token_of(self))
@@ -525,6 +612,29 @@ class Handler(SimpleHTTPRequestHandler):
                     "diagnostics":run.get("diagnostics") if isinstance(run.get("diagnostics"),dict) else {}}
                 saved=sb("POST","/rest/v1/alzool_engine_learning_runs?on_conflict=client_id,run_key",row,admin=True,prefer="resolution=merge-duplicates,return=representation")
                 return self.send_json(200,{"saved":True,"run":saved[0] if isinstance(saved,list) and saved else {"run_key":run_key}})
+            if path=="/api/opportunities/events":
+                u=current_user(token)
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    client_id=(item or {}).get("client_id","")
+                if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
+                event_type=str(data.get("event_type") or "")
+                if event_type not in ("SIGNAL_CREATED","WAIT"):
+                    return self.send_json(400,{"error":"نوع حدث الفرصة غير مسموح"})
+                event_key=str(data.get("event_id") or "").strip()
+                payload=data.get("payload") if isinstance(data.get("payload"),dict) else None
+                if not event_key or len(event_key)>160 or payload is None:
+                    return self.send_json(400,{"error":"بيانات الفرصة غير مكتملة"})
+                if len(json.dumps(payload,ensure_ascii=False))>40000:
+                    return self.send_json(413,{"error":"تفاصيل الفرصة أكبر من الحد المسموح"})
+                row={"event_id":("web:"+client_id+":"+event_key)[:240],"client_id":client_id,
+                     "event_type":event_type,"payload":payload}
+                sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,
+                   prefer="resolution=ignore-duplicates,return=minimal")
+                return self.send_json(200,{"saved":True,"event_id":row["event_id"]})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
