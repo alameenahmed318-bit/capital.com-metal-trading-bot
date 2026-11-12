@@ -458,7 +458,7 @@
       return { signal: SIGNALS.WAIT, confidence: 0, z, buy: 0, sell: 0,
         votes: [{ id: "data-readiness", name: "كفاية البيانات", family: "system", vote: SIGNALS.WAIT,
           why: "نحتاج 50 شمعة مغلقة على الأقل وسعر Bid/Ask صالحاً." }],
-        combinations: [], combinationCounts: {total:0,buy:0,sell:0,wait:0},
+        combinations: [], combinationCoverage: {strategyCount:200,coveredStrategies:0,minParticipation:0,maxParticipation:0}, combinationCounts: {total:0,buy:0,sell:0,wait:0},
         topCombinations: [], reasons: ["البيانات غير كافية لتأكيد اتجاه موثوق."] };
     }
     const context = Object.freeze({ ...z, market });
