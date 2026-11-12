@@ -220,8 +220,8 @@ class Handler(SimpleHTTPRequestHandler):
                 days=requested_days if requested_days in (0,7,30,90,180,365,730) else 90
                 requested_limit=int(finite_number((params.get("limit") or ["5000"])[0],5000))
                 row_limit=max(100,min(10000,requested_limit))
-                meta_query="/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=symbol,timeframe&order=uploaded_at.desc"
+                meta_query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=symbol,timeframe&order=uploaded_at.desc")
                 meta_rows=[]; meta_offset=0
                 while len(meta_rows)<10000:
                     meta_page=sb("GET",meta_query+"&limit=1000&offset="+str(meta_offset),admin=True)
