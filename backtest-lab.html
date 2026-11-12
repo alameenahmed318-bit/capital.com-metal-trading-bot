@@ -45,9 +45,15 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 async function api(path,timeout=60000){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{},signal:AbortSignal.timeout(timeout)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
 function setState(message){$("runStatus").textContent=message}
 async function apiPostLearning(run){const body=JSON.stringify({run});if(body.length>1500000)throw Error("حجم سجل التعلم تجاوز الحد الآمن؛ قلّل تفاصيل التشخيص وأعد الاختبار.");const r=await fetch("/api/backtest/learning",{method:"POST",headers:{"Content-Type":"application/json",...(accessToken?{Authorization:"Bearer "+accessToken}:{})},body,signal:AbortSignal.timeout(120000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر حفظ ذاكرة التعلم (HTTP "+r.status+")");if(!d.saved)throw Error("لم يؤكد الخادم حفظ جولة التعلم");return d}
-function buildLearningPolicy(runs){
+function buildLearningPolicy(runs,current){
  const out={};
- for(const run of (runs||[]).slice(0,20)){
+ const same=(a,b)=>Math.abs(Number(a||0)-Number(b||0))<1e-8;
+ const comparable=(runs||[]).filter(run=>
+  run.symbol===current.symbol&&run.timeframe===current.timeframe&&
+  String(run.account_currency||"")===String(current.account_currency||"")&&
+  same(run.lot_size,current.lot_size)&&same(run.commission_per_lot,current.commission_per_lot)&&
+  same(run.slippage_points,current.slippage_points));
+ for(const run of comparable.slice(0,20)){
   for(const item of [...(run.strategy_results||[]),...(run.combination_results||[])]){
    const v=item.validation||{};if(!v.n)continue;
    const p=out[item.id]||(out[item.id]={n:0,net:0,grossWins:0,grossLoss:0});
@@ -123,8 +129,9 @@ async function run(){
   if(!(lot>0&&lot<=10)||commission<0||slippage<0)throw Error("تحقق من اللوت والعمولة والانزلاق.");
   const strategies=new Map(window.ALZOOLStrategyEngine.list().map(x=>[x.id,{...metrics(),id:x.id,name:x.name}]));
   const combinations=new Map();let strategyTrades=0,strategyNet=0,suppressedSignals=0;
-  const priorLearning=await api("/api/backtest/learning?limit=20");
-  const policy=buildLearningPolicy(priorLearning.runs||[]);
+  const currency=candles.at(-1).currency||"عملة الحساب";
+  const priorLearning=await api("/api/backtest/learning?limit=100");
+  const policy=buildLearningPolicy(priorLearning.runs||[],{symbol,timeframe:tf,account_currency:currency,lot_size:lot,commission_per_lot:commission,slippage_points:slippage});
   const start=50,end=candles.length-1,points=end-start,validationStart=start+Math.floor(points*.7);
   for(let i=start;i<end;i++){
    const history=candles.slice(0,i+1),current=Number(history.at(-1).close);
@@ -157,7 +164,6 @@ async function run(){
   const ranked=map=>[...map.values()].filter(x=>x.n>0).sort((a,b)=>b.net-a.net||((b.grossLoss?b.grossWins/b.grossLoss:999)-(a.grossLoss?a.grossWins/a.grossLoss:999)));
   const sr=ranked(strategies),cr=ranked(combinations);
   for(const x of strategies.values())strategyNet+=x.net
-  const currency=candles.at(-1).currency||"عملة الحساب";
   $("barCount").textContent=candles.length.toLocaleString("en-US");$("points").textContent=points.toLocaleString("en-US");
   $("tradeCount").textContent=strategyTrades.toLocaleString("en-US");$("netProfit").textContent=money(strategyNet,currency);
   $("netProfit").className=strategyNet>=0?"positive":"negative";
@@ -165,7 +171,7 @@ async function run(){
   const spreadNote=candles.some(x=>Number(x.spread_points)>0)?"السبريد التاريخي من MT5":"تنبيه: بعض/كل الشموع لا تحتوي قيمة سبريد تاريخية، وقد تكون تكلفة السبريد أقل من الواقع.";
   $("methodNote").innerHTML="<b>نتيجة المنهجية:</b> الدخول عند افتتاح الشمعة التالية والخروج عند إغلاقها. "+esc(spreadNote)+"؛ العمولة "+commission.toFixed(2)+" لكل لوت ذهاب وعودة؛ اللوت "+lot+"؛ الانزلاق "+slippage+" نقطة لكل جهة. تم حساب قيمة السعر باستخدام Tick Value/Tick Size أو Contract Size المرسل من MT5. لا تشمل المحاكاة أوامر وقف/هدف متغيرة، السواب، إعادة التسعير أو تأخر التنفيذ. النتائج محاكاة تاريخية وليست ضماناً للربح.";
   const rounded=v=>Number.isFinite(Number(v))?Math.round(Number(v)*10000)/10000:0;
-  const compactBucket=(b,includeRegimes=true)=>({n:b.n,wins:b.wins,losses:b.losses,net:rounded(b.net),grossWins:rounded(b.grossWins),grossLoss:rounded(b.grossLoss),maxDD:rounded(b.maxDD),...(includeRegimes?{regimes:Object.fromEntries(Object.entries(b.regimes||{}).map(([k,v])=>[k,{n:v.n,wins:v.wins,net:rounded(v.net)}]))}:{})});
+  const compactBucket=(b,includeRegimes=true)=>({n:b.n,wins:b.wins,losses:b.losses,gross:rounded(b.gross),spread:rounded(b.spread),slippage:rounded(b.slippage),commission:rounded(b.commission),net:rounded(b.net),grossWins:rounded(b.grossWins),grossLoss:rounded(b.grossLoss),maxDD:rounded(b.maxDD),...(includeRegimes?{regimes:Object.fromEntries(Object.entries(b.regimes||{}).map(([k,v])=>[k,{n:v.n,wins:v.wins,net:rounded(v.net)}]))}:{})});
   const serialise=(x,includeRegimes=true)=>({id:x.id,name:x.name,n:x.n,wins:x.wins,losses:x.losses,grossWins:rounded(x.grossWins),grossLoss:rounded(x.grossLoss),net:rounded(x.net),maxDD:rounded(x.maxDD),training:compactBucket(x.training,includeRegimes),validation:compactBucket(x.validation,includeRegimes)});
   // Preserve detailed market-regime diagnostics for the 200 strategies.
   // The 1,000 combinations keep their full aggregate train/validation metrics,
@@ -176,7 +182,7 @@ async function run(){
   const runRecord={run_key:"run-"+Date.now()+"-"+Math.random().toString(36).slice(2,8),symbol,timeframe:tf,period_days:days,candle_count:candles.length,test_points:points,validation_points:end-validationStart,lot_size:lot,commission_per_lot:commission,slippage_points:slippage,account_currency:currency,
     summary:{strategy_net_sum:strategyNet,validation_strategy_net_sum:validationNet,strategy_trade_count:strategyTrades,suppressed_signals:suppressedSignals,validation_start_index:validationStart,overall_strategy_count:200,overall_combination_count:1000},
     strategy_results:strategyRows,combination_results:comboRows,
-    diagnostics:{validation_share:0.30,policy_rules:"Only prior runs' validation metrics can suppress a model; minimum 30 trades, negative net and profit factor below 0.90.",regime_method:"EMA20/EMA50 trend plus historical spread bucket.",warning:"Independent model results are not one combined account portfolio."}};
+    diagnostics:{validation_share:0.30,policy_rules:"Only comparable prior runs (same symbol, timeframe, currency, lot and costs) validation metrics can suppress a model; minimum 30 trades, negative net and profit factor below 0.90.",regime_method:"EMA20/EMA50 trend plus historical spread bucket.",warning:"Independent model results are not one combined account portfolio."}};
   const saved=await apiPostLearning(runRecord);
   $("methodNote").innerHTML+="<br><b>ذاكرة التعلم:</b> تم حفظ الجولة "+esc(runRecord.run_key)+". النصف الأول/70% للتدريب الوصفي وآخر 30% للتحقق؛ الجولة القادمة تستخدم نتائج التحقق السابقة فقط. تم كبح "+suppressedSignals+" إشارة بناءً على سجل سابق سلبي مؤكد.";
   $("progressBar").style.width="100%";setState("اكتمل الاختبار وحُفظت جولة التعلم · "+candles.length+" شمعة · "+tf+" · "+h.symbol);
