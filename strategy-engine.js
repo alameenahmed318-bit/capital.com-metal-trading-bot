@@ -394,24 +394,28 @@
     if (votes.length !== 200 || registry.size !== 200)
       throw new Error("The combination lab requires exactly 200 registered strategies.");
     const out = [];
-    for (let stride = 1; stride <= 5; stride++) {
-      for (let start = 0; start < 200; start++) {
-        const indexes = Array.from({length:5}, (_,j) => (start + j * stride) % 200);
-        const members = indexes.map(index => votes[index]);
-        const buy = members.filter(v => v.vote === SIGNALS.BUY).length;
-        const sell = members.filter(v => v.vote === SIGNALS.SELL).length;
-        const wait = 5 - buy - sell;
-        const signal = buy >= 3 && buy > sell ? SIGNALS.BUY :
-          sell >= 3 && sell > buy ? SIGNALS.SELL : SIGNALS.WAIT;
-        const number = out.length + 1;
-        out.push({
-          id: "combo-" + String(number).padStart(4,"0"),
-          number, stride, signal,
-          confidence: Math.round(Math.max(buy,sell) * 20),
-          buy, sell, wait,
-          members: members.map(v => ({id:v.id,name:v.name,family:v.family,vote:v.vote}))
-        });
-      }
+    // Build 1,000 guaranteed-unique five-member sets. The first two indices
+    // form a unique pair (0..39 with 25 choices each); the remaining three
+    // are distinct indices in 100..199, so no two sets can collide.
+    for (let k = 0; k < 1000; k++) {
+      const first = Math.floor(k / 25);
+      const second = first + 1 + (k % 25);
+      const base = (k * 3) % 100;
+      const indexes = [first, second, 100 + base, 100 + ((base + 1) % 100), 100 + ((base + 2) % 100)];
+      const members = indexes.map(index => votes[index]);
+      const buy = members.filter(v => v.vote === SIGNALS.BUY).length;
+      const sell = members.filter(v => v.vote === SIGNALS.SELL).length;
+      const wait = 5 - buy - sell;
+      const signal = buy >= 3 && buy > sell ? SIGNALS.BUY :
+        sell >= 3 && sell > buy ? SIGNALS.SELL : SIGNALS.WAIT;
+      const number = k + 1;
+      out.push({
+        id: "combo-" + String(number).padStart(4,"0"),
+        number, signal,
+        confidence: Math.round(Math.max(buy,sell) * 20),
+        buy, sell, wait,
+        members: members.map(v => ({id:v.id,name:v.name,family:v.family,vote:v.vote}))
+      });
     }
     if (out.length !== 1000 || new Set(out.map(x => x.members.map(m=>m.id).sort().join("|"))).size !== 1000)
       throw new Error("Combination generation integrity check failed.");
