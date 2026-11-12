@@ -174,6 +174,32 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
+        if path.startswith("/v1/terminal-control/settings/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+            rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&select=single_enabled,single_profit_target,group_enabled,group_profit_target&limit=1",admin=True)
+            settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
+                                           "group_enabled":False,"group_profit_target":5}
+            return self.send_json(200,settings)
+        if path=="/api/trade-management/settings":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    client_id=(item or {}).get("client_id","")
+                else:
+                    lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
+                if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
+                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,updated_at&limit=1",admin=True)
+                settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
+                    "group_enabled":False,"group_profit_target":5,"updated_at":None}
+                return self.send_json(200,{"client_id":client_id,"settings":settings})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path in ("/health","/api/health"):
             return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Licensing","mt5_connection_api":True,"trading_engine":False})
         if path=="/api/config":
@@ -440,6 +466,29 @@ class Handler(SimpleHTTPRequestHandler):
                        batch,admin=True,prefer="resolution=merge-duplicates")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
+            if path=="/api/trade-management/settings":
+                u=current_user(token)
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    client_id=(item or {}).get("client_id","")
+                else:
+                    lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
+                if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
+                single_enabled=data.get("single_enabled") is True
+                group_enabled=data.get("group_enabled") is True
+                single_target=finite_number(data.get("single_profit_target"),0)
+                group_target=finite_number(data.get("group_profit_target"),0)
+                if not math.isfinite(single_target) or not math.isfinite(group_target) or single_target<=0 or group_target<=0:
+                    return self.send_json(400,{"error":"أهداف الربح يجب أن تكون أرقامًا موجبة وبعملة الحساب"})
+                if single_target>100000000 or group_target>100000000:
+                    return self.send_json(400,{"error":"قيمة هدف الربح أكبر من الحد المسموح"})
+                row={"client_id":client_id,"single_enabled":single_enabled,
+                     "single_profit_target":single_target,"group_enabled":group_enabled,
+                     "group_profit_target":group_target,"updated_at":datetime.now(timezone.utc).isoformat()}
+                saved=sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",row,admin=True,
+                         prefer="resolution=merge-duplicates,return=representation")
+                return self.send_json(200,{"saved":True,"settings":saved[0] if isinstance(saved,list) and saved else row})
             if path=="/api/backtest/learning":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
