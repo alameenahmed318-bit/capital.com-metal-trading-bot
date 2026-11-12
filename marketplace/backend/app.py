@@ -1,8 +1,9 @@
-"""AL-ZOOL: MT5 connection monitor and customer/licence administration only."""
+"""AL-ZOOL: licensed MT5 telemetry, central strategy analysis and account controls."""
 import hashlib, hmac, json, math, os, re, secrets, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -316,6 +317,16 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path.startswith("/v1/terminal-decision/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+            item=CONNECTIONS.get(client_id)
+            if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+            decision=item.get("strategy_decision")
+            return self.send_json(200,{"decision":decision,"execution_ready":False,
+                "message":"تحليل مركزي فقط؛ لم يتم تفعيل إرسال أوامر التداول بعد"})
         if path=="/api/market/context":
             try:
                 import time
@@ -342,7 +353,9 @@ class Handler(SimpleHTTPRequestHandler):
                 result={"symbol":item.get("symbol"),"timeframe":item.get("timeframe"),
                     "account_currency":str((item.get("account") or {}).get("currency",""))[:12],
                     "tick":item.get("tick",{}),"forming_candle":item.get("forming_candle"),
-                    "candles":list(reversed(candles)),"received_at":item["last_seen"],
+                    "candles":list(reversed(candles)),"strategy_decision":item.get("strategy_decision"),
+                    "engine_counts":{"strategies":len(STRATEGIES),"combinations":len(COMBINATIONS)},
+                    "received_at":item["last_seen"],
                     "diagnostics":{"auth_ms":round((t_user-t0)*1000),"ban_check_ms":round((t_admin-t_user)*1000),"ban_check_source":"fresh_auth_user_record",
                     "connection_lookup_ms":round((t_lookup-t_admin)*1000),"server_total_ms":round((t_lookup-t0)*1000)}}
                 return self.send_json(200,result)
@@ -704,16 +717,47 @@ class Handler(SimpleHTTPRequestHandler):
                 safe_tick={"bid":finite_number(tick.get("bid")),"ask":finite_number(tick.get("ask")),
                            "spread":finite_number(tick.get("spread"))}
                 now=datetime.now(timezone.utc)
+                previous=CONNECTIONS.get(client_id,{})
+                strategy_decision=previous.get("strategy_decision")
+                strategy_last_bar=previous.get("strategy_last_bar")
+                # MT5 sends closed candles newest-first. Evaluate once per newly closed bar.
+                if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
+                    bar_time=int(candles[0].get("time") or 0)
+                    if bar_time>0 and bar_time!=strategy_last_bar:
+                        try:
+                            evaluated=evaluate_market(list(reversed(candles)),mode="AUTO")
+                            strategy_decision={
+                                "decision":evaluated["decision"],
+                                "strategy_id":evaluated["strategy_id"],
+                                "strategy_name":evaluated["strategy_name"],
+                                "reason_ar":evaluated["reason_ar"],
+                                "confidence":evaluated["confidence"],
+                                "context":evaluated["context"],
+                                "adaptive":evaluated["adaptive"],
+                                "council":evaluated["council"],
+                                "vote_summary":evaluated["vote_summary"],
+                                "combination_summary":evaluated["combination_summary"],
+                                "strategy_count":evaluated["strategy_count"],
+                                "combination_count":evaluated["combination_count"],
+                                "bar_time":bar_time,
+                                "generated_at":now.isoformat(),
+                                "execution_ready":False
+                            }
+                            strategy_last_bar=bar_time
+                        except Exception as engine_error:
+                            print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
                     "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
-                    "forming_candle":forming,"tick":safe_tick,
+                    "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
+                    "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
-                    "candles_received":len(candles)})
+                    "candles_received":len(candles),
+                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles"})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
