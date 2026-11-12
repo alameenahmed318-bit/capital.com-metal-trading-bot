@@ -6,42 +6,133 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/dashboard.css?v=2">
 <style>
-.lab-intro{margin-bottom:16px}.lab-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.lab-controls label{display:grid;gap:6px;color:var(--muted);font-size:12px}.lab-controls select{min-width:160px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px;font:inherit}.lab-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px;line-height:1.8}.lab-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.lab-stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}.lab-stat small{display:block;color:var(--muted);font-size:12px}.lab-stat strong{display:block;font-size:25px;margin-top:7px}.lab-results{display:grid;grid-template-columns:1fr 1fr;gap:14px}.lab-table{width:100%;border-collapse:collapse;font-size:12px}.lab-table th,.lab-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right}.lab-table th{color:var(--muted);font-weight:600}.lab-table-wrap{overflow:auto}.lab-state{padding:14px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center}.lab-progress{height:7px;background:var(--panel2);border-radius:20px;overflow:hidden;margin-top:12px}.lab-progress span{display:block;height:100%;width:0;background:var(--purple);transition:width .2s}.lab-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.lab-actions button{cursor:pointer}.lab-actions button:disabled{opacity:.5;cursor:wait}.lab-tag{font-size:11px;color:var(--muted)}@media(max-width:900px){.lab-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lab-results{grid-template-columns:1fr}}@media(max-width:520px){.lab-grid{grid-template-columns:1fr 1fr}.lab-stat strong{font-size:20px}}
+.lab-intro{margin-bottom:16px}.lab-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.lab-controls label{display:grid;gap:6px;color:var(--muted);font-size:12px}.lab-controls select,.lab-controls input{width:100%;min-width:0;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}.lab-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px;line-height:1.9}.lab-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:16px 0}.lab-stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.lab-stat small{display:block;color:var(--muted);font-size:11px}.lab-stat strong{display:block;font-size:22px;margin-top:7px;overflow-wrap:anywhere}.lab-results{display:grid;grid-template-columns:1fr 1fr;gap:14px}.lab-table{width:100%;border-collapse:collapse;font-size:11px;min-width:600px}.lab-table th,.lab-table td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.lab-table th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel)}.lab-table-wrap{overflow:auto;max-height:620px}.lab-state{padding:14px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center;line-height:1.8}.lab-progress{height:7px;background:var(--panel2);border-radius:20px;overflow:hidden;margin-top:12px}.lab-progress span{display:block;height:100%;width:0;background:var(--purple);transition:width .2s}.lab-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.lab-actions button{cursor:pointer}.lab-actions button:disabled{opacity:.5;cursor:wait}.lab-tag{font-size:11px;color:var(--muted)}.positive{color:#48c99a}.negative{color:#ff7888}
+@media(max-width:1100px){.lab-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.lab-controls{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.lab-results{grid-template-columns:1fr}}@media(max-width:600px){.lab-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lab-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.lab-stat strong{font-size:19px}}
 </style></head>
 <body><div class="shell">
 <aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
 <div class="side-label">القائمة الرئيسية</div><a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a><a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a><a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a><a class="nav active" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a>
 <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
-<main class="main"><header class="topbar"><div><div class="eyebrow">STRATEGY RESEARCH CENTER</div><h1>مختبر الاختبار التاريخي</h1><p>اختبار إشارات 200 استراتيجية و1000 تركيبة على شموع الذهب المتاحة من MT5</p></div><div class="top-actions"><a class="refresh" href="/dashboard.html">لوحة القيادة</a><a class="avatar" href="/">AZ</a></div></header>
-<section class="card lab-intro"><div class="card-title"><div><span class="eyebrow">BACKTEST CONFIGURATION</span><h2>إعداد الاختبار</h2></div><span class="market-tag">تحليل فقط · دون تداول</span></div>
-<div class="lab-controls"><label>عدد الشموع المتاحة للاختبار<select id="sampleRange"><option value="120">كل الشموع المتاحة (حتى 120)</option><option value="90">آخر 90 شمعة</option><option value="60">آخر 60 شمعة</option></select></label><label>فريم MT5 الحالي<select id="timeframe" disabled><option>يتم جلبه من MT5</option></select></label><div class="lab-actions"><button id="runBtn" class="refresh" type="button">بدء الاختبار</button><span class="lab-tag" id="runStatus">بانتظار بدء الاختبار</span></div></div>
+<main class="main"><header class="topbar"><div><div class="eyebrow">STRATEGY RESEARCH CENTER</div><h1>مختبر الاختبار التاريخي</h1><p>اختبار 200 استراتيجية و1000 تركيبة على أرشيف شموع MT5 المحفوظ</p></div><div class="top-actions"><a class="refresh" href="/dashboard.html">لوحة القيادة</a><a class="avatar" href="/">AZ</a></div></header>
+<section class="card lab-intro"><div class="card-title"><div><span class="eyebrow">HISTORICAL BACKTEST</span><h2>إعداد الاختبار</h2></div><span class="market-tag">محاكاة مستقلة · دون تداول</span></div>
+<div class="lab-controls">
+<label>الفترة التاريخية<select id="historyDays"><option value="30">آخر 30 يوم</option><option value="90" selected>آخر 90 يوم</option><option value="180">آخر 180 يوم</option><option value="365">آخر سنة</option><option value="730">آخر سنتين</option><option value="0">كل السجل المحفوظ</option></select></label>
+<label>الفريم المحفوظ<select id="timeframe" disabled><option>جارٍ تحميل الفريمات</option></select></label>
+<label>رمز الذهب<select id="symbol" disabled><option>جارٍ تحميل الرموز</option></select></label>
+<label>حد الشموع<select id="sampleLimit"><option value="1000">1000 شمعة</option><option value="2500">2500 شمعة</option><option value="5000" selected>5000 شمعة</option><option value="10000">10000 شمعة</option></select></label>
+<label>حجم اللوت<input id="lotSize" type="number" min="0.01" max="10" step="0.01" value="0.01"></label>
+<label>عمولة اللوت ذهاب وعودة<input id="commissionPerLot" type="number" min="0" step="0.01" value="0"></label>
+<label>الانزلاق السعري (نقاط لكل جهة)<input id="slippagePoints" type="number" min="0" step="0.1" value="0"></label>
+<div class="lab-actions"><button id="runBtn" class="refresh" type="button">بدء الاختبار</button><span class="lab-tag" id="runStatus">جارٍ التحقق من الأرشيف</span></div>
+</div>
 <div class="lab-progress"><span id="progressBar"></span></div>
-<div class="lab-note"><b>منهجية الاختبار الحالية:</b> نقيّم إشارة كل استراتيجية وكل تركيبة عند إغلاق الشمعة، ثم نقارن اتجاه الإشارة بحركة إغلاق الشمعة التالية. البيانات المتاحة حاليًا هي آخر 120 شمعة مغلقة يرسلها MT5؛ لذلك عدد نقاط الاختبار أقل من عدد الشموع بسبب فترة التهيئة البالغة 50 شمعة. هذه دقة توقع اتجاه الشمعة التالية وليست ربحًا ماليًا أو محاكاة تنفيذ صفقة. لا يتم إرسال أي أمر إلى MT5.</div></section>
-<section class="lab-grid"><article class="lab-stat"><small>نقاط الاختبار المنفذة</small><strong id="points">—</strong></article><article class="lab-stat"><small>الاستراتيجيات المسجلة</small><strong id="strategyCount">200</strong></article><article class="lab-stat"><small>التركيبات المفحوصة</small><strong id="comboCount">1000</strong></article><article class="lab-stat"><small>دقة الإشارات الاتجاهية</small><strong id="overallAccuracy">—</strong></article></section>
-<section class="lab-results"><article class="card"><div class="card-title"><div><span class="eyebrow">STRATEGY RANKING</span><h2>أفضل الاستراتيجيات</h2></div><span class="market-tag">حسب دقة الإشارة</span></div><div class="lab-table-wrap" id="strategyResults"><div class="lab-state">لم يبدأ الاختبار بعد.</div></div></article>
-<article class="card"><div class="card-title"><div><span class="eyebrow">COMBINATION RANKING</span><h2>أفضل التركيبات</h2></div><span class="market-tag">من أصل 1000</span></div><div class="lab-table-wrap" id="comboResults"><div class="lab-state">لم يبدأ الاختبار بعد.</div></div></article></section>
+<div class="lab-note" id="methodNote"><b>منهجية المحاكاة:</b> نحتاج أولاً إلى مزامنة الشموع التاريخية من عميل MT5 المحدّث. عند الاختبار تدخل المحاكاة عند افتتاح الشمعة التالية وتغلق عند إغلاقها، وتخصم السبريد التاريخي المسجل في MT5 والعمولة والانزلاق اللذين تحددهما هنا. الأرباح تقديرية بعملة الحساب اعتماداً على Tick Value وTick Size من MT5. هذه محاكاة احتفاظ شمعة واحدة وليست تنفيذ صفقات حقيقية، ولا تمثل ضماناً للنتائج المستقبلية.</div></section>
+<section class="lab-grid">
+<article class="lab-stat"><small>الشموع التاريخية المستخدمة</small><strong id="barCount">—</strong></article>
+<article class="lab-stat"><small>نقاط الاختبار</small><strong id="points">—</strong></article>
+<article class="lab-stat"><small>الاستراتيجيات المسجلة</small><strong id="strategyCount">200</strong></article>
+<article class="lab-stat"><small>التركيبات المفحوصة</small><strong id="comboCount">1000</strong></article>
+<article class="lab-stat"><small>صفقات الاستراتيجيات الافتراضية</small><strong id="tradeCount">—</strong></article>
+<article class="lab-stat"><small>صافي الاستراتيجيات مجتمعة</small><strong id="netProfit">—</strong></article>
+</section>
+<section class="lab-results"><article class="card"><div class="card-title"><div><span class="eyebrow">STRATEGY PERFORMANCE</span><h2>أفضل الاستراتيجيات</h2></div><span class="market-tag">حسب صافي النتيجة</span></div><div class="lab-table-wrap" id="strategyResults"><div class="lab-state">بانتظار تحميل الأرشيف التاريخي.</div></div></article>
+<article class="card"><div class="card-title"><div><span class="eyebrow">COMBINATION PERFORMANCE</span><h2>أفضل التركيبات</h2></div><span class="market-tag">من أصل 1000</span></div><div class="lab-table-wrap" id="comboResults"><div class="lab-state">بانتظار تحميل الأرشيف التاريخي.</div></div></article></section>
 <footer>AL-ZOOL GOLD SNIPER <span>•</span> مختبر بحثي مستقل · لا ينفذ الصفقات</footer></main></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/strategy-engine.js?v=9"></script>
 <script>
-const $=id=>document.getElementById(id);let accessToken=null,running=false;
+const $=id=>document.getElementById(id);let accessToken=null,running=false,historyMeta=null;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-async function api(path){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{},signal:AbortSignal.timeout(9000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
-async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key);const {data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";const m=await api("/api/market/context");$("timeframe").innerHTML="<option>"+esc(m.timeframe||"غير محدد")+"</option>";$("runStatus").textContent="MT5 متصل · "+(m.candles?.length||0)+" شمعة متاحة";}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("runStatus").textContent=e.message}}
-function table(rows,kind){if(!rows.length)return "<div class='lab-state'>لا توجد إشارات اتجاهية كافية في هذه العينة.</div>";return "<table class='lab-table'><thead><tr><th>الترتيب</th><th>الاسم</th><th>الإشارات</th><th>الدقة</th></tr></thead><tbody>"+rows.slice(0,12).map((x,i)=>"<tr><td>"+(i+1)+"</td><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td>"+x.accuracy.toFixed(1)+"%</td></tr>").join("")+"</tbody></table>"}
-async function run(){if(running)return;running=true;const btn=$("runBtn");btn.disabled=true;btn.textContent="جارٍ الاختبار…";$("runStatus").textContent="جلب بيانات MT5";$("progressBar").style.width="0%";try{
-const m=await api("/api/market/context");if(!Array.isArray(m.candles)||m.candles.length<51)throw Error("نحتاج 51 شمعة مغلقة على الأقل؛ المتاح: "+(m.candles?.length||0));
-if(window.ALZOOLStrategyEngine.size!==200)throw Error("عدد الاستراتيجيات المسجلة ليس 200؛ لن يبدأ الاختبار.");
-const candles=m.candles.slice(-Number($("sampleRange").value));const start=Math.max(50,candles.length-70),end=candles.length-1,points=end-start;if(points<1)throw Error("لا توجد نقاط اختبار بعد فترة التهيئة.");
-const strat=new Map(window.ALZOOLStrategyEngine.list().map(x=>[x.id,{...x,n:0,correct:0}]));const combos=new Map();let allN=0,allCorrect=0;
-for(let i=start;i<end;i++){const hist=candles.slice(0,i+1),current=Number(hist.at(-1).close),next=Number(candles[i+1].close);if(!Number.isFinite(current)||!Number.isFinite(next)||current===next)continue;
-const result=window.ALZOOLStrategyEngine.evaluate({candles:hist,tick:{bid:current,ask:current+0.001}});if(result.votes.length!==200||result.combinations.length!==1000)throw Error("فشل التحقق من عدد الاستراتيجيات أو التركيبات.");
-const actual=next>current?"BUY":"SELL";for(const v of result.votes){if(v.vote!=="BUY"&&v.vote!=="SELL")continue;const x=strat.get(v.id);x.n++;if(v.vote===actual)x.correct++;}
-for(const c of result.combinations){if(c.signal!=="BUY"&&c.signal!=="SELL")continue;let x=combos.get(c.id);if(!x){x={id:c.id,name:"تركيبة "+String(c.number).padStart(4,"0"),n:0,correct:0};combos.set(c.id,x)}x.n++;if(c.signal===actual)x.correct++;}
-const directional=result.signal==="BUY"||result.signal==="SELL";if(directional){allN++;if(result.signal===actual)allCorrect++;}
-$("progressBar").style.width=Math.round((i-start+1)/points*100)+"%";$("runStatus").textContent="اختبار "+(i-start+1)+" من "+points+" نقطة";if((i-start)%5===0)await new Promise(r=>setTimeout(r,0));
+async function api(path,timeout=60000){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{},signal:AbortSignal.timeout(timeout)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
+function setState(message){$("runStatus").textContent=message}
+async function loadHistoryMeta(){
+  const d=await api("/api/backtest/history?days=90&limit=1000");
+  historyMeta=d;
+  $("timeframe").innerHTML=d.available_timeframes.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
+  $("symbol").innerHTML=d.available_symbols.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
+  $("timeframe").disabled=!d.available_timeframes.length;$("symbol").disabled=!d.available_symbols.length;
+  $("timeframe").value=d.timeframe;$("symbol").value=d.symbol;
+  setState("الأرشيف جاهز · "+d.count+" شمعة · "+d.timeframe);
 }
-const rank=map=>[...map.values()].filter(x=>x.n>0).map(x=>({...x,accuracy:x.correct/x.n*100})).sort((a,b)=>b.accuracy-a.accuracy||b.n-a.n);
-const sr=rank(strat),cr=rank(combos);$("points").textContent=points;$("overallAccuracy").textContent=allN?(allCorrect/allN*100).toFixed(1)+"%":"—";$("strategyResults").innerHTML=table(sr);$("comboResults").innerHTML=table(cr);$("runStatus").textContent="اكتمل الاختبار · "+candles.length+" شمعة · "+m.timeframe;$("progressBar").style.width="100%";
-}catch(e){$("runStatus").textContent=e.message;const msg="<div class='lab-state'>"+esc(e.message)+"</div>";$("strategyResults").innerHTML=msg;$("comboResults").innerHTML=msg}finally{running=false;btn.disabled=false;btn.textContent="إعادة الاختبار"}}
-$("runBtn").addEventListener("click",run);boot();
+async function boot(){try{
+  const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");
+  const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key);
+  const {data}=await sb.auth.getSession();if(!data.session){location.href="/";return}
+  accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";
+  await loadHistoryMeta();
+}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";setState(e.message);$("strategyResults").innerHTML="<div class='lab-state'>"+esc(e.message)+"</div>"}}
+function metrics(){return {n:0,wins:0,losses:0,gross:0,spread:0,slippage:0,commission:0,net:0,equity:0,peak:0,maxDD:0,grossWins:0,grossLoss:0}}
+function addTrade(x,signal,bar,lot,commissionPerLot,slippagePoints){
+  const point=Number(bar.point_size||0),spreadPoints=Math.max(0,Number(bar.spread_points||0));
+  const tickSize=Number(bar.tick_size||0),tickValue=Number(bar.tick_value||0),contract=Number(bar.contract_size||0);
+  const valuePerPrice=tickValue>0&&tickSize>0?tickValue/tickSize:contract>0?contract:null;
+  if(!valuePerPrice)throw Error("بيانات Tick Value / Tick Size أو Contract Size غير متاحة من MT5؛ لا يمكن حساب الربح المالي بصورة مسؤولة.");
+  const direction=signal==="BUY"?1:-1,move=(Number(bar.close)-Number(bar.open))*direction;
+  const gross=move*valuePerPrice*lot;
+  const spread=spreadPoints*point*valuePerPrice*lot;
+  const slippage=2*slippagePoints*point*valuePerPrice*lot;
+  const commission=commissionPerLot*lot;
+  const net=gross-spread-slippage-commission;
+  x.n++;if(net>0)x.wins++;else if(net<0)x.losses++;
+  x.gross+=gross;x.spread+=spread;x.slippage+=slippage;x.commission+=commission;x.net+=net;
+  x.equity+=net;x.peak=Math.max(x.peak,x.equity);x.maxDD=Math.max(x.maxDD,x.peak-x.equity);
+  if(net>0)x.grossWins+=net;else if(net<0)x.grossLoss+=Math.abs(net);
+}
+function money(v,currency){return Number(v||0).toFixed(2)+" "+(currency||"عملة الحساب")}
+function table(rows,currency){
+ if(!rows.length)return "<div class='lab-state'>لا توجد صفقات افتراضية كافية لهذه العينة.</div>";
+ return "<table class='lab-table'><thead><tr><th>#</th><th>الاستراتيجية / التركيبة</th><th>الصفقات</th><th>نسبة الفوز</th><th>صافي الربح</th><th>معامل الربح</th><th>أقصى تراجع</th></tr></thead><tbody>"+
+ rows.slice(0,20).map((x,i)=>{const win=x.n?x.wins/x.n*100:0,pf=x.grossLoss?x.grossWins/x.grossLoss:x.grossWins>0?Infinity:0;return "<tr><td>"+(i+1)+"</td><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td>"+win.toFixed(1)+"%</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net,currency)+"</td><td>"+(pf===Infinity?"∞":pf.toFixed(2))+"</td><td>"+money(x.maxDD,currency)+"</td></tr>"}).join("")+"</tbody></table>";
+}
+async function run(){
+ if(running)return;running=true;const btn=$("runBtn");btn.disabled=true;btn.textContent="جارٍ الاختبار…";$("progressBar").style.width="0%";
+ try{
+  if(window.ALZOOLStrategyEngine.size!==200)throw Error("عدد الاستراتيجيات المسجلة ليس 200؛ تم إيقاف الاختبار.");
+  const days=Number($("historyDays").value),limit=Number($("sampleLimit").value),tf=$("timeframe").value,symbol=$("symbol").value;
+  if(!tf||!symbol)throw Error("لا توجد فريمات تاريخية محفوظة بعد.");
+  setState("تحميل الشموع التاريخية من قاعدة البيانات…");
+  const qs=new URLSearchParams({days:String(days),limit:String(limit),timeframe:tf,symbol});
+  const h=await api("/api/backtest/history?"+qs.toString(),120000),candles=h.candles||[];
+  if(candles.length<52)throw Error("البيانات غير كافية. المتاح "+candles.length+" شمعة؛ نحتاج 52 على الأقل.");
+  const lot=Number($("lotSize").value),commission=Number($("commissionPerLot").value),slippage=Number($("slippagePoints").value);
+  if(!(lot>0&&lot<=10)||commission<0||slippage<0)throw Error("تحقق من اللوت والعمولة والانزلاق.");
+  const strategies=new Map(window.ALZOOLStrategyEngine.list().map(x=>[x.id,{...metrics(),id:x.id,name:x.name}]));
+  const combinations=new Map();let strategyTrades=0,strategyWins=0,strategyNet=0;
+  const start=50,end=candles.length-1,points=end-start;
+  for(let i=start;i<end;i++){
+   const history=candles.slice(0,i+1),current=Number(history.at(-1).close);
+   const point=Number(history.at(-1).point_size||0),spread=Number(history.at(-1).spread_points||0)*point;
+   const result=window.ALZOOLStrategyEngine.evaluate({candles:history,tick:{bid:current,ask:current+Math.max(spread,0.000001)}});
+   if(result.votes.length!==200||result.combinations.length!==1000)throw Error("فشل تحقق عدد الاستراتيجيات أو التركيبات.");
+   const exitBar=candles[i+1];
+   for(const vote of result.votes){
+    if(vote.vote!=="BUY"&&vote.vote!=="SELL")continue;
+    const x=strategies.get(vote.id),before=x.n;addTrade(x,vote.vote,exitBar,lot,commission,slippage);
+    strategyTrades++;if(x.n>before&&Number(exitBar.close)!==Number(exitBar.open)&&x.net>=0){} 
+   }
+   for(const combo of result.combinations){
+    if(!combinations.has(combo.id))combinations.set(combo.id,{...metrics(),id:combo.id,name:"تركيبة "+String(combo.number).padStart(4,"0")});
+    if(combo.signal==="BUY"||combo.signal==="SELL")addTrade(combinations.get(combo.id),combo.signal,exitBar,lot,commission,slippage);
+   }
+   $("progressBar").style.width=Math.round((i-start+1)/points*100)+"%";
+   setState("اختبار "+(i-start+1)+" من "+points+" نقطة · "+tf);
+   if((i-start)%20===0)await new Promise(r=>setTimeout(r,0));
+  }
+  const ranked=map=>[...map.values()].filter(x=>x.n>0).sort((a,b)=>b.net-a.net||((b.grossLoss?b.grossWins/b.grossLoss:999)-(a.grossLoss?a.grossWins/a.grossLoss:999)));
+  const sr=ranked(strategies),cr=ranked(combinations);
+  for(const x of strategies.values()){strategyNet+=x.net;strategyWins+=x.wins}
+  const currency=candles.at(-1).currency||"عملة الحساب";
+  $("barCount").textContent=candles.length.toLocaleString("en-US");$("points").textContent=points.toLocaleString("en-US");
+  $("tradeCount").textContent=strategyTrades.toLocaleString("en-US");$("netProfit").textContent=money(strategyNet,currency);
+  $("netProfit").className=strategyNet>=0?"positive":"negative";
+  $("strategyResults").innerHTML=table(sr,currency);$("comboResults").innerHTML=table(cr,currency);
+  const spreadNote=candles.some(x=>Number(x.spread_points)>0)?"السبريد التاريخي من MT5":"تنبيه: بعض/كل الشموع لا تحتوي قيمة سبريد تاريخية، وقد تكون تكلفة السبريد أقل من الواقع.";
+  $("methodNote").innerHTML="<b>نتيجة المنهجية:</b> الدخول عند افتتاح الشمعة التالية والخروج عند إغلاقها. "+esc(spreadNote)+"؛ العمولة "+commission.toFixed(2)+" لكل لوت ذهاب وعودة؛ اللوت "+lot+"؛ الانزلاق "+slippage+" نقطة لكل جهة. تم حساب قيمة السعر باستخدام Tick Value/Tick Size أو Contract Size المرسل من MT5. لا تشمل المحاكاة أوامر وقف/هدف متغيرة، السواب، إعادة التسعير أو تأخر التنفيذ. النتائج محاكاة تاريخية وليست ضماناً للربح.";
+  $("progressBar").style.width="100%";setState("اكتمل الاختبار · "+candles.length+" شمعة · "+tf+" · "+h.symbol);
+ }catch(e){setState(e.message);const msg="<div class='lab-state'>"+esc(e.message)+"</div>";$("strategyResults").innerHTML=msg;$("comboResults").innerHTML=msg}
+ finally{running=false;btn.disabled=false;btn.textContent="إعادة الاختبار"}
+}
+$("runBtn").addEventListener("click",run);
+$("timeframe").addEventListener("change",()=>setState("تم تغيير الفريم؛ اضغط بدء الاختبار."));
+$("symbol").addEventListener("change",()=>setState("تم تغيير الرمز؛ اضغط بدء الاختبار."));
+boot();
 </script></body></html>
