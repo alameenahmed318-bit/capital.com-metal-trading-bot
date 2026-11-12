@@ -34,6 +34,7 @@ input int InpHistoricalCandlesToSend = 5000;
 input int InpHistoryUploadMinutes = 15;
 
 bool g_online=false;
+bool g_serverTradingEnabled=false;
 datetime g_lastHistoryAttempt=0;
 string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
@@ -117,6 +118,7 @@ double JsonDouble(const string json,const string key,double fallback)
 }
 bool PollTradeSettings()
 {
+   g_serverTradingEnabled=false;
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
    char data[],result[];
    ArrayResize(data,0);
@@ -131,6 +133,7 @@ bool PollTradeSettings()
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
+   g_serverTradingEnabled=JsonBool(response,"trading_enabled");
    g_singleCloseEnabled=JsonBool(response,"single_enabled");
    g_groupCloseEnabled=JsonBool(response,"group_enabled");
    g_singleProfitTarget=JsonDouble(response,"single_profit_target",1.0);
@@ -176,7 +179,7 @@ bool PollCentralDecision()
    g_aiConfidence=MathMax(0.0,MathMin(1.0,parsed_confidence));
    g_aiBarTime=parsed_bar;
    g_aiStrategyId=parsed_strategy;
-   if(ready && InpEnableCentralTrading) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,reason);
+   if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,reason);
    return true;
 }
 
