@@ -75,6 +75,27 @@
     }
   ];
 
+
+  // Batch 2: 15 additional strategies, evaluated independently.
+  const extraStrategies = [
+    {id:"ema-9-21",name:"تقاطع EMA 9/21",family:"trend",evaluate:c=>{const v=c.candles.map(x=>Number(x.close));const a=ema(v,9),b=ema(v,21);return {signal:a>b?SIGNALS.BUY:a<b?SIGNALS.SELL:SIGNALS.WAIT,confidence:a===b?0:68,reasons:["EMA9 مقابل EMA21"]};}},
+    {id:"ema50-slope",name:"ميل EMA50",family:"trend",evaluate:c=>{const v=c.candles.map(x=>Number(x.close));const a=ema(v,50),b=ema(v.slice(0,-5),50);return {signal:a>b?SIGNALS.BUY:a<b?SIGNALS.SELL:SIGNALS.WAIT,confidence:a===b?0:62,reasons:["ميل EMA50 خلال 5 شموع"]};}},
+    {id:"ema-pullback",name:"ارتداد السعر من EMA20",family:"trend",evaluate:c=>{const p=c.candles.at(-2),n=c.last;const buy=Number(p.low)<=c.e20&&c.close>c.e20&&c.close>Number(n.open),sell=Number(p.high)>=c.e20&&c.close<c.e20&&c.close<Number(n.open);return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?66:0,reasons:["اختبار EMA20 ثم إغلاق باتجاه الارتداد"]};}},
+    {id:"rsi-extreme-reversal",name:"انعكاس تشبع RSI",family:"reversal",evaluate:c=>{const buy=c.rsi<=30,sell=c.rsi>=70;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?64:0,reasons:["RSI14 = "+c.rsi.toFixed(1)]};}},
+    {id:"rsi-midline",name:"عبور مستوى RSI 50",family:"momentum",evaluate:c=>{const v=c.candles.map(x=>Number(x.close));const calc=a=>{const d=a.slice(1).map((x,i)=>x-a[i]),g=d.slice(-14).reduce((t,x)=>t+Math.max(0,x),0)/14,l=d.slice(-14).reduce((t,x)=>t+Math.max(0,-x),0)/14;return l===0?100:100-100/(1+g/l)};const p=calc(v.slice(0,-1));return {signal:p<=50&&c.rsi>50?SIGNALS.BUY:p>=50&&c.rsi<50?SIGNALS.SELL:SIGNALS.WAIT,confidence:70,reasons:["تغير RSI عبر مستوى 50"]};}},
+    {id:"bollinger-reentry",name:"عودة نطاق بولنجر",family:"reversal",evaluate:c=>{const v=c.candles.map(x=>Number(x.close)).slice(-20),m=v.reduce((a,b)=>a+b,0)/v.length,sd=Math.sqrt(v.reduce((a,b)=>a+(b-m)**2,0)/v.length),p=Number(c.candles.at(-2).close),buy=p<m-2*sd&&c.close>m-2*sd,sell=p>m+2*sd&&c.close<m+2*sd;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?67:0,reasons:["عودة الإغلاق داخل نطاق بولنجر 20/2"]};}},
+    {id:"range-breakout-30",name:"اختراق نطاق 30 شمعة",family:"breakout",evaluate:c=>{const p=c.candles.slice(-31,-1),h=Math.max(...p.map(x=>Number(x.high))),l=Math.min(...p.map(x=>Number(x.low)));return {signal:c.close>h?SIGNALS.BUY:c.close<l?SIGNALS.SELL:SIGNALS.WAIT,confidence:c.close>h||c.close<l?76:0,reasons:["نطاق 30 شمعة: "+l.toFixed(3)+" – "+h.toFixed(3)]};}},
+    {id:"atr-expansion",name:"اندفاع سعري مقارنة ATR",family:"momentum",evaluate:c=>{const body=c.close-Number(c.last.open),ok=c.atr&&Math.abs(body)>c.atr*.8;return {signal:ok?(body>0?SIGNALS.BUY:SIGNALS.SELL):SIGNALS.WAIT,confidence:ok?68:0,reasons:["جسم الشمعة مقارنة ATR"]};}},
+    {id:"engulfing",name:"الابتلاع الشرائي/البيعي",family:"candles",evaluate:c=>{const a=c.candles.at(-2),b=c.last,ao=Number(a.open),ac=Number(a.close),bo=Number(b.open),bc=Number(b.close),buy=ac<ao&&bc>bo&&bo<=ac&&bc>=ao,sell=ac>ao&&bc<bo&&bo>=ac&&bc<=ao;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?72:0,reasons:["نموذج الابتلاع على آخر شمعتين"]};}},
+    {id:"pinbar-rejection",name:"شمعة رفض سعري",family:"candles",evaluate:c=>{const n=c.last,o=Number(n.open),cl=Number(n.close),h=Number(n.high),l=Number(n.low),b=Math.max(Math.abs(cl-o),1e-8),lo=Math.min(o,cl)-l,up=h-Math.max(o,cl),buy=lo>=b*2&&up<=b,sell=up>=b*2&&lo<=b;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?65:0,reasons:["تحليل ظلال وجسم الشمعة"]};}},
+    {id:"inside-bar-break",name:"اختراق شمعة داخلية",family:"breakout",evaluate:c=>{const a=c.candles.at(-2),p=c.candles.at(-3),inside=Number(a.high)<Number(p.high)&&Number(a.low)>Number(p.low),buy=inside&&c.close>Number(a.high),sell=inside&&c.close<Number(a.low);return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?70:0,reasons:["تأكيد كسر نطاق الشمعة الداخلية"]};}},
+    {id:"support-bounce",name:"ارتداد من الدعم القريب",family:"support_resistance",evaluate:c=>{const near=Math.abs(Number(c.last.low)-c.low30)<=(c.atr||0)*.2,up=c.close>Number(c.last.open);return {signal:near&&up?SIGNALS.BUY:SIGNALS.WAIT,confidence:near&&up?61:0,reasons:["تفاعل السعر مع قاع 30 شمعة"]};}},
+    {id:"resistance-rejection",name:"رفض المقاومة القريبة",family:"support_resistance",evaluate:c=>{const near=Math.abs(Number(c.last.high)-c.high30)<=(c.atr||0)*.2,down=c.close<Number(c.last.open);return {signal:near&&down?SIGNALS.SELL:SIGNALS.WAIT,confidence:near&&down?61:0,reasons:["تفاعل السعر مع قمة 30 شمعة"]};}},
+    {id:"five-candle-roc",name:"زخم التغير 5 شموع",family:"momentum",evaluate:c=>{const v=c.candles.map(x=>Number(x.close)),d=v.at(-1)-v.at(-6);return {signal:d>0?SIGNALS.BUY:d<0?SIGNALS.SELL:SIGNALS.WAIT,confidence:d===0?0:58,reasons:["التغير خلال 5 شموع: "+d.toFixed(3)]};}},
+    {id:"macd-alignment",name:"توافق MACD",family:"momentum",evaluate:c=>{const v=c.candles.map(x=>Number(x.close)),line=ema(v,12)-ema(v,26),hist=ema(v.slice(-40).map((_,i)=>{const q=v.slice(0,v.length-39+i);return ema(q,12)-ema(q,26)}),9),buy=line>0&&line>hist,sell=line<0&&line<hist;return {signal:buy?SIGNALS.BUY:sell?SIGNALS.SELL:SIGNALS.WAIT,confidence:buy||sell?66:0,reasons:["مقارنة خط MACD بخط الإشارة"]};}},
+    {id:"candle-body-pressure",name:"قوة جسم الشمعة",family:"candles",evaluate:c=>{const n=c.last,body=c.close-Number(n.open),range=Math.max(Number(n.high)-Number(n.low),1e-8),ratio=Math.abs(body)/range,ok=ratio>=.7;return {signal:ok?(body>0?SIGNALS.BUY:SIGNALS.SELL):SIGNALS.WAIT,confidence:ok?60:0,reasons:["قوة جسم الشمعة "+(ratio*100).toFixed(0)+"% من مداها"]};}}
+  ];
+
   const registry = new Map();
   function register(strategy) {
     if (!strategy || !strategy.id || !strategy.name || !strategy.family || typeof strategy.evaluate !== "function")
@@ -84,6 +105,7 @@
     return strategy.id;
   }
   strategies.forEach(register);
+  extraStrategies.forEach(register);
 
   function evaluate(market) {
     const candles = Array.isArray(market && market.candles) ? market.candles : [];
