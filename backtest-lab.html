@@ -164,9 +164,13 @@ async function run(){
   $("strategyResults").innerHTML=table(sr,currency);$("comboResults").innerHTML=table(cr,currency);
   const spreadNote=candles.some(x=>Number(x.spread_points)>0)?"السبريد التاريخي من MT5":"تنبيه: بعض/كل الشموع لا تحتوي قيمة سبريد تاريخية، وقد تكون تكلفة السبريد أقل من الواقع.";
   $("methodNote").innerHTML="<b>نتيجة المنهجية:</b> الدخول عند افتتاح الشمعة التالية والخروج عند إغلاقها. "+esc(spreadNote)+"؛ العمولة "+commission.toFixed(2)+" لكل لوت ذهاب وعودة؛ اللوت "+lot+"؛ الانزلاق "+slippage+" نقطة لكل جهة. تم حساب قيمة السعر باستخدام Tick Value/Tick Size أو Contract Size المرسل من MT5. لا تشمل المحاكاة أوامر وقف/هدف متغيرة، السواب، إعادة التسعير أو تأخر التنفيذ. النتائج محاكاة تاريخية وليست ضماناً للربح.";
-  const compactBucket=b=>({n:b.n,wins:b.wins,losses:b.losses,net:b.net,grossWins:b.grossWins,grossLoss:b.grossLoss,maxDD:b.maxDD,regimes:Object.fromEntries(Object.entries(b.regimes||{}).map(([k,v])=>[k,{n:v.n,wins:v.wins,net:v.net}]))});
-  const serialise=x=>({id:x.id,name:x.name,n:x.n,wins:x.wins,losses:x.losses,grossWins:x.grossWins,grossLoss:x.grossLoss,net:x.net,maxDD:x.maxDD,training:compactBucket(x.training),validation:compactBucket(x.validation)});
-  const strategyRows=[...strategies.values()].map(serialise),comboRows=[...combinations.values()];
+  const rounded=v=>Number.isFinite(Number(v))?Math.round(Number(v)*10000)/10000:0;
+  const compactBucket=(b,includeRegimes=true)=>({n:b.n,wins:b.wins,losses:b.losses,net:rounded(b.net),grossWins:rounded(b.grossWins),grossLoss:rounded(b.grossLoss),maxDD:rounded(b.maxDD),...(includeRegimes?{regimes:Object.fromEntries(Object.entries(b.regimes||{}).map(([k,v])=>[k,{n:v.n,wins:v.wins,net:rounded(v.net)}]))}:{})});
+  const serialise=(x,includeRegimes=true)=>({id:x.id,name:x.name,n:x.n,wins:x.wins,losses:x.losses,grossWins:rounded(x.grossWins),grossLoss:rounded(x.grossLoss),net:rounded(x.net),maxDD:rounded(x.maxDD),training:compactBucket(x.training,includeRegimes),validation:compactBucket(x.validation,includeRegimes)});
+  // Preserve detailed market-regime diagnostics for the 200 strategies.
+  // The 1,000 combinations keep their full aggregate train/validation metrics,
+  // but omit repeated regime maps to keep the request safely below API limits.
+  const strategyRows=[...strategies.values()].map(x=>serialise(x,true)),comboRows=[...combinations.values()].map(x=>serialise(x,false));
   while(comboRows.length<1000){const n=comboRows.length+1;comboRows.push({id:"combo-"+String(n).padStart(4,"0"),name:"تركيبة "+String(n).padStart(4,"0"),n:0,wins:0,losses:0,grossWins:0,grossLoss:0,net:0,maxDD:0,training:metricBucket(),validation:metricBucket()});}
   const validationNet=strategyRows.reduce((s,x)=>s+Number(x.validation.net||0),0);
   const runRecord={run_key:"run-"+Date.now()+"-"+Math.random().toString(36).slice(2,8),symbol,timeframe:tf,period_days:days,candle_count:candles.length,test_points:points,validation_points:end-validationStart,lot_size:lot,commission_per_lot:commission,slippage_points:slippage,account_currency:currency,
