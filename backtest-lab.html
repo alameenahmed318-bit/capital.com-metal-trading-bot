@@ -26,14 +26,14 @@
 <div class="lab-actions"><button id="runBtn" class="refresh" type="button">بدء الاختبار</button><span class="lab-tag" id="runStatus">جارٍ التحقق من الأرشيف</span></div>
 </div>
 <div class="lab-progress"><span id="progressBar"></span></div>
-<div class="lab-note" id="methodNote"><b>منهجية المحاكاة:</b> نحتاج أولاً إلى مزامنة الشموع التاريخية من عميل MT5 المحدّث. عند الاختبار تدخل المحاكاة عند افتتاح الشمعة التالية وتغلق عند إغلاقها، وتخصم السبريد التاريخي المسجل في MT5 والعمولة والانزلاق اللذين تحددهما هنا. الأرباح تقديرية بعملة الحساب اعتماداً على Tick Value وTick Size من MT5. هذه محاكاة احتفاظ شمعة واحدة وليست تنفيذ صفقات حقيقية، ولا تمثل ضماناً للنتائج المستقبلية.</div></section>
+<div class="lab-note" id="methodNote"><b>منهجية المحاكاة:</b> نحتاج أولاً إلى مزامنة الشموع التاريخية من عميل MT5 المحدّث. عند الاختبار تدخل المحاكاة عند افتتاح الشمعة التالية وتغلق عند إغلاقها، وتخصم السبريد التاريخي المسجل في MT5 والعمولة والانزلاق اللذين تحددهما هنا. الأرباح تقديرية بعملة الحساب اعتماداً على Tick Value وTick Size من MT5. هذا مجموع نتائج النماذج منفردة (كل نموذج بحجم اللوت نفسه)، وليس محفظة واحدة؛ وقد تتداخل إشاراتها زمنياً. هذه محاكاة احتفاظ شمعة واحدة وليست تنفيذ صفقات حقيقية، ولا تمثل ضماناً للنتائج المستقبلية.</div></section>
 <section class="lab-grid">
 <article class="lab-stat"><small>الشموع التاريخية المستخدمة</small><strong id="barCount">—</strong></article>
 <article class="lab-stat"><small>نقاط الاختبار</small><strong id="points">—</strong></article>
 <article class="lab-stat"><small>الاستراتيجيات المسجلة</small><strong id="strategyCount">200</strong></article>
 <article class="lab-stat"><small>التركيبات المفحوصة</small><strong id="comboCount">1000</strong></article>
 <article class="lab-stat"><small>صفقات الاستراتيجيات الافتراضية</small><strong id="tradeCount">—</strong></article>
-<article class="lab-stat"><small>صافي الاستراتيجيات مجتمعة</small><strong id="netProfit">—</strong></article>
+<article class="lab-stat"><small>مجموع صافي نتائج الاستراتيجيات</small><strong id="netProfit">—</strong></article>
 </section>
 <section class="lab-results"><article class="card"><div class="card-title"><div><span class="eyebrow">STRATEGY PERFORMANCE</span><h2>أفضل الاستراتيجيات</h2></div><span class="market-tag">حسب صافي النتيجة</span></div><div class="lab-table-wrap" id="strategyResults"><div class="lab-state">بانتظار تحميل الأرشيف التاريخي.</div></div></article>
 <article class="card"><div class="card-title"><div><span class="eyebrow">COMBINATION PERFORMANCE</span><h2>أفضل التركيبات</h2></div><span class="market-tag">من أصل 1000</span></div><div class="lab-table-wrap" id="comboResults"><div class="lab-state">بانتظار تحميل الأرشيف التاريخي.</div></div></article></section>
@@ -96,7 +96,7 @@ async function run(){
   const lot=Number($("lotSize").value),commission=Number($("commissionPerLot").value),slippage=Number($("slippagePoints").value);
   if(!(lot>0&&lot<=10)||commission<0||slippage<0)throw Error("تحقق من اللوت والعمولة والانزلاق.");
   const strategies=new Map(window.ALZOOLStrategyEngine.list().map(x=>[x.id,{...metrics(),id:x.id,name:x.name}]));
-  const combinations=new Map();let strategyTrades=0,strategyWins=0,strategyNet=0;
+  const combinations=new Map();let strategyTrades=0,strategyNet=0;
   const start=50,end=candles.length-1,points=end-start;
   for(let i=start;i<end;i++){
    const history=candles.slice(0,i+1),current=Number(history.at(-1).close);
@@ -106,8 +106,8 @@ async function run(){
    const exitBar=candles[i+1];
    for(const vote of result.votes){
     if(vote.vote!=="BUY"&&vote.vote!=="SELL")continue;
-    const x=strategies.get(vote.id),before=x.n;addTrade(x,vote.vote,exitBar,lot,commission,slippage);
-    strategyTrades++;if(x.n>before&&Number(exitBar.close)!==Number(exitBar.open)&&x.net>=0){} 
+    const x=strategies.get(vote.id);addTrade(x,vote.vote,exitBar,lot,commission,slippage);
+    strategyTrades++;
    }
    for(const combo of result.combinations){
     if(!combinations.has(combo.id))combinations.set(combo.id,{...metrics(),id:combo.id,name:"تركيبة "+String(combo.number).padStart(4,"0")});
@@ -119,7 +119,7 @@ async function run(){
   }
   const ranked=map=>[...map.values()].filter(x=>x.n>0).sort((a,b)=>b.net-a.net||((b.grossLoss?b.grossWins/b.grossLoss:999)-(a.grossLoss?a.grossWins/a.grossLoss:999)));
   const sr=ranked(strategies),cr=ranked(combinations);
-  for(const x of strategies.values()){strategyNet+=x.net;strategyWins+=x.wins}
+  for(const x of strategies.values())strategyNet+=x.net
   const currency=candles.at(-1).currency||"عملة الحساب";
   $("barCount").textContent=candles.length.toLocaleString("en-US");$("points").textContent=points.toLocaleString("en-US");
   $("tradeCount").textContent=strategyTrades.toLocaleString("en-US");$("netProfit").textContent=money(strategyNet,currency);
