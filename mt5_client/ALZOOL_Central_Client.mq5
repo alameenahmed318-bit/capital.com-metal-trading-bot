@@ -128,7 +128,7 @@ bool PollCentralDecision()
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
    char data[],result[];
    ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\\r\\n";
+   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
    string response_headers;
    ResetLastError();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+InpEngineId,
@@ -143,8 +143,8 @@ bool PollCentralDecision()
    string reason=JsonField(response,"reason_ar");
    string confidence=JsonField(response,"confidence");
    string bar_time=JsonField(response,"bar_time");
-   StringReplace(signal,"\\\"","");
-   StringReplace(reason,"\\\"","");
+   StringReplace(signal,"\"","");
+   StringReplace(reason,"\"","");
    if(signal!="BUY" && signal!="SELL") signal="WAIT";
    double parsed_confidence=StringToDouble(confidence);
    long parsed_bar=(long)StringToInteger(bar_time);
