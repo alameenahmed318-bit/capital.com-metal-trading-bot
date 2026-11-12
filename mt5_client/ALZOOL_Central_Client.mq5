@@ -39,6 +39,9 @@ datetime g_lastHistoryAttempt=0;
 string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
+bool g_serverStopLossEnabled=true;
+string g_serverStopLossMode="ATR";
+double g_serverStopLossValue=1.8;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
 double g_aiConfidence=0.0;
@@ -140,6 +143,13 @@ bool PollTradeSettings()
    g_groupProfitTarget=JsonDouble(response,"group_profit_target",5.0);
    if(g_singleProfitTarget<=0) g_singleCloseEnabled=false;
    if(g_groupProfitTarget<=0) g_groupCloseEnabled=false;
+   string slEnabled=JsonField(response,"stop_loss_enabled");
+   if(StringLen(slEnabled)>0) g_serverStopLossEnabled=(StringFind(slEnabled,"true")==0 || StringFind(slEnabled,"1")==0);
+   string slMode=JsonField(response,"stop_loss_mode");
+   StringReplace(slMode,"\\\"","");
+   if(slMode=="POINTS" || slMode=="ATR") g_serverStopLossMode=slMode;
+   double slValue=JsonDouble(response,"stop_loss_value",g_serverStopLossValue);
+   if(slValue>0.0) g_serverStopLossValue=slValue;
    return true;
 }
 bool PollCentralDecision()
@@ -225,7 +235,14 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<tick.bid) return;
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
    double minDist=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
-   double slDist=MathMax(atr[0]*InpStopLossATR,minDist+_Point);
+   double slDist=0.0;
+   if(g_serverStopLossEnabled)
+   {
+      slDist=(g_serverStopLossMode=="POINTS")
+             ? g_serverStopLossValue*_Point
+             : atr[0]*g_serverStopLossValue;
+      slDist=MathMax(slDist,minDist+_Point);
+   }
    double tpDist=MathMax(atr[0]*InpTakeProfitATR,minDist+_Point);
    double sl=0.0,tp=0.0;
    g_trade.SetExpertMagicNumber(InpTradeMagic);
@@ -234,12 +251,14 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    bool sent=false;
    if(direction=="BUY")
    {
-      sl=NormalizeDouble(tick.ask-slDist,digits); tp=NormalizeDouble(tick.ask+tpDist,digits);
+      if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.ask-slDist,digits);
+      tp=NormalizeDouble(tick.ask+tpDist,digits);
       sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId));
    }
    else
    {
-      sl=NormalizeDouble(tick.bid+slDist,digits); tp=NormalizeDouble(tick.bid-tpDist,digits);
+      if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.bid+slDist,digits);
+      tp=NormalizeDouble(tick.bid-tpDist,digits);
       sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId));
    }
    uint rc=g_trade.ResultRetcode();
