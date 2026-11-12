@@ -448,7 +448,7 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
-                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_ANALYSIS"],
+                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED"],
                     "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED"]
                 }.get(kind)
                 query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")
