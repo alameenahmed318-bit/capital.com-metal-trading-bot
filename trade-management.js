@@ -16,6 +16,17 @@ async function loadCloseSettings(){
  $("closeSettingsMessage").textContent="الأهداف بعملة حساب MT5: "+(s.currency||"عملة الحساب");
  $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
  updateStopLossHelp();
+ const pm=s.position_management||{};
+ $("pmMode").value=pm.mode==="MANUAL"?"MANUAL":"AI";
+ $("addonEnabled").checked=!!pm.addon_enabled;
+ $("addonMax").value=Number(pm.addon_max??0);
+ $("addonLot").value=Number(pm.addon_lot??0.01);
+ $("addonDistance").value=Number(pm.addon_distance_points??100);
+ $("coolingEnabled").checked=!!pm.cooling_enabled;
+ $("coolingMax").value=Number(pm.cooling_max??0);
+ $("coolingLot").value=Number(pm.cooling_lot??0.01);
+ $("coolingDistance").value=Number(pm.cooling_distance_points??100);
+ updatePmModeUI();
 }
 function updateStopLossHelp(){
  const mode=$("stopLossMode").value;
@@ -53,6 +64,41 @@ async function saveCloseSettings(){
   $("closeEngineState").textContent="الإعدادات محفوظة على الخادم";
  }catch(e){$("closeSettingsMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveCloseSettings").disabled=false;}
+}
+function updatePmModeUI(){
+ const ai=$("pmMode").value==="AI";
+ document.querySelectorAll(".pm-manual-fields").forEach(el=>el.style.display=ai?"none":"grid");
+ $("pmModeHelp").textContent=ai
+  ?"AI تلقائي: المحرك يختار توقيت الإضافة واللوت والمسافة، ويلتزم بالحد الأقصى الذي تحدده لكل قسم."
+  :"يدوي: تحدد اللوت والمسافة بالنقاط والحد الأقصى لكل قسم، والتنفيذ تلقائي عند تحقق المسافة ضد الصفقة الخاسرة.";
+}
+async function savePositionManagement(){
+ const mode=$("pmMode").value;
+ const cfg={mode,
+  addon_enabled:$("addonEnabled").checked,addon_max:Number($("addonMax").value),
+  addon_lot:Number($("addonLot").value),addon_distance_points:Number($("addonDistance").value),
+  cooling_enabled:$("coolingEnabled").checked,cooling_max:Number($("coolingMax").value),
+  cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value)};
+ for(const key of ["addon_max","cooling_max"]){
+  if(!Number.isInteger(cfg[key])||cfg[key]<0||cfg[key]>100){$("pmMessage").textContent="الحد الأقصى يجب أن يكون عدداً صحيحاً من 0 إلى 100.";return;}
+ }
+ for(const key of ["addon_lot","cooling_lot"]){
+  if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100){$("pmMessage").textContent="تحقق من قيم اللوت اليدوي.";return;}
+ }
+ if(mode==="MANUAL"){
+  for(const key of ["addon_distance_points","cooling_distance_points"]){
+   if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100000000){$("pmMessage").textContent="في الوضع اليدوي أدخل مسافة موجبة بالنقاط.";return;}
+  }
+ }
+ if((cfg.addon_enabled&&cfg.addon_max<1)||(cfg.cooling_enabled&&cfg.cooling_max<1)){
+  $("pmMessage").textContent="حدد الحد الأقصى لكل قسم قبل تفعيله.";return;
+ }
+ $("savePositionManagement").disabled=true;$("pmMessage").textContent="جارٍ حفظ إعدادات التعزيز والتبريد…";
+ try{
+  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({position_management:cfg})});
+  $("pmMessage").textContent="تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.";
+ }catch(e){$("pmMessage").textContent="تعذر الحفظ: "+e.message;}
+ finally{$("savePositionManagement").disabled=false;}
 }
 function pnlClass(v){const n=Number(v);return !Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative";}
 function money(v,c){return v==null?"—":fmt(v)+" "+esc(c||"");}
@@ -114,5 +160,7 @@ async function boot(){
 $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
+$("savePositionManagement").addEventListener("click",savePositionManagement);
+$("pmMode").addEventListener("change",updatePmModeUI);
 $("stopLossMode").addEventListener("change",updateStopLossHelp);
 boot();setInterval(()=>{if(accessToken)refresh();},2000);
