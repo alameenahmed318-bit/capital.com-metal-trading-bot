@@ -44,7 +44,7 @@ const $=id=>document.getElementById(id);let accessToken=null,running=false,histo
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function api(path,timeout=60000){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{},signal:AbortSignal.timeout(timeout)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
 function setState(message){$("runStatus").textContent=message}
-async function apiPostLearning(run){const r=await fetch("/api/backtest/learning",{method:"POST",headers:{"Content-Type":"application/json",...(accessToken?{Authorization:"Bearer "+accessToken}:{})},body:JSON.stringify({run}),signal:AbortSignal.timeout(120000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر حفظ ذاكرة التعلم");return d}
+async function apiPostLearning(run){const body=JSON.stringify({run});if(body.length>1500000)throw Error("حجم سجل التعلم تجاوز الحد الآمن؛ قلّل تفاصيل التشخيص وأعد الاختبار.");const r=await fetch("/api/backtest/learning",{method:"POST",headers:{"Content-Type":"application/json",...(accessToken?{Authorization:"Bearer "+accessToken}:{})},body,signal:AbortSignal.timeout(120000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر حفظ ذاكرة التعلم (HTTP "+r.status+")");if(!d.saved)throw Error("لم يؤكد الخادم حفظ جولة التعلم");return d}
 function buildLearningPolicy(runs){
  const out={};
  for(const run of (runs||[]).slice(0,20)){
@@ -164,7 +164,8 @@ async function run(){
   $("strategyResults").innerHTML=table(sr,currency);$("comboResults").innerHTML=table(cr,currency);
   const spreadNote=candles.some(x=>Number(x.spread_points)>0)?"السبريد التاريخي من MT5":"تنبيه: بعض/كل الشموع لا تحتوي قيمة سبريد تاريخية، وقد تكون تكلفة السبريد أقل من الواقع.";
   $("methodNote").innerHTML="<b>نتيجة المنهجية:</b> الدخول عند افتتاح الشمعة التالية والخروج عند إغلاقها. "+esc(spreadNote)+"؛ العمولة "+commission.toFixed(2)+" لكل لوت ذهاب وعودة؛ اللوت "+lot+"؛ الانزلاق "+slippage+" نقطة لكل جهة. تم حساب قيمة السعر باستخدام Tick Value/Tick Size أو Contract Size المرسل من MT5. لا تشمل المحاكاة أوامر وقف/هدف متغيرة، السواب، إعادة التسعير أو تأخر التنفيذ. النتائج محاكاة تاريخية وليست ضماناً للربح.";
-  const serialise=x=>({id:x.id,name:x.name,n:x.n,wins:x.wins,losses:x.losses,grossWins:x.grossWins,grossLoss:x.grossLoss,net:x.net,maxDD:x.maxDD,training:x.training,validation:x.validation});
+  const compactBucket=b=>({n:b.n,wins:b.wins,losses:b.losses,net:b.net,grossWins:b.grossWins,grossLoss:b.grossLoss,maxDD:b.maxDD,regimes:Object.fromEntries(Object.entries(b.regimes||{}).map(([k,v])=>[k,{n:v.n,wins:v.wins,net:v.net}]))});
+  const serialise=x=>({id:x.id,name:x.name,n:x.n,wins:x.wins,losses:x.losses,grossWins:x.grossWins,grossLoss:x.grossLoss,net:x.net,maxDD:x.maxDD,training:compactBucket(x.training),validation:compactBucket(x.validation)});
   const strategyRows=[...strategies.values()].map(serialise),comboRows=[...combinations.values()];
   while(comboRows.length<1000){const n=comboRows.length+1;comboRows.push({id:"combo-"+String(n).padStart(4,"0"),name:"تركيبة "+String(n).padStart(4,"0"),n:0,wins:0,losses:0,grossWins:0,grossLoss:0,net:0,maxDD:0,training:metricBucket(),validation:metricBucket()});}
   const validationNet=strategyRows.reduce((s,x)=>s+Number(x.validation.net||0),0);
