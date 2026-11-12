@@ -45,6 +45,7 @@ long g_aiBarTime=0;
 int g_aiStrategyId=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
+void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const string reason);
 
 string BaseUrl()
 {
