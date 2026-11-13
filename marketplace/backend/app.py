@@ -113,9 +113,9 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         for key in allowed:
             if key not in item: continue
             value=item[key]
-            if key in ("symbol","comment","ticket","magic","position_id"):
+            if key in ("symbol","comment","strategy_comment","ticket","magic","position_id"):
                 row[key]=str(value)[:120]
-            elif key in ("type","state","entry","reason","deal_type"):
+            elif key in ("type","state","entry","reason","deal_type","strategy_id"):
                 try: row[key]=int(value)
                 except (TypeError,ValueError,OverflowError): row[key]=0
             elif key=="time":
@@ -124,6 +124,58 @@ def clean_telemetry_rows(rows, allowed, limit=200):
             else: row[key]=finite_number(value)
         cleaned.append(row)
     return cleaned
+
+def live_learning_profile(deals):
+    """Build transparent, outcome-based live weights from real closed XAUUSD positions."""
+    grouped={}
+    today=datetime.now(timezone(timedelta(hours=4))).date()
+    today_total=set()
+    for deal in deals if isinstance(deals,list) else []:
+        if not isinstance(deal,dict): continue
+        symbol=str(deal.get("symbol") or "").upper()
+        if not symbol.startswith("XAUUSD"): continue
+        entry=int(finite_number(deal.get("entry"),1))
+        if entry not in (1,2,3): continue
+        stamp=int(finite_number(deal.get("time")))
+        pid=str(deal.get("position_id") or deal.get("ticket") or "")
+        if not pid: continue
+        if stamp>0 and datetime.fromtimestamp(stamp,timezone.utc).astimezone(timezone(timedelta(hours=4))).date()==today:
+            today_total.add(pid)
+        row=grouped.setdefault(pid,{"position_id":pid,"net":0.0,"strategy_id":0,"time":stamp})
+        row["net"]+=sum(finite_number(deal.get(k)) for k in ("profit","commission","swap","fee"))
+        row["time"]=max(row["time"],stamp)
+        sid=int(finite_number(deal.get("strategy_id")))
+        if not 1<=sid<=200:
+            match=re.search(r"ALZOOL-S(\\d{1,3})",str(deal.get("strategy_comment") or deal.get("comment") or ""),re.I)
+            sid=int(match.group(1)) if match else 0
+        if 1<=sid<=200: row["strategy_id"]=sid
+    rows=sorted(grouped.values(),key=lambda x:x["time"])
+    weights={str(i):1.0 for i in range(1,201)}
+    stats={}
+    matched_today=set()
+    for row in rows:
+        sid=int(row["strategy_id"] or 0)
+        if not 1<=sid<=200: continue
+        key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
+        item["trades"]+=1; item["net"]+=row["net"]
+        if row["net"]>0:
+            item["wins"]+=1; weights[key]=min(1.5,weights[key]*1.02)
+        elif row["net"]<0:
+            item["losses"]+=1; weights[key]=max(0.5,weights[key]*0.98)
+        else: item["flat"]+=1
+        if row["position_id"] in today_total: matched_today.add(row["position_id"])
+    matched=sum(x["trades"] for x in stats.values())
+    wins=sum(x["wins"] for x in stats.values()); losses=sum(x["losses"] for x in stats.values())
+    coverage=(matched/len(rows)*100.0) if rows else 0.0
+    daily_coverage=(len(matched_today)/len(today_total)*100.0) if today_total else 0.0
+    return {"processed_positions":matched,"closed_positions":len(rows),"unmatched_positions":max(0,len(rows)-matched),
+        "wins":wins,"losses":losses,"flat":sum(x["flat"] for x in stats.values()),
+        "net":sum(x["net"] for x in rows if x["strategy_id"]),
+        "coverage_percent":round(coverage,1),"daily_closed_positions":len(today_total),
+        "daily_processed_positions":len(matched_today),"daily_coverage_percent":round(daily_coverage,1),
+        "updated_strategies":sum(1 for x in stats.values() if x["wins"]+x["losses"]>0),
+        "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True)}
+
 
 def clean_historical_candles(rows, metadata, client_id, symbol, timeframe):
     if not isinstance(rows,list): return []
@@ -332,7 +384,12 @@ class Handler(SimpleHTTPRequestHandler):
                 rows=sb("GET","/rest/v1/alzool_engine_learning_runs?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
                     "&order=created_at.desc&limit="+str(limit),admin=True)
-                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0})
+                cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
+                history=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
+                deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
+                live=live_learning_profile(deals)
+                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0,"live":live})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path.startswith("/v1/terminal-decision/"):
@@ -776,7 +833,7 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
-                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),200)
+                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
                 # Persist MT5 history so closed trades survive Render restarts/deploys.
                 if closed_deals:
                     persisted=[]
@@ -807,7 +864,8 @@ class Handler(SimpleHTTPRequestHandler):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
-                            evaluated=evaluate_market(list(reversed(candles)),mode="AUTO")
+                            live_learning=live_learning_profile(closed_deals)
+                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "strategy_id":evaluated["strategy_id"],
