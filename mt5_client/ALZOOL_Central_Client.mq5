@@ -33,6 +33,13 @@ input group "الأرشيف التاريخي للاختبار"
 input int InpHistoricalCandlesToSend = 5000;
 input int InpHistoryUploadMinutes = 15;
 
+struct StrategyPositionLink
+{
+   long position_id;
+   int strategy_id;
+   string strategy_comment;
+};
+
 bool g_online=false;
 bool g_serverTradingEnabled=false;
 datetime g_lastHistoryAttempt=0;
@@ -612,6 +619,14 @@ bool SendHistoricalBatch()
    return true;
 }
 
+int StrategyIdFromComment(const string comment)
+{
+   int p=StringFind(comment,"ALZOOL-S");
+   if(p<0) return 0;
+   int sid=(int)StringToInteger(StringSubstr(comment,p+8));
+   return (sid>=1 && sid<=200 ? sid : 0);
+}
+
 bool SendLiveSnapshot()
 {
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
@@ -690,6 +705,33 @@ bool SendLiveSnapshot()
    datetime history_from=TimeCurrent()-30*86400;
    if(HistorySelect(history_from,TimeCurrent()))
    {
+      // Resolve each position's original ALZOOL strategy tag once from its entry deal.
+      // This metadata travels with the closing deal so live learning can attribute outcomes.
+      StrategyPositionLink strategy_links[];
+      int strategy_link_count=0;
+      int history_total=HistoryDealsTotal();
+      for(int h=0;h<history_total;h++)
+      {
+         ulong entry_ticket=HistoryDealGetTicket(h);
+         if(entry_ticket==0) continue;
+         long entry_kind=HistoryDealGetInteger(entry_ticket,DEAL_ENTRY);
+         if(entry_kind!=DEAL_ENTRY_IN && entry_kind!=DEAL_ENTRY_INOUT) continue;
+         long position_id=HistoryDealGetInteger(entry_ticket,DEAL_POSITION_ID);
+         string entry_comment=HistoryDealGetString(entry_ticket,DEAL_COMMENT);
+         int strategy_id=StrategyIdFromComment(entry_comment);
+         if(position_id<=0 || strategy_id<1) continue;
+         int found=-1;
+         for(int q=0;q<strategy_link_count;q++)
+            if(strategy_links[q].position_id==position_id){found=q;break;}
+         if(found<0)
+         {
+            ArrayResize(strategy_links,strategy_link_count+1);
+            found=strategy_link_count++;
+         }
+         strategy_links[found].position_id=position_id;
+         strategy_links[found].strategy_id=strategy_id;
+         strategy_links[found].strategy_comment=entry_comment;
+      }
       body+=",\"closed_deals\":[";
       int deals_sent=0;
       int total_deals=HistoryDealsTotal();
@@ -701,8 +743,22 @@ bool SendLiveSnapshot()
          if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) continue;
          string deal_symbol=HistoryDealGetString(deal_ticket,DEAL_SYMBOL);
          if(deals_sent>0) body+=",";
+         long closed_position_id=HistoryDealGetInteger(deal_ticket,DEAL_POSITION_ID);
+         int linked_strategy_id=0;
+         string linked_strategy_comment="";
+         for(int q=0;q<strategy_link_count;q++)
+         {
+            if(strategy_links[q].position_id==closed_position_id)
+            {
+               linked_strategy_id=strategy_links[q].strategy_id;
+               linked_strategy_comment=strategy_links[q].strategy_comment;
+               break;
+            }
+         }
          body+="{\"ticket\":\""+(string)deal_ticket+"\"";
-         body+=",\"position_id\":\""+(string)HistoryDealGetInteger(deal_ticket,DEAL_POSITION_ID)+"\"";
+         body+=",\"position_id\":\""+(string)closed_position_id+"\"";
+         body+=",\"strategy_id\":"+IntegerToString(linked_strategy_id);
+         body+=",\"strategy_comment\":\""+JsonEscape(linked_strategy_comment)+"\"";
          body+=",\"symbol\":\""+JsonEscape(deal_symbol)+"\"";
          body+=",\"type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
          body+=",\"deal_type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
