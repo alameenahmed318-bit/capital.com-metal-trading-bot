@@ -367,6 +367,17 @@ class Handler(SimpleHTTPRequestHandler):
                         deal_dt=datetime.fromisoformat(str(record.get("deal_time") or "").replace("Z","+00:00"))
                         if is_exit and deal_dt>=utc_midnight: item["daily"]=True
                     except Exception: pass
+                # Durable strategy links survive Render restarts and blank MT5 exit comments.
+                try:
+                    saved_maps=sb("GET","/rest/v1/alzool_engine_position_strategies?client_id=eq."+
+                        urllib.parse.quote(client_id,safe="")+"&select=position_id,strategy_id&limit=5000",admin=True)
+                    for saved in saved_maps if isinstance(saved_maps,list) else []:
+                        pid=str(saved.get("position_id") or "")
+                        sid=int(finite_number(saved.get("strategy_id")))
+                        if pid in grouped and 1<=sid<=200 and grouped[pid]["strategy_id"] is None:
+                            grouped[pid]["strategy_id"]=sid
+                except Exception as mapping_read_error:
+                    print("LEARNING_POSITION_MAP_READ_WARNING:",str(mapping_read_error)[:180],flush=True)
                 positions=[x for x in grouped.values() if x["closed"]]
                 daily=[x for x in positions if x["daily"]]
                 linked=[x for x in positions if x["strategy_id"] is not None]
@@ -895,46 +906,127 @@ class Handler(SimpleHTTPRequestHandler):
                       "balance":finite_number(account.get("balance")),"equity":finite_number(account.get("equity")),
                       "margin":finite_number(account.get("margin")),"free_margin":finite_number(account.get("free_margin")),
                       "profit":finite_number(account.get("profit"))}
-                positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
+                positions=clean_telemetry_rows(data.get("positions"),("ticket","position_id","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
                 closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),400)
-                # Persist MT5 history and apply each linked closing deal exactly once.
-                if closed_deals:
-                    persisted=[]
-                    strategy_by_position={}
-                    for deal in closed_deals:
-                        pid=str(deal.get("position_id") or deal.get("ticket") or "")
-                        comment=str(deal.get("comment") or "")
-                        match=re.search(r"ALZOOL-S(\d+)",comment.upper())
-                        if pid and match and 1<=int(match.group(1))<=200:
-                            sid=int(match.group(1))
-                            strategy_by_position[pid]=sid
-                            POSITION_STRATEGY_MAP[(client_id,pid)]=sid
-                        deal_id=str(deal.get("ticket") or "")
-                        stamp=int(deal.get("time") or 0)
-                        if deal_id and stamp>0:
-                            persisted.append({"client_id":client_id,"deal_id":deal_id,
-                                "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
-                                "payload":deal})
-                    if persisted:
-                        sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
-                           persisted,admin=True,prefer="resolution=merge-duplicates")
-                    for deal in closed_deals:
-                        if int(finite_number(deal.get("entry"),-1)) not in (1,2,3): continue
-                        if not str(deal.get("symbol") or "").upper().startswith("XAUUSD"): continue
-                        deal_id=str(deal.get("ticket") or "")
-                        pid=str(deal.get("position_id") or deal.get("ticket") or "")
-                        strategy_id=strategy_by_position.get(pid) or POSITION_STRATEGY_MAP.get((client_id,pid))
-                        if not deal_id or not strategy_id: continue
-                        net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
-                             finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
-                        try:
-                            sb("POST","/rest/v1/rpc/alzool_record_learning_outcome",{
-                                "p_client_id":client_id,"p_deal_id":deal_id,
-                                "p_strategy_id":strategy_id,"p_pnl":net,
-                                "p_learning_enabled":True,"p_learning_rate":0.02},admin=True)
-                        except Exception as learning_error:
-                            print("LIVE_LEARNING_UPDATE_WARNING:",str(learning_error)[:180],flush=True)
+                # Persist durable position -> strategy links before processing exits.
+                # MT5 exit-deal comments are frequently empty; the open-position comment is the reliable source.
+                strategy_by_position={}
+                mapping_by_position={}
+                for position in positions:
+                    pid=str(position.get("position_id") or position.get("ticket") or "")
+                    if not pid or not str(position.get("symbol") or "").upper().startswith("XAUUSD"):
+                        continue
+                    match=re.search(r"ALZOOL-S(\d+)",str(position.get("comment") or "").upper())
+                    if not match:
+                        continue
+                    sid=int(match.group(1))
+                    if not 1<=sid<=200:
+                        continue
+                    strategy_by_position[pid]=sid
+                    POSITION_STRATEGY_MAP[(client_id,pid)]=sid
+                    opened=int(finite_number(position.get("time")))
+                    mapping_by_position[pid]={
+                        "client_id":client_id,"position_id":pid,"strategy_id":sid,
+                        "symbol":str(position.get("symbol") or "")[:40],
+                        "magic":str(position.get("magic") or "")[:40],
+                        "opened_at":datetime.fromtimestamp(opened,timezone.utc).isoformat() if opened>0 else None,
+                        "source":"mt5_open_position_comment",
+                        "updated_at":datetime.now(timezone.utc).isoformat()
+                    }
+
+                # An entry deal may still carry the strategy tag; preserve it as a second source.
+                for deal in closed_deals:
+                    pid=str(deal.get("position_id") or deal.get("ticket") or "")
+                    if not pid:
+                        continue
+                    match=re.search(r"ALZOOL-S(\d+)",str(deal.get("comment") or "").upper())
+                    if not match:
+                        continue
+                    sid=int(match.group(1))
+                    if not 1<=sid<=200:
+                        continue
+                    strategy_by_position[pid]=sid
+                    POSITION_STRATEGY_MAP[(client_id,pid)]=sid
+                    mapping_by_position[pid]={
+                        "client_id":client_id,"position_id":pid,"strategy_id":sid,
+                        "symbol":str(deal.get("symbol") or "")[:40],
+                        "magic":str(deal.get("magic") or "")[:40],
+                        "opened_at":None,"source":"mt5_deal_comment",
+                        "updated_at":datetime.now(timezone.utc).isoformat()
+                    }
+
+                mapping_rows=list(mapping_by_position.values())
+                if mapping_rows:
+                    try:
+                        sb("POST","/rest/v1/alzool_engine_position_strategies?on_conflict=client_id,position_id",
+                           mapping_rows,admin=True,prefer="resolution=merge-duplicates")
+                    except Exception as mapping_error:
+                        print("POSITION_STRATEGY_SAVE_WARNING:",str(mapping_error)[:180],flush=True)
+
+                # Persist MT5 history first. Deal IDs make repeated 10-second snapshots idempotent.
+                persisted=[]
+                for deal in closed_deals:
+                    deal_id=str(deal.get("ticket") or "")
+                    stamp=int(deal.get("time") or 0)
+                    if deal_id and stamp>0:
+                        persisted.append({"client_id":client_id,"deal_id":deal_id,
+                            "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
+                            "payload":deal})
+                if persisted:
+                    sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
+                       persisted,admin=True,prefer="resolution=merge-duplicates")
+
+                # Resolve any exit positions not present in this snapshot from the durable map.
+                exit_deals=[d for d in closed_deals
+                    if int(finite_number(d.get("entry"),-1)) in (1,2,3)
+                    and str(d.get("symbol") or "").upper().startswith("XAUUSD")]
+                missing_pids=sorted({str(d.get("position_id") or d.get("ticket") or "")
+                    for d in exit_deals
+                    if str(d.get("position_id") or d.get("ticket") or "") not in strategy_by_position})
+                missing_pids=[pid for pid in missing_pids if re.fullmatch(r"[0-9]{1,30}",pid)]
+                if missing_pids:
+                    try:
+                        pid_filter="(" + ",".join(missing_pids) + ")"
+                        saved_maps=sb("GET","/rest/v1/alzool_engine_position_strategies?client_id=eq."+
+                            urllib.parse.quote(client_id,safe="")+"&position_id=in."+urllib.parse.quote(pid_filter,safe="(),")+
+                            "&select=position_id,strategy_id&limit=500",admin=True)
+                        for saved in saved_maps if isinstance(saved_maps,list) else []:
+                            pid=str(saved.get("position_id") or "")
+                            sid=int(finite_number(saved.get("strategy_id")))
+                            if pid and 1<=sid<=200:
+                                strategy_by_position[pid]=sid
+                                POSITION_STRATEGY_MAP[(client_id,pid)]=sid
+                    except Exception as mapping_read_error:
+                        print("POSITION_STRATEGY_READ_WARNING:",str(mapping_read_error)[:180],flush=True)
+
+                learning_accepted=0
+                learning_trained=0
+                learning_unlinked=0
+                learning_errors=0
+                for deal in exit_deals:
+                    deal_id=str(deal.get("ticket") or "")
+                    pid=str(deal.get("position_id") or deal.get("ticket") or "")
+                    strategy_id=strategy_by_position.get(pid) or POSITION_STRATEGY_MAP.get((client_id,pid))
+                    if not deal_id:
+                        continue
+                    if not strategy_id:
+                        learning_unlinked+=1
+                        continue
+                    net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
+                         finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
+                    try:
+                        result=sb("POST","/rest/v1/rpc/alzool_record_learning_outcome",{
+                            "p_client_id":client_id,"p_deal_id":deal_id,
+                            "p_strategy_id":int(strategy_id),"p_pnl":net,
+                            "p_learning_enabled":True,"p_learning_rate":0.02},admin=True)
+                        if isinstance(result,dict) and result.get("accepted"):
+                            learning_accepted+=1
+                            if result.get("trained"):
+                                learning_trained+=1
+                    except Exception as learning_error:
+                        learning_errors+=1
+                        print("LIVE_LEARNING_UPDATE_WARNING:",str(learning_error)[:180],flush=True)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
@@ -989,6 +1081,9 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
+                    "learning_exit_deals":len(exit_deals),"learning_accepted":learning_accepted,
+                    "learning_trained":learning_trained,"learning_unlinked":learning_unlinked,
+                    "learning_errors":learning_errors,
                     "candles_received":len(candles),
                     "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles"})
             return self.send_json(404,{"error":"not_found"})
