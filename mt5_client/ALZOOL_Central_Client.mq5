@@ -57,6 +57,7 @@ double g_addonManualDistance=0.0,g_coolingManualDistance=0.0;
 double g_addonMultiplier=1.5,g_coolingMultiplier=1.2;
 double g_addonMaxLot=0.05,g_coolingMaxLot=0.05,g_maxTotalAddCoolingLots=0.10;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
+int g_m5Fast=INVALID_HANDLE,g_m5Slow=INVALID_HANDLE,g_m15Fast=INVALID_HANDLE,g_m15Slow=INVALID_HANDLE,g_h1Fast=INVALID_HANDLE,g_h1Slow=INVALID_HANDLE;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
 double g_aiConfidence=0.0;
@@ -65,6 +66,18 @@ int g_aiStrategyId=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const string reason);
+
+string MtfDirection(const ENUM_TIMEFRAMES tf,const int fastHandle,const int slowHandle)
+{
+   double fast[],slow[]; ArraySetAsSeries(fast,true); ArraySetAsSeries(slow,true);
+   if(fastHandle==INVALID_HANDLE || slowHandle==INVALID_HANDLE) return "WAIT";
+   if(CopyBuffer(fastHandle,0,1,1,fast)!=1 || CopyBuffer(slowHandle,0,1,1,slow)!=1) return "WAIT";
+   double close=iClose(_Symbol,tf,1);
+   if(close<=0.0) return "WAIT";
+   if(close>fast[0] && fast[0]>slow[0]) return "BUY";
+   if(close<fast[0] && fast[0]<slow[0]) return "SELL";
+   return "WAIT";
+}
 
 string BaseUrl()
 {
@@ -677,6 +690,7 @@ bool SendLiveSnapshot()
 
    body+=",\"symbol\":\""+JsonEscape(_Symbol)+"\"";
    body+=",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\"";
+   body+=",\"mtf_bias\":{\"M5\":\""+MtfDirection(PERIOD_M5,g_m5Fast,g_m5Slow)+"\",\"M15\":\""+MtfDirection(PERIOD_M15,g_m15Fast,g_m15Slow)+"\",\"H1\":\""+MtfDirection(PERIOD_H1,g_h1Fast,g_h1Slow)+"\"}";
    body+=",\"terminal_build\":"+IntegerToString((int)TerminalInfoInteger(TERMINAL_BUILD));
 
    body+=",\"positions\":[";
@@ -881,6 +895,9 @@ int OnInit()
    if(g_atrHandle==INVALID_HANDLE) { Print("AL-ZOOL ATR init failed: ",GetLastError()); return INIT_FAILED; }
    g_emaFastHandle=iMA(_Symbol,(ENUM_TIMEFRAMES)_Period,9,0,MODE_EMA,PRICE_CLOSE);
    g_emaSlowHandle=iMA(_Symbol,(ENUM_TIMEFRAMES)_Period,21,0,MODE_EMA,PRICE_CLOSE);
+   g_m5Fast=iMA(_Symbol,PERIOD_M5,9,0,MODE_EMA,PRICE_CLOSE); g_m5Slow=iMA(_Symbol,PERIOD_M5,21,0,MODE_EMA,PRICE_CLOSE);
+   g_m15Fast=iMA(_Symbol,PERIOD_M15,9,0,MODE_EMA,PRICE_CLOSE); g_m15Slow=iMA(_Symbol,PERIOD_M15,21,0,MODE_EMA,PRICE_CLOSE);
+   g_h1Fast=iMA(_Symbol,PERIOD_H1,9,0,MODE_EMA,PRICE_CLOSE); g_h1Slow=iMA(_Symbol,PERIOD_H1,21,0,MODE_EMA,PRICE_CLOSE);
    if(g_emaFastHandle==INVALID_HANDLE || g_emaSlowHandle==INVALID_HANDLE)
    { Print("AL-ZOOL EMA handles unavailable; AI add-on mode will wait for valid data."); }
    g_executionBarKey="ALZOOL_EXEC_"+_Symbol+"_"+EnumToString((ENUM_TIMEFRAMES)_Period)+"_"+(string)InpTradeMagic;
@@ -897,6 +914,9 @@ void OnDeinit(const int reason)
    if(g_atrHandle!=INVALID_HANDLE) IndicatorRelease(g_atrHandle);
    if(g_emaFastHandle!=INVALID_HANDLE) IndicatorRelease(g_emaFastHandle);
    if(g_emaSlowHandle!=INVALID_HANDLE) IndicatorRelease(g_emaSlowHandle);
+   if(g_m5Fast!=INVALID_HANDLE) IndicatorRelease(g_m5Fast); if(g_m5Slow!=INVALID_HANDLE) IndicatorRelease(g_m5Slow);
+   if(g_m15Fast!=INVALID_HANDLE) IndicatorRelease(g_m15Fast); if(g_m15Slow!=INVALID_HANDLE) IndicatorRelease(g_m15Slow);
+   if(g_h1Fast!=INVALID_HANDLE) IndicatorRelease(g_h1Fast); if(g_h1Slow!=INVALID_HANDLE) IndicatorRelease(g_h1Slow);
    Comment("");
 }
 void OnTimer()
