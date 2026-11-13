@@ -245,7 +245,7 @@ bool PollCentralDecision()
    g_aiBarTime=parsed_bar;
    g_aiStrategyId=parsed_strategy;
    g_aiCombinationId=parsed_combination;
-   if((exit_signal=="BUY" || exit_signal=="SELL") && parsed_exit_confidence>=0.75 && parsed_exit_bar>0)
+   if((exit_signal=="BUY" || exit_signal=="SELL") && parsed_exit_bar>0)
       CloseReversedPositions(exit_signal,parsed_exit_bar,parsed_exit_confidence);
    if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,reason);
    return true;
