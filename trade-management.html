@@ -92,6 +92,8 @@
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
     <label for="addonMax">الحد الأقصى لعدد صفقات التعزيز</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="addonMultiplier">مضاعف لوت التعزيز AI</label><input id="addonMultiplier" type="text" value="1.5" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="addonMaxLot">أقصى لوت لصفقة التعزيز</label><input id="addonMaxLot" type="text" value="0.05" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
      <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
@@ -100,12 +102,16 @@
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التبريد</b><small>إضافات مستقلة لتبريد متوسط الدخول</small></div><label class="switch"><input type="checkbox" id="coolingEnabled"><span></span></label></div>
     <label for="coolingMax">الحد الأقصى لعدد صفقات التبريد</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMultiplier">مضاعف لوت التبريد AI</label><input id="coolingMultiplier" type="text" value="1.2" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMaxLot">أقصى لوت لصفقة التبريد</label><input id="coolingMaxLot" type="text" value="0.05" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
      <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
   </div>
+  <label for="maxTotalLots">أقصى إجمالي لوتات صفقات التعزيز والتبريد</label>
+  <input id="maxTotalLots" type="text" value="0.10" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
   <div class="close-actions"><button id="savePositionManagement" class="refresh">حفظ إعدادات التعزيز والتبريد</button><span id="pmMessage" role="status">التعزيز والتبريد متوقفان حتى تفعّلهما.</span></div>
   <p class="section-note">الحد الأقصى الذي تحدده إلزامي في وضعَي AI واليدوي. لا تُفتح صفقة عكسية، ولا يُضاف أي حد خسارة عائمة خاص بهذه الصفحة. لا يعمل التنفيذ إلا عند تشغيل التداول الآلي واتصال عميل MT5 المحدّث.</p>
  </section>
@@ -117,6 +123,6 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=6"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=7"></script>
 <script src="/numbers-en.js?v=2"></script>
 </body></html>
