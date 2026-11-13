@@ -146,7 +146,7 @@ def live_learning_profile(deals):
         row["time"]=max(row["time"],stamp)
         sid=int(finite_number(deal.get("strategy_id")))
         if not 1<=sid<=200:
-            match=re.search(r"ALZOOL-S(\\d{1,3})",str(deal.get("strategy_comment") or deal.get("comment") or ""),re.I)
+            match=re.search(r"ALZOOL-S(\d{1,3})",str(deal.get("strategy_comment") or deal.get("comment") or ""),re.I)
             sid=int(match.group(1)) if match else 0
         if 1<=sid<=200: row["strategy_id"]=sid
     rows=sorted(grouped.values(),key=lambda x:x["time"])
