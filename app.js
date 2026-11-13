@@ -12,6 +12,26 @@ async function refreshClients(){const d=await api("/api/admin/clients");$("clien
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
+let latestOwnerConnection=null;
+$("generateOwnerConnection").addEventListener("click",async()=>{
+ if(!confirm("سيتم إصدار Token جديد وإلغاء صلاحية الرمز السابق. يجب تحديثه في MT5. هل تريد المتابعة؟"))return;
+ const button=$("generateOwnerConnection");button.disabled=true;msg("ownerConnectionError","");
+ try{
+  const d=await api("/api/admin/owner-connection","POST",{});
+  latestOwnerConnection={engine_id:d.engine.client_id,engine_token:d.engine.client_token,server_url:d.engine_server_url,server_ip:d.server_ip,expires_at:d.engine.expires_at};
+  $("ownerEngineId").textContent=latestOwnerConnection.engine_id;
+  $("ownerEngineToken").textContent=latestOwnerConnection.engine_token;
+  $("ownerEngineUrl").textContent=latestOwnerConnection.server_url;
+  $("ownerEngineIp").textContent=latestOwnerConnection.server_ip;
+  $("ownerConnectionBox").classList.remove("hidden");
+ }catch(e){msg("ownerConnectionError",e.message)}
+ finally{button.disabled=false}
+});
+$("downloadOwnerConnection").addEventListener("click",()=>{
+ if(!latestOwnerConnection)return;
+ const blob=new Blob([JSON.stringify(latestOwnerConnection,null,2)],{type:"application/json"});
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-OWNER-MT5-CONNECTION.json";a.click();URL.revokeObjectURL(a.href);
+});
 async function refreshConnection(client=false){try{const d=await api("/api/connection/status");const connected=d.connected;const html=connected?'<span class="pill online">متصل</span>':'<span class="pill offline">غير متصل</span>';const account=d.connection?.account||{};const details=html+(connected?'<div class="connection-meta">الحساب: '+safe(account.login)+' • الخادم: '+safe(account.server)+' • الرمز: '+safe(account.symbol)+'</div><small>آخر نبضة: '+safe(d.connection.last_seen)+'</small>':'<div class="muted">لم تصل نبضة اتصال خلال آخر 30 ثانية.</div>');const target=$(client?"clientConnection":"connectionDetails");if(target)target.innerHTML=details;$("connection").textContent=connected?"MT5 متصل":"MT5 غير متصل"}catch(e){$("connection").textContent="تعذر قراءة حالة MT5"}}
 function safe(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 setInterval(()=>{if(session){if(!$("adminView").classList.contains("hidden"))refreshConnection();else if(!$("clientView").classList.contains("hidden"))refreshConnection(true)}},10000);
