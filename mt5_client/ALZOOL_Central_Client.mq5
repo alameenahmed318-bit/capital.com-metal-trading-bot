@@ -66,12 +66,10 @@ string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك ال
 double g_aiConfidence=0.0;
 long g_aiBarTime=0;
 int g_aiStrategyId=0,g_aiCombinationId=0;
-long g_lastAiExitBar=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const double referencePrice,const double signalATR,const string reason);
 bool ClosePositionTicket(const ulong ticket,const string scope);
-void CloseReversedPositions(const string signal,const long exitBar,const double confidence);
 
 string MtfDirection(const ENUM_TIMEFRAMES tf,const int fastHandle,const int slowHandle)
 {
@@ -228,9 +226,6 @@ bool PollCentralDecision()
    string strategy_id=JsonField(response,"strategy_id");
    string execution_ready=JsonField(response,"execution_ready");
    string combination_id=JsonField(response,"combination_id");
-   string exit_signal=JsonField(response,"exit_signal");
-   string exit_bar_time=JsonField(response,"exit_bar_time");
-   string exit_confidence=JsonField(response,"exit_confidence");
    double entry_reference_price=JsonDouble(response,"entry_reference_price",0.0);
    double entry_atr=JsonDouble(response,"entry_atr",0.0);
    StringReplace(signal,"\"","");
@@ -240,9 +235,6 @@ bool PollCentralDecision()
    long parsed_bar=(long)StringToInteger(bar_time);
    int parsed_strategy=(int)StringToInteger(strategy_id);
    int parsed_combination=(int)StringToInteger(combination_id);
-   long parsed_exit_bar=(long)StringToInteger(exit_bar_time);
-   double parsed_exit_confidence=StringToDouble(exit_confidence);
-   StringReplace(exit_signal,"\"","");
    bool ready=(StringFind(execution_ready,"true")==0);
    if(parsed_bar!=g_aiBarTime || signal!=g_aiSignal)
       Print("AL-ZOOL CENTRAL AI: ",signal," | confidence=",DoubleToString(parsed_confidence*100.0,1),
@@ -253,8 +245,6 @@ bool PollCentralDecision()
    g_aiBarTime=parsed_bar;
    g_aiStrategyId=parsed_strategy;
    g_aiCombinationId=parsed_combination;
-   if((exit_signal=="BUY" || exit_signal=="SELL") && parsed_exit_bar>0)
-      CloseReversedPositions(exit_signal,parsed_exit_bar,parsed_exit_confidence);
    if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,entry_reference_price,entry_atr,reason);
    return true;
 }
@@ -586,33 +576,6 @@ void ManageEntryTrailing()
       if(!g_trade.PositionModify(ticket,nextSL,tp))
          Print("AL-ZOOL trailing modify failed ticket=",ticket," retcode=",g_trade.ResultRetcode());
    }
-}
-
-void CloseReversedPositions(const string signal,const long exitBar,const double confidence)
-{
-   if(exitBar<=0 || exitBar==g_lastAiExitBar || (signal!="BUY" && signal!="SELL")) return;
-   int closed=0;
-   for(int i=PositionsTotal()-1;i>=0;i--)
-   {
-      ulong ticket=PositionGetTicket(i);
-      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpTradeMagic) continue;
-      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      bool reversed=(signal=="BUY" && type==POSITION_TYPE_SELL) || (signal=="SELL" && type==POSITION_TYPE_BUY);
-      if(reversed && ClosePositionTicket(ticket,"AI reversal")) closed++;
-   }
-   bool remaining=false;
-   for(int j=PositionsTotal()-1;j>=0;j--)
-   {
-      ulong ticket=PositionGetTicket(j);
-      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpTradeMagic) continue;
-      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      if((signal=="BUY" && type==POSITION_TYPE_SELL) || (signal=="SELL" && type==POSITION_TYPE_BUY))
-      { remaining=true; break; }
-   }
-   if(!remaining) g_lastAiExitBar=exitBar;
-   if(closed>0) Print("AL-ZOOL AI EXIT: closed ",closed," reversed positions after two closed bars; confidence=",DoubleToString(confidence*100.0,1),"%.");
 }
 
 bool ClosePositionTicket(const ulong ticket,const string scope)
