@@ -132,7 +132,8 @@ async function savePositionManagement(){
 async function saveRecoverySettings(){
  const threshold=Number($("recoveryThreshold").value);
  const enabled=$("recoveryEnabled").checked;
- if(!Number.isFinite(threshold)||threshold<=0){$("recoveryMessage").textContent="أدخل حد خسارة موجبًا قبل الحفظ.";return;}
+ if(enabled&&(!Number.isFinite(threshold)||threshold<=0)){$("recoveryMessage").textContent="أدخل حد خسارة موجبًا قبل تشغيل التعافي.";return;}
+ const safeThreshold=Number.isFinite(threshold)&&threshold>0?threshold:0;
  $("saveRecoverySettings").disabled=true;
  $("recoveryMessage").textContent="جارٍ حفظ إعدادات التعافي…";
  try{
@@ -140,7 +141,7 @@ async function saveRecoverySettings(){
   const s=current.settings||{};
   const pm=s.position_management||{};
   pm.recovery_enabled=enabled;
-  pm.recovery_loss_threshold=threshold;
+  pm.recovery_loss_threshold=safeThreshold;
   await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
    single_enabled:!!s.single_enabled,single_profit_target:Number(s.single_profit_target??1),
    group_enabled:!!s.group_enabled,group_profit_target:Number(s.group_profit_target??5),
