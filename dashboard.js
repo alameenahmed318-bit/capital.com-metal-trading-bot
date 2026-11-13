@@ -50,7 +50,8 @@ async function boot(){
   const {data}=await supabaseClient.auth.getSession();
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
-  await api("/api/access/check");
+  const access=await api("/api/access/check");
+  if(access.role==="owner") $("ownerConnectBtn").hidden=false;
   $("serviceState").textContent="تم التحقق من الحساب";
   await refresh();
  }catch(e){
