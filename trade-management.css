@@ -61,3 +61,14 @@
   color: #d8d5e5;
 }
 
+
+/* Smart recovery panel */
+#recovery .recovery-intro{color:var(--muted,#aaa);line-height:1.8;margin:4px 0 16px}
+#recovery .recovery-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}
+#recovery .recovery-grid article{padding:16px;border:1px solid var(--line,#343447);border-radius:14px;background:var(--surface,#1b1c2a);display:grid;gap:8px}
+#recovery .recovery-grid small{color:var(--muted,#aaa)}
+#recovery .recovery-grid strong{font-size:clamp(18px,3vw,25px);direction:ltr;text-align:right}
+#recovery .recovery-threshold-label{display:block;margin:12px 0 8px}
+#recovery #recoveryThreshold{width:100%;max-width:420px;min-height:44px;padding:10px 12px;border:1px solid #77709b;border-radius:10px;background:#202233;color:#f5f3ff;direction:ltr;text-align:left}
+#recovery .switch{margin-inline-start:auto}
+@media(max-width:680px){#recovery .recovery-grid{grid-template-columns:1fr}}
