@@ -1029,6 +1029,15 @@ void OnTimer()
       PollTradeSettings();
       g_lastSettingsPollMs=now;
    }
+   if(g_capitalGuardEnabled && g_equityDrawdownPercent>0.0)
+   {
+      MqlDateTime peakDay; TimeToStruct(TimeCurrent(),peakDay);
+      string peakKey="AZCG_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+
+                     IntegerToString(peakDay.year)+IntegerToString(peakDay.mon)+IntegerToString(peakDay.day);
+      double currentEquity=AccountInfoDouble(ACCOUNT_EQUITY);
+      if(!GlobalVariableCheck(peakKey)) GlobalVariableSet(peakKey,currentEquity);
+      else if(currentEquity>GlobalVariableGet(peakKey)) GlobalVariableSet(peakKey,currentEquity);
+   }
    if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
    {
       PollCentralDecision();
