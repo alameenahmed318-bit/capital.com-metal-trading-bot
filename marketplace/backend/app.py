@@ -238,7 +238,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "&select=trading_enabled&limit=1",admin=True)
             settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                                            "group_enabled":False,"group_profit_target":5,
-                                           "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0}}
+                                           "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
             settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
             return self.send_json(200,settings)
         if path=="/api/auto-trading":
@@ -268,7 +268,7 @@ class Handler(SimpleHTTPRequestHandler):
                         "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management,updated_at&limit=1",admin=True)
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
-                    "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0},"updated_at":None}
+                    "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
                 return self.send_json(200,{"client_id":client_id,"settings":settings})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
@@ -731,10 +731,20 @@ class Handler(SimpleHTTPRequestHandler):
                         return self.send_json(400,{"error":"حدد الحد الأقصى لعدد الإضافات قبل تفعيل التعزيز أو التبريد"})
                     if mode=="MANUAL" and enabled and distance<=0:
                         return self.send_json(400,{"error":"في الوضع اليدوي يجب تحديد مسافة أكبر من صفر بالنقاط"})
+                    multiplier=finite_number(pm.get(prefix+"_multiplier",prior_pm.get(prefix+"_multiplier",1.5 if prefix=="addon" else 1.2)),0)
+                    max_lot=finite_number(pm.get(prefix+"_max_lot",prior_pm.get(prefix+"_max_lot",0.05)),0)
+                    if not 1.0<=multiplier<=3.0 or not 0.01<=max_lot<=100:
+                        return self.send_json(400,{"error":"المضاعف يجب أن يكون بين 1 و3، والحد الأقصى للوت بين 0.01 و100"})
                     clean_pm[prefix+"_enabled"]=enabled
                     clean_pm[prefix+"_max"]=maximum
                     clean_pm[prefix+"_lot"]=lot
                     clean_pm[prefix+"_distance_points"]=distance
+                    clean_pm[prefix+"_multiplier"]=multiplier
+                    clean_pm[prefix+"_max_lot"]=max_lot
+                max_total_lots=finite_number(pm.get("max_total_lots",prior_pm.get("max_total_lots",0.10)),0)
+                if not 0.01<=max_total_lots<=100:
+                    return self.send_json(400,{"error":"سقف إجمالي اللوتات يجب أن يكون بين 0.01 و100"})
+                clean_pm["max_total_lots"]=max_total_lots
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
                      "group_profit_target":group_target,"stop_loss_enabled":stop_loss_enabled,
