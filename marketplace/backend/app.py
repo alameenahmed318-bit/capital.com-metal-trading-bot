@@ -373,6 +373,7 @@ class Handler(SimpleHTTPRequestHandler):
                 strategy_map={}
                 model_updates_today=0
                 model_weights=[]
+                samples_by_strategy={}
                 try:
                     outcomes=sb("GET","/rest/v1/alzool_engine_outcomes?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&created_at=gte."+urllib.parse.quote(cutoff,safe="")+
@@ -389,7 +390,6 @@ class Handler(SimpleHTTPRequestHandler):
                     model_weights=sb("GET","/rest/v1/alzool_engine_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&select=strategy_id,weight&order=strategy_id.asc&limit=200",admin=True)
                     if not isinstance(model_weights,list): model_weights=[]
-                    samples_by_strategy={}
                     for outcome in outcomes:
                         sid=int(finite_number(outcome.get("strategy_id")))
                         if not 1<=sid<=200: continue
@@ -951,6 +951,7 @@ class Handler(SimpleHTTPRequestHandler):
                         try:
                             live_weight_rows=sb("GET","/rest/v1/alzool_engine_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                                 "&select=strategy_id,weight&limit=200",admin=True)
+                            live_weight_rows=live_weight_rows if isinstance(live_weight_rows,list) else []
                             live_weights={str(int(x["strategy_id"])):finite_number(x.get("weight"),1.0)
                                 for x in live_weight_rows if 1<=int(finite_number(x.get("strategy_id")))<=200}
                             evaluated=evaluate_market(list(reversed(candles)),weights=live_weights,mode="AUTO")
