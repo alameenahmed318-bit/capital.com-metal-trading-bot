@@ -131,13 +131,15 @@ bool PollTradeSettings()
 {
    // Keep the last valid server settings during transient network failures.
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
-   // Use the documented GET overload with an explicit zero-byte body.
-   // Keep this low-priority poll short; live telemetry and decisions run first.
+   // Authenticated custom-header overload is required by the license endpoint.
+   // Empty GET body; this settings poll runs after live telemetry and central decisions.
    char data[],result[];
+   ArrayResize(data,0);
+   string headers="Authorization: Bearer "+InpEngineToken+"\\r\\n";
    string response_headers;
    ResetLastError();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
-                       "", "", 250, data, 0, result, response_headers);
+                       headers,250,data,result,response_headers);
    if(code!=200)
    {
       int requestError=GetLastError();
