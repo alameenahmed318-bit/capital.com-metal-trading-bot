@@ -144,6 +144,10 @@ async function saveRecoverySettings(){
  $("saveRecoverySettings").disabled=true;$("recoveryMessage").textContent="جارٍ حفظ إعدادات التعافي…";
  try{
   await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   single_enabled:$("singleEnabled").checked,
+   single_profit_target:Number($("singleTarget").value),
+   group_enabled:$("groupEnabled").checked,
+   group_profit_target:Number($("groupTarget").value),
    position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,recovery_user_configured:true}
   })});
   $("recoveryMessage").textContent=enabled?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم حفظ التعافي بوضع الإيقاف.";
