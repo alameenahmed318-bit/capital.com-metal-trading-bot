@@ -876,7 +876,9 @@ class Handler(SimpleHTTPRequestHandler):
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
                             live_learning=live_learning_profile(closed_deals)
-                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],mode="AUTO")
+                            raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
+                            mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
+                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],mtf_bias=mtf_bias,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "strategy_id":evaluated["strategy_id"],
