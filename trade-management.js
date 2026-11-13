@@ -34,6 +34,9 @@ async function loadCloseSettings(){
  $("coolingLot").value=Number(pm.cooling_lot??0.01);
  $("coolingDistance").value=Number(pm.cooling_distance_points??100);
  $("maxTotalLots").value=Number(pm.max_total_lots??0.10);
+ $("recoveryEnabled").checked=!!pm.recovery_enabled;
+ $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
+ $("recoveryMessage").textContent=pm.recovery_enabled?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي متوقف افتراضيًا.";
  updatePmModeUI();
 }
 function updateStopLossHelp(){
@@ -126,6 +129,24 @@ async function savePositionManagement(){
  }catch(e){$("pmMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("savePositionManagement").disabled=false;}
 }
+async function saveRecoverySettings(){
+ const trigger=Number($("recoveryLossTrigger").value);
+ const enabled=$("recoveryEnabled").checked;
+ if(enabled&&(!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
+  $("recoveryMessage").textContent="أدخل حد خسارة موجبًا بعملة حساب MT5 قبل التفعيل.";return;
+ }
+ if(!enabled&&$("recoveryLossTrigger").value.trim()!==""&&(!Number.isFinite(trigger)||trigger<0)){
+  $("recoveryMessage").textContent="تحقق من مبلغ حد التفعيل.";return;
+ }
+ $("saveRecoverySettings").disabled=true;$("recoveryMessage").textContent="جارٍ حفظ إعدادات التعافي…";
+ try{
+  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   position_management:{recovery_enabled:enabled,recovery_loss_trigger:trigger||0}
+  })});
+  $("recoveryMessage").textContent=enabled?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم حفظ التعافي بوضع الإيقاف.";
+ }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
+ finally{$("saveRecoverySettings").disabled=false;}
+}
 function pnlClass(v){const n=Number(v);return !Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative";}
 function money(v,c){return v==null?"—":fmt(v)+" "+esc(c||"");}
 function setPnl(el,v,c){el.textContent=money(v,c);el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");el.classList.add(pnlClass(v));}
@@ -180,7 +201,7 @@ function normalizePmDigits(input){
  if(dot>=0) value=value.slice(0,dot+1)+value.slice(dot+1).replace(/\./g,"");
  if(value!==input.value) input.value=value;
 }
-["addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots"].forEach(id=>{
+["addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots","recoveryLossTrigger"].forEach(id=>{
  const field=$(id);
  field.setAttribute("lang","en-US");
  field.setAttribute("dir","ltr");
@@ -205,6 +226,7 @@ $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
+$("saveRecoverySettings").addEventListener("click",saveRecoverySettings);
 $("pmMode").addEventListener("change",updatePmModeUI);
 $("stopLossMode").addEventListener("change",updateStopLossHelp);
 boot();setInterval(()=>{if(accessToken)refresh();},2000);
