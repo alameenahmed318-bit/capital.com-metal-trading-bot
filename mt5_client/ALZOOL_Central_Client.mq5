@@ -646,6 +646,7 @@ bool SendLiveSnapshot()
       int digits=(int)SymbolInfoInteger(sym,SYMBOL_DIGITS);
       if(count>0) body+=",";
       body+="{\"ticket\":\""+(string)ticket+"\"";
+      body+=",\"position_id\":\""+(string)PositionGetInteger(POSITION_IDENTIFIER)+"\"";
       body+=",\"symbol\":\""+JsonEscape(sym)+"\"";
       body+=",\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE));
       body+=",\"volume\":"+JNum(PositionGetDouble(POSITION_VOLUME),2);
