@@ -189,7 +189,6 @@ bool PollTradeSettings()
    if(slValue>0.0) g_serverStopLossValue=slValue;
    g_recoveryEnabled=JsonBool(response,"recovery_enabled");
    g_recoveryLossTrigger=JsonDouble(response,"recovery_loss_trigger",0.0);
-   if(g_recoveryLossTrigger<=0.0) g_recoveryEnabled=false;
    string pmMode=JsonField(response,"mode");
    StringReplace(pmMode,CharToString(34),"");
    if(pmMode=="AI" || pmMode=="MANUAL") g_pmMode=pmMode;
@@ -596,7 +595,16 @@ bool ClosePositionTicket(const ulong ticket,const string scope)
             " retcode=",retcode," ",g_trade.ResultRetcodeDescription());
       return false;
    }
-   Print("AL-ZOOL ",scope," close accepted ticket ",ticket," retcode=",retcode);
+   // DONE_PARTIAL is not completion: confirm the position ticket is actually gone.
+   if(PositionSelectByTicket(ticket))
+   {
+      double remaining=PositionGetDouble(POSITION_VOLUME);
+      Print("AL-ZOOL ",scope," close incomplete ticket ",ticket,
+            " retcode=",retcode," remaining_volume=",DoubleToString(remaining,4),
+            "; retrying on next evaluation.");
+      return false;
+   }
+   Print("AL-ZOOL ",scope," close completed ticket ",ticket," retcode=",retcode);
    return true;
 }
 double RecoveryPositionCosts(const long positionIdentifier)
@@ -632,6 +640,24 @@ void ResetRecoveryCycle()
    g_recoveryReferencePrice=0.0;
    if(StringLen(g_recoveryActiveKey)>0 && GlobalVariableCheck(g_recoveryActiveKey)) GlobalVariableDel(g_recoveryActiveKey);
    if(StringLen(g_recoveryPriceKey)>0 && GlobalVariableCheck(g_recoveryPriceKey)) GlobalVariableDel(g_recoveryPriceKey);
+}
+bool RecoveryAllPositionsOnChartSymbol()
+{
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      string positionSymbol=PositionGetString(POSITION_SYMBOL);
+      if(positionSymbol!=_Symbol)
+      {
+         g_status="التعافي متوقف بأمان: توجد مراكز على رموز مختلفة عن رمز الشارت";
+         Print("AL-ZOOL SMART RECOVERY blocked: mixed-symbol account exposure. Chart=",
+               _Symbol," other position symbol=",positionSymbol,
+               ". No recovery order sent; use one chart symbol per recovery cycle.");
+         return false;
+      }
+   }
+   return true;
 }
 bool RecoveryHasOpenTrade()
 {
@@ -676,7 +702,22 @@ bool EvaluateSmartRecovery()
    double totalLots=0.0;int totalPositions=0;
    double groupNet=RecoveryGroupNet(totalLots,totalPositions);
    if(totalPositions<=0){g_recoveryReferencePrice=0.0;return false;}
-   if(groupNet>-g_recoveryLossTrigger) return false;
+   if(groupNet>-g_recoveryLossTrigger)
+   {
+      // If the account recovered above the configured loss threshold before an
+      // entry was sent, discard the old reference price and disarm this attempt.
+      if(g_recoveryReferencePrice>0.0)
+      {
+         g_recoveryReferencePrice=0.0;
+         if(StringLen(g_recoveryPriceKey)>0 && GlobalVariableCheck(g_recoveryPriceKey))
+            GlobalVariableDel(g_recoveryPriceKey);
+      }
+      return false;
+   }
+   // The recovery volume is the account-wide total, but a single market order
+   // cannot safely represent mixed contract sizes/symbols. Fail closed instead
+   // of applying a combined lot total to an unrelated chart instrument.
+   if(!RecoveryAllPositionsOnChartSymbol()) return true;
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0) return true;
    if(g_recoveryReferencePrice<=0.0)
