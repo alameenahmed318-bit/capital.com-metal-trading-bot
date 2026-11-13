@@ -54,6 +54,8 @@ bool g_addonEnabled=false,g_coolingEnabled=false;
 int g_addonMax=0,g_coolingMax=0;
 double g_addonManualLot=0.01,g_coolingManualLot=0.01;
 double g_addonManualDistance=0.0,g_coolingManualDistance=0.0;
+double g_addonMultiplier=1.5,g_coolingMultiplier=1.2;
+double g_addonMaxLot=0.05,g_coolingMaxLot=0.05,g_maxTotalAddCoolingLots=0.10;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
@@ -174,6 +176,11 @@ bool PollTradeSettings()
    g_coolingManualLot=JsonDouble(response,"cooling_lot",0.01);
    g_addonManualDistance=JsonDouble(response,"addon_distance_points",0);
    g_coolingManualDistance=JsonDouble(response,"cooling_distance_points",0);
+   g_addonMultiplier=MathMax(1.0,MathMin(3.0,JsonDouble(response,"addon_multiplier",1.5)));
+   g_coolingMultiplier=MathMax(1.0,MathMin(3.0,JsonDouble(response,"cooling_multiplier",1.2)));
+   g_addonMaxLot=JsonDouble(response,"addon_max_lot",0.05);
+   g_coolingMaxLot=JsonDouble(response,"cooling_max_lot",0.05);
+   g_maxTotalAddCoolingLots=JsonDouble(response,"max_total_lots",0.10);
    return true;
 }
 bool PollCentralDecision()
@@ -393,15 +400,14 @@ void ManagePositionAddons()
       {
          if(chosen=="ADD")
          {
-            // Linear AI add-on sizing: 0.01, 0.02, 0.03, 0.04 ... per direction.
             int nextAddon=(side==POSITION_TYPE_BUY?buyAddonCount:sellAddonCount)+1;
-            lots=NormalizeTradeLots(0.01*nextAddon);
+            lots=NormalizeTradeLots(MathMin(g_addonMaxLot,baseLot*MathPow(g_addonMultiplier,nextAddon)));
          }
          else
          {
-            double volatilityRatio=atr[0]/MathMax(1.0,(tick.bid+tick.ask)*0.5);
-            double factor=(volatilityRatio>0.001?0.40:(volatilityRatio>0.0005?0.55:0.70));
-            lots=NormalizeTradeLots(baseLot*factor);
+            int nextCooling=(side==POSITION_TYPE_BUY?buyCount-buyAddonCount:sellCount-sellAddonCount);
+            nextCooling=(int)MathMax(1,nextCooling);
+            lots=NormalizeTradeLots(MathMin(g_coolingMaxLot,baseLot*MathPow(g_coolingMultiplier,nextCooling)));
          }
       }
    }
@@ -425,6 +431,24 @@ void ManagePositionAddons()
       }
    }
    if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
+   double currentManagedLots=0.0;
+   for(int p=PositionsTotal()-1;p>=0;p--)
+   {
+      ulong managedTicket=PositionGetTicket(p);
+      if(managedTicket==0 || !PositionSelectByTicket(managedTicket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)==_Symbol &&
+         (ulong)PositionGetInteger(POSITION_MAGIC)==InpTradeMagic)
+      {
+         string managedComment=PositionGetString(POSITION_COMMENT);
+         if(StringFind(managedComment,"ALZOOL-ADD")==0 || StringFind(managedComment,"ALZOOL-COOL")==0)
+            currentManagedLots+=PositionGetDouble(POSITION_VOLUME);
+      }
+   }
+   if(currentManagedLots+lots>g_maxTotalAddCoolingLots+1e-8)
+   {
+      g_status="تم إيقاف الإضافة: سقف إجمالي لوتات التعزيز والتبريد";
+      return;
+   }
    if(InpBlockOppositePositions && side==POSITION_TYPE_BUY && accountSells>0) return;
    if(InpBlockOppositePositions && side==POSITION_TYPE_SELL && accountBuys>0) return;
    double adverse=(side==POSITION_TYPE_BUY?(lastPrice-tick.ask)/_Point:(tick.bid-lastPrice)/_Point);
