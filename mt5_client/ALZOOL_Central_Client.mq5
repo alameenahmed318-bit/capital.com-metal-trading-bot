@@ -56,6 +56,9 @@ double g_addonManualLot=0.01,g_coolingManualLot=0.01;
 double g_addonManualDistance=0.0,g_coolingManualDistance=0.0;
 double g_addonMultiplier=1.5,g_coolingMultiplier=1.2;
 double g_addonMaxLot=0.05,g_coolingMaxLot=0.05,g_maxTotalAddCoolingLots=0.10;
+bool g_entryGuardEnabled=true;
+int g_entryMaxDelayBars=1;
+double g_entryMaxDeviationATR=0.5;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 int g_m5Fast=INVALID_HANDLE,g_m5Slow=INVALID_HANDLE,g_m15Fast=INVALID_HANDLE,g_m15Slow=INVALID_HANDLE,g_h1Fast=INVALID_HANDLE,g_h1Slow=INVALID_HANDLE;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
@@ -66,7 +69,7 @@ int g_aiStrategyId=0,g_aiCombinationId=0;
 long g_lastAiExitBar=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
-void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const string reason);
+void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const double referencePrice,const double signalATR,const string reason);
 bool ClosePositionTicket(const ulong ticket,const string scope);
 void CloseReversedPositions(const string signal,const long exitBar,const double confidence);
 
@@ -197,6 +200,9 @@ bool PollTradeSettings()
    g_addonMaxLot=JsonDouble(response,"addon_max_lot",0.05);
    g_coolingMaxLot=JsonDouble(response,"cooling_max_lot",0.05);
    g_maxTotalAddCoolingLots=JsonDouble(response,"max_total_lots",0.10);
+   g_entryGuardEnabled=JsonBool(response,"entry_guard_enabled");
+   g_entryMaxDelayBars=(int)MathMax(1,MathMin(10,JsonDouble(response,"entry_max_delay_bars",1)));
+   g_entryMaxDeviationATR=MathMax(0.05,MathMin(20.0,JsonDouble(response,"entry_max_deviation_atr",0.5)));
    return true;
 }
 bool PollCentralDecision()
@@ -225,6 +231,8 @@ bool PollCentralDecision()
    string exit_signal=JsonField(response,"exit_signal");
    string exit_bar_time=JsonField(response,"exit_bar_time");
    string exit_confidence=JsonField(response,"exit_confidence");
+   double entry_reference_price=JsonDouble(response,"entry_reference_price",0.0);
+   double entry_atr=JsonDouble(response,"entry_atr",0.0);
    StringReplace(signal,"\"","");
    StringReplace(reason,"\"","");
    if(signal!="BUY" && signal!="SELL") signal="WAIT";
@@ -247,7 +255,7 @@ bool PollCentralDecision()
    g_aiCombinationId=parsed_combination;
    if((exit_signal=="BUY" || exit_signal=="SELL") && parsed_exit_bar>0)
       CloseReversedPositions(exit_signal,parsed_exit_bar,parsed_exit_confidence);
-   if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,reason);
+   if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,entry_reference_price,entry_atr,reason);
    return true;
 }
 
@@ -297,7 +305,8 @@ bool IsAccountDirectionAllowed(const string direction)
    return false;
 }
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,
-                         const int strategyId,const int combinationId,const string reason)
+                         const int strategyId,const int combinationId,const double referencePrice,
+                         const double signalATR,const string reason)
 {
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       confidence<0.45 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
@@ -307,7 +316,15 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    if(currentBar<=0 || (long)currentBar<=decisionBar) return;
    if(g_executionBarKey!="" && GlobalVariableCheck(g_executionBarKey) &&
       (long)GlobalVariableGet(g_executionBarKey)==decisionBar) return;
-   if(g_executionBarKey!="") GlobalVariableSet(g_executionBarKey,(double)decisionBar);
+   int periodSeconds=PeriodSeconds((ENUM_TIMEFRAMES)_Period);
+   long decisionAge=(long)currentBar-decisionBar;
+   if(g_entryGuardEnabled && (periodSeconds<=0 || decisionAge>(long)periodSeconds*g_entryMaxDelayBars))
+   {
+      g_status="تم رفض الدخول: إشارة قديمة تجاوزت حد التأخير";
+      Print("AL-ZOOL ENTRY BLOCKED: stale signal | age_seconds=",decisionAge,
+            " max_seconds=",periodSeconds*g_entryMaxDelayBars," bar=",decisionBar);
+      return;
+   }
    if(CountAlzoolPositions()>=InpMaxOpenPositions) { g_status="الحد الأقصى للصفقات مفتوح"; return; }
    double lots=NormalizeTradeLots(InpTradeLots);
    if(lots<=0.0) { g_status="حجم اللوت غير صالح"; return; }
@@ -317,6 +334,27 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    { g_status="بيانات ATR غير متاحة؛ تم إلغاء الدخول"; return; }
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<tick.bid) return;
+   if(g_entryGuardEnabled)
+   {
+      if(referencePrice<=0.0 || signalATR<=0.0)
+      {
+         g_status="تم رفض الدخول: سعر مرجع الإشارة أو ATR غير متاح";
+         Print("AL-ZOOL ENTRY BLOCKED: missing reference price or ATR | bar=",decisionBar);
+         return;
+      }
+      double executionPrice=(direction=="BUY"?tick.ask:tick.bid);
+      double maxDeviation=signalATR*g_entryMaxDeviationATR;
+      double actualDeviation=MathAbs(executionPrice-referencePrice);
+      if(actualDeviation>maxDeviation)
+      {
+         g_status="تم رفض الدخول: السعر ابتعد عن نقطة الإشارة";
+         Print("AL-ZOOL ENTRY BLOCKED: price deviation | actual=",DoubleToString(actualDeviation,_Digits),
+               " max=",DoubleToString(maxDeviation,_Digits)," ATR=",DoubleToString(signalATR,_Digits),
+               " reference=",DoubleToString(referencePrice,_Digits)," current=",DoubleToString(executionPrice,_Digits),
+               " bar=",decisionBar);
+         return;
+      }
+   }
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
    double minDist=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
    double slDist=0.0;
@@ -328,6 +366,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
       slDist=MathMax(slDist,minDist+_Point);
    }
    double sl=0.0,tp=0.0;
+   if(g_executionBarKey!="") GlobalVariableSet(g_executionBarKey,(double)decisionBar);
    g_trade.SetExpertMagicNumber(InpTradeMagic);
    g_trade.SetDeviationInPoints(InpDeviationPoints);
    g_trade.SetTypeFillingBySymbol(_Symbol);
