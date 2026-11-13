@@ -59,6 +59,11 @@ double g_addonMaxLot=0.05,g_coolingMaxLot=0.05,g_maxTotalAddCoolingLots=0.10;
 bool g_entryGuardEnabled=true;
 int g_entryMaxDelayBars=1;
 double g_entryMaxDeviationATR=0.5;
+bool g_recoveryEnabled=false;
+double g_recoveryLossThreshold=0.0;
+bool g_recoveryCycleActive=false,g_recoveryWaitingMove=false,g_recoveryOrderOpened=false;
+string g_recoverySymbol="";
+double g_recoveryReferencePrice=0.0;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 int g_m5Fast=INVALID_HANDLE,g_m5Slow=INVALID_HANDLE,g_m15Fast=INVALID_HANDLE,g_m15Slow=INVALID_HANDLE,g_h1Fast=INVALID_HANDLE,g_h1Slow=INVALID_HANDLE;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
@@ -201,6 +206,8 @@ bool PollTradeSettings()
    g_entryGuardEnabled=JsonBool(response,"entry_guard_enabled");
    g_entryMaxDelayBars=(int)MathMax(1,MathMin(10,JsonDouble(response,"entry_max_delay_bars",1)));
    g_entryMaxDeviationATR=MathMax(0.05,MathMin(20.0,JsonDouble(response,"entry_max_deviation_atr",0.5)));
+   g_recoveryEnabled=JsonBool(response,"recovery_enabled");
+   g_recoveryLossThreshold=MathMax(0.0,JsonDouble(response,"recovery_loss_threshold",0.0));
    return true;
 }
 bool PollCentralDecision()
@@ -591,6 +598,161 @@ bool ClosePositionTicket(const ulong ticket,const string scope)
    Print("AL-ZOOL ",scope," close accepted ticket ",ticket," retcode=",retcode);
    return true;
 }
+void EvaluateSmartRecovery()
+{
+   int total=PositionsTotal();
+   if(total<=0)
+   {
+      g_recoveryCycleActive=false; g_recoveryWaitingMove=false; g_recoveryOrderOpened=false;
+      g_recoverySymbol=""; g_recoveryReferencePrice=0.0;
+      return;
+   }
+
+   // Recover an interrupted cycle after an EA/terminal restart by its unique order comment.
+   bool recoveryPositionFound=false;
+   for(int i=total-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(StringFind(PositionGetString(POSITION_COMMENT),"ALZOOL-RECOVERY")>=0)
+         recoveryPositionFound=true;
+   }
+   if(recoveryPositionFound)
+   {
+      g_recoveryCycleActive=true; g_recoveryOrderOpened=true; g_recoveryWaitingMove=false;
+   }
+
+   // Include all open account positions, irrespective of symbol, magic number, or origin.
+   double groupNet=0.0,totalLots=0.0;
+   string worstSymbol="";
+   double worstContribution=0.0;
+   for(int p=total-1;p>=0;p--)
+   {
+      ulong ticket=PositionGetTicket(p);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      double profit=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      double lots=PositionGetDouble(POSITION_VOLUME);
+      groupNet+=profit; totalLots+=lots;
+      if(profit<worstContribution)
+      {
+         worstContribution=profit;
+         worstSymbol=PositionGetString(POSITION_SYMBOL);
+      }
+   }
+   // Add already-booked entry commissions/fees for the still-open positions.
+   if(HistorySelect(0,TimeCurrent()))
+   {
+      int deals=HistoryDealsTotal();
+      for(int d=0;d<deals;d++)
+      {
+         ulong deal=HistoryDealGetTicket(d);
+         if(deal==0) continue;
+         long positionId=HistoryDealGetInteger(deal,DEAL_POSITION_ID);
+         for(int q=total-1;q>=0;q--)
+         {
+            ulong ticket=PositionGetTicket(q);
+            if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+            if((long)PositionGetInteger(POSITION_IDENTIFIER)==positionId)
+               groupNet+=HistoryDealGetDouble(deal,DEAL_COMMISSION)+HistoryDealGetDouble(deal,DEAL_FEE);
+         }
+      }
+   }
+
+   // Once the whole account basket is recovered to break-even or better, close every position.
+   if(g_recoveryCycleActive && g_recoveryOrderOpened && groupNet>=0.0)
+   {
+      Print("AL-ZOOL SMART RECOVERY: account basket recovered; net=",DoubleToString(groupNet,2),
+            " ",AccountInfoString(ACCOUNT_CURRENCY),". Closing all account positions.");
+      for(int c=PositionsTotal()-1;c>=0;c--)
+      {
+         ulong ticket=PositionGetTicket(c);
+         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+         ClosePositionTicket(ticket,"smart-recovery");
+      }
+      return;
+   }
+
+   if(g_recoveryOrderOpened) return;
+   if(!g_recoveryEnabled || g_recoveryLossThreshold<=0.0)
+   {
+      g_recoveryWaitingMove=false; g_recoveryCycleActive=false; g_recoveryReferencePrice=0.0;
+      return;
+   }
+   if(groupNet>-g_recoveryLossThreshold || totalLots<=0.0)
+   {
+      // If the basket recovers above the trigger before an order is sent, wait for a fresh trigger.
+      g_recoveryWaitingMove=false; g_recoveryCycleActive=false; g_recoveryReferencePrice=0.0;
+      return;
+   }
+
+   if(!g_recoveryWaitingMove)
+   {
+      if(worstSymbol=="") return;
+      MqlTick initialTick;
+      if(!SymbolSelect(worstSymbol,true) || !SymbolInfoTick(worstSymbol,initialTick)) return;
+      double initialMid=(initialTick.bid+initialTick.ask)*0.5;
+      if(initialMid<=0.0) return;
+      g_recoverySymbol=worstSymbol;
+      g_recoveryReferencePrice=initialMid;
+      g_recoveryWaitingMove=true;
+      g_recoveryCycleActive=true;
+      Print("AL-ZOOL SMART RECOVERY armed: floating loss=",DoubleToString(groupNet,2),
+            " threshold=",DoubleToString(g_recoveryLossThreshold,2),
+            " total lots=",DoubleToString(totalLots,2)," recovery lots=",DoubleToString(totalLots*2.0,2),
+            ". Waiting for first price movement on ",g_recoverySymbol);
+      return;
+   }
+
+   MqlTick tick;
+   if(!SymbolInfoTick(g_recoverySymbol,tick) || tick.bid<=0.0 || tick.ask<tick.bid) return;
+   double mid=(tick.bid+tick.ask)*0.5;
+   double tickSize=SymbolInfoDouble(g_recoverySymbol,SYMBOL_TRADE_TICK_SIZE);
+   if(tickSize<=0.0) tickSize=SymbolInfoDouble(g_recoverySymbol,SYMBOL_POINT);
+   if(tickSize<=0.0 || MathAbs(mid-g_recoveryReferencePrice)<tickSize*0.5) return;
+
+   string direction=(mid>g_recoveryReferencePrice ? "BUY" : "SELL");
+   double recoveryLots=totalLots*2.0;
+   double minLot=SymbolInfoDouble(g_recoverySymbol,SYMBOL_VOLUME_MIN);
+   double maxLot=SymbolInfoDouble(g_recoverySymbol,SYMBOL_VOLUME_MAX);
+   double step=SymbolInfoDouble(g_recoverySymbol,SYMBOL_VOLUME_STEP);
+   if(step<=0.0 || recoveryLots<minLot || recoveryLots>maxLot ||
+      MathAbs(recoveryLots/step-MathRound(recoveryLots/step))>0.000001)
+   {
+      Print("AL-ZOOL SMART RECOVERY BLOCKED: calculated x2 lot is outside broker volume rules. lots=",
+            DoubleToString(recoveryLots,4)," min=",DoubleToString(minLot,4),
+            " max=",DoubleToString(maxLot,4)," step=",DoubleToString(step,4));
+      return;
+   }
+
+   ENUM_ORDER_TYPE orderType=(direction=="BUY"?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
+   double price=(direction=="BUY"?tick.ask:tick.bid),requiredMargin=0.0;
+   if(!OrderCalcMargin(orderType,g_recoverySymbol,recoveryLots,price,requiredMargin) ||
+      requiredMargin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+   {
+      Print("AL-ZOOL SMART RECOVERY BLOCKED: insufficient free margin for x2 lot. Required=",
+            DoubleToString(requiredMargin,2)," free=",DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2));
+      return;
+   }
+
+   g_trade.SetExpertMagicNumber(InpTradeMagic);
+   g_trade.SetDeviationInPoints(InpDeviationPoints);
+   g_trade.SetTypeFillingBySymbol(g_recoverySymbol);
+   bool sent=(direction=="BUY"
+      ? g_trade.Buy(recoveryLots,g_recoverySymbol,0.0,0.0,0.0,"ALZOOL-RECOVERY")
+      : g_trade.Sell(recoveryLots,g_recoverySymbol,0.0,0.0,0.0,"ALZOOL-RECOVERY"));
+   uint rc=g_trade.ResultRetcode();
+   if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_DONE_PARTIAL || rc==TRADE_RETCODE_PLACED))
+   {
+      g_recoveryOrderOpened=true; g_recoveryCycleActive=true; g_recoveryWaitingMove=false;
+      Print("AL-ZOOL SMART RECOVERY OPENED: ",direction," ",DoubleToString(recoveryLots,4),
+            " ",g_recoverySymbol,". Monitoring net result of ALL account positions.");
+   }
+   else
+   {
+      Print("AL-ZOOL SMART RECOVERY order failed: retcode=",rc," ",g_trade.ResultRetcodeDescription());
+   }
+}
+
 void EvaluateAutoClose()
 {
    int total=PositionsTotal();
@@ -967,6 +1129,7 @@ void OnDeinit(const int reason)
 void OnTimer()
 {
    EvaluateAutoClose();
+   EvaluateSmartRecovery();
    ManageEntryTrailing();
    ManagePositionAddons();
    ulong now=GetTickCount64();
@@ -1002,5 +1165,6 @@ void OnTimer()
 void OnTick()
 {
    EvaluateAutoClose();
+   EvaluateSmartRecovery();
 }
 // Profit targets are evaluated locally on market ticks and a one-second timer.

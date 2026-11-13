@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#11121b"><title>AL-ZOOL | إدارة التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/trade-management.css?v=8">
+<link rel="stylesheet" href="/trade-management.css?v=9">
 </head>
 <body>
 <div class="shell">
@@ -34,7 +34,7 @@
   <article class="kpi"><div class="kpi-head"><span>حقوق الحساب</span><i>◈</i></div><strong id="equity">—</strong><small id="balanceMeta">الرصيد —</small></article>
  </section>
  <nav class="section-nav" aria-label="أقسام إدارة التداول">
-  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#pending">الأوامر المعلقة</a>
+  <a href="#recovery">التعافي الذكي</a><a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#pending">الأوامر المعلقة</a>
  </nav>
  <section class="card" id="autoClose">
   <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>أهداف الإغلاق التلقائي</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
@@ -52,6 +52,19 @@
   </div>
   <div class="close-actions"><button id="saveCloseSettings" class="refresh">حفظ إعدادات الإغلاق</button><span id="closeSettingsMessage" role="status">الخياران متوقفان افتراضيًا حتى تفعّلهما بنفسك.</span></div>
   <p class="section-note">عند تفعيل الخيارين معًا، يملك هدف المجموعة أولوية إذا تحقق مع وجود صفقتين أو أكثر. تُحسب الأهداف بصافي الربح العائم (الربح + السواب) بعملة الحساب. التنفيذ يتم داخل MT5 عند وصول tick، وليس من المتصفح؛ يلزم تثبيت نسخة عميل MT5 المحدّثة وتفعيل Algo Trading. لا يوجد ضمان لسعر الإغلاق أو انعدام الانزلاق.</p>
+ </section>
+ <section class="card" id="recovery">
+  <div class="card-title"><div><span class="eyebrow">استرداد خسارة الحساب</span><h2>التعافي الذكي</h2></div><label class="switch"><input type="checkbox" id="recoveryEnabled"><span></span></label></div>
+  <div class="recovery-intro">عند بلوغ حد الخسارة الذي تحدده، ينتظر النظام أول حركة سعر على رمز الصفقة الأكثر خسارة، ثم يفتح صفقة تعافٍ باتجاه الحركة. حجمها يساوي ضعف مجموع لوتات كل صفقات الحساب.</div>
+  <div class="recovery-grid">
+   <article><small>الخسارة العائمة الحالية</small><strong id="recoveryFloating">—</strong></article>
+   <article><small>مجموع لوتات الحساب</small><strong id="recoveryLots">—</strong></article>
+   <article><small>لوت التعافي المحسوب ×2</small><strong id="recoveryLot">—</strong></article>
+  </div>
+  <label class="recovery-threshold-label" for="recoveryThreshold">حد تفعيل التعافي — بعملة حساب MT5</label>
+  <input id="recoveryThreshold" type="text" inputmode="decimal" lang="en" dir="ltr" placeholder="أدخل مبلغ الخسارة الذي تختاره">
+  <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">التعافي متوقف افتراضيًا. حدّد المبلغ ثم فعّله.</span></div>
+  <p class="section-note">يشمل الحساب جميع الصفقات المفتوحة: AL-ZOOL واليدوية والبوتات الأخرى، وعلى مختلف الرموز. بعد فتح صفقة التعافي، يراقب MT5 صافي المجموعة ويغلق جميع الصفقات عندما يصل صافيها إلى التعادل أو الربح. لا تُفتح دورة تعافٍ ثانية قبل انتهاء الدورة الحالية. إذا كان حجم ×2 غير مقبول لدى الوسيط أو الهامش غير كافٍ، لن تُرسل الصفقة ويُسجل السبب. مضاعفة اللوت قد تزيد الخسارة بسرعة.</p>
  </section>
  <section class="card" id="positions">
   <div class="card-title"><div><span class="eyebrow">مراكز الحساب</span><h2>الصفقات المفتوحة</h2></div><span class="count-chip" id="positionsLabel">0 صفقة</span></div>
@@ -135,6 +148,6 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=8"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=9"></script>
 <script src="/numbers-en.js?v=2"></script>
 </body></html>

@@ -136,6 +136,8 @@ def _fetch_trade_settings(client_id):
     pm.setdefault("entry_guard_enabled",True)
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
+    pm.setdefault("recovery_enabled",False)
+    pm.setdefault("recovery_loss_threshold",0.0)
     settings["position_management"]=pm
     settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
     return settings
@@ -368,6 +370,8 @@ class Handler(SimpleHTTPRequestHandler):
                 pm.setdefault("entry_guard_enabled",True)
                 pm.setdefault("entry_max_delay_bars",1)
                 pm.setdefault("entry_max_deviation_atr",0.5)
+                pm.setdefault("recovery_enabled",False)
+                pm.setdefault("recovery_loss_threshold",0.0)
                 settings["position_management"]=pm
                 return self.send_json(200,{"client_id":client_id,"settings":settings})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
@@ -838,6 +842,14 @@ class Handler(SimpleHTTPRequestHandler):
                 clean_pm["entry_guard_enabled"]=entry_guard_enabled
                 clean_pm["entry_max_delay_bars"]=entry_max_delay_bars
                 clean_pm["entry_max_deviation_atr"]=entry_max_deviation_atr
+                recovery_enabled=pm.get("recovery_enabled",prior_pm.get("recovery_enabled",False)) is True
+                recovery_loss_threshold=finite_number(pm.get("recovery_loss_threshold",prior_pm.get("recovery_loss_threshold",0.0)),0.0)
+                if not math.isfinite(recovery_loss_threshold) or recovery_loss_threshold<0 or recovery_loss_threshold>100000000:
+                    return self.send_json(400,{"error":"حد تفعيل التعافي يجب أن يكون صفرًا أو مبلغًا موجبًا بعملة الحساب"})
+                if recovery_enabled and recovery_loss_threshold<=0:
+                    return self.send_json(400,{"error":"أدخل حد الخسارة قبل تشغيل التعافي الذكي"})
+                clean_pm["recovery_enabled"]=recovery_enabled
+                clean_pm["recovery_loss_threshold"]=recovery_loss_threshold
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
                     maximum=int(finite_number(pm.get(prefix+"_max",prior_pm.get(prefix+"_max",0)),-1))
