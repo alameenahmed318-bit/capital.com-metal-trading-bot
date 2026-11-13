@@ -36,7 +36,7 @@ async function loadCloseSettings(){
  $("maxTotalLots").value=Number(pm.max_total_lots??0.10);
  $("recoveryEnabled").checked=!!pm.recovery_enabled;
  $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
- $("recoveryMessage").textContent=pm.recovery_enabled?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي متوقف افتراضيًا.";
+ $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
  updatePmModeUI();
 }
 function updateStopLossHelp(){
@@ -132,8 +132,8 @@ async function savePositionManagement(){
 async function saveRecoverySettings(){
  const trigger=Number($("recoveryLossTrigger").value);
  const enabled=$("recoveryEnabled").checked;
- if(enabled&&(!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
-  $("recoveryMessage").textContent="أدخل حد خسارة موجبًا بعملة حساب MT5 قبل التفعيل.";return;
+ if(enabled&&Number.isFinite(trigger)&&trigger>100000000){
+  $("recoveryMessage").textContent="حد الخسارة أكبر من الحد المسموح.";return;
  }
  if(!enabled&&$("recoveryLossTrigger").value.trim()!==""&&(!Number.isFinite(trigger)||trigger<0)){
   $("recoveryMessage").textContent="تحقق من مبلغ حد التفعيل.";return;
