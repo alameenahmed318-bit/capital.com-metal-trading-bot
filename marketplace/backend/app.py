@@ -407,13 +407,13 @@ class Handler(SimpleHTTPRequestHandler):
             clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=trading_enabled&limit=1",admin=True)
             trading_enabled=bool(clients and clients[0].get("trading_enabled",False))
-            ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.55 and
+            ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
                    1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
             return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "bar_time":decision.get("bar_time",0),"execution_ready":ready,"trading_enabled":trading_enabled,
-                "minimum_confidence":0.55,
+                "minimum_confidence":0.45,
                 "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
         if path=="/api/market/context":
             try:
