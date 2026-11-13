@@ -135,7 +135,7 @@ bool PollTradeSettings()
    string response_headers;
    ResetLastError();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
-                       headers,1500,data,result,response_headers);
+                       headers,8000,data,result,response_headers);
    if(code!=200)
    {
       Print("AL-ZOOL trade settings poll failed: HTTP=",code," err=",GetLastError());
@@ -817,7 +817,7 @@ void OnTimer()
    ManageEntryTrailing();
    ManagePositionAddons();
    ulong now=GetTickCount64();
-   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
+   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=5000)
    {
       PollTradeSettings();
       g_lastSettingsPollMs=now;
