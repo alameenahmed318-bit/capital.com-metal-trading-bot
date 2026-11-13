@@ -17,6 +17,12 @@ async function loadCloseSettings(){
  $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
  updateStopLossHelp();
  const pm=s.position_management||{};
+ const cg=pm.capital_guard||{};
+ $("capitalGuardEnabled").checked=!!cg.enabled;
+ $("dailyLossLimit").value=Number(cg.daily_loss_limit??0).toString();
+ $("equityDrawdownPercent").value=Number(cg.equity_drawdown_percent??0).toString();
+ $("spreadGuardEnabled").checked=!!cg.spread_guard_enabled;
+ $("maxSpreadPoints").value=Number(cg.max_spread_points??0).toString();
  $("entryGuardEnabled").checked=pm.entry_guard_enabled!==false;
  $("entryMaxDelayBars").value=Number(pm.entry_max_delay_bars??1);
  $("entryMaxDeviationAtr").value=Number(pm.entry_max_deviation_atr??0.5);
@@ -79,6 +85,23 @@ function updatePmModeUI(){
  $("pmModeHelp").textContent=ai
   ?"AI تلقائي: المحرك يختار توقيت الإضافة واللوت والمسافة، ويلتزم بالحد الأقصى الذي تحدده لكل قسم."
   :"يدوي: تحدد اللوت والمسافة بالنقاط والحد الأقصى لكل قسم، والتنفيذ تلقائي عند تحقق المسافة ضد الصفقة الخاسرة.";
+}
+async function saveCapitalGuard(){
+ const cfg={enabled:$("capitalGuardEnabled").checked,daily_loss_limit:Number($("dailyLossLimit").value),
+  equity_drawdown_percent:Number($("equityDrawdownPercent").value),
+  spread_guard_enabled:$("spreadGuardEnabled").checked,max_spread_points:Number($("maxSpreadPoints").value)};
+ if(!Number.isFinite(cfg.daily_loss_limit)||cfg.daily_loss_limit<0||!Number.isFinite(cfg.equity_drawdown_percent)||cfg.equity_drawdown_percent<0||cfg.equity_drawdown_percent>100||!Number.isFinite(cfg.max_spread_points)||cfg.max_spread_points<0){$("capitalGuardMessage").textContent="تحقق من الأرقام المدخلة.";return;}
+ if(cfg.enabled&&cfg.daily_loss_limit<=0&&cfg.equity_drawdown_percent<=0){$("capitalGuardMessage").textContent="أدخل حد خسارة يومي أو حد هبوط Equity موجباً.";return;}
+ if(cfg.spread_guard_enabled&&cfg.max_spread_points<=0){$("capitalGuardMessage").textContent="أدخل أقصى سبريد موجباً قبل تفعيل حمايته.";return;}
+ $("saveCapitalGuard").disabled=true;$("capitalGuardMessage").textContent="جارٍ حفظ الإضافات الجديدة…";
+ try{
+  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   single_enabled:$("singleEnabled").checked,single_profit_target:Number($("singleTarget").value),
+   group_enabled:$("groupEnabled").checked,group_profit_target:Number($("groupTarget").value),capital_guard:cfg
+  })});
+  $("capitalGuardMessage").textContent="تم حفظ الإعدادات الجديدة. سيستلمها MT5 في دورة التحديث التالية.";
+ }catch(e){$("capitalGuardMessage").textContent="تعذر الحفظ: "+e.message;}
+ finally{$("saveCapitalGuard").disabled=false;}
 }
 async function savePositionManagement(){
  const mode=$("pmMode").value;
@@ -205,6 +228,7 @@ $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
+$("saveCapitalGuard").addEventListener("click",saveCapitalGuard);
 $("pmMode").addEventListener("change",updatePmModeUI);
 $("stopLossMode").addEventListener("change",updateStopLossHelp);
 boot();setInterval(()=>{if(accessToken)refresh();},2000);
