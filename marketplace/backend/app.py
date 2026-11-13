@@ -525,6 +525,7 @@ class Handler(SimpleHTTPRequestHandler):
                 daily_by_position={}
                 daily_profit=daily_loss=0.0
                 for deal in deals:
+                    if int(finite_number(deal.get("entry"),-1))==0: continue
                     stamp=int(deal.get("time",0) or 0)
                     if stamp<=0: continue
                     closed_at=datetime.fromtimestamp(stamp,timezone.utc)
@@ -860,7 +861,7 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
-                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),200)
+                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),400)
                 # Persist MT5 history so closed trades survive Render restarts/deploys.
                 if closed_deals:
                     persisted=[]
