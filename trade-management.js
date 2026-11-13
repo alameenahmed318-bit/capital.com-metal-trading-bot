@@ -130,21 +130,23 @@ async function savePositionManagement(){
  finally{$("savePositionManagement").disabled=false;}
 }
 async function saveRecoverySettings(){
- const trigger=Number($("recoveryLossTrigger").value);
+ const raw=$("recoveryLossTrigger").value.trim();
+ const trigger=Number(raw.replace(/,/g,""));
  const enabled=$("recoveryEnabled").checked;
- const triggerText=$("recoveryLossTrigger").value.trim();
- if(triggerText!==""&&(!Number.isFinite(trigger)||trigger<0||trigger>100000000)){
-  $("recoveryMessage").textContent="أدخل مبلغ خسارة صحيحًا من صفر إلى الحد المسموح.";return;
+ if(enabled&&(!raw||!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
+  $("recoveryMessage").textContent="أدخل مبلغ خسارة موجبًا بعملة حساب MT5 (أكبر من صفر) ثم احفظ.";
+  $("recoveryLossTrigger").focus();return;
  }
- if(!enabled&&$("recoveryLossTrigger").value.trim()!==""&&(!Number.isFinite(trigger)||trigger<0)){
-  $("recoveryMessage").textContent="تحقق من مبلغ حد التفعيل.";return;
+ if(raw&&(!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
+  $("recoveryMessage").textContent="المبلغ يجب أن يكون موجبًا بعملة الحساب وأقل من أو يساوي 100,000,000.";
+  $("recoveryLossTrigger").focus();return;
  }
  $("saveRecoverySettings").disabled=true;$("recoveryMessage").textContent="جارٍ حفظ إعدادات التعافي…";
  try{
   await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-   position_management:{recovery_enabled:enabled,recovery_loss_trigger:trigger||0,recovery_user_configured:true}
+   position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,recovery_user_configured:true}
   })});
-  $("recoveryMessage").textContent=enabled?(trigger>0?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم تفعيل الخيار وحفظه؛ أدخل حد الخسارة حتى يبدأ التنفيذ."):"تم حفظ التعافي بوضع الإيقاف.";
+  $("recoveryMessage").textContent=enabled?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم حفظ التعافي بوضع الإيقاف.";
  }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveRecoverySettings").disabled=false;}
 }
