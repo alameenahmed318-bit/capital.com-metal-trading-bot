@@ -945,14 +945,8 @@ class Handler(SimpleHTTPRequestHandler):
                         try:
                             live_weight_rows=sb("GET","/rest/v1/alzool_engine_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                                 "&select=strategy_id,weight&limit=200",admin=True)
-                            live_sample_rows=sb("GET","/rest/v1/alzool_engine_outcomes?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                                "&select=strategy_id&limit=2000",admin=True)
-                            sample_counts={}
-                            for sample in live_sample_rows if isinstance(live_sample_rows,list) else []:
-                                sid=int(finite_number(sample.get("strategy_id")))
-                                sample_counts[sid]=sample_counts.get(sid,0)+1
                             live_weights={str(int(x["strategy_id"])):finite_number(x.get("weight"),1.0)
-                                for x in live_weight_rows if sample_counts.get(int(x["strategy_id"]),0)>=5}
+                                for x in live_weight_rows if 1<=int(finite_number(x.get("strategy_id")))<=200}
                             evaluated=evaluate_market(list(reversed(candles)),weights=live_weights,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
