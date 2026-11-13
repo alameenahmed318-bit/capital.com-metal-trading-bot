@@ -672,8 +672,18 @@ void EvaluateSmartRecovery()
       return;
    }
 
-   if(!g_recoveryEnabled || g_recoveryOrderOpened || g_recoveryLossThreshold<=0.0) return;
-   if(groupNet>-g_recoveryLossThreshold || totalLots<=0.0) return;
+   if(g_recoveryOrderOpened) return;
+   if(!g_recoveryEnabled || g_recoveryLossThreshold<=0.0)
+   {
+      g_recoveryWaitingMove=false; g_recoveryCycleActive=false; g_recoveryReferencePrice=0.0;
+      return;
+   }
+   if(groupNet>-g_recoveryLossThreshold || totalLots<=0.0)
+   {
+      // If the basket recovers above the trigger before an order is sent, wait for a fresh trigger.
+      g_recoveryWaitingMove=false; g_recoveryCycleActive=false; g_recoveryReferencePrice=0.0;
+      return;
+   }
 
    if(!g_recoveryWaitingMove)
    {
