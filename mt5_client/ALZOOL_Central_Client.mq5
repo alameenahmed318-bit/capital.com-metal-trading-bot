@@ -47,6 +47,11 @@ string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
 bool g_serverStopLossEnabled=true;
+bool g_recoveryEnabled=false;
+double g_recoveryLossTrigger=0.0;
+bool g_recoveryCycleActive=false;
+double g_recoveryReferencePrice=0.0;
+string g_recoveryActiveKey="",g_recoveryPriceKey="";
 string g_serverStopLossMode="ATR";
 double g_serverStopLossValue=1.8;
 string g_pmMode="AI";
@@ -182,6 +187,9 @@ bool PollTradeSettings()
    if(slMode=="POINTS" || slMode=="ATR") g_serverStopLossMode=slMode;
    double slValue=JsonDouble(response,"stop_loss_value",g_serverStopLossValue);
    if(slValue>0.0) g_serverStopLossValue=slValue;
+   g_recoveryEnabled=JsonBool(response,"recovery_enabled");
+   g_recoveryLossTrigger=JsonDouble(response,"recovery_loss_trigger",0.0);
+   if(g_recoveryLossTrigger<=0.0) g_recoveryEnabled=false;
    string pmMode=JsonField(response,"mode");
    StringReplace(pmMode,CharToString(34),"");
    if(pmMode=="AI" || pmMode=="MANUAL") g_pmMode=pmMode;
@@ -591,8 +599,148 @@ bool ClosePositionTicket(const ulong ticket,const string scope)
    Print("AL-ZOOL ",scope," close accepted ticket ",ticket," retcode=",retcode);
    return true;
 }
+double RecoveryPositionCosts(const long positionIdentifier)
+{
+   double costs=0.0;
+   if(positionIdentifier<=0 || !HistorySelectByPosition((ulong)positionIdentifier)) return costs;
+   int deals=HistoryDealsTotal();
+   for(int i=0;i<deals;i++)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0) continue;
+      costs+=HistoryDealGetDouble(deal,DEAL_COMMISSION)+HistoryDealGetDouble(deal,DEAL_FEE);
+   }
+   return costs;
+}
+double RecoveryGroupNet(double &totalLots,int &totalPositions)
+{
+   double net=0.0;totalLots=0.0;totalPositions=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      totalPositions++;
+      totalLots+=PositionGetDouble(POSITION_VOLUME);
+      net+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      net+=RecoveryPositionCosts((long)PositionGetInteger(POSITION_IDENTIFIER));
+   }
+   return net;
+}
+void ResetRecoveryCycle()
+{
+   g_recoveryCycleActive=false;
+   g_recoveryReferencePrice=0.0;
+   if(StringLen(g_recoveryActiveKey)>0 && GlobalVariableCheck(g_recoveryActiveKey)) GlobalVariableDel(g_recoveryActiveKey);
+   if(StringLen(g_recoveryPriceKey)>0 && GlobalVariableCheck(g_recoveryPriceKey)) GlobalVariableDel(g_recoveryPriceKey);
+}
+bool RecoveryHasOpenTrade()
+{
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(StringFind(PositionGetString(POSITION_COMMENT),"ALZOOL-RECOVERY")==0) return true;
+   }
+   return false;
+}
+bool RecoveryCloseAll()
+{
+   bool allAccepted=true;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(!ClosePositionTicket(ticket,"smart-recovery")) allAccepted=false;
+   }
+   if(PositionsTotal()==0)
+   {
+      Print("AL-ZOOL SMART RECOVERY: all account positions closed after group recovery.");
+      ResetRecoveryCycle();
+      return true;
+   }
+   if(!allAccepted) Print("AL-ZOOL SMART RECOVERY: some positions remain open; retrying close on next tick.");
+   return false;
+}
+bool EvaluateSmartRecovery()
+{
+   if(g_recoveryCycleActive || RecoveryHasOpenTrade())
+   {
+      g_recoveryCycleActive=true;
+      double lots=0.0;int count=0;
+      double net=RecoveryGroupNet(lots,count);
+      if(count==0){ResetRecoveryCycle();return false;}
+      if(net>=0.0) RecoveryCloseAll();
+      return true;
+   }
+   if(!g_recoveryEnabled || g_recoveryLossTrigger<=0.0) return false;
+   double totalLots=0.0;int totalPositions=0;
+   double groupNet=RecoveryGroupNet(totalLots,totalPositions);
+   if(totalPositions<=0){g_recoveryReferencePrice=0.0;return false;}
+   if(groupNet>-g_recoveryLossTrigger) return false;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0) return true;
+   if(g_recoveryReferencePrice<=0.0)
+   {
+      g_recoveryReferencePrice=tick.bid;
+      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
+      Print("AL-ZOOL SMART RECOVERY armed: account loss=",DoubleToString(groupNet,2),
+            " trigger=-",DoubleToString(g_recoveryLossTrigger,2),
+            " total lots=",DoubleToString(totalLots,2),". Waiting for next price movement.");
+      return true;
+   }
+   if(MathAbs(tick.bid-g_recoveryReferencePrice)<_Point*0.1) return true;
+   ENUM_ORDER_TYPE orderType=(tick.bid>g_recoveryReferencePrice?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
+   double rawLots=totalLots*2.0;
+   double minLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   double maxLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   if(step<=0.0 || rawLots<minLot-1e-8 || rawLots>maxLot+1e-8 ||
+      MathAbs(rawLots/step-MathRound(rawLots/step))>1e-7)
+   {
+      Print("AL-ZOOL SMART RECOVERY blocked: exact x2 lot ",DoubleToString(rawLots,8),
+            " is outside broker min/max/step. No automatic lot reduction.");
+      g_recoveryReferencePrice=tick.bid;
+      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
+      return true;
+   }
+   double price=(orderType==ORDER_TYPE_BUY?tick.ask:tick.bid),margin=0.0;
+   if(!OrderCalcMargin(orderType,_Symbol,rawLots,price,margin) ||
+      margin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+   {
+      Print("AL-ZOOL SMART RECOVERY blocked: insufficient free margin for exact x2 lot ",
+            DoubleToString(rawLots,2),".");
+      g_recoveryReferencePrice=tick.bid;
+      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
+      return true;
+   }
+   g_trade.SetExpertMagicNumber(InpTradeMagic);
+   g_trade.SetDeviationInPoints(InpDeviationPoints);
+   g_trade.SetTypeFillingBySymbol(_Symbol);
+   bool sent=(orderType==ORDER_TYPE_BUY?
+      g_trade.Buy(rawLots,_Symbol,0.0,0.0,0.0,"ALZOOL-RECOVERY"):
+      g_trade.Sell(rawLots,_Symbol,0.0,0.0,0.0,"ALZOOL-RECOVERY"));
+   uint rc=g_trade.ResultRetcode();
+   if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
+   {
+      g_recoveryCycleActive=true;
+      if(StringLen(g_recoveryActiveKey)>0) GlobalVariableSet(g_recoveryActiveKey,1.0);
+      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableDel(g_recoveryPriceKey);
+      g_recoveryReferencePrice=0.0;
+      Print("AL-ZOOL SMART RECOVERY opened ",(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),
+            " exact x2 lot=",DoubleToString(rawLots,2),
+            " account positions=",totalPositions," group net=",DoubleToString(groupNet,2));
+   }
+   else
+   {
+      Print("AL-ZOOL SMART RECOVERY order rejected: ",g_trade.ResultRetcodeDescription());
+      g_recoveryReferencePrice=tick.bid;
+      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
+   }
+   return true;
+}
 void EvaluateAutoClose()
 {
+   if(EvaluateSmartRecovery()) return;
    int total=PositionsTotal();
    if(total<=0) return;
    double groupNet=0.0;
@@ -933,6 +1081,11 @@ int OnInit()
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
       return INIT_PARAMETERS_INCORRECT;
    }
+   g_recoveryActiveKey="AZ_REC_ACTIVE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_recoveryPriceKey="AZ_REC_PRICE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_recoveryCycleActive=(GlobalVariableCheck(g_recoveryActiveKey) && GlobalVariableGet(g_recoveryActiveKey)>0.5) || RecoveryHasOpenTrade();
+   if(GlobalVariableCheck(g_recoveryPriceKey)) g_recoveryReferencePrice=GlobalVariableGet(g_recoveryPriceKey);
+   if(g_recoveryCycleActive && !GlobalVariableCheck(g_recoveryActiveKey)) GlobalVariableSet(g_recoveryActiveKey,1.0);
    g_trade.SetAsyncMode(false);
    g_trade.SetExpertMagicNumber(InpTradeMagic);
    g_trade.SetTypeFillingBySymbol(_Symbol);
