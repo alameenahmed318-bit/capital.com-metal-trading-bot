@@ -22,9 +22,9 @@
 </section>
 <section class="learn-grid">
 <article class="learn-stat"><small>صفقات حقيقية دخلت التعلم (آخر 30 يومًا)</small><strong id="liveProcessed">—</strong></article>
-<article class="learn-stat"><small>تغطية التعلم اليوم</small><strong id="dailyCoverage">—</strong></article>
+<article class="learn-stat"><small>نسبة الصفقات المرتبطة باستراتيجية اليوم</small><strong id="dailyCoverage">—</strong></article>
 <article class="learn-stat"><small>رابحة / خاسرة من الصفقات المتعلمة</small><strong id="liveWinLoss">—</strong></article>
-<article class="learn-stat"><small>استراتيجيات تم تحديث أوزانها</small><strong id="liveUpdated">—</strong></article>
+<article class="learn-stat"><small>استراتيجيات تأثرت أوزانها (آخر 30 يومًا)</small><strong id="liveUpdated">—</strong></article>
 </section>
 <section class="learn-card"><h2>ذاكرة التعلم من صفقات MT5 المباشرة</h2>
 <div class="learn-note" id="liveStatus">بانتظار بيانات الصفقات المغلقة من MT5.</div>
@@ -73,7 +73,7 @@ async function load(){
   const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models,live=d.live||{};
   $("serviceState").textContent="تم التحقق من الحساب";$("runCount").textContent=String(d.count||0);
    $("liveProcessed").textContent=String(live.processed_positions||0)+" / "+String(live.closed_positions||0);
-   $("dailyCoverage").textContent=Number(live.daily_coverage_percent||0).toFixed(1)+"%";
+   $("dailyCoverage").textContent=live.daily_closed_positions?Number(live.daily_coverage_percent||0).toFixed(1)+"%":"لا توجد صفقات مغلقة";
    $("liveWinLoss").textContent=String(live.wins||0)+" / "+String(live.losses||0);
    $("liveUpdated").textContent=String(live.updated_strategies||0)+" / 200";
    $("liveStatus").textContent=live.closed_positions
