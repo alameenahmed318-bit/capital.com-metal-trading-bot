@@ -144,17 +144,31 @@ def live_learning_profile(deals):
         row=grouped.setdefault(pid,{"position_id":pid,"net":0.0,"strategy_id":0,"time":stamp})
         row["net"]+=sum(finite_number(deal.get(k)) for k in ("profit","commission","swap","fee"))
         row["time"]=max(row["time"],stamp)
+        comment=str(deal.get("strategy_comment") or deal.get("comment") or "")
         sid=int(finite_number(deal.get("strategy_id")))
         if not 1<=sid<=200:
-            match=re.search(r"ALZOOL-S(\d{1,3})",str(deal.get("strategy_comment") or deal.get("comment") or ""),re.I)
+            match=re.search(r"ALZOOL-S(\d{1,3})",comment,re.I)
             sid=int(match.group(1)) if match else 0
+        combo_match=re.search(r"ALZOOL-S\d{1,3}-C(\d{1,4})",comment,re.I)
+        if combo_match:
+            cid=int(combo_match.group(1))
+            if 1<=cid<=1000: row["combination_id"]=cid
         if 1<=sid<=200: row["strategy_id"]=sid
     rows=sorted(grouped.values(),key=lambda x:x["time"])
     weights={str(i):1.0 for i in range(1,201)}
     stats={}
+    combo_weights={str(i):1.0 for i in range(1,1001)}
+    combo_stats={}
     matched_today=set()
     for row in rows:
         sid=int(row["strategy_id"] or 0)
+        cid=int(row.get("combination_id") or 0)
+        if 1<=cid<=1000:
+            ckey=str(cid); citem=combo_stats.setdefault(ckey,{"combination_id":cid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
+            citem["trades"]+=1; citem["net"]+=row["net"]
+            if row["net"]>0: citem["wins"]+=1; combo_weights[ckey]=min(1.15,combo_weights[ckey]*1.01)
+            elif row["net"]<0: citem["losses"]+=1; combo_weights[ckey]=max(0.85,combo_weights[ckey]*0.99)
+            else: citem["flat"]+=1
         if not 1<=sid<=200: continue
         key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
         item["trades"]+=1; item["net"]+=row["net"]
@@ -175,7 +189,9 @@ def live_learning_profile(deals):
         "coverage_percent":round(coverage,1),"daily_closed_positions":len(today_total),
         "daily_processed_positions":len(matched_today),"daily_coverage_percent":round(daily_coverage,1),
         "updated_strategies":sum(1 for x in stats.values() if x["wins"]+x["losses"]>0),
-        "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True)}
+        "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True),
+        "combination_weights":combo_weights,"processed_combinations":sum(x["trades"] for x in combo_stats.values()),
+        "combinations":sorted([{**x,"weight":round(combo_weights[str(x["combination_id"])],4)} for x in combo_stats.values()],key=lambda x:(x["net"],x["trades"]),reverse=True)}
 
 
 def clean_historical_candles(rows, metadata, client_id, symbol, timeframe):
@@ -409,7 +425,22 @@ class Handler(SimpleHTTPRequestHandler):
             trading_enabled=bool(clients and clients[0].get("trading_enabled",False))
             ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
                    1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
+            bar_time=int(finite_number(decision.get("bar_time",0)))
+            exit_watch=item.get("ai_exit_watch") or {"direction":"","count":0,"bar_time":0}
+            if bar_time>int(exit_watch.get("bar_time",0)):
+                if signal in ("BUY","SELL") and confidence>=0.75:
+                    if signal==exit_watch.get("direction"):
+                        exit_watch["count"]=int(exit_watch.get("count",0))+1
+                    else:
+                        exit_watch={"direction":signal,"count":1,"bar_time":bar_time}
+                    exit_watch["bar_time"]=bar_time
+                else:
+                    exit_watch={"direction":"","count":0,"bar_time":bar_time}
+                item["ai_exit_watch"]=exit_watch
+            exit_signal=exit_watch.get("direction") if int(exit_watch.get("count",0))>=2 else ""
             return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
+                "exit_signal":exit_signal,"exit_bar_time":int(exit_watch.get("bar_time",0)),
+                "exit_confidence":confidence if exit_signal else 0.0,
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "bar_time":decision.get("bar_time",0),"execution_ready":ready,"trading_enabled":trading_enabled,
@@ -878,11 +909,12 @@ class Handler(SimpleHTTPRequestHandler):
                             live_learning=live_learning_profile(closed_deals)
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
-                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],mtf_bias=mtf_bias,mode="AUTO")
+                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],combination_weights=live_learning.get("combination_weights"),mtf_bias=mtf_bias,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "strategy_id":evaluated["strategy_id"],
                                 "strategy_name":evaluated["strategy_name"],
+                                "combination_id":evaluated.get("combination_id",0),
                                 "reason_ar":evaluated["reason_ar"],
                                 "confidence":evaluated["confidence"],
                                 "context":evaluated["context"],
