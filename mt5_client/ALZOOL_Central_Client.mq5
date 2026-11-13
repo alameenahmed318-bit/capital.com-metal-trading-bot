@@ -686,19 +686,19 @@ bool SendLiveSnapshot()
    }
    body+="]";
 
-   // Closed deals for the last 30 days; telemetry only.
+   // Entry and exit deals for the last 30 days; telemetry only. Entry comments preserve the strategy ID.
    datetime history_from=TimeCurrent()-30*86400;
    if(HistorySelect(history_from,TimeCurrent()))
    {
       body+=",\"closed_deals\":[";
       int deals_sent=0;
       int total_deals=HistoryDealsTotal();
-      for(int h=total_deals-1;h>=0 && deals_sent<200;h--)
+      for(int h=total_deals-1;h>=0 && deals_sent<400;h--)
       {
          ulong deal_ticket=HistoryDealGetTicket(h);
          if(deal_ticket==0) continue;
          long entry=HistoryDealGetInteger(deal_ticket,DEAL_ENTRY);
-         if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) continue;
+         if(entry!=DEAL_ENTRY_IN && entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) continue;
          string deal_symbol=HistoryDealGetString(deal_ticket,DEAL_SYMBOL);
          if(deals_sent>0) body+=",";
          body+="{\"ticket\":\""+(string)deal_ticket+"\"";
