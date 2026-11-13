@@ -378,8 +378,14 @@ class Handler(SimpleHTTPRequestHandler):
                         "&created_at=gte."+urllib.parse.quote(cutoff,safe="")+
                         "&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit=2000",admin=True)
                     outcomes=outcomes if isinstance(outcomes,list) else []
-                    model_updates_today=sum(1 for x in outcomes
-                        if str(x.get("created_at") or "")>=utc_midnight.isoformat() and finite_number(x.get("pnl"))!=0)
+                    model_updates_today=0
+                    for outcome in outcomes:
+                        try:
+                            created=datetime.fromisoformat(str(outcome.get("created_at") or "").replace("Z","+00:00"))
+                            if created.tzinfo is None: created=created.replace(tzinfo=timezone.utc)
+                            if created>=utc_midnight and finite_number(outcome.get("pnl"))!=0:
+                                model_updates_today+=1
+                        except Exception: pass
                     model_weights=sb("GET","/rest/v1/alzool_engine_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&select=strategy_id,weight&order=strategy_id.asc&limit=200",admin=True)
                     if not isinstance(model_weights,list): model_weights=[]
