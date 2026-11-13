@@ -136,6 +136,7 @@ def _fetch_trade_settings(client_id):
     pm.setdefault("entry_guard_enabled",True)
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
+    pm.setdefault("capital_guard",{"enabled":False,"daily_loss_limit":0.0,"equity_drawdown_percent":0.0,"spread_guard_enabled":False,"max_spread_points":0.0})
     settings["position_management"]=pm
     settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
     return settings
@@ -863,6 +864,23 @@ class Handler(SimpleHTTPRequestHandler):
                 if not 0.01<=max_total_lots<=100:
                     return self.send_json(400,{"error":"سقف إجمالي اللوتات يجب أن يكون بين 0.01 و100"})
                 clean_pm["max_total_lots"]=max_total_lots
+                cg=data.get("capital_guard",pm.get("capital_guard",prior_pm.get("capital_guard",{})))
+                if not isinstance(cg,dict):
+                    return self.send_json(400,{"error":"إعدادات حارس رأس المال غير صالحة"})
+                cg_enabled=cg.get("enabled",False) is True
+                daily_limit=finite_number(cg.get("daily_loss_limit",0),-1)
+                drawdown_pct=finite_number(cg.get("equity_drawdown_percent",0),-1)
+                spread_enabled=cg.get("spread_guard_enabled",False) is True
+                max_spread=finite_number(cg.get("max_spread_points",0),-1)
+                if not 0<=daily_limit<=100000000 or not 0<=drawdown_pct<=100 or not 0<=max_spread<=100000000:
+                    return self.send_json(400,{"error":"تحقق من حدود الخسارة اليومية وهبوط Equity والسبريد"})
+                if cg_enabled and daily_limit<=0 and drawdown_pct<=0:
+                    return self.send_json(400,{"error":"فعّل حد خسارة يومي أو حد هبوط Equity موجباً"})
+                if spread_enabled and max_spread<=0:
+                    return self.send_json(400,{"error":"حدد أقصى سبريد بالنقاط قبل تفعيل الحماية"})
+                clean_pm["capital_guard"]={"enabled":cg_enabled,"daily_loss_limit":daily_limit,
+                    "equity_drawdown_percent":drawdown_pct,"spread_guard_enabled":spread_enabled,
+                    "max_spread_points":max_spread}
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
                      "group_profit_target":group_target,"stop_loss_enabled":stop_loss_enabled,

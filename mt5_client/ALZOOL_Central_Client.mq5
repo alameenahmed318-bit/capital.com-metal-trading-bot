@@ -59,6 +59,8 @@ double g_addonMaxLot=0.05,g_coolingMaxLot=0.05,g_maxTotalAddCoolingLots=0.10;
 bool g_entryGuardEnabled=true;
 int g_entryMaxDelayBars=1;
 double g_entryMaxDeviationATR=0.5;
+bool g_capitalGuardEnabled=false,g_spreadGuardEnabled=false;
+double g_dailyLossLimit=0.0,g_equityDrawdownPercent=0.0,g_maxSpreadPoints=0.0;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 int g_m5Fast=INVALID_HANDLE,g_m5Slow=INVALID_HANDLE,g_m15Fast=INVALID_HANDLE,g_m15Slow=INVALID_HANDLE,g_h1Fast=INVALID_HANDLE,g_h1Slow=INVALID_HANDLE;
 ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
@@ -68,6 +70,51 @@ long g_aiBarTime=0;
 int g_aiStrategyId=0,g_aiCombinationId=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
+// Optional account safety layer. It blocks new exposure only; it never closes existing positions.
+bool CapitalGuardAllowsEntry()
+{
+   if(!g_capitalGuardEnabled && !g_spreadGuardEnabled) return true;
+   if(g_spreadGuardEnabled && g_maxSpreadPoints>0.0)
+   {
+      long spread=0;
+      if(!SymbolInfoInteger(_Symbol,SYMBOL_SPREAD,spread) || spread<0 || (double)spread>g_maxSpreadPoints)
+      { g_status="حارس السبريد: تم منع دخول جديد"; return false; }
+   }
+   if(!g_capitalGuardEnabled) return true;
+   MqlDateTime dt; TimeToStruct(TimeCurrent(),dt);
+   dt.hour=0; dt.min=0; dt.sec=0;
+   datetime dayStart=StructToTime(dt);
+   double dailyNet=0.0;
+   if(HistorySelect(dayStart,TimeCurrent()))
+      for(int i=0;i<HistoryDealsTotal();i++)
+      {
+         ulong deal=HistoryDealGetTicket(i); if(deal==0) continue;
+         dailyNet+=HistoryDealGetDouble(deal,DEAL_PROFIT)+HistoryDealGetDouble(deal,DEAL_SWAP)+
+                   HistoryDealGetDouble(deal,DEAL_COMMISSION)+HistoryDealGetDouble(deal,DEAL_FEE);
+      }
+   for(int p=PositionsTotal()-1;p>=0;p--)
+   {
+      ulong ticket=PositionGetTicket(p);
+      if(ticket>0 && PositionSelectByTicket(ticket))
+         dailyNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+   }
+   if(g_dailyLossLimit>0.0 && dailyNet<=-g_dailyLossLimit)
+   { g_status="حارس رأس المال: تم بلوغ حد الخسارة اليومية؛ الدخول متوقف"; return false; }
+   if(g_equityDrawdownPercent>0.0)
+   {
+      string key="AZCG_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+
+                 IntegerToString(dt.year)+IntegerToString(dt.mon)+IntegerToString(dt.day);
+      double equity=AccountInfoDouble(ACCOUNT_EQUITY);
+      if(!GlobalVariableCheck(key)) GlobalVariableSet(key,equity);
+      double peak=GlobalVariableGet(key);
+      if(equity>peak){peak=equity;GlobalVariableSet(key,peak);}
+      double dd=peak>0.0?(peak-equity)/peak*100.0:0.0;
+      if(dd>=g_equityDrawdownPercent)
+      { g_status="حارس رأس المال: تم بلوغ حد هبوط Equity؛ الدخول متوقف"; return false; }
+   }
+   return true;
+}
+
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const double referencePrice,const double signalATR,const string reason);
 bool ClosePositionTicket(const ulong ticket,const string scope);
 
@@ -201,6 +248,11 @@ bool PollTradeSettings()
    g_entryGuardEnabled=JsonBool(response,"entry_guard_enabled");
    g_entryMaxDelayBars=(int)MathMax(1,MathMin(10,JsonDouble(response,"entry_max_delay_bars",1)));
    g_entryMaxDeviationATR=MathMax(0.05,MathMin(20.0,JsonDouble(response,"entry_max_deviation_atr",0.5)));
+   g_capitalGuardEnabled=JsonBool(response,"enabled");
+   g_dailyLossLimit=MathMax(0.0,JsonDouble(response,"daily_loss_limit",0.0));
+   g_equityDrawdownPercent=MathMax(0.0,MathMin(100.0,JsonDouble(response,"equity_drawdown_percent",0.0)));
+   g_spreadGuardEnabled=JsonBool(response,"spread_guard_enabled");
+   g_maxSpreadPoints=MathMax(0.0,JsonDouble(response,"max_spread_points",0.0));
    return true;
 }
 bool PollCentralDecision()
@@ -300,6 +352,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
 {
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       confidence<0.45 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
+   if(!CapitalGuardAllowsEntry()) return;
    if(!IsAccountDirectionAllowed(direction))
    { g_status="قفل الاتجاه الواحد: توجد صفقات في الاتجاه المعاكس"; return; }
    datetime currentBar=iTime(_Symbol,(ENUM_TIMEFRAMES)_Period,0);
@@ -388,6 +441,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
 }
 void ManagePositionAddons()
 {
+   if(!CapitalGuardAllowsEntry()) return;
    if(!g_serverTradingEnabled || !InpEnableCentralTrading ||
       (!g_addonEnabled && !g_coolingEnabled) || g_atrHandle==INVALID_HANDLE) return;
    double atr[]; ArraySetAsSeries(atr,true);
@@ -974,6 +1028,15 @@ void OnTimer()
    {
       PollTradeSettings();
       g_lastSettingsPollMs=now;
+   }
+   if(g_capitalGuardEnabled && g_equityDrawdownPercent>0.0)
+   {
+      MqlDateTime peakDay; TimeToStruct(TimeCurrent(),peakDay);
+      string peakKey="AZCG_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+
+                     IntegerToString(peakDay.year)+IntegerToString(peakDay.mon)+IntegerToString(peakDay.day);
+      double currentEquity=AccountInfoDouble(ACCOUNT_EQUITY);
+      if(!GlobalVariableCheck(peakKey)) GlobalVariableSet(peakKey,currentEquity);
+      else if(currentEquity>GlobalVariableGet(peakKey)) GlobalVariableSet(peakKey,currentEquity);
    }
    if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
    {
