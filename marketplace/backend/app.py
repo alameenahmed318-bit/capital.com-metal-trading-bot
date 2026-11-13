@@ -887,7 +887,7 @@ class Handler(SimpleHTTPRequestHandler):
                     for deal in closed_deals:
                         pid=str(deal.get("position_id") or deal.get("ticket") or "")
                         comment=str(deal.get("comment") or "")
-                        match=re.search(r"ALZOOL-S(\\d+)",comment.upper())
+                        match=re.search(r"ALZOOL-S(\d+)",comment.upper())
                         if pid and match and 1<=int(match.group(1))<=200:
                             strategy_by_position[pid]=int(match.group(1))
                         deal_id=str(deal.get("ticket") or "")
