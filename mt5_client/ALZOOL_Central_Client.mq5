@@ -44,6 +44,8 @@ string g_serverStopLossMode="ATR";
 double g_serverStopLossValue=1.8;
 string g_pmMode="AI";
 bool g_addonEnabled=false,g_coolingEnabled=false;
+bool g_aiLotMultiplierEnabled=false;
+double g_aiLotMultiplier=1.50;
 int g_addonMax=0,g_coolingMax=0;
 double g_addonManualLot=0.01,g_coolingManualLot=0.01;
 double g_addonManualDistance=0.0,g_coolingManualDistance=0.0;
@@ -127,7 +129,7 @@ double JsonDouble(const string json,const string key,double fallback)
 }
 bool PollTradeSettings()
 {
-   g_serverTradingEnabled=false;
+   // Keep the last valid server settings during transient network failures.
    if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
    char data[],result[];
    ArrayResize(data,0);
@@ -135,10 +137,15 @@ bool PollTradeSettings()
    string response_headers;
    ResetLastError();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
-                       headers,8000,data,result,response_headers);
+                       headers,1200,data,result,response_headers);
    if(code!=200)
    {
-      Print("AL-ZOOL trade settings poll failed: HTTP=",code," err=",GetLastError());
+      int requestError=GetLastError();
+      string errorBody=CharArrayToString(result,0,-1,CP_UTF8);
+      Print("AL-ZOOL trade settings poll failed: HTTP=",code," err=",requestError,
+            " headers=",StringSubstr(response_headers,0,350),
+            " body=",StringSubstr(errorBody,0,350),
+            " (last valid settings retained)");
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
@@ -167,6 +174,9 @@ bool PollTradeSettings()
    g_coolingManualLot=JsonDouble(response,"cooling_lot",0.01);
    g_addonManualDistance=JsonDouble(response,"addon_distance_points",0);
    g_coolingManualDistance=JsonDouble(response,"cooling_distance_points",0);
+   g_aiLotMultiplierEnabled=JsonBool(response,"ai_lot_multiplier_enabled");
+   g_aiLotMultiplier=JsonDouble(response,"ai_lot_multiplier",1.50);
+   g_aiLotMultiplier=MathMax(1.0,MathMin(5.0,g_aiLotMultiplier));
    return true;
 }
 bool PollCentralDecision()
@@ -388,13 +398,16 @@ void ManagePositionAddons()
          {
             // Linear AI add-on sizing: 0.01, 0.02, 0.03, 0.04 ... per direction.
             int nextAddon=(side==POSITION_TYPE_BUY?buyAddonCount:sellAddonCount)+1;
-            lots=NormalizeTradeLots(0.01*nextAddon);
+            double addonFactor=(g_aiLotMultiplierEnabled?MathPow(g_aiLotMultiplier,nextAddon):1.0);
+            lots=NormalizeTradeLots(baseLot*addonFactor);
          }
          else
          {
             double volatilityRatio=atr[0]/MathMax(1.0,(tick.bid+tick.ask)*0.5);
             double factor=(volatilityRatio>0.001?0.40:(volatilityRatio>0.0005?0.55:0.70));
-            lots=NormalizeTradeLots(baseLot*factor);
+            int nextCooling=coolingCount+1;
+            double coolingFactor=(g_aiLotMultiplierEnabled?MathPow(g_aiLotMultiplier,nextCooling):1.0);
+            lots=NormalizeTradeLots(baseLot*factor*coolingFactor);
          }
       }
    }
@@ -817,11 +830,7 @@ void OnTimer()
    ManageEntryTrailing();
    ManagePositionAddons();
    ulong now=GetTickCount64();
-   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=5000)
-   {
-      PollTradeSettings();
-      g_lastSettingsPollMs=now;
-   }
+   // Fetch the central decision and push live telemetry before the slower settings poll.
    if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
    {
       PollCentralDecision();
@@ -837,6 +846,13 @@ void OnTimer()
    {
       g_lastHistoryAttempt=TimeCurrent();
       SendHistoricalBatch();
+   }
+   // Settings polling is isolated at the end with a 1.2s timeout.
+   // A failed poll never blocks telemetry first or clears the last valid settings.
+   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=5000)
+   {
+      PollTradeSettings();
+      g_lastSettingsPollMs=now;
    }
    Comment("AL-ZOOL MT5 LIVE CLIENT\n",g_status,
            "\nCentral AI: ",g_aiSignal," (",DoubleToString(g_aiConfidence*100.0,1),"%)",
