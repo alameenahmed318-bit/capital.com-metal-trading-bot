@@ -374,13 +374,22 @@ class Handler(SimpleHTTPRequestHandler):
                 model_updates_today=0
                 model_weights=[]
                 try:
-                    events=sb("GET","/rest/v1/alzool_engine_live_learning_events?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                        "&processed_at=gte."+urllib.parse.quote(utc_midnight.isoformat(),safe="")+
-                        "&select=deal_id&limit=2000",admin=True)
-                    model_updates_today=len(events) if isinstance(events,list) else 0
-                    model_weights=sb("GET","/rest/v1/alzool_engine_live_model_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                        "&select=strategy_id,weight,sample_count,wins,losses,total_net,last_updated&order=strategy_id.asc&limit=200",admin=True)
+                    outcomes=sb("GET","/rest/v1/alzool_engine_outcomes?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        "&created_at=gte."+urllib.parse.quote(cutoff,safe="")+
+                        "&select=deal_id,strategy_id,pnl,created_at&order=created_at.desc&limit=2000",admin=True)
+                    outcomes=outcomes if isinstance(outcomes,list) else []
+                    model_updates_today=sum(1 for x in outcomes
+                        if str(x.get("created_at") or "")>=utc_midnight.isoformat() and finite_number(x.get("pnl"))!=0)
+                    model_weights=sb("GET","/rest/v1/alzool_engine_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        "&select=strategy_id,weight&order=strategy_id.asc&limit=200",admin=True)
                     if not isinstance(model_weights,list): model_weights=[]
+                    samples_by_strategy={}
+                    for outcome in outcomes:
+                        sid=int(finite_number(outcome.get("strategy_id")))
+                        if not 1<=sid<=200: continue
+                        stat=samples_by_strategy.setdefault(sid,{"sample_count":0,"wins":0,"losses":0,"total_net":0.0})
+                        pnl=finite_number(outcome.get("pnl")); stat["sample_count"]+=1
+                        stat["wins"]+=int(pnl>0); stat["losses"]+=int(pnl<0); stat["total_net"]+=pnl
                 except Exception as model_error:
                     print("LIVE_LEARNING_READ_WARNING:",str(model_error)[:180],flush=True)
                 for trade in linked:
@@ -405,10 +414,12 @@ class Handler(SimpleHTTPRequestHandler):
                     "daily_losses":sum(1 for x in daily if x["net"]<0),
                     "model_updates":model_updates_today,
                     "model_weights":[{"strategy_id":int(x.get("strategy_id",0)),"weight":round(finite_number(x.get("weight"),1.0),4),
-                        "sample_count":int(finite_number(x.get("sample_count"))),"wins":int(finite_number(x.get("wins"))),
-                        "losses":int(finite_number(x.get("losses"))),"total_net":round(finite_number(x.get("total_net")),2),
-                        "last_updated":x.get("last_updated")} for x in model_weights],
-                    "model_sample_count":sum(int(finite_number(x.get("sample_count"))) for x in model_weights),
+                        "sample_count":int(samples_by_strategy.get(int(x.get("strategy_id",0)),{}).get("sample_count",0)),
+                        "wins":int(samples_by_strategy.get(int(x.get("strategy_id",0)),{}).get("wins",0)),
+                        "losses":int(samples_by_strategy.get(int(x.get("strategy_id",0)),{}).get("losses",0)),
+                        "total_net":round(finite_number(samples_by_strategy.get(int(x.get("strategy_id",0)),{}).get("total_net")),2)}
+                        for x in model_weights],
+                    "model_sample_count":sum(x["sample_count"] for x in samples_by_strategy.values()),
                     "strategies":sorted(strategy_map.values(),key=lambda x:x["net"],reverse=True),
                     "trades":sorted(daily,key=lambda x:x["time"],reverse=True)[:50],
                     "history_rows":len(rows) if isinstance(rows,list) else 0,
@@ -909,10 +920,10 @@ class Handler(SimpleHTTPRequestHandler):
                         net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
                              finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
                         try:
-                            sb("POST","/rest/v1/rpc/alzool_apply_live_learning",{
+                            sb("POST","/rest/v1/rpc/alzool_record_learning_outcome",{
                                 "p_client_id":client_id,"p_deal_id":deal_id,
-                                "p_strategy_id":strategy_id,"p_symbol":str(deal.get("symbol") or "XAUUSD"),
-                                "p_net":net},admin=True)
+                                "p_strategy_id":strategy_id,"p_pnl":net,
+                                "p_learning_enabled":True,"p_learning_rate":0.02},admin=True)
                         except Exception as learning_error:
                             print("LIVE_LEARNING_UPDATE_WARNING:",str(learning_error)[:180],flush=True)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
@@ -932,10 +943,16 @@ class Handler(SimpleHTTPRequestHandler):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
-                            live_weight_rows=sb("GET","/rest/v1/alzool_engine_live_model_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                                "&select=strategy_id,weight,sample_count&limit=200",admin=True)
+                            live_weight_rows=sb("GET","/rest/v1/alzool_engine_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                                "&select=strategy_id,weight&limit=200",admin=True)
+                            live_sample_rows=sb("GET","/rest/v1/alzool_engine_outcomes?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                                "&select=strategy_id&limit=2000",admin=True)
+                            sample_counts={}
+                            for sample in live_sample_rows if isinstance(live_sample_rows,list) else []:
+                                sid=int(finite_number(sample.get("strategy_id")))
+                                sample_counts[sid]=sample_counts.get(sid,0)+1
                             live_weights={str(int(x["strategy_id"])):finite_number(x.get("weight"),1.0)
-                                for x in live_weight_rows if int(finite_number(x.get("sample_count")))>=5}
+                                for x in live_weight_rows if sample_counts.get(int(x["strategy_id"]),0)>=5}
                             evaluated=evaluate_market(list(reversed(candles)),weights=live_weights,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
