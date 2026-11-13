@@ -993,6 +993,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "reason_ar":evaluated["reason_ar"],
                                 "confidence":evaluated["confidence"],
                                 "context":evaluated["context"],
+                                "mtf_bias":evaluated.get("mtf_bias",{}),
                                 "adaptive":evaluated["adaptive"],
                                 "council":evaluated["council"],
                                 "vote_summary":evaluated["vote_summary"],
