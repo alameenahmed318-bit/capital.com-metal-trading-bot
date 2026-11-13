@@ -718,6 +718,11 @@ bool SendLiveSnapshot()
          if(entry_kind!=DEAL_ENTRY_IN && entry_kind!=DEAL_ENTRY_INOUT) continue;
          long position_id=HistoryDealGetInteger(entry_ticket,DEAL_POSITION_ID);
          string entry_comment=HistoryDealGetString(entry_ticket,DEAL_COMMENT);
+         if(StringLen(entry_comment)==0)
+         {
+            ulong entry_order=(ulong)HistoryDealGetInteger(entry_ticket,DEAL_ORDER);
+            if(entry_order>0) entry_comment=HistoryOrderGetString(entry_order,ORDER_COMMENT);
+         }
          int strategy_id=StrategyIdFromComment(entry_comment);
          if(position_id<=0 || strategy_id<1) continue;
          int found=-1;
