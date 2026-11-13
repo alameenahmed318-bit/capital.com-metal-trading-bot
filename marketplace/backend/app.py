@@ -133,8 +133,11 @@ def _fetch_trade_settings(client_id):
         "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
         "cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
     pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
-    pm.setdefault("recovery_enabled",False)
+    pm.setdefault("recovery_enabled",True)
     pm.setdefault("recovery_loss_trigger",0.0)
+    # Migrate the legacy implicit OFF default once; retain explicit user choices.
+    if pm.get("recovery_user_configured") is not True and finite_number(pm.get("recovery_loss_trigger"),0.0)<=0.0:
+        pm["recovery_enabled"]=True
     pm.setdefault("entry_guard_enabled",True)
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
@@ -367,8 +370,11 @@ class Handler(SimpleHTTPRequestHandler):
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
                     "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
                 pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
-                pm.setdefault("recovery_enabled",False)
+                pm.setdefault("recovery_enabled",True)
                 pm.setdefault("recovery_loss_trigger",0.0)
+                # Migrate the legacy implicit OFF default once; retain explicit user choices.
+                if pm.get("recovery_user_configured") is not True and finite_number(pm.get("recovery_loss_trigger"),0.0)<=0.0:
+                    pm["recovery_enabled"]=True
                 pm.setdefault("entry_guard_enabled",True)
                 pm.setdefault("entry_max_delay_bars",1)
                 pm.setdefault("entry_max_deviation_atr",0.5)
@@ -842,14 +848,13 @@ class Handler(SimpleHTTPRequestHandler):
                 clean_pm["entry_guard_enabled"]=entry_guard_enabled
                 clean_pm["entry_max_delay_bars"]=entry_max_delay_bars
                 clean_pm["entry_max_deviation_atr"]=entry_max_deviation_atr
-                recovery_enabled=pm.get("recovery_enabled",prior_pm.get("recovery_enabled",False)) is True
+                recovery_enabled=pm.get("recovery_enabled",prior_pm.get("recovery_enabled",True)) is True
                 recovery_loss_trigger=finite_number(pm.get("recovery_loss_trigger",prior_pm.get("recovery_loss_trigger",0.0)),0.0)
                 if not math.isfinite(recovery_loss_trigger) or recovery_loss_trigger<0 or recovery_loss_trigger>100000000:
                     return self.send_json(400,{"error":"حد تفعيل التعافي يجب أن يكون صفرًا أو مبلغًا موجبًا بعملة الحساب"})
-                if recovery_enabled and recovery_loss_trigger<=0:
-                    return self.send_json(400,{"error":"أدخل حد خسارة موجبًا قبل تشغيل التعافي الذكي"})
                 clean_pm["recovery_enabled"]=recovery_enabled
                 clean_pm["recovery_loss_trigger"]=recovery_loss_trigger
+                clean_pm["recovery_user_configured"]=pm.get("recovery_user_configured",prior_pm.get("recovery_user_configured",False)) is True
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
                     maximum=int(finite_number(pm.get(prefix+"_max",prior_pm.get(prefix+"_max",0)),-1))
