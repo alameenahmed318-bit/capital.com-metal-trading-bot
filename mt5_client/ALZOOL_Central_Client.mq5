@@ -731,14 +731,14 @@ bool EvaluateSmartRecovery()
    }
    if(MathAbs(tick.bid-g_recoveryReferencePrice)<_Point*0.1) return true;
    ENUM_ORDER_TYPE orderType=(tick.bid>g_recoveryReferencePrice?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
-   double rawLots=totalLots*2.0;
+   double rawLots=totalLots*3.0;
    double minLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
    double maxLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
    double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
    if(step<=0.0 || rawLots<minLot-1e-8 || rawLots>maxLot+1e-8 ||
       MathAbs(rawLots/step-MathRound(rawLots/step))>1e-7)
    {
-      Print("AL-ZOOL SMART RECOVERY blocked: exact x2 lot ",DoubleToString(rawLots,8),
+      Print("AL-ZOOL SMART RECOVERY blocked: exact x3 lot ",DoubleToString(rawLots,8),
             " is outside broker min/max/step. No automatic lot reduction.");
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
@@ -748,7 +748,7 @@ bool EvaluateSmartRecovery()
    if(!OrderCalcMargin(orderType,_Symbol,rawLots,price,margin) ||
       margin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
    {
-      Print("AL-ZOOL SMART RECOVERY blocked: insufficient free margin for exact x2 lot ",
+      Print("AL-ZOOL SMART RECOVERY blocked: insufficient free margin for exact x3 lot ",
             DoubleToString(rawLots,2),".");
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
@@ -768,7 +768,7 @@ bool EvaluateSmartRecovery()
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableDel(g_recoveryPriceKey);
       g_recoveryReferencePrice=0.0;
       Print("AL-ZOOL SMART RECOVERY opened ",(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),
-            " exact x2 lot=",DoubleToString(rawLots,2),
+            " exact x3 lot=",DoubleToString(rawLots,2),
             " account positions=",totalPositions," group net=",DoubleToString(groupNet,2));
    }
    else
