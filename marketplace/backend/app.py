@@ -846,7 +846,7 @@ class Handler(SimpleHTTPRequestHandler):
                 recovery_loss_trigger=finite_number(pm.get("recovery_loss_trigger",prior_pm.get("recovery_loss_trigger",0.0)),0.0)
                 if not math.isfinite(recovery_loss_trigger) or recovery_loss_trigger<0 or recovery_loss_trigger>100000000:
                     return self.send_json(400,{"error":"حد تفعيل التعافي يجب أن يكون صفرًا أو مبلغًا موجبًا بعملة الحساب"})
-                                clean_pm["recovery_enabled"]=recovery_enabled
+                clean_pm["recovery_enabled"]=recovery_enabled
                 clean_pm["recovery_loss_trigger"]=recovery_loss_trigger
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
