@@ -499,9 +499,11 @@ class Handler(SimpleHTTPRequestHandler):
             signal=str(decision.get("decision","WAIT"))
             strategy_id=int(finite_number(decision.get("strategy_id",0)))
             control_settings=get_trade_settings(client_id)
-            if control_settings is None: control_settings={}
+            if control_settings is None:
+                control_settings=item.get("trade_settings_cache") or {}
+            else:
+                item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
-            item["trade_settings_cache"]=control_settings
             ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
                    1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
             bar_time=int(finite_number(decision.get("bar_time",0)))
