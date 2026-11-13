@@ -333,6 +333,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(200,{"connected":False,"source":"MT5","total_positions":0,
                         "linked_positions":0,"unlinked_positions":0,"link_rate":None,"daily_net":0.0,
                         "daily_wins":0,"daily_losses":0,"daily_samples":0,"model_updates":0,
+                        "model_weights":[],"model_sample_count":0,
                         "strategies":[],"trades":[],"history_rows":0,"history_capped":False,
                         "message":"لا يوجد حساب MT5 مرتبط بهذا المستخدم"})
                 now_utc=datetime.now(timezone.utc)
@@ -370,6 +371,18 @@ class Handler(SimpleHTTPRequestHandler):
                 linked=[x for x in positions if x["strategy_id"] is not None]
                 daily_linked=[x for x in daily if x["strategy_id"] is not None]
                 strategy_map={}
+                model_updates_today=0
+                model_weights=[]
+                try:
+                    events=sb("GET","/rest/v1/alzool_engine_live_learning_events?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        "&processed_at=gte."+urllib.parse.quote(utc_midnight.isoformat(),safe="")+
+                        "&select=deal_id&limit=2000",admin=True)
+                    model_updates_today=len(events) if isinstance(events,list) else 0
+                    model_weights=sb("GET","/rest/v1/alzool_engine_live_model_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        "&select=strategy_id,weight,sample_count,wins,losses,total_net,last_updated&order=strategy_id.asc&limit=200",admin=True)
+                    if not isinstance(model_weights,list): model_weights=[]
+                except Exception as model_error:
+                    print("LIVE_LEARNING_READ_WARNING:",str(model_error)[:180],flush=True)
                 for trade in linked:
                     sid=trade["strategy_id"]
                     stat=strategy_map.setdefault(sid,{"strategy_id":sid,"positions":0,"wins":0,"losses":0,"net":0.0})
@@ -390,12 +403,17 @@ class Handler(SimpleHTTPRequestHandler):
                     "daily_net":round(daily_net,2),
                     "daily_wins":sum(1 for x in daily if x["net"]>0),
                     "daily_losses":sum(1 for x in daily if x["net"]<0),
-                    "model_updates":0,
+                    "model_updates":model_updates_today,
+                    "model_weights":[{"strategy_id":int(x.get("strategy_id",0)),"weight":round(finite_number(x.get("weight"),1.0),4),
+                        "sample_count":int(finite_number(x.get("sample_count"))),"wins":int(finite_number(x.get("wins"))),
+                        "losses":int(finite_number(x.get("losses"))),"total_net":round(finite_number(x.get("total_net")),2),
+                        "last_updated":x.get("last_updated")} for x in model_weights],
+                    "model_sample_count":sum(int(finite_number(x.get("sample_count"))) for x in model_weights),
                     "strategies":sorted(strategy_map.values(),key=lambda x:x["net"],reverse=True),
                     "trades":sorted(daily,key=lambda x:x["time"],reverse=True)[:50],
                     "history_rows":len(rows) if isinstance(rows,list) else 0,
                     "history_capped":bool(isinstance(rows,list) and len(rows)>=2000),
-                    "message":"تحليل نتائج الصفقات المباشرة المغلقة؛ لا يتم تعديل أوزان الاستراتيجيات الحية تلقائياً حالياً"})
+                    "message":"تُحدّث أوزان الاستراتيجيات من نتائج الصفقات المغلقة المرتبطة، وتدخل الأوزان حيز التأثير بعد 5 عينات لكل استراتيجية"})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/backtest/learning":
@@ -862,19 +880,41 @@ class Handler(SimpleHTTPRequestHandler):
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
                 closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","time"),400)
-                # Persist MT5 history so closed trades survive Render restarts/deploys.
+                # Persist MT5 history and apply each linked closing deal exactly once.
                 if closed_deals:
                     persisted=[]
+                    strategy_by_position={}
                     for deal in closed_deals:
+                        pid=str(deal.get("position_id") or deal.get("ticket") or "")
+                        comment=str(deal.get("comment") or "")
+                        match=re.search(r"ALZOOL-S(\\d+)",comment.upper())
+                        if pid and match and 1<=int(match.group(1))<=200:
+                            strategy_by_position[pid]=int(match.group(1))
                         deal_id=str(deal.get("ticket") or "")
                         stamp=int(deal.get("time") or 0)
-                        if not deal_id or stamp<=0: continue
-                        persisted.append({"client_id":client_id,"deal_id":deal_id,
-                            "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
-                            "payload":deal})
+                        if deal_id and stamp>0:
+                            persisted.append({"client_id":client_id,"deal_id":deal_id,
+                                "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
+                                "payload":deal})
                     if persisted:
                         sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
                            persisted,admin=True,prefer="resolution=merge-duplicates")
+                    for deal in closed_deals:
+                        if int(finite_number(deal.get("entry"),-1)) not in (1,2,3): continue
+                        if not str(deal.get("symbol") or "").upper().startswith("XAUUSD"): continue
+                        deal_id=str(deal.get("ticket") or "")
+                        pid=str(deal.get("position_id") or deal.get("ticket") or "")
+                        strategy_id=strategy_by_position.get(pid)
+                        if not deal_id or not strategy_id: continue
+                        net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
+                             finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
+                        try:
+                            sb("POST","/rest/v1/rpc/alzool_apply_live_learning",{
+                                "p_client_id":client_id,"p_deal_id":deal_id,
+                                "p_strategy_id":strategy_id,"p_symbol":str(deal.get("symbol") or "XAUUSD"),
+                                "p_net":net},admin=True)
+                        except Exception as learning_error:
+                            print("LIVE_LEARNING_UPDATE_WARNING:",str(learning_error)[:180],flush=True)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
@@ -892,7 +932,11 @@ class Handler(SimpleHTTPRequestHandler):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
-                            evaluated=evaluate_market(list(reversed(candles)),mode="AUTO")
+                            live_weight_rows=sb("GET","/rest/v1/alzool_engine_live_model_weights?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                                "&select=strategy_id,weight,sample_count&limit=200",admin=True)
+                            live_weights={str(int(x["strategy_id"])):finite_number(x.get("weight"),1.0)
+                                for x in live_weight_rows if int(finite_number(x.get("sample_count")))>=5}
+                            evaluated=evaluate_market(list(reversed(candles)),weights=live_weights,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "strategy_id":evaluated["strategy_id"],
@@ -906,6 +950,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "combination_summary":evaluated["combination_summary"],
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
+                                "live_learning_weights":len(live_weights),
                                 "bar_time":bar_time,
                                 "generated_at":now.isoformat(),
                                 "execution_ready":False
