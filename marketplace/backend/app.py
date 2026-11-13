@@ -386,6 +386,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "unlinked_positions":len(positions)-len(linked),
                     "link_rate":round(100.0*len(linked)/len(positions),1) if positions else None,
                     "daily_positions":len(daily),"daily_samples":len(daily_linked),
+                    "daily_link_rate":round(100.0*len(daily_linked)/len(daily),1) if daily else None,
                     "daily_net":round(daily_net,2),
                     "daily_wins":sum(1 for x in daily if x["net"]>0),
                     "daily_losses":sum(1 for x in daily if x["net"]<0),
