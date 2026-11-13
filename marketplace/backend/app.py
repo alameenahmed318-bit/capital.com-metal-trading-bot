@@ -452,6 +452,27 @@ class Handler(SimpleHTTPRequestHandler):
                     exit_watch={"direction":"","count":0,"bar_time":bar_time}
                 item["ai_exit_watch"]=exit_watch
             exit_signal=exit_watch.get("direction") if ai_exit_enabled and int(exit_watch.get("count",0))>=ai_exit_bars else ""
+            # Diagnostic-only reversal assessment and bounded decision history.
+            # This is recorded once per newly closed bar and never changes exit eligibility.
+            if bar_time>int(item.get("ai_exit_log_last_bar",0)):
+                context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
+                mtf=decision.get("mtf_bias") if isinstance(decision.get("mtf_bias"),dict) else {}
+                opposite="SELL" if signal=="BUY" else "BUY" if signal=="SELL" else ""
+                opposite_quality=finite_number(context.get("sell_quality" if opposite=="SELL" else "buy_quality",0)) if opposite else 0.0
+                event={"bar_time":bar_time,"generated_at":decision.get("generated_at",""),
+                    "signal":signal,"confidence":confidence,"reason_ar":str(decision.get("reason_ar",""))[:500],
+                    "opposite_direction":opposite,"opposite_quality":round(opposite_quality,2),
+                    "regime":str(context.get("regime","غير محدد"))[:80],
+                    "trend_strength":finite_number(context.get("trend_strength")),
+                    "adx":finite_number(context.get("adx")),
+                    "buy_trap":bool(context.get("buy_trap")),"sell_trap":bool(context.get("sell_trap")),
+                    "mtf_bias":mtf,"confirm_count":int(finite_number(exit_watch.get("count",0))),
+                    "required_bars":ai_exit_bars,"exit_signal":exit_signal,
+                    "diagnostic_only":True}
+                history=item.get("ai_exit_decisions") if isinstance(item.get("ai_exit_decisions"),list) else []
+                history.append(event)
+                item["ai_exit_decisions"]=history[-100:]
+                item["ai_exit_log_last_bar"]=bar_time
             return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
                 "exit_signal":exit_signal,"exit_bar_time":int(exit_watch.get("bar_time",0)),
                 "exit_confidence":confidence if exit_signal else 0.0,
@@ -463,6 +484,34 @@ class Handler(SimpleHTTPRequestHandler):
                 "bar_time":decision.get("bar_time",0),"execution_ready":ready,"trading_enabled":trading_enabled,
                 "minimum_confidence":0.45,
                 "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
+        if path=="/api/ai-exit/monitor":
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                else:
+                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                    item=CONNECTIONS.get(client_id) if client_id else None
+                connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
+                if not connected:
+                    return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+                decision=item.get("strategy_decision") or {}
+                context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
+                signal=str(decision.get("decision","WAIT"))
+                opposite="SELL" if signal=="BUY" else "BUY" if signal=="SELL" else ""
+                quality=finite_number(context.get("sell_quality" if opposite=="SELL" else "buy_quality",0)) if opposite else 0.0
+                return self.send_json(200,{"connected":True,"symbol":item.get("symbol"),"timeframe":item.get("timeframe"),
+                    "current":{"signal":signal,"confidence":finite_number(decision.get("confidence")),
+                        "reason_ar":decision.get("reason_ar","بانتظار اكتمال التحليل"),
+                        "opposite_direction":opposite,"opposite_quality":round(quality,2),
+                        "regime":context.get("regime","غير محدد"),"trend_strength":finite_number(context.get("trend_strength")),
+                        "adx":finite_number(context.get("adx")),"buy_trap":bool(context.get("buy_trap")),
+                        "sell_trap":bool(context.get("sell_trap")),"mtf_bias":decision.get("mtf_bias",{}),
+                        "bar_time":decision.get("bar_time",0),"watch":item.get("ai_exit_watch") or {}},
+                    "events":list(reversed(item.get("ai_exit_decisions",[])))})
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path=="/api/market/context":
             try:
                 import time
