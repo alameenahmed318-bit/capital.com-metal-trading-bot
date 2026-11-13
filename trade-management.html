@@ -56,14 +56,14 @@
  <section class="card" id="smartRecovery">
   <div class="card-title"><div><span class="eyebrow">إدارة تعويض خسارة الحساب</span><h2>التعافي الذكي</h2></div><span class="read-only">تنفيذ محلي داخل MT5</span></div>
   <div class="sl-settings-panel">
-   <div class="sl-settings-head"><div><b>تشغيل التعافي الذكي</b><small>يراقب صافي جميع المراكز المفتوحة في حساب MT5، بما فيها اليدوية وبوتات أخرى</small></div><label class="switch"><input type="checkbox" id="recoveryEnabled"><span></span></label></div>
+   <div class="sl-settings-head"><div><b>تشغيل التعافي الذكي</b><small>يراقب صافي جميع المراكز المفتوحة في حساب MT5، بما فيها اليدوية وبوتات أخرى</small></div><label class="switch"><input type="checkbox" id="recoveryEnabled" checked><span></span></label></div>
    <div class="sl-settings-grid">
     <label for="recoveryLossTrigger">حد تفعيل التعافي — بعملة حساب MT5
      <input id="recoveryLossTrigger" type="text" inputmode="decimal" lang="en-US" dir="ltr" placeholder="أدخل مبلغ الخسارة">
     </label>
    </div>
-   <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">متوقف افتراضيًا. حدد حد الخسارة ثم فعّله بنفسك.</span></div>
-   <p class="section-note">عند بلوغ حد الخسارة العائمة الذي تحدده، يحسب MT5 مجموع لوتات كل المراكز المفتوحة ويفتح صفقة تعافٍ بلوت يساوي مجموعها × 2، في اتجاه حركة السعر التالية على رمز الشارت. عند وصول صافي المجموعة إلى التعادل أو الربح، يحاول إغلاق جميع المراكز المفتوحة. إذا لم يسمح الوسيط باللوت المطلوب أو لم يكفِ الهامش، لن يخفّض اللوت تلقائيًا ولن يفتح الصفقة. هذه آلية عالية المخاطر وقد تضاعف التعرض.</p>
+   <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">مفعّل افتراضيًا، لكن لن يبدأ قبل تحديد حد الخسارة وحفظه.</span></div>
+   <p class="section-note">لن يبدأ التعافي قبل إدخال حد خسارة موجب وحفظه. عند بلوغ الحد الذي تحدده، يحسب MT5 مجموع لوتات كل المراكز المفتوحة ويفتح صفقة تعافٍ بلوت يساوي مجموعها × 2، في اتجاه حركة السعر التالية على رمز الشارت. عند وصول صافي المجموعة إلى التعادل أو الربح، يحاول إغلاق جميع المراكز المفتوحة. إذا لم يسمح الوسيط باللوت المطلوب أو لم يكفِ الهامش، لن يخفّض اللوت تلقائيًا ولن يفتح الصفقة. هذه آلية عالية المخاطر وقد تضاعف التعرض.</p>
   </div>
  </section>
  <section class="card" id="positions">
