@@ -20,6 +20,9 @@ async function loadCloseSettings(){
  $("entryGuardEnabled").checked=pm.entry_guard_enabled!==false;
  $("entryMaxDelayBars").value=Number(pm.entry_max_delay_bars??1);
  $("entryMaxDeviationAtr").value=Number(pm.entry_max_deviation_atr??0.5);
+ $("recoveryEnabled").checked=!!pm.recovery_enabled;
+ $("recoveryThreshold").value=pm.recovery_loss_threshold>0?String(pm.recovery_loss_threshold):"";
+ $("recoveryMessage").textContent=pm.recovery_enabled?"التعافي مفعّل على MT5 وينتظر حد الخسارة.":"التعافي متوقف. لن يفتح صفقات قبل تفعيله.";
  $("pmMode").value=pm.mode==="MANUAL"?"MANUAL":"AI";
  $("addonEnabled").checked=!!pm.addon_enabled;
  $("addonMax").value=Number(pm.addon_max??0);
@@ -126,6 +129,37 @@ async function savePositionManagement(){
  }catch(e){$("pmMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("savePositionManagement").disabled=false;}
 }
+async function saveRecoverySettings(){
+ const threshold=Number($("recoveryThreshold").value);
+ const enabled=$("recoveryEnabled").checked;
+ if(!Number.isFinite(threshold)||threshold<=0){$("recoveryMessage").textContent="أدخل حد خسارة موجبًا قبل الحفظ.";return;}
+ $("saveRecoverySettings").disabled=true;
+ $("recoveryMessage").textContent="جارٍ حفظ إعدادات التعافي…";
+ try{
+  const current=await api("/api/trade-management/settings");
+  const s=current.settings||{};
+  const pm=s.position_management||{};
+  pm.recovery_enabled=enabled;
+  pm.recovery_loss_threshold=threshold;
+  await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+   single_enabled:!!s.single_enabled,single_profit_target:Number(s.single_profit_target??1),
+   group_enabled:!!s.group_enabled,group_profit_target:Number(s.group_profit_target??5),
+   position_management:pm
+  })});
+  $("recoveryMessage").textContent=enabled
+   ?"تم الحفظ والتفعيل. سيستلم MT5 الإعدادات خلال دورة التحديث التالية."
+   :"تم الحفظ. التعافي متوقف ولن يفتح صفقات جديدة.";
+ }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
+ finally{$("saveRecoverySettings").disabled=false;}
+}
+function updateRecoveryPreview(positions,currency){
+ const rows=Array.isArray(positions)?positions:[];
+ const floating=rows.reduce((sum,p)=>sum+Number(p.profit||0)+Number(p.swap||0),0);
+ const lots=rows.reduce((sum,p)=>sum+Number(p.volume||0),0);
+ $("recoveryFloating").textContent=money(floating,currency);
+ $("recoveryLots").textContent=fmt(lots,3);
+ $("recoveryLot").textContent=fmt(lots*2,3);
+}
 function pnlClass(v){const n=Number(v);return !Number.isFinite(n)||n===0?"pnl-neutral":n>0?"pnl-positive":"pnl-negative";}
 function money(v,c){return v==null?"—":fmt(v)+" "+esc(c||"");}
 function setPnl(el,v,c){el.textContent=money(v,c);el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");el.classList.add(pnlClass(v));}
@@ -162,6 +196,7 @@ async function refresh(){
   $("balanceMeta").textContent="الرصيد: "+money(s.balance,currency);
   $("floatingMeta").textContent=s.connected?"يتغير تلقائيًا مع بيانات MT5":"بانتظار اتصال MT5";
   renderPositions(Array.isArray(s.positions)?s.positions:[],currency);
+  updateRecoveryPreview(s.positions,currency);
   renderOrders(Array.isArray(s.orders)?s.orders:[],currency);
   $("lastSeen").textContent=timeText(s.last_seen);
   $("serviceState").textContent=s.connected?"بيانات MT5 مباشرة":"بانتظار اتصال MT5";
@@ -180,7 +215,7 @@ function normalizePmDigits(input){
  if(dot>=0) value=value.slice(0,dot+1)+value.slice(dot+1).replace(/\./g,"");
  if(value!==input.value) input.value=value;
 }
-["addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots"].forEach(id=>{
+["recoveryThreshold","addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots"].forEach(id=>{
  const field=$(id);
  field.setAttribute("lang","en-US");
  field.setAttribute("dir","ltr");
@@ -203,6 +238,7 @@ async function boot(){
 }
 $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
+$("saveRecoverySettings").addEventListener("click",saveRecoverySettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
 $("pmMode").addEventListener("change",updatePmModeUI);
