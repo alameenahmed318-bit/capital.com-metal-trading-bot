@@ -12,6 +12,7 @@ SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
 CONNECTIONS={}
+POSITION_STRATEGY_MAP={}
 
 def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
@@ -904,9 +905,14 @@ class Handler(SimpleHTTPRequestHandler):
                     for deal in closed_deals:
                         pid=str(deal.get("position_id") or deal.get("ticket") or "")
                         comment=str(deal.get("comment") or "")
-                        match=re.search(r"ALZOOL-S(\d+)",comment.upper())
+                        match=re.search(r"ALZOOL-S(\\d+)",comment.upper())
                         if pid and match and 1<=int(match.group(1))<=200:
-                            strategy_by_position[pid]=int(match.group(1))
+                            sid=int(match.group(1))
+                            strategy_by_position[pid]=sid
+                            POSITION_STRATEGY_MAP[(client_id,pid)]=sid
+                    # Entry tags can arrive before the matching closing deal.
+                    if len(POSITION_STRATEGY_MAP)>20000:
+                        POSITION_STRATEGY_MAP.clear()
                         deal_id=str(deal.get("ticket") or "")
                         stamp=int(deal.get("time") or 0)
                         if deal_id and stamp>0:
@@ -921,7 +927,7 @@ class Handler(SimpleHTTPRequestHandler):
                         if not str(deal.get("symbol") or "").upper().startswith("XAUUSD"): continue
                         deal_id=str(deal.get("ticket") or "")
                         pid=str(deal.get("position_id") or deal.get("ticket") or "")
-                        strategy_id=strategy_by_position.get(pid)
+                        strategy_id=strategy_by_position.get(pid) or POSITION_STRATEGY_MAP.get((client_id,pid))
                         if not deal_id or not strategy_id: continue
                         net=(finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+
                              finite_number(deal.get("swap"))+finite_number(deal.get("fee")))
