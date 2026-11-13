@@ -255,6 +255,9 @@ class Handler(SimpleHTTPRequestHandler):
             settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                                            "group_enabled":False,"group_profit_target":5,
                                            "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
+            pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+            settings["ai_exit"]=pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2})
+            CONNECTIONS.setdefault(client_id,{})["trade_settings_cache"]=settings
             settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
             return self.send_json(200,settings)
         if path=="/api/auto-trading":
@@ -285,6 +288,8 @@ class Handler(SimpleHTTPRequestHandler):
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
                     "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
+                pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+                settings["ai_exit"]=pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2})
                 return self.send_json(200,{"client_id":client_id,"settings":settings})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
@@ -426,9 +431,17 @@ class Handler(SimpleHTTPRequestHandler):
             ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
                    1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
             bar_time=int(finite_number(decision.get("bar_time",0)))
+            cached_settings=item.get("trade_settings_cache") or {}
+            ai_exit=cached_settings.get("ai_exit") if isinstance(cached_settings.get("ai_exit"),dict) else {"enabled":True,"min_confidence":0.75,"confirm_bars":2}
+            ai_exit_enabled=ai_exit.get("enabled") is True
+            ai_exit_confidence=max(0.0,min(1.0,finite_number(ai_exit.get("min_confidence",0.75),0.75)))
+            ai_exit_bars=max(1,min(10,int(finite_number(ai_exit.get("confirm_bars",2),2))))
             exit_watch=item.get("ai_exit_watch") or {"direction":"","count":0,"bar_time":0}
-            if bar_time>int(exit_watch.get("bar_time",0)):
-                if signal in ("BUY","SELL") and confidence>=0.75:
+            if not ai_exit_enabled:
+                exit_watch={"direction":"","count":0,"bar_time":bar_time}
+                item["ai_exit_watch"]=exit_watch
+            elif bar_time>int(exit_watch.get("bar_time",0)):
+                if signal in ("BUY","SELL") and confidence>=ai_exit_confidence:
                     if signal==exit_watch.get("direction"):
                         exit_watch["count"]=int(exit_watch.get("count",0))+1
                     else:
@@ -437,10 +450,12 @@ class Handler(SimpleHTTPRequestHandler):
                 else:
                     exit_watch={"direction":"","count":0,"bar_time":bar_time}
                 item["ai_exit_watch"]=exit_watch
-            exit_signal=exit_watch.get("direction") if int(exit_watch.get("count",0))>=2 else ""
+            exit_signal=exit_watch.get("direction") if ai_exit_enabled and int(exit_watch.get("count",0))>=ai_exit_bars else ""
             return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
                 "exit_signal":exit_signal,"exit_bar_time":int(exit_watch.get("bar_time",0)),
                 "exit_confidence":confidence if exit_signal else 0.0,
+                "ai_exit_enabled":ai_exit_enabled,"ai_exit_min_confidence":ai_exit_confidence,
+                "ai_exit_confirm_bars":ai_exit_bars,
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
@@ -777,6 +792,15 @@ class Handler(SimpleHTTPRequestHandler):
                 if not 0.01<=max_total_lots<=100:
                     return self.send_json(400,{"error":"سقف إجمالي اللوتات يجب أن يكون بين 0.01 و100"})
                 clean_pm["max_total_lots"]=max_total_lots
+                ai_exit=data.get("ai_exit",prior_pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2}))
+                if not isinstance(ai_exit,dict):
+                    return self.send_json(400,{"error":"إعدادات القفلة الذكية غير صالحة"})
+                ai_exit_enabled=ai_exit.get("enabled",True) is True
+                ai_exit_confidence=finite_number(ai_exit.get("min_confidence",0.75),0)
+                ai_exit_bars=int(finite_number(ai_exit.get("confirm_bars",2),0))
+                if not 0.50<=ai_exit_confidence<=0.99 or not 1<=ai_exit_bars<=10:
+                    return self.send_json(400,{"error":"تحقق من نسبة الثقة وعدد شموع التأكيد للقفلة الذكية"})
+                clean_pm["ai_exit"]={"enabled":ai_exit_enabled,"min_confidence":ai_exit_confidence,"confirm_bars":ai_exit_bars}
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
                      "group_profit_target":group_target,"stop_loss_enabled":stop_loss_enabled,
