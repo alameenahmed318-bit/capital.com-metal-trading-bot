@@ -550,7 +550,6 @@ void ManageEntryTrailing()
 void CloseReversedPositions(const string signal,const long exitBar,const double confidence)
 {
    if(exitBar<=0 || exitBar==g_lastAiExitBar || (signal!="BUY" && signal!="SELL")) return;
-   g_lastAiExitBar=exitBar;
    int closed=0;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
@@ -561,6 +560,17 @@ void CloseReversedPositions(const string signal,const long exitBar,const double 
       bool reversed=(signal=="BUY" && type==POSITION_TYPE_SELL) || (signal=="SELL" && type==POSITION_TYPE_BUY);
       if(reversed && ClosePositionTicket(ticket,"AI reversal")) closed++;
    }
+   bool remaining=false;
+   for(int j=PositionsTotal()-1;j>=0;j--)
+   {
+      ulong ticket=PositionGetTicket(j);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpTradeMagic) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if((signal=="BUY" && type==POSITION_TYPE_SELL) || (signal=="SELL" && type==POSITION_TYPE_BUY))
+      { remaining=true; break; }
+   }
+   if(!remaining) g_lastAiExitBar=exitBar;
    if(closed>0) Print("AL-ZOOL AI EXIT: closed ",closed," reversed positions after two closed bars; confidence=",DoubleToString(confidence*100.0,1),"%.");
 }
 
