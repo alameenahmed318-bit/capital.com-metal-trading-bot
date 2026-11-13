@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#11121b"><title>AL-ZOOL | إدارة التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/trade-management.css?v=8">
+<link rel="stylesheet" href="/trade-management.css?v=9">
 </head>
 <body>
 <div class="shell">
@@ -52,6 +52,18 @@
   </div>
   <div class="close-actions"><button id="saveCloseSettings" class="refresh">حفظ إعدادات الإغلاق</button><span id="closeSettingsMessage" role="status">الخياران متوقفان افتراضيًا حتى تفعّلهما بنفسك.</span></div>
   <p class="section-note">عند تفعيل الخيارين معًا، يملك هدف المجموعة أولوية إذا تحقق مع وجود صفقتين أو أكثر. تُحسب الأهداف بصافي الربح العائم (الربح + السواب) بعملة الحساب. التنفيذ يتم داخل MT5 عند وصول tick، وليس من المتصفح؛ يلزم تثبيت نسخة عميل MT5 المحدّثة وتفعيل Algo Trading. لا يوجد ضمان لسعر الإغلاق أو انعدام الانزلاق.</p>
+ </section>
+ <section class="card" id="capitalGuard">
+  <div class="card-title"><div><span class="eyebrow">إضافات مستقلة · اختيارية</span><h2>حارس رأس المال للحساب</h2></div><span class="read-only">لا يغيّر الإعدادات القديمة</span></div>
+  <div class="close-option-head"><div><b>تفعيل حارس رأس المال</b><small>يمنع فتح صفقات جديدة عند بلوغ حدودك، ولا يغلق الصفقات المفتوحة</small></div><label class="switch"><input type="checkbox" id="capitalGuardEnabled"><span></span></label></div>
+  <div class="sl-settings-grid">
+   <label for="dailyLossLimit">حد الخسارة اليومية — عملة الحساب<input id="dailyLossLimit" type="text" value="0" inputmode="decimal" lang="en-US" dir="ltr"></label>
+   <label for="equityDrawdownPercent">أقصى هبوط Equity من أعلى مستوى يومي (%)<input id="equityDrawdownPercent" type="text" value="0" inputmode="decimal" lang="en-US" dir="ltr"></label>
+   <label>حماية السبريد قبل الدخول<span class="close-option-head"><small>منع الدخول إذا تجاوز السبريد الحد</small><label class="switch"><input type="checkbox" id="spreadGuardEnabled"><span></span></label></span></label>
+   <label for="maxSpreadPoints">أقصى سبريد بالنقاط<input id="maxSpreadPoints" type="text" value="0" inputmode="decimal" lang="en-US" dir="ltr"></label>
+  </div>
+  <div class="close-actions"><button id="saveCapitalGuard" class="refresh">حفظ حارس رأس المال</button><span id="capitalGuardMessage" role="status">الإضافات الجديدة متوقفة حتى تضبطها وتفعّلها بنفسك.</span></div>
+  <p class="section-note">حد الخسارة اليومية يجمع صافي الصفقات المغلقة اليوم مع الربح/الخسارة العائمة للحساب. هبوط Equity يُقاس من أعلى Equity سجله العميل خلال اليوم ويحفظه MT5 محلياً. هذه الحماية توقف الدخول والتعزيز/التبريد فقط؛ لا تغلق المراكز الحالية. يلزم تشغيل عميل MT5 المحدّث.</p>
  </section>
  <section class="card" id="positions">
   <div class="card-title"><div><span class="eyebrow">مراكز الحساب</span><h2>الصفقات المفتوحة</h2></div><span class="count-chip" id="positionsLabel">0 صفقة</span></div>
@@ -135,6 +147,6 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=8"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=9"></script>
 <script src="/numbers-en.js?v=2"></script>
 </body></html>
