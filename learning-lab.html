@@ -25,10 +25,11 @@
 <article class="learn-stat"><small>الصفقات المغلقة اليوم</small><strong id="liveTodayCount">—</strong></article>
 <article class="learn-stat"><small>عينات مرتبطة باستراتيجية</small><strong id="liveSamples">—</strong></article>
 <article class="learn-stat"><small>صافي نتائج اليوم</small><strong id="liveNet">—</strong></article>
-<article class="learn-stat"><small>نسبة ربط الصفقات باستراتيجية</small><strong id="liveLinkRate">—</strong></article>
+<article class="learn-stat"><small>نسبة ربط صفقات اليوم باستراتيجية</small><strong id="liveLinkRate">—</strong></article>
+<article class="learn-stat"><small>تحديثات أوزان النموذج الحي اليوم</small><strong id="liveModelUpdates">—</strong></article>
 </div>
 <div class="learn-note" id="liveConnection">جارٍ التحقق من وصول بيانات MT5…</div>
-<div class="learn-note" id="liveLearningExplanation">تُحسب العينة فقط عندما يمكن ربط الصفقة المغلقة بمعرّف استراتيجية محفوظ في تعليق أمر AL-ZOOL. هذه النسبة تقيس قابلية تحليل الصفقات، ولا تعني نسبة تحسّن الذكاء الاصطناعي.</div>
+<div class="learn-note" id="liveLearningExplanation">تُحسب العينة فقط عندما يمكن ربط الصفقة المغلقة بمعرّف استراتيجية محفوظ في تعليق أمر AL-ZOOL. هذه النسبة تقيس الصفقات التي أمكن نسبها إلى استراتيجية اليوم، ولا تعني نسبة تحسّن الذكاء الاصطناعي. تحديث أوزان النموذج الحي غير مفعّل حالياً؛ القيمة صفر حتى لا ندّعي تعلّماً لم يحدث.</div>
 <div class="learn-table-wrap" id="liveStrategies"><div class="learn-note">بانتظار بيانات الصفقات المباشرة.</div></div>
 <div class="learn-table-wrap" id="liveTrades"><div class="learn-note">لا توجد صفقات مغلقة معروضة بعد.</div></div>
 </section>
@@ -73,7 +74,8 @@ function renderLiveLearning(d){
  $("liveSamples").textContent=String(d.daily_samples??0);
  $("liveNet").textContent=money(d.daily_net)+"";
  $("liveNet").className=Number(d.daily_net||0)>=0?"positive":"negative";
- $("liveLinkRate").textContent=d.link_rate===null?"—":Number(d.link_rate).toFixed(1)+"%";
+ $("liveLinkRate").textContent=d.daily_link_rate===null?"—":Number(d.daily_link_rate).toFixed(1)+"%";
+ $("liveModelUpdates").textContent=String(d.model_updates??0);
  const seen=d.last_seen?new Date(d.last_seen).toLocaleString("ar-AE"):"لا توجد نبضة حديثة";
  $("liveConnection").textContent=(d.connected?"MT5 متصل الآن":"MT5 غير متصل أو لم تصل نبضة خلال آخر 30 ثانية")+" • آخر نبضة: "+seen+" • صفقات آخر 30 يوماً: "+(d.total_positions??0)+" • مرتبطة باستراتيجية: "+(d.linked_positions??0)+" • غير معرّفة: "+(d.unlinked_positions??0);
  if(d.history_capped) $("liveLearningExplanation").textContent+=" تنبيه: وصل حد قراءة 2000 سجل خلال آخر 30 يوماً؛ الأرقام قد تكون أقل من الإجمالي.";
@@ -87,10 +89,10 @@ async function load(){
   const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الاتصال غير مكتملة");
   const client=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await client.auth.getSession();
   if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");
-  const live=await api("/api/live-learning");
-  renderLiveLearning(live);
-  const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models;
-  $("serviceState").textContent=live.connected?"MT5 متصل":"بيانات MT5 غير حديثة";$("runCount").textContent=String(d.count||0);
+  let live={connected:false};
+  try{live=await api("/api/live-learning");renderLiveLearning(live);$("serviceState").textContent=live.connected?"MT5 متصل":"بيانات MT5 غير حديثة";}
+  catch(liveError){$("liveConnection").textContent="تعذر قراءة سجل الصفقات المباشرة: "+liveError.message;$("liveModelUpdates").textContent="—";}
+  const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models;$("runCount").textContent=String(d.count||0);
   $("suppressedCount").textContent=String(p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length);
   $("runsTable").innerHTML=runs.length?"<table class='learn-table'><thead><tr><th>التاريخ</th><th>الرمز / الفريم</th><th>الشموع</th><th>نقاط التحقق</th><th>صافي الاستراتيجيات</th><th>إشارات تم كبحها</th></tr></thead><tbody>"+runs.map(r=>"<tr><td>"+new Date(r.created_at).toLocaleString("ar-AE")+"</td><td>"+esc(r.symbol)+" / "+esc(r.timeframe)+"</td><td>"+Number(r.candle_count||0)+"</td><td>"+Number(r.validation_points||0)+"</td><td class='"+(Number(r.summary?.validation_strategy_net_sum||0)>=0?"positive":"negative")+"'>"+money(r.summary?.validation_strategy_net_sum)+" "+esc(r.account_currency)+"</td><td>"+Number(r.summary?.suppressed_signals||0)+"</td></tr>").join("")+"</tbody></table>":"<div class='learn-note'>لا توجد جولات محفوظة بعد. ابدأ أول اختبار من مختبر الاختبار التاريخي.</div>";
   $("bestTable").innerHTML=modelTable(p.filter(x=>x.n>0));
