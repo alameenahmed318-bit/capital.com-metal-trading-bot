@@ -20,12 +20,17 @@ async function loadCloseSettings(){
  $("pmMode").value=pm.mode==="MANUAL"?"MANUAL":"AI";
  $("addonEnabled").checked=!!pm.addon_enabled;
  $("addonMax").value=Number(pm.addon_max??0);
+ $("addonMultiplier").value=Number(pm.addon_multiplier??1.5);
+ $("addonMaxLot").value=Number(pm.addon_max_lot??0.05);
  $("addonLot").value=Number(pm.addon_lot??0.01);
  $("addonDistance").value=Number(pm.addon_distance_points??100);
  $("coolingEnabled").checked=!!pm.cooling_enabled;
  $("coolingMax").value=Number(pm.cooling_max??0);
+ $("coolingMultiplier").value=Number(pm.cooling_multiplier??1.2);
+ $("coolingMaxLot").value=Number(pm.cooling_max_lot??0.05);
  $("coolingLot").value=Number(pm.cooling_lot??0.01);
  $("coolingDistance").value=Number(pm.cooling_distance_points??100);
+ $("maxTotalLots").value=Number(pm.max_total_lots??0.10);
  updatePmModeUI();
 }
 function updateStopLossHelp(){
@@ -76,14 +81,23 @@ async function savePositionManagement(){
  const mode=$("pmMode").value;
  const cfg={mode,
   addon_enabled:$("addonEnabled").checked,addon_max:Number($("addonMax").value),
+  addon_multiplier:Number($("addonMultiplier").value),addon_max_lot:Number($("addonMaxLot").value),
   addon_lot:Number($("addonLot").value),addon_distance_points:Number($("addonDistance").value),
   cooling_enabled:$("coolingEnabled").checked,cooling_max:Number($("coolingMax").value),
-  cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value)};
+  cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:Number($("coolingMaxLot").value),
+  cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value),
+  max_total_lots:Number($("maxTotalLots").value)};
  for(const key of ["addon_max","cooling_max"]){
   if(!Number.isInteger(cfg[key])||cfg[key]<0||cfg[key]>100){$("pmMessage").textContent="الحد الأقصى يجب أن يكون عدداً صحيحاً من 0 إلى 100.";return;}
  }
- for(const key of ["addon_lot","cooling_lot"]){
-  if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100){$("pmMessage").textContent="تحقق من قيم اللوت اليدوي.";return;}
+ for(const key of ["addon_lot","cooling_lot","addon_max_lot","cooling_max_lot"]){
+  if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100){$("pmMessage").textContent="تحقق من قيم اللوت والحد الأقصى لكل صفقة.";return;}
+ }
+ for(const key of ["addon_multiplier","cooling_multiplier"]){
+  if(!Number.isFinite(cfg[key])||cfg[key]<1||cfg[key]>3){$("pmMessage").textContent="المضاعف يجب أن يكون بين 1.0 و3.0.";return;}
+ }
+ if(!Number.isFinite(cfg.max_total_lots)||cfg.max_total_lots<=0||cfg.max_total_lots>100){
+  $("pmMessage").textContent="أدخل سقفاً موجباً لإجمالي اللوتات.";return;
  }
  if(mode==="MANUAL"){
   for(const key of ["addon_distance_points","cooling_distance_points"]){
@@ -158,7 +172,7 @@ function normalizePmDigits(input){
  if(dot>=0) value=value.slice(0,dot+1)+value.slice(dot+1).replace(/\./g,"");
  if(value!==input.value) input.value=value;
 }
-["addonMax","addonLot","addonDistance","coolingMax","coolingLot","coolingDistance"].forEach(id=>{
+["addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots"].forEach(id=>{
  const field=$(id);
  field.setAttribute("lang","en-US");
  field.setAttribute("dir","ltr");
