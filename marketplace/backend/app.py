@@ -135,6 +135,9 @@ def _fetch_trade_settings(client_id):
     pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
     pm.setdefault("recovery_enabled",True)
     pm.setdefault("recovery_loss_trigger",0.0)
+    # Migrate the old implicit OFF default once; preserve any later explicit user choice.
+    if pm.get("recovery_user_configured") is not True and finite_number(pm.get("recovery_loss_trigger"),0.0)<=0.0:
+        pm["recovery_enabled"]=True
     pm.setdefault("entry_guard_enabled",True)
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
@@ -369,6 +372,9 @@ class Handler(SimpleHTTPRequestHandler):
                 pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
                 pm.setdefault("recovery_enabled",True)
                 pm.setdefault("recovery_loss_trigger",0.0)
+                # Migrate the old implicit OFF default once; preserve any later explicit user choice.
+                if pm.get("recovery_user_configured") is not True and finite_number(pm.get("recovery_loss_trigger"),0.0)<=0.0:
+                    pm["recovery_enabled"]=True
                 pm.setdefault("entry_guard_enabled",True)
                 pm.setdefault("entry_max_delay_bars",1)
                 pm.setdefault("entry_max_deviation_atr",0.5)
@@ -848,6 +854,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"حد تفعيل التعافي يجب أن يكون صفرًا أو مبلغًا موجبًا بعملة الحساب"})
                 clean_pm["recovery_enabled"]=recovery_enabled
                 clean_pm["recovery_loss_trigger"]=recovery_loss_trigger
+                clean_pm["recovery_user_configured"]=pm.get("recovery_user_configured",prior_pm.get("recovery_user_configured",False)) is True
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
                     maximum=int(finite_number(pm.get(prefix+"_max",prior_pm.get(prefix+"_max",0)),-1))
