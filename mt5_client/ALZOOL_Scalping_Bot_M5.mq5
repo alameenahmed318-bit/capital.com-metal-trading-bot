@@ -22,6 +22,12 @@ input bool InpAllowBuy = true;
 input bool InpAllowSell = true;
 input int InpDeviationPoints = 20;
 
+input group "AL-ZOOL Live Learning Telemetry"
+input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
+input string InpClientId = "";             // Copy from AL-ZOOL account connection details
+input string InpClientToken = "";          // Private license token; do not share
+input int InpLearningStrategyId = 0;       // 1..200 only when this EA truly represents that strategy; 0 = do not attribute
+
 input group "Scalping Strategy"
 input int InpFastEMA = 9;
 input int InpSlowEMA = 21;
@@ -159,8 +165,8 @@ void EvaluateAndTrade()
    trade.SetDeviationInPoints(InpDeviationPoints);
    trade.SetTypeFillingBySymbol(symbolName);
    bool sent=false;
-   if(direction=="BUY") sent=trade.Buy(lots,symbolName,0,sl,tp,"ALZOOL-SCALPER-M5");
-   else sent=trade.Sell(lots,symbolName,0,sl,tp,"ALZOOL-SCALPER-M5");
+   if(direction=="BUY") sent=trade.Buy(lots,symbolName,0,sl,tp,DealStrategyComment());
+   else sent=trade.Sell(lots,symbolName,0,sl,tp,DealStrategyComment());
 
    if(sent && (trade.ResultRetcode()==TRADE_RETCODE_DONE ||
                trade.ResultRetcode()==TRADE_RETCODE_PLACED))
@@ -169,6 +175,145 @@ void EvaluateAndTrade()
    else
       Print("AL-ZOOL Scalper order failed | retcode=",trade.ResultRetcode(),
             " | ",trade.ResultRetcodeDescription());
+}
+
+
+string JsonEscape(string value)
+{
+   StringReplace(value,"\\","\\\\");
+   StringReplace(value,"\"","\\\"");
+   StringReplace(value,"\r","\\r");
+   StringReplace(value,"\n","\\n");
+   StringReplace(value,"\t","\\t");
+   return value;
+}
+string DealStrategyComment()
+{
+   if(InpLearningStrategyId>=1 && InpLearningStrategyId<=200)
+      return "ALZOOL-S"+IntegerToString(InpLearningStrategyId);
+   return "ALZOOL-SCALPER-M5";
+}
+string TelemetryDealRows()
+{
+   string out="[";
+   datetime from=TimeCurrent()-30*86400;
+   if(!HistorySelect(from,TimeCurrent())) return out+"]";
+   int total=HistoryDealsTotal(), start=MathMax(0,total-400);
+   bool first=true;
+   for(int i=start;i<total;i++)
+   {
+      ulong ticket=HistoryDealGetTicket(i); if(ticket==0) continue;
+      long pid=HistoryDealGetInteger(ticket,DEAL_POSITION_ID);
+      string symbol=HistoryDealGetString(ticket,DEAL_SYMBOL);
+      string comment=JsonEscape(HistoryDealGetString(ticket,DEAL_COMMENT));
+      if(!first) out+=",";
+      first=false;
+      out+="{";
+      out+="\"ticket\":\""+StringFormat("%I64u",ticket)+"\",";
+      out+="\"position_id\":\""+StringFormat("%I64d",pid)+"\",";
+      out+="\"symbol\":\""+JsonEscape(symbol)+"\",";
+      out+="\"type\":"+IntegerToString((int)HistoryDealGetInteger(ticket,DEAL_TYPE))+",";
+      out+="\"entry\":"+IntegerToString((int)HistoryDealGetInteger(ticket,DEAL_ENTRY))+",";
+      out+="\"reason\":"+IntegerToString((int)HistoryDealGetInteger(ticket,DEAL_REASON))+",";
+      out+="\"volume\":"+DoubleToString(HistoryDealGetDouble(ticket,DEAL_VOLUME),2)+",";
+      out+="\"price\":"+DoubleToString(HistoryDealGetDouble(ticket,DEAL_PRICE),_Digits)+",";
+      out+="\"profit\":"+DoubleToString(HistoryDealGetDouble(ticket,DEAL_PROFIT),2)+",";
+      out+="\"commission\":"+DoubleToString(HistoryDealGetDouble(ticket,DEAL_COMMISSION),2)+",";
+      out+="\"swap\":"+DoubleToString(HistoryDealGetDouble(ticket,DEAL_SWAP),2)+",";
+      out+="\"fee\":"+DoubleToString(HistoryDealGetDouble(ticket,DEAL_FEE),2)+",";
+      out+="\"magic\":\""+StringFormat("%I64u",(ulong)HistoryDealGetInteger(ticket,DEAL_MAGIC))+"\",";
+      out+="\"comment\":\""+comment+"\",";
+      out+="\"time\":"+IntegerToString((int)HistoryDealGetInteger(ticket,DEAL_TIME));
+      out+="}";
+   }
+   return out+"]";
+}
+string TelemetryPositions()
+{
+   string out="["; bool first=true;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i); if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(!first) out+=","; first=false;
+      out+="{";
+      out+="\"ticket\":\""+StringFormat("%I64u",ticket)+"\",";
+      out+="\"symbol\":\""+JsonEscape(PositionGetString(POSITION_SYMBOL))+"\",";
+      out+="\"type\":"+IntegerToString((int)PositionGetInteger(POSITION_TYPE))+",";
+      out+="\"volume\":"+DoubleToString(PositionGetDouble(POSITION_VOLUME),2)+",";
+      out+="\"open_price\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN),_Digits)+",";
+      out+="\"price_current\":"+DoubleToString(PositionGetDouble(POSITION_PRICE_CURRENT),_Digits)+",";
+      out+="\"sl\":"+DoubleToString(PositionGetDouble(POSITION_SL),_Digits)+",";
+      out+="\"tp\":"+DoubleToString(PositionGetDouble(POSITION_TP),_Digits)+",";
+      out+="\"profit\":"+DoubleToString(PositionGetDouble(POSITION_PROFIT),2)+",";
+      out+="\"swap\":"+DoubleToString(PositionGetDouble(POSITION_SWAP),2)+",";
+      out+="\"magic\":\""+StringFormat("%I64u",(ulong)PositionGetInteger(POSITION_MAGIC))+"\",";
+      out+="\"comment\":\""+JsonEscape(PositionGetString(POSITION_COMMENT))+"\",";
+      out+="\"time\":"+IntegerToString((int)PositionGetInteger(POSITION_TIME));
+      out+="}";
+   }
+   return out+"]";
+}
+string TelemetryCandles()
+{
+   MqlRates bars[]; ArraySetAsSeries(bars,true);
+   int copied=CopyRates(symbolName,InpTimeframe,1,120,bars);
+   string out="["; bool first=true;
+   for(int i=0;i<copied;i++)
+   {
+      if(!first) out+=","; first=false;
+      out+="{\"time\":"+IntegerToString((int)bars[i].time)+
+           ",\"open\":"+DoubleToString(bars[i].open,_Digits)+
+           ",\"high\":"+DoubleToString(bars[i].high,_Digits)+
+           ",\"low\":"+DoubleToString(bars[i].low,_Digits)+
+           ",\"close\":"+DoubleToString(bars[i].close,_Digits)+
+           ",\"tick_volume\":"+StringFormat("%I64d",bars[i].tick_volume)+"}";
+   }
+   return out+"]";
+}
+void SendLiveTelemetry()
+{
+   if(StringLen(InpClientId)<8 || StringLen(InpClientToken)<20) return;
+   MqlTick tick; if(!SymbolInfoTick(symbolName,tick)) return;
+   string timeframe=EnumToString(InpTimeframe);
+   string payload="{";
+   payload+="\"symbol\":\""+JsonEscape(symbolName)+"\",";
+   payload+="\"timeframe\":\""+timeframe+"\",";
+   payload+="\"terminal_build\":"+IntegerToString((int)TerminalInfoInteger(TERMINAL_BUILD))+",";
+   payload+="\"account\":{";
+   payload+="\"login\":\""+StringFormat("%I64d",AccountInfoInteger(ACCOUNT_LOGIN))+"\",";
+   payload+="\"server\":\""+JsonEscape(AccountInfoString(ACCOUNT_SERVER))+"\",";
+   payload+="\"company\":\""+JsonEscape(AccountInfoString(ACCOUNT_COMPANY))+"\",";
+   payload+="\"currency\":\""+JsonEscape(AccountInfoString(ACCOUNT_CURRENCY))+"\",";
+   payload+="\"leverage\":"+IntegerToString((int)AccountInfoInteger(ACCOUNT_LEVERAGE))+",";
+   payload+="\"balance\":"+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2)+",";
+   payload+="\"equity\":"+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2)+",";
+   payload+="\"margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN),2)+",";
+   payload+="\"free_margin\":"+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2)+",";
+   payload+="\"profit\":"+DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT),2)+"},";
+   payload+="\"positions\":"+TelemetryPositions()+",";
+   payload+="\"orders\":[],";
+   payload+="\"closed_deals\":"+TelemetryDealRows()+",";
+   payload+="\"closed_candles\":"+TelemetryCandles()+",";
+   datetime bar=iTime(symbolName,InpTimeframe,0);
+   payload+="\"forming_candle\":{\"time\":"+IntegerToString((int)bar)+
+            ",\"open\":"+DoubleToString(iOpen(symbolName,InpTimeframe,0),_Digits)+
+            ",\"high\":"+DoubleToString(iHigh(symbolName,InpTimeframe,0),_Digits)+
+            ",\"low\":"+DoubleToString(iLow(symbolName,InpTimeframe,0),_Digits)+
+            ",\"close\":"+DoubleToString(iClose(symbolName,InpTimeframe,0),_Digits)+
+            ",\"tick_volume\":"+StringFormat("%I64d",iVolume(symbolName,InpTimeframe,0))+"},";
+   payload+="\"tick\":{\"bid\":"+DoubleToString(tick.bid,_Digits)+
+            ",\"ask\":"+DoubleToString(tick.ask,_Digits)+
+            ",\"spread\":"+DoubleToString((tick.ask-tick.bid)/_Point,1)+"}";
+   payload+="}";
+   string url=InpServerUrl+"/v1/terminal-state/live/"+InpClientId;
+   string headers="Authorization: Bearer "+InpClientToken+"\r\nContent-Type: application/json\r\n";
+   char request[],response[]; string response_headers;
+   int n=StringToCharArray(payload,request,0,WHOLE_ARRAY,CP_UTF8);
+   if(n>0) ArrayResize(request,n-1);
+   ResetLastError();
+   int status=WebRequest("POST",url,headers,10000,request,response,response_headers);
+   if(status<0) Print("AL-ZOOL telemetry failed. Allow WebRequest URL in MT5 options. Error=",GetLastError());
+   else if(status!=200) Print("AL-ZOOL telemetry HTTP ",status," | ",CharArrayToString(response));
 }
 
 int OnInit()
@@ -189,6 +334,7 @@ int OnInit()
    trade.SetExpertMagicNumber(InpMagic);
    trade.SetDeviationInPoints(InpDeviationPoints);
    lastBar=iTime(symbolName,InpTimeframe,0);
+   EventSetTimer(10);
    Print("AL-ZOOL Independent Gold Scalper M5 initialized on ",symbolName,
          ". Signals use closed candles; SL/TP are OFF unless enabled.");
    return INIT_SUCCEEDED;
@@ -199,8 +345,14 @@ void OnTick()
    if(IsNewBar()) EvaluateAndTrade();
 }
 
+void OnTimer()
+{
+   SendLiveTelemetry();
+}
+
 void OnDeinit(const int reason)
 {
+   EventKillTimer();
    if(hFast!=INVALID_HANDLE) IndicatorRelease(hFast);
    if(hSlow!=INVALID_HANDLE) IndicatorRelease(hSlow);
    if(hRSI!=INVALID_HANDLE) IndicatorRelease(hRSI);
