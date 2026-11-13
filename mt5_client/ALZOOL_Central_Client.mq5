@@ -135,7 +135,7 @@ bool PollTradeSettings()
    // Empty GET body; this settings poll runs after live telemetry and central decisions.
    char data[],result[];
    ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\\r\\n";
+   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
    string response_headers;
    ResetLastError();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
