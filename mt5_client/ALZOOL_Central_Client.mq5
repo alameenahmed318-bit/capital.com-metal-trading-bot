@@ -7,7 +7,7 @@
 #include <Trade/Trade.mqh>
 
 CTrade g_trade;
-#property version "2.31"
+#property version "2.32"
 #property description "AL-ZOOL MT5 telemetry and local profit protection"
 
 input group "بيانات الاتصال بالخادم"
