@@ -17,6 +17,9 @@ async function loadCloseSettings(){
  $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
  updateStopLossHelp();
  const pm=s.position_management||{};
+ $("entryGuardEnabled").checked=pm.entry_guard_enabled!==false;
+ $("entryMaxDelayBars").value=Number(pm.entry_max_delay_bars??1);
+ $("entryMaxDeviationAtr").value=Number(pm.entry_max_deviation_atr??0.5);
  $("pmMode").value=pm.mode==="MANUAL"?"MANUAL":"AI";
  $("addonEnabled").checked=!!pm.addon_enabled;
  $("addonMax").value=Number(pm.addon_max??0);
@@ -80,6 +83,9 @@ function updatePmModeUI(){
 async function savePositionManagement(){
  const mode=$("pmMode").value;
  const cfg={mode,
+  entry_guard_enabled:$("entryGuardEnabled").checked,
+  entry_max_delay_bars:Number($("entryMaxDelayBars").value),
+  entry_max_deviation_atr:Number($("entryMaxDeviationAtr").value),
   addon_enabled:$("addonEnabled").checked,addon_max:Number($("addonMax").value),
   addon_multiplier:Number($("addonMultiplier").value),addon_max_lot:Number($("addonMaxLot").value),
   addon_lot:Number($("addonLot").value),addon_distance_points:Number($("addonDistance").value),
@@ -87,6 +93,8 @@ async function savePositionManagement(){
   cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:Number($("coolingMaxLot").value),
   cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value),
   max_total_lots:Number($("maxTotalLots").value)};
+ if(!Number.isInteger(cfg.entry_max_delay_bars)||cfg.entry_max_delay_bars<1||cfg.entry_max_delay_bars>10){$("pmMessage").textContent="أقصى تأخير يجب أن يكون من 1 إلى 10 شموع.";return;}
+ if(!Number.isFinite(cfg.entry_max_deviation_atr)||cfg.entry_max_deviation_atr<0.05||cfg.entry_max_deviation_atr>20){$("pmMessage").textContent="مضاعف ATR يجب أن يكون بين 0.05 و20.";return;}
  for(const key of ["addon_max","cooling_max"]){
   if(!Number.isInteger(cfg[key])||cfg[key]<0||cfg[key]>100){$("pmMessage").textContent="الحد الأقصى يجب أن يكون عدداً صحيحاً من 0 إلى 100.";return;}
  }
