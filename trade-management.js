@@ -203,7 +203,7 @@ function normalizePmDigits(input){
  if(dot>=0) value=value.slice(0,dot+1)+value.slice(dot+1).replace(/\./g,"");
  if(value!==input.value) input.value=value;
 }
-["addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots"].forEach(id=>{
+["addonMax","addonMultiplier","addonMaxLot","addonLot","addonDistance","coolingMax","coolingMultiplier","coolingMaxLot","coolingLot","coolingDistance","maxTotalLots","dailyLossLimit","equityDrawdownPercent","maxSpreadPoints"].forEach(id=>{
  const field=$(id);
  field.setAttribute("lang","en-US");
  field.setAttribute("dir","ltr");
