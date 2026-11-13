@@ -133,6 +133,10 @@ def _fetch_trade_settings(client_id):
         "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
         "cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
     pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+    pm.setdefault("entry_guard_enabled",True)
+    pm.setdefault("entry_max_delay_bars",1)
+    pm.setdefault("entry_max_deviation_atr",0.5)
+    settings["position_management"]=pm
     settings["ai_exit"]=pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2})
     settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
     return settings
@@ -362,6 +366,10 @@ class Handler(SimpleHTTPRequestHandler):
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
                     "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
                 pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+                pm.setdefault("entry_guard_enabled",True)
+                pm.setdefault("entry_max_delay_bars",1)
+                pm.setdefault("entry_max_deviation_atr",0.5)
+                settings["position_management"]=pm
                 settings["ai_exit"]=pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2})
                 return self.send_json(200,{"client_id":client_id,"settings":settings})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
@@ -556,7 +564,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
-                "bar_time":decision.get("bar_time",0),"execution_ready":ready,"trading_enabled":trading_enabled,
+                "bar_time":decision.get("bar_time",0),"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
+                "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
                 "minimum_confidence":0.45,
                 "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
         if path=="/api/ai-exit/monitor":
@@ -896,6 +905,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if mode not in ("AI","MANUAL"):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
                 clean_pm={"mode":mode}
+                entry_guard_enabled=pm.get("entry_guard_enabled",prior_pm.get("entry_guard_enabled",True)) is True
+                entry_max_delay_bars=int(finite_number(pm.get("entry_max_delay_bars",prior_pm.get("entry_max_delay_bars",1)),0))
+                entry_max_deviation_atr=finite_number(pm.get("entry_max_deviation_atr",prior_pm.get("entry_max_deviation_atr",0.5)),0)
+                if not 1<=entry_max_delay_bars<=10 or not 0.05<=entry_max_deviation_atr<=20:
+                    return self.send_json(400,{"error":"تحقق من صلاحية حد تأخير الدخول ومسافة السعر حسب ATR"})
+                clean_pm["entry_guard_enabled"]=entry_guard_enabled
+                clean_pm["entry_max_delay_bars"]=entry_max_delay_bars
+                clean_pm["entry_max_deviation_atr"]=entry_max_deviation_atr
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
                     maximum=int(finite_number(pm.get(prefix+"_max",prior_pm.get(prefix+"_max",0)),-1))
@@ -1071,6 +1088,8 @@ class Handler(SimpleHTTPRequestHandler):
                             evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],combination_weights=live_learning.get("combination_weights"),mtf_bias=mtf_bias,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
+                                "entry_reference_price":finite_number(candles[0].get("close")),
+                                "entry_atr":finite_number(evaluated.get("context",{}).get("atr",0.0)),
                                 "strategy_id":evaluated["strategy_id"],
                                 "strategy_name":evaluated["strategy_name"],
                                 "combination_id":evaluated.get("combination_id",0),
