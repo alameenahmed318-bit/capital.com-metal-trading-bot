@@ -19,7 +19,10 @@ jobs:
       - name: Check Python syntax
         run: python -m py_compile marketplace/backend/app.py
       - name: Check browser JavaScript syntax
-        run: node --check app.js
-      - name: Confirm MT5 client contains no trade API
         run: |
-          ! grep -E '#include <Trade/Trade.mqh>|CTrade[[:space:]]|OrderSend[[:space:]]*\(|PositionClose[[:space:]]*\(|PositionModify[[:space:]]*\(' mt5_client/ALZOOL_Central_Client.mq5
+          node --check app.js
+          node --check trade-management.js
+      - name: Confirm smart recovery implementation is present
+        run: |
+          grep -q 'EvaluateSmartRecovery' mt5_client/ALZOOL_Central_Client.mq5
+          grep -q 'recovery_loss_trigger' marketplace/backend/app.py
