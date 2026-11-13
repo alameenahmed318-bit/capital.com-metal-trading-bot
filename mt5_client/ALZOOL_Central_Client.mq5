@@ -366,7 +366,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
       slDist=MathMax(slDist,minDist+_Point);
    }
    double sl=0.0,tp=0.0;
-   if(g_executionBarKey!="") GlobalVariableSet(g_executionBarKey,(double)decisionBar);
+   
    g_trade.SetExpertMagicNumber(InpTradeMagic);
    g_trade.SetDeviationInPoints(InpDeviationPoints);
    g_trade.SetTypeFillingBySymbol(_Symbol);
@@ -384,6 +384,8 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    uint rc=g_trade.ResultRetcode();
    if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
    {
+       // Consume signal only after broker confirms execution/placement.
+       if(g_executionBarKey!="") GlobalVariableSet(g_executionBarKey,(double)decisionBar);
       g_status=direction+" تم فتح الصفقة | استراتيجية "+IntegerToString(strategyId);
       Print("AL-ZOOL ENTRY ",direction," strategy=",strategyId," confidence=",DoubleToString(confidence*100,1),
             "% bar=",decisionBar," reason=",reason);
