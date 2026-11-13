@@ -431,6 +431,10 @@ void ManagePositionAddons()
       }
    }
    if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
+   // Apply the configured per-order cap in both AI and manual modes.
+   double orderCap=(chosen=="ADD"?g_addonMaxLot:g_coolingMaxLot);
+   lots=NormalizeTradeLots(MathMin(lots,orderCap));
+   if(lots<=0.0 || lots>orderCap+1e-8) return;
    double currentManagedLots=0.0;
    for(int p=PositionsTotal()-1;p>=0;p--)
    {
