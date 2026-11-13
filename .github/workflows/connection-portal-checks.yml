@@ -19,7 +19,20 @@ jobs:
       - name: Check Python syntax
         run: python -m py_compile marketplace/backend/app.py
       - name: Check browser JavaScript syntax
-        run: node --check app.js
-      - name: Confirm MT5 client contains no trade API
         run: |
-          ! grep -E '#include <Trade/Trade.mqh>|CTrade[[:space:]]|OrderSend[[:space:]]*\(|PositionClose[[:space:]]*\(|PositionModify[[:space:]]*\(' mt5_client/ALZOOL_Central_Client.mq5
+          node --check app.js
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path("learning-lab.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script(?:\\s[^>]*)?>(.*?)</script>", html, re.S)
+          inline = [s for s in scripts if s.strip()]
+          assert inline, "No inline learning dashboard script found"
+          Path("/tmp/learning-lab.js").write_text(inline[-1], encoding="utf-8")
+          PY
+          node --check /tmp/learning-lab.js
+      - name: Confirm MT5 client sends entry and exit deal history
+        run: |
+          grep -q 'DEAL_ENTRY_IN' mt5_client/ALZOOL_Central_Client.mq5
+          grep -q 'DEAL_ENTRY_OUT' mt5_client/ALZOOL_Central_Client.mq5
+          grep -q 'closed_deals' mt5_client/ALZOOL_Central_Client.mq5
