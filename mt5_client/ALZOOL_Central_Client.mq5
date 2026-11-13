@@ -607,6 +607,27 @@ bool ClosePositionTicket(const ulong ticket,const string scope)
    Print("AL-ZOOL ",scope," close completed ticket ",ticket," retcode=",retcode);
    return true;
 }
+void RecoveryLog(const string eventType,const string message,const double net,const double lots,const int positions,const string direction="")
+{
+   static ulong lastThrottleMs=0;
+   ulong now=GetTickCount64();
+   if((eventType=="RECOVERY_BLOCKED" || eventType=="RECOVERY_REJECTED" || eventType=="RECOVERY_CLOSE_RETRY") && lastThrottleMs>0 && now-lastThrottleMs<30000) return;
+   if(eventType=="RECOVERY_BLOCKED" || eventType=="RECOVERY_REJECTED" || eventType=="RECOVERY_CLOSE_RETRY") lastThrottleMs=now;
+   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return;
+   string eventId="recovery-"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"-"+IntegerToString((long)now)+"-"+eventType;
+   string payload="{\"message_ar\":\""+JsonEscape(message)+"\"";
+   payload+=",\"net\":"+JNum(net,2)+",\"lots\":"+JNum(lots,3);
+   payload+=",\"positions\":"+IntegerToString(positions);
+   payload+=",\"symbol\":\""+JsonEscape(_Symbol)+"\",\"direction\":\""+JsonEscape(direction)+"\"}";
+   string body="{\"event_id\":\""+eventId+"\",\"event_type\":\""+eventType+"\",\"payload\":"+payload+"}";
+   char data[],result[];StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string responseHeaders;ResetLastError();
+   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-recovery-events/"+InpEngineId,headers,1200,data,result,responseHeaders);
+   if(code!=200) Print("AL-ZOOL recovery event upload failed: HTTP=",code," err=",GetLastError());
+}
+
 double RecoveryPositionCosts(const long positionIdentifier)
 {
    double costs=0.0;
@@ -654,6 +675,8 @@ bool RecoveryAllPositionsOnChartSymbol()
          Print("AL-ZOOL SMART RECOVERY blocked: mixed-symbol account exposure. Chart=",
                _Symbol," other position symbol=",positionSymbol,
                ". No recovery order sent; use one chart symbol per recovery cycle.");
+          static string lastBlockedSymbol="";
+          if(lastBlockedSymbol!=positionSymbol){double blockedLots=0.0;int blockedCount=0;double blockedNet=RecoveryGroupNet(blockedLots,blockedCount);RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي بأمان لوجود مراكز على رموز مختلفة.",blockedNet,blockedLots,blockedCount);lastBlockedSymbol=positionSymbol;}
          return false;
       }
    }
@@ -681,10 +704,11 @@ bool RecoveryCloseAll()
    if(PositionsTotal()==0)
    {
       Print("AL-ZOOL SMART RECOVERY: all account positions closed after group recovery.");
+       RecoveryLog("RECOVERY_CLOSED","اكتملت دورة التعافي وأُغلقت جميع المراكز.",0.0,0.0,0);
       ResetRecoveryCycle();
       return true;
    }
-   if(!allAccepted) Print("AL-ZOOL SMART RECOVERY: some positions remain open; retrying close on next tick.");
+   if(!allAccepted) { Print("AL-ZOOL SMART RECOVERY: some positions remain open; retrying close on next tick."); double retryLots=0.0; int retryCount=0; double retryNet=RecoveryGroupNet(retryLots,retryCount); RecoveryLog("RECOVERY_CLOSE_RETRY","بعض المراكز ما زالت مفتوحة؛ سيعيد MT5 محاولة الإغلاق.",retryNet,retryLots,retryCount); }
    return false;
 }
 bool EvaluateSmartRecovery()
@@ -727,6 +751,7 @@ bool EvaluateSmartRecovery()
       Print("AL-ZOOL SMART RECOVERY armed: account loss=",DoubleToString(groupNet,2),
             " trigger=-",DoubleToString(g_recoveryLossTrigger,2),
             " total lots=",DoubleToString(totalLots,2),". Waiting for next price movement.");
+       RecoveryLog("RECOVERY_ARMED","بلغ صافي الحساب حد التفعيل؛ ينتظر حركة السعر التالية.",groupNet,totalLots,totalPositions);
       return true;
    }
    if(MathAbs(tick.bid-g_recoveryReferencePrice)<_Point*0.1) return true;
@@ -740,6 +765,7 @@ bool EvaluateSmartRecovery()
    {
       Print("AL-ZOOL SMART RECOVERY blocked: exact x3 lot ",DoubleToString(rawLots,8),
             " is outside broker min/max/step. No automatic lot reduction.");
+       RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي لأن حجم ×3 لا يطابق حدود أو خطوة لوت الوسيط.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
       return true;
@@ -750,6 +776,7 @@ bool EvaluateSmartRecovery()
    {
       Print("AL-ZOOL SMART RECOVERY blocked: insufficient free margin for exact x3 lot ",
             DoubleToString(rawLots,2),".");
+       RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي لعدم كفاية الهامش الحر لحجم ×3.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
       return true;
@@ -770,10 +797,12 @@ bool EvaluateSmartRecovery()
       Print("AL-ZOOL SMART RECOVERY opened ",(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),
             " exact x3 lot=",DoubleToString(rawLots,2),
             " account positions=",totalPositions," group net=",DoubleToString(groupNet,2));
+       RecoveryLog("RECOVERY_OPENED","تم فتح صفقة التعافي بالحجم ×3.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
    }
    else
    {
       Print("AL-ZOOL SMART RECOVERY order rejected: ",g_trade.ResultRetcodeDescription());
+       RecoveryLog("RECOVERY_REJECTED","رفض الوسيط أمر التعافي: "+g_trade.ResultRetcodeDescription(),groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
    }
