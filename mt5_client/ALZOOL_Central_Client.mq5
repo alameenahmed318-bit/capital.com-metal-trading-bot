@@ -62,10 +62,13 @@ ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
 double g_aiConfidence=0.0;
 long g_aiBarTime=0;
-int g_aiStrategyId=0;
+int g_aiStrategyId=0,g_aiCombinationId=0;
+long g_lastAiExitBar=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
-void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const string reason);
+void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const string reason);
+bool ClosePositionTicket(const ulong ticket,const string scope);
+void CloseReversedPositions(const string signal,const long exitBar,const double confidence);
 
 string MtfDirection(const ENUM_TIMEFRAMES tf,const int fastHandle,const int slowHandle)
 {
@@ -218,12 +221,20 @@ bool PollCentralDecision()
    string bar_time=JsonField(response,"bar_time");
    string strategy_id=JsonField(response,"strategy_id");
    string execution_ready=JsonField(response,"execution_ready");
+   string combination_id=JsonField(response,"combination_id");
+   string exit_signal=JsonField(response,"exit_signal");
+   string exit_bar_time=JsonField(response,"exit_bar_time");
+   string exit_confidence=JsonField(response,"exit_confidence");
    StringReplace(signal,"\"","");
    StringReplace(reason,"\"","");
    if(signal!="BUY" && signal!="SELL") signal="WAIT";
    double parsed_confidence=StringToDouble(confidence);
    long parsed_bar=(long)StringToInteger(bar_time);
    int parsed_strategy=(int)StringToInteger(strategy_id);
+   int parsed_combination=(int)StringToInteger(combination_id);
+   long parsed_exit_bar=(long)StringToInteger(exit_bar_time);
+   double parsed_exit_confidence=StringToDouble(exit_confidence);
+   StringReplace(exit_signal,"\"","");
    bool ready=(StringFind(execution_ready,"true")==0);
    if(parsed_bar!=g_aiBarTime || signal!=g_aiSignal)
       Print("AL-ZOOL CENTRAL AI: ",signal," | confidence=",DoubleToString(parsed_confidence*100.0,1),
@@ -233,7 +244,10 @@ bool PollCentralDecision()
    g_aiConfidence=MathMax(0.0,MathMin(1.0,parsed_confidence));
    g_aiBarTime=parsed_bar;
    g_aiStrategyId=parsed_strategy;
-   if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,reason);
+   g_aiCombinationId=parsed_combination;
+   if((exit_signal=="BUY" || exit_signal=="SELL") && parsed_exit_confidence>=0.75 && parsed_exit_bar>0)
+      CloseReversedPositions(exit_signal,parsed_exit_bar,parsed_exit_confidence);
+   if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,reason);
    return true;
 }
 
@@ -283,7 +297,7 @@ bool IsAccountDirectionAllowed(const string direction)
    return false;
 }
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,
-                         const int strategyId,const string reason)
+                         const int strategyId,const int combinationId,const string reason)
 {
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       confidence<0.45 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
@@ -321,12 +335,12 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
    if(direction=="BUY")
    {
       if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.ask-slDist,digits);
-      sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId));
+      sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId)+"-C"+IntegerToString(combinationId));
    }
    else
    {
       if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.bid+slDist,digits);
-      sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId));
+      sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-S"+IntegerToString(strategyId)+"-C"+IntegerToString(combinationId));
    }
    uint rc=g_trade.ResultRetcode();
    if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
@@ -531,6 +545,23 @@ void ManageEntryTrailing()
       if(!g_trade.PositionModify(ticket,nextSL,tp))
          Print("AL-ZOOL trailing modify failed ticket=",ticket," retcode=",g_trade.ResultRetcode());
    }
+}
+
+void CloseReversedPositions(const string signal,const long exitBar,const double confidence)
+{
+   if(exitBar<=0 || exitBar==g_lastAiExitBar || (signal!="BUY" && signal!="SELL")) return;
+   g_lastAiExitBar=exitBar;
+   int closed=0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol || (ulong)PositionGetInteger(POSITION_MAGIC)!=InpTradeMagic) continue;
+      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      bool reversed=(signal=="BUY" && type==POSITION_TYPE_SELL) || (signal=="SELL" && type==POSITION_TYPE_BUY);
+      if(reversed && ClosePositionTicket(ticket,"AI reversal")) closed++;
+   }
+   if(closed>0) Print("AL-ZOOL AI EXIT: closed ",closed," reversed positions after two closed bars; confidence=",DoubleToString(confidence*100.0,1),"%.");
 }
 
 bool ClosePositionTicket(const ulong ticket,const string scope)
