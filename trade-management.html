@@ -113,6 +113,18 @@
   </div>
   <label for="maxTotalLots">أقصى إجمالي لوتات صفقات التعزيز والتبريد</label>
   <input id="maxTotalLots" type="text" value="0.10" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+  <div class="entry-guard-panel">
+   <div class="sl-settings-head"><div><b>حماية توقيت وسعر الدخول</b><small>منع تنفيذ الإشارات القديمة أو الدخول بعد ابتعاد السعر عن نقطة الإشارة</small></div><label class="switch"><input type="checkbox" id="entryGuardEnabled" checked><span></span></label></div>
+   <div class="entry-guard-grid">
+    <label for="entryMaxDelayBars">أقصى تأخير بعدد الشموع
+     <input id="entryMaxDelayBars" type="number" min="1" max="10" step="1" value="1" inputmode="numeric" lang="en" dir="ltr">
+    </label>
+    <label for="entryMaxDeviationAtr">أقصى ابتعاد عن سعر الإشارة (مضاعف ATR)
+     <input id="entryMaxDeviationAtr" type="number" min="0.05" max="20" step="0.05" value="0.5" inputmode="decimal" lang="en" dir="ltr">
+    </label>
+   </div>
+   <p class="section-note">يُقاس التأخير من وقت شمعة الإشارة المغلقة، ويُقاس ابتعاد السعر من إغلاق شمعة الإشارة إلى سعر التنفيذ الفعلي. إذا تجاوز أي حد، يرفض MT5 الصفقة ويسجل السبب. القيم قابلة للتعديل من هذه الصفحة فقط.</p>
+  </div>
   <div class="close-actions"><button id="savePositionManagement" class="refresh">حفظ إعدادات التعزيز والتبريد</button><span id="pmMessage" role="status">التعزيز والتبريد متوقفان حتى تفعّلهما.</span></div>
   <p class="section-note">الحد الأقصى الذي تحدده إلزامي في وضعَي AI واليدوي. لا تُفتح صفقة عكسية، ولا يُضاف أي حد خسارة عائمة خاص بهذه الصفحة. لا يعمل التنفيذ إلا عند تشغيل التداول الآلي واتصال عميل MT5 المحدّث.</p>
  </section>
