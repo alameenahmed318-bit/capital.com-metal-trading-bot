@@ -667,7 +667,7 @@ class Handler(SimpleHTTPRequestHandler):
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
                     "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED"],
-                    "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED"]
+                    "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","RECOVERY_ARMED","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY"]
                 }.get(kind)
                 query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")
                 if event_types:
@@ -769,6 +769,19 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path.startswith("/v1/terminal-recovery-events/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                event_type=str(data.get("event_type") or "")
+                allowed=("RECOVERY_ARMED","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY")
+                if event_type not in allowed: return self.send_json(400,{"error":"نوع حدث التعافي غير مسموح"})
+                event_key=str(data.get("event_id") or "").strip()
+                payload=data.get("payload") if isinstance(data.get("payload"),dict) else None
+                if not event_key or len(event_key)>160 or payload is None: return self.send_json(400,{"error":"بيانات حدث التعافي غير مكتملة"})
+                if len(json.dumps(payload,ensure_ascii=False))>40000: return self.send_json(413,{"error":"تفاصيل حدث التعافي أكبر من الحد المسموح"})
+                row={"event_id":("mt5:"+client_id+":"+event_key)[:240],"client_id":client_id,"event_type":event_type,"payload":payload}
+                sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,prefer="resolution=ignore-duplicates,return=minimal")
+                return self.send_json(200,{"saved":True,"event_type":event_type})
             if path.startswith("/v1/terminal-history/batch/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
