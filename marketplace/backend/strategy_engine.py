@@ -196,8 +196,8 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
-    weights=weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None):
+    weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
@@ -209,15 +209,16 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
         score=weight*bonus*(1+.06*aligned-.04*opposed); counts[sig]+=1
         votes.append({"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason})
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
-    byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}
+    byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}; cc_weighted={"BUY":0.0,"SELL":0.0,"WAIT":0.0}
     for combo in COMBINATIONS:
+        combo_weight=max(0.85,min(1.15,float(combination_weights.get(str(combo["id"]),1.0))))
         members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"]) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
         if active<2 or total<=0:cs,conf,why="WAIT",0.,"أقل من عضوين لديهما إشارة اتجاهية"
         else:
             win="BUY" if directional["BUY"]>directional["SELL"] else "SELL" if directional["SELL"]>directional["BUY"] else "WAIT"; conf=max(directional.values())/total
             if win=="WAIT" or conf<.55:cs,why="WAIT","تضارب الأصوات أو توافق أقل من 55%"
             else:cs,why=win,f"{sum(m['signal']==win for m in members)} من 5 أعضاء يؤيدون الاتجاه"
-        cc[cs]+=1; combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"reason":why})
+        cc[cs]+=1; cc_weighted[cs]+=combo_weight; combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"reason":why})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -225,7 +226,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
     for f,x in fs.items():
         total=x["BUY"]+x["SELL"];fv[f]="WAIT" if total<=0 or abs(x["BUY"]-x["SELL"])/total<.10 else "BUY" if x["BUY"]>x["SELL"] else "SELL"
     fb=sum(x=="BUY" for x in fv.values());fsell=sum(x=="SELL" for x in fv.values());active=fb+fsell; bshare=fb/max(1,active); sshare=fsell/max(1,active)
-    direction="BUY" if bshare>sshare else "SELL" if sshare>bshare else "WAIT"; famagree=max(bshare,sshare); dc=cc["BUY"]+cc["SELL"]; combo_share=cc[direction]/max(1,dc) if direction in ("BUY","SELL") else 0.
+    direction="BUY" if bshare>sshare else "SELL" if sshare>bshare else "WAIT"; famagree=max(bshare,sshare); dc=cc_weighted["BUY"]+cc_weighted["SELL"]; combo_share=cc_weighted[direction]/max(1e-9,dc) if direction in ("BUY","SELL") else 0.
     agreement=.85*famagree+.15*combo_share;quality=context["buy_quality"] if direction=="BUY" else context["sell_quality"] if direction=="SELL" else 0.;trap=context["buy_trap"] if direction=="BUY" else context["sell_trap"] if direction=="SELL" else False
     aligned=sum(b==direction for b in mtf_bias.values());opposed=sum(b in ("BUY","SELL") and b!=direction for b in mtf_bias.values());breadth=fb if direction=="BUY" else fsell if direction=="SELL" else 0
     if str(mode).startswith("HUNTER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.50,2,.42,42,.48,"HUNTER"
@@ -248,6 +249,9 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
             else:final="WAIT";chosen=None;reason="لا توجد استراتيجية أصلية متوافقة"
     if "chosen" not in locals():chosen=None
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
+    winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
+    winning_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
+    selected_combo_id=int(winning_combos[0]["id"]) if winning_combos else 0
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"decision":final,"strategy_id":sid,"strategy_name":name,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+    return {"decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
