@@ -1,5 +1,5 @@
 """AL-ZOOL: licensed MT5 telemetry, central strategy analysis and account controls."""
-import hashlib, hmac, json, math, os, re, secrets, urllib.parse, urllib.request, urllib.error
+import hashlib, hmac, json, math, os, re, secrets, threading, time, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -12,6 +12,12 @@ SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
 CONNECTIONS={}
+LICENSE_CACHE={}
+TRADE_SETTINGS_CACHE={}
+SETTINGS_REFRESHING=set()
+CACHE_LOCK=threading.RLock()
+LICENSE_CACHE_TTL_SECONDS=60.0
+SETTINGS_CACHE_REFRESH_SECONDS=2.0
 
 def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
@@ -90,12 +96,81 @@ def issue_license(user_id):
 
 def validate_license(client_id,token):
     if not client_id or not token: return False
+    token_hash=hashlib.sha256(token.encode()).hexdigest()
+    now=time.monotonic()
+    cached=LICENSE_CACHE.get(client_id)
+    if cached and hmac.compare_digest(cached.get("token_hash",""),token_hash):
+        if cached.get("valid_until",0)>now:
+            return bool(cached.get("valid"))
+        # Keep an already verified, unexpired licence usable during a short Supabase outage.
+        try:
+            still_valid=datetime.fromisoformat(cached.get("expires_at","").replace("Z","+00:00"))>datetime.now(timezone.utc)
+        except Exception: still_valid=False
+        if cached.get("valid") and still_valid and now-cached.get("checked_at",0)<300:
+            return True
     rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=token_hash,expires_at,revoked&limit=1",admin=True)
-    if not rows: return False
+    if not rows:
+        LICENSE_CACHE[client_id]={"token_hash":token_hash,"valid":False,"expires_at":"","checked_at":now,"valid_until":now+LICENSE_CACHE_TTL_SECONDS}
+        return False
     row=rows[0]
     try: expired=datetime.fromisoformat(row["expires_at"].replace("Z","+00:00"))<=datetime.now(timezone.utc)
-    except Exception: return False
-    return not row.get("revoked") and not expired and hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(),row["token_hash"])
+    except Exception: expired=True
+    valid=(not row.get("revoked") and not expired and hmac.compare_digest(token_hash,row.get("token_hash","")))
+    LICENSE_CACHE[client_id]={"token_hash":token_hash,"valid":valid,"expires_at":row.get("expires_at",""),
+                              "checked_at":now,"valid_until":now+LICENSE_CACHE_TTL_SECONDS}
+    return valid
+
+def _fetch_trade_settings(client_id):
+    encoded=urllib.parse.quote(client_id,safe="")
+    rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+encoded+
+            "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
+    clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+encoded+
+               "&select=trading_enabled&limit=1",admin=True)
+    settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
+        "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,"stop_loss_mode":"ATR",
+        "stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,
+        "addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,
+        "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
+        "cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
+    pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+    settings["ai_exit"]=pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2})
+    settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
+    return settings
+
+def _store_trade_settings(client_id,settings):
+    snapshot=dict(settings)
+    with CACHE_LOCK:
+        TRADE_SETTINGS_CACHE[client_id]={"settings":snapshot,"updated":time.monotonic()}
+    item=CONNECTIONS.get(client_id)
+    if item is not None:
+        item["trade_settings_cache"]=snapshot
+
+def _refresh_trade_settings_worker(client_id):
+    try:
+        _store_trade_settings(client_id,_fetch_trade_settings(client_id))
+    except Exception as e:
+        print("TRADE_SETTINGS_CACHE_REFRESH_WARNING:",str(e)[:220],flush=True)
+    finally:
+        with CACHE_LOCK: SETTINGS_REFRESHING.discard(client_id)
+
+def get_trade_settings(client_id):
+    with CACHE_LOCK:
+        cached=TRADE_SETTINGS_CACHE.get(client_id)
+        age=(time.monotonic()-cached["updated"]) if cached else None
+        if cached and age>=SETTINGS_CACHE_REFRESH_SECONDS and client_id not in SETTINGS_REFRESHING:
+            SETTINGS_REFRESHING.add(client_id)
+            threading.Thread(target=_refresh_trade_settings_worker,args=(client_id,),daemon=True).start()
+        if cached:
+            return dict(cached["settings"])
+        if client_id in SETTINGS_REFRESHING:
+            return None
+        SETTINGS_REFRESHING.add(client_id)
+    try:
+        settings=_fetch_trade_settings(client_id)
+        _store_trade_settings(client_id,settings)
+        return dict(settings)
+    finally:
+        with CACHE_LOCK: SETTINGS_REFRESHING.discard(client_id)
 
 def finite_number(value, default=0.0):
     try:
@@ -248,19 +323,16 @@ class Handler(SimpleHTTPRequestHandler):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
                 return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
-            rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
-            clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=trading_enabled&limit=1",admin=True)
-            settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
-                                           "group_enabled":False,"group_profit_target":5,
-                                           "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
-            pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
-            settings["ai_exit"]=pm.get("ai_exit",{"enabled":True,"min_confidence":0.75,"confirm_bars":2})
-            if client_id in CONNECTIONS:
-                CONNECTIONS[client_id]["trade_settings_cache"]=settings
-            settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
-            return self.send_json(200,settings)
+            try:
+                settings=get_trade_settings(client_id)
+                if settings is None:
+                    return self.send_json(503,{"error":"إعدادات التداول قيد التهيئة"})
+                return self.send_json(200,settings)
+            except Exception as e:
+                cached=TRADE_SETTINGS_CACHE.get(client_id)
+                if cached:
+                    return self.send_json(200,cached["settings"])
+                return self.send_json(503,{"error":"تعذر تحديث إعدادات التداول مؤقتاً"})
         if path=="/api/auto-trading":
             try:
                 u=current_user(token_of(self))
@@ -426,9 +498,10 @@ class Handler(SimpleHTTPRequestHandler):
             confidence=finite_number(decision.get("confidence",0.0))
             signal=str(decision.get("decision","WAIT"))
             strategy_id=int(finite_number(decision.get("strategy_id",0)))
-            clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=trading_enabled&limit=1",admin=True)
-            trading_enabled=bool(clients and clients[0].get("trading_enabled",False))
+            control_settings=get_trade_settings(client_id)
+            if control_settings is None: control_settings={}
+            trading_enabled=bool(control_settings.get("trading_enabled",False))
+            item["trade_settings_cache"]=control_settings
             ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
                    1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
             bar_time=int(finite_number(decision.get("bar_time",0)))
@@ -780,6 +853,10 @@ class Handler(SimpleHTTPRequestHandler):
                 changed=sb("PATCH","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(lic["client_id"],safe=""),
                     {"trading_enabled":enabled},admin=True,prefer="return=representation")
                 if not changed: return self.send_json(409,{"error":"تعذر حفظ حالة التداول الآلي"})
+                cached=TRADE_SETTINGS_CACHE.get(lic["client_id"])
+                if cached:
+                    updated=dict(cached["settings"]); updated["trading_enabled"]=enabled
+                    _store_trade_settings(lic["client_id"],updated)
                 return self.send_json(200,{"saved":True,"trading_enabled":enabled,"client_id":lic["client_id"],
                     "message":"تم تفعيل التداول الآلي" if enabled else "تم إيقاف فتح صفقات جديدة"})
             if path=="/api/trade-management/settings":
@@ -859,6 +936,11 @@ class Handler(SimpleHTTPRequestHandler):
                      "updated_at":datetime.now(timezone.utc).isoformat()}
                 saved=sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",row,admin=True,
                          prefer="resolution=merge-duplicates,return=representation")
+                current=TRADE_SETTINGS_CACHE.get(client_id)
+                cache_row=dict(row)
+                cache_row["ai_exit"]=clean_pm["ai_exit"]
+                cache_row["trading_enabled"]=bool(current and current["settings"].get("trading_enabled",False))
+                _store_trade_settings(client_id,cache_row)
                 return self.send_json(200,{"saved":True,"settings":saved[0] if isinstance(saved,list) and saved else row})
             if path=="/api/backtest/learning":
                 u=current_user(token)
@@ -1033,7 +1115,10 @@ class Handler(SimpleHTTPRequestHandler):
             rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(uid,safe="")+"&select=client_id",admin=True)
             if rows:
                 sb("PATCH","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(uid,safe=""),{"revoked":not active},admin=True)
-                for row in rows: CONNECTIONS.pop(row["client_id"],None)
+                for row in rows:
+                    CONNECTIONS.pop(row["client_id"],None)
+                    LICENSE_CACHE.pop(row["client_id"],None)
+                    TRADE_SETTINGS_CACHE.pop(row["client_id"],None)
             return self.send_json(200,{"ok":True,"active":active})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
@@ -1046,7 +1131,10 @@ class Handler(SimpleHTTPRequestHandler):
             target=admin_user(uid)
             if (target.get("email") or "").lower()==OWNER_EMAIL: return self.send_json(403,{"error":"لا يمكن حذف حساب المالك"})
             rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(uid,safe="")+"&select=client_id",admin=True)
-            for row in rows: CONNECTIONS.pop(row["client_id"],None)
+            for row in rows:
+                CONNECTIONS.pop(row["client_id"],None)
+                LICENSE_CACHE.pop(row["client_id"],None)
+                TRADE_SETTINGS_CACHE.pop(row["client_id"],None)
             sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),admin=True)
             return self.send_json(200,{"ok":True,"deleted":True})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
