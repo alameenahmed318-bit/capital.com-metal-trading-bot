@@ -350,19 +350,22 @@ class Handler(SimpleHTTPRequestHandler):
                     pid=str(deal.get("position_id") or deal.get("ticket") or "")
                     if not pid: continue
                     item=grouped.setdefault(pid,{"position_id":pid,"symbol":str(deal.get("symbol") or ""),
-                        "net":0.0,"time":0,"strategy_id":None,"comment":"","daily":False})
+                        "net":0.0,"time":0,"strategy_id":None,"comment":"","daily":False,"closed":False})
                     item["net"]+=finite_number(deal.get("profit"))+finite_number(deal.get("commission"))+finite_number(deal.get("swap"))+finite_number(deal.get("fee"))
                     stamp=int(finite_number(deal.get("time")))
                     item["time"]=max(item["time"],stamp)
+                    entry=int(finite_number(deal.get("entry"),-1))
+                    is_exit=entry in (1,2,3)
+                    if is_exit: item["closed"]=True
                     comment=str(deal.get("comment") or "")
                     if comment: item["comment"]=comment[:120]
-                    match=re.search(r"ALZOOL-S(\\d+)",comment.upper())
+                    match=re.search(r"ALZOOL-S(\d+)",comment.upper())
                     if match: item["strategy_id"]=int(match.group(1))
                     try:
                         deal_dt=datetime.fromisoformat(str(record.get("deal_time") or "").replace("Z","+00:00"))
-                        if deal_dt>=utc_midnight: item["daily"]=True
+                        if is_exit and deal_dt>=utc_midnight: item["daily"]=True
                     except Exception: pass
-                positions=list(grouped.values())
+                positions=[x for x in grouped.values() if x["closed"]]
                 daily=[x for x in positions if x["daily"]]
                 linked=[x for x in positions if x["strategy_id"] is not None]
                 daily_linked=[x for x in daily if x["strategy_id"] is not None]
