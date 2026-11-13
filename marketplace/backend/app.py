@@ -443,6 +443,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "exit_confidence":confidence if exit_signal else 0.0,
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
+                "combination_id":int(finite_number(decision.get("combination_id",0))),
                 "bar_time":decision.get("bar_time",0),"execution_ready":ready,"trading_enabled":trading_enabled,
                 "minimum_confidence":0.45,
                 "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
@@ -936,7 +937,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
                     "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
-                    "strategy_last_bar":strategy_last_bar,
+                    "strategy_last_bar":strategy_last_bar,"ai_exit_watch":previous.get("ai_exit_watch"),
                     "received_at":now,"last_seen":now.isoformat()}
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
