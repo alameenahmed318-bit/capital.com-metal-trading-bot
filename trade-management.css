@@ -61,3 +61,20 @@
   color: #d8d5e5;
 }
 
+
+/* Smart recovery live panel and event log */
+.recovery-monitor,.recovery-log-wrap{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:15px;margin:14px 0}
+.recovery-monitor-head,.recovery-log-head,.recovery-log-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.recovery-monitor-head b,.recovery-log-head b{font-size:12px}
+.recovery-state{font-size:10px;color:#d6c9ff;background:#30284d;border:1px solid #55447e;border-radius:30px;padding:6px 10px}
+.recovery-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:13px}
+.recovery-metrics>div{background:#151722;border:1px solid var(--line);border-radius:10px;padding:11px;min-width:0}
+.recovery-metrics small,.recovery-metrics strong{display:block}.recovery-metrics small{font-size:9px;color:var(--muted)}
+.recovery-metrics strong{font-size:16px;font-variant-numeric:tabular-nums;direction:ltr;text-align:left;margin-top:6px;overflow-wrap:anywhere}
+.recovery-loss{color:var(--loss)!important}.recovery-profit{color:var(--profit)!important}
+.recovery-live-message{font-size:11px;line-height:1.8;color:#d5c9f5;margin:12px 0 0}
+.recovery-log{display:grid;gap:8px;margin-top:12px;max-height:420px;overflow:auto}
+.recovery-log-item{border:1px solid var(--line);background:#151722;border-radius:10px;padding:11px}
+.recovery-log-top b{font-size:11px}.recovery-log-top time,.recovery-log-item small{font-size:9px;color:var(--muted);direction:ltr}
+.recovery-log-item p{font-size:11px;line-height:1.7;margin:7px 0;color:var(--ink)}.recovery-log-item small{display:block;overflow-wrap:anywhere}
+@media(max-width:700px){.recovery-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.recovery-metrics strong{font-size:14px}}
