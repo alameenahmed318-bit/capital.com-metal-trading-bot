@@ -273,7 +273,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
                          const int strategyId,const string reason)
 {
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
-      confidence<0.55 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
+      confidence<0.45 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
    if(!IsAccountDirectionAllowed(direction))
    { g_status="قفل الاتجاه الواحد: توجد صفقات في الاتجاه المعاكس"; return; }
    datetime currentBar=iTime(_Symbol,(ENUM_TIMEFRAMES)_Period,0);
