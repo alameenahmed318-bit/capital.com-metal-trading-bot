@@ -910,9 +910,6 @@ class Handler(SimpleHTTPRequestHandler):
                             sid=int(match.group(1))
                             strategy_by_position[pid]=sid
                             POSITION_STRATEGY_MAP[(client_id,pid)]=sid
-                    # Entry tags can arrive before the matching closing deal.
-                    if len(POSITION_STRATEGY_MAP)>20000:
-                        POSITION_STRATEGY_MAP.clear()
                         deal_id=str(deal.get("ticket") or "")
                         stamp=int(deal.get("time") or 0)
                         if deal_id and stamp>0:
