@@ -230,14 +230,17 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO'):
     aligned=sum(b==direction for b in mtf_bias.values());opposed=sum(b in ("BUY","SELL") and b!=direction for b in mtf_bias.values());breadth=fb if direction=="BUY" else fsell if direction=="SELL" else 0
     if str(mode).startswith("HUNTER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.50,2,.42,42,.48,"HUNTER"
     elif str(mode).startswith("SNIPER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.65,4,.58,65,.64,"SNIPER"
-    else: min_ag,min_breadth,min_combo,min_quality,min_final,policy=.50,2,.42,42,.55,"AUTO"
+    else: min_ag,min_breadth,min_combo,min_quality,min_final,policy=.42,1,.30,30,.45,"AUTO"
     if direction=="WAIT" or active<min_breadth or famagree<min_ag:final="WAIT";reason=f"{policy}: انتظار توافق العائلات؛ شراء {fb}/20، بيع {fsell}/20، التوافق {famagree:.0%} (المطلوب {min_ag:.0%})"
     elif breadth<min_breadth:final="WAIT";reason=f"{policy}: عدد العائلات المؤيدة {breadth}؛ المطلوب {min_breadth}"
     elif combo_share<min_combo:final="WAIT";reason=f"{policy}: توافق التركيبات {combo_share:.0%}؛ المطلوب {min_combo:.0%}"
     elif quality<min_quality:final="WAIT";reason=f"{policy}: جودة نقطة الدخول {quality:.0f}/100؛ المطلوب {min_quality}"
     else:
         if trap:agreement-=.03
-        if opposed>aligned and len(mtf_bias)>=3:agreement-=.04
+        if mtf_bias:
+            # MTF is a confidence input, never a mandatory gate; missing frames do not block entries.
+            mtf_balance=(aligned-opposed)/max(1,len(mtf_bias))
+            agreement=max(0.0,min(1.0,agreement+0.03*mtf_balance))
         if agreement<min_final:final="WAIT";reason=f"{policy}: الثقة بعد مراجعة ظروف السوق {agreement:.0%}؛ المطلوب {min_final:.0%}"
         else:
             pool=[x for x in candidates if x[2]==direction];pool.sort(key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),reverse=True)
