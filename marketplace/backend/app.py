@@ -749,6 +749,12 @@ class Handler(SimpleHTTPRequestHandler):
                        batch,admin=True,prefer="resolution=merge-duplicates")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
+            if path=="/api/admin/owner-connection":
+                u=owner(token)
+                credentials=issue_license(u["id"])
+                return self.send_json(200,{"engine":credentials,"engine_server_url":PUBLIC_ENGINE_URL,
+                    "server_ip":"لا يوجد IP ثابت معلن؛ استخدم رابط الخادم",
+                    "message":"تم إصدار رمز ربط جديد للمالك. الرمز السابق لم يعد صالحاً."})
             if path=="/api/auto-trading":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
