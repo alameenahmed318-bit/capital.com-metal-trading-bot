@@ -187,6 +187,12 @@ class Handler(SimpleHTTPRequestHandler):
             settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                                            "group_enabled":False,"group_profit_target":5,
                                            "stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0}}
+            # MT5 client reads flat JSON keys; flatten the nested DB object for its protocol.
+            pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+            for key in ("mode","addon_enabled","addon_max","addon_lot","addon_distance_points",
+                        "cooling_enabled","cooling_max","cooling_lot","cooling_distance_points",
+                        "ai_lot_multiplier_enabled","ai_lot_multiplier"):
+                if key in pm: settings[key]=pm[key]
             settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
             return self.send_json(200,settings)
         if path=="/api/auto-trading":
@@ -794,6 +800,12 @@ class Handler(SimpleHTTPRequestHandler):
                 if mode not in ("AI","MANUAL"):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
                 clean_pm={"mode":mode}
+                multiplier_enabled=pm.get("ai_lot_multiplier_enabled",prior_pm.get("ai_lot_multiplier_enabled",False)) is True
+                multiplier=finite_number(pm.get("ai_lot_multiplier",prior_pm.get("ai_lot_multiplier",1.5)),0)
+                if not math.isfinite(multiplier) or multiplier<1.0 or multiplier>5.0:
+                    return self.send_json(400,{"error":"مضاعف اللوت يجب أن يكون بين 1.0 و5.0"})
+                clean_pm["ai_lot_multiplier_enabled"]=multiplier_enabled
+                clean_pm["ai_lot_multiplier"]=multiplier
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
                     maximum=int(finite_number(pm.get(prefix+"_max",prior_pm.get(prefix+"_max",0)),-1))
