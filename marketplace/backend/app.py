@@ -168,6 +168,7 @@ def live_learning_profile(deals):
     wins=sum(x["wins"] for x in stats.values()); losses=sum(x["losses"] for x in stats.values())
     coverage=(matched/len(rows)*100.0) if rows else 0.0
     daily_coverage=(len(matched_today)/len(today_total)*100.0) if today_total else 0.0
+    for key,item in stats.items(): item["weight"]=round(weights[key],4)
     return {"processed_positions":matched,"closed_positions":len(rows),"unmatched_positions":max(0,len(rows)-matched),
         "wins":wins,"losses":losses,"flat":sum(x["flat"] for x in stats.values()),
         "net":sum(x["net"] for x in rows if x["strategy_id"]),
