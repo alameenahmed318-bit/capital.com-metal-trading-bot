@@ -132,8 +132,9 @@ async function savePositionManagement(){
 async function saveRecoverySettings(){
  const trigger=Number($("recoveryLossTrigger").value);
  const enabled=$("recoveryEnabled").checked;
- if(enabled&&Number.isFinite(trigger)&&trigger>100000000){
-  $("recoveryMessage").textContent="حد الخسارة أكبر من الحد المسموح.";return;
+ const triggerText=$("recoveryLossTrigger").value.trim();
+ if(triggerText!==""&&(!Number.isFinite(trigger)||trigger<0||trigger>100000000)){
+  $("recoveryMessage").textContent="أدخل مبلغ خسارة صحيحًا من صفر إلى الحد المسموح.";return;
  }
  if(!enabled&&$("recoveryLossTrigger").value.trim()!==""&&(!Number.isFinite(trigger)||trigger<0)){
   $("recoveryMessage").textContent="تحقق من مبلغ حد التفعيل.";return;
@@ -141,9 +142,9 @@ async function saveRecoverySettings(){
  $("saveRecoverySettings").disabled=true;$("recoveryMessage").textContent="جارٍ حفظ إعدادات التعافي…";
  try{
   await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-   position_management:{recovery_enabled:enabled,recovery_loss_trigger:trigger||0}
+   position_management:{recovery_enabled:enabled,recovery_loss_trigger:trigger||0,recovery_user_configured:true}
   })});
-  $("recoveryMessage").textContent=enabled?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم حفظ التعافي بوضع الإيقاف.";
+  $("recoveryMessage").textContent=enabled?(trigger>0?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم تفعيل الخيار وحفظه؛ أدخل حد الخسارة حتى يبدأ التنفيذ."):"تم حفظ التعافي بوضع الإيقاف.";
  }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveRecoverySettings").disabled=false;}
 }
