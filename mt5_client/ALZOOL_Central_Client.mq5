@@ -693,7 +693,7 @@ bool SendLiveSnapshot()
       body+=",\"closed_deals\":[";
       int deals_sent=0;
       int total_deals=HistoryDealsTotal();
-      for(int h=total_deals-1;h>=0 && deals_sent<200;h--)
+      for(int h=total_deals-1;h>=0 && deals_sent<400;h--)
       {
          ulong deal_ticket=HistoryDealGetTicket(h);
          if(deal_ticket==0) continue;
