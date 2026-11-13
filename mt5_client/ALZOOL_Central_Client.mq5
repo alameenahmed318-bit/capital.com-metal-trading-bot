@@ -189,7 +189,6 @@ bool PollTradeSettings()
    if(slValue>0.0) g_serverStopLossValue=slValue;
    g_recoveryEnabled=JsonBool(response,"recovery_enabled");
    g_recoveryLossTrigger=JsonDouble(response,"recovery_loss_trigger",0.0);
-   if(g_recoveryLossTrigger<=0.0) g_recoveryEnabled=false;
    string pmMode=JsonField(response,"mode");
    StringReplace(pmMode,CharToString(34),"");
    if(pmMode=="AI" || pmMode=="MANUAL") g_pmMode=pmMode;
