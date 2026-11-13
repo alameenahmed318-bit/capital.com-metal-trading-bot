@@ -88,6 +88,11 @@
    <select id="pmMode"><option value="AI">AI تلقائي</option><option value="MANUAL">يدوي</option></select>
    <p class="section-note" id="pmModeHelp">في وضع AI يختار المحرك توقيت الإضافة واللوت والمسافة. في الوضع اليدوي تحدد الشروط واللوت والمسافة، والتنفيذ تلقائي عند تحققها.</p>
   </div>
+  <div class="close-option" style="margin-bottom:14px">
+   <div class="close-option-head"><div><b>مضاعفات اللوت في وضع AI</b><small>خيار مستقل للتعزيز والتبريد؛ لا يؤثر على اللوت اليدوي</small></div><label class="switch"><input type="checkbox" id="aiLotMultiplierEnabled"><span></span></label></div>
+   <label for="aiLotMultiplier">معامل المضاعفة لكل إضافة</label><input id="aiLotMultiplier" type="number" min="1" max="5" step="0.1" value="1.5" lang="en" dir="ltr">
+   <p class="section-note">عند الإيقاف يستخدم AI حجم اللوت الأساسي دون تصعيد. عند التشغيل يطبق المعامل تدريجياً على كل إضافة، ضمن حدود حجم العقد المسموح لدى الوسيط.</p>
+  </div>
   <div class="close-grid pm-grid">
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
