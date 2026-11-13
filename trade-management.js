@@ -26,6 +26,8 @@ async function loadCloseSettings(){
  $("coolingMax").value=Number(pm.cooling_max??0);
  $("coolingLot").value=Number(pm.cooling_lot??0.01);
  $("coolingDistance").value=Number(pm.cooling_distance_points??100);
+ $("aiLotMultiplierEnabled").checked=pm.ai_lot_multiplier_enabled===true;
+ $("aiLotMultiplier").value=Number(pm.ai_lot_multiplier??1.5);
  updatePmModeUI();
 }
 function updateStopLossHelp(){
@@ -71,6 +73,8 @@ function updatePmModeUI(){
  $("pmModeHelp").textContent=ai
   ?"AI تلقائي: المحرك يختار توقيت الإضافة واللوت والمسافة، ويلتزم بالحد الأقصى الذي تحدده لكل قسم."
   :"يدوي: تحدد اللوت والمسافة بالنقاط والحد الأقصى لكل قسم، والتنفيذ تلقائي عند تحقق المسافة ضد الصفقة الخاسرة.";
+ $("aiLotMultiplier").disabled=!ai;
+ $("aiLotMultiplierEnabled").disabled=!ai;
 }
 async function savePositionManagement(){
  const mode=$("pmMode").value;
@@ -78,10 +82,13 @@ async function savePositionManagement(){
   addon_enabled:$("addonEnabled").checked,addon_max:Number($("addonMax").value),
   addon_lot:Number($("addonLot").value),addon_distance_points:Number($("addonDistance").value),
   cooling_enabled:$("coolingEnabled").checked,cooling_max:Number($("coolingMax").value),
-  cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value)};
+  cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value),
+  ai_lot_multiplier_enabled:$("aiLotMultiplierEnabled").checked,
+  ai_lot_multiplier:Number($("aiLotMultiplier").value)};
  for(const key of ["addon_max","cooling_max"]){
   if(!Number.isInteger(cfg[key])||cfg[key]<0||cfg[key]>100){$("pmMessage").textContent="الحد الأقصى يجب أن يكون عدداً صحيحاً من 0 إلى 100.";return;}
  }
+ if(!Number.isFinite(cfg.ai_lot_multiplier)||cfg.ai_lot_multiplier<1||cfg.ai_lot_multiplier>5){$("pmMessage").textContent="مضاعف اللوت يجب أن يكون بين 1.0 و5.0.";return;}
  for(const key of ["addon_lot","cooling_lot"]){
   if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100){$("pmMessage").textContent="تحقق من قيم اللوت اليدوي.";return;}
  }
