@@ -33,6 +33,22 @@ $("ownerPairDownload").addEventListener("click",()=>{
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
+async function refreshLearning(){
+  const target=$("learningSummary");if(!target)return;
+  try{
+    const d=await api("/api/ai/learning");
+    const lines=["حالة الذاكرة: "+(d.status||"WAIT"),
+      "الصفقات المخزنة: "+(d.memory_count??0),
+      "الصفقات المقيمة: "+(d.processed_positions??0),
+      "تغطية ربط الاستراتيجيات: "+(d.coverage_percent??0)+"%",
+      "ربح/خسارة: "+(d.wins??0)+" / "+(d.losses??0)];
+    for(const row of (d.top_strategies||[]).slice(0,5)){
+      lines.push("استراتيجية "+row.strategy_id+": "+row.trades+" صفقة | صافي "+Number(row.net||0).toFixed(2));
+    }
+    target.textContent=lines.join("\n");
+  }catch(e){target.textContent="تعذر تحميل التعلم: "+(e.message||"غير معروف")}
+}
+$("refreshLearningBtn").addEventListener("click",refreshLearning);
 async function refreshCouncil(){
   const target=$("councilSummary");if(!target)return;
   try{
