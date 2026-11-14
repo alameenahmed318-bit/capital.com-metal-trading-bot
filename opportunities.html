@@ -2,9 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#11121b"><title>AL-ZOOL | مختبر الفرص</title>
+<meta name="theme-color" content="#242238"><title>AL-ZOOL | مختبر الفرص</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/dashboard.css?v=2">
+<link rel="stylesheet" href="/ui-shell.css?v=1">
 <style>
 .op-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
 .op-stat,.op-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
@@ -17,16 +18,32 @@
 </style></head>
 <body><div class="shell">
 <aside class="sidebar">
-<a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
-<div class="side-label">القائمة الرئيسية</div>
-<a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a>
-<a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a>
-<a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a>
-<a class="nav active" href="/opportunities.html"><span>◉</span> مختبر الفرص</a>
-<a class="nav" href="/trade-history.html"><span>▤</span> سجل التداول</a>
-<a class="nav" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a>
-<a class="nav" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a>
-<div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <div class="side-label">الرئيسية</div>
+ <div class="nav-group">
+  <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
+ </div>
+ <div class="side-label">مركز الذكاء الاصطناعي</div>
+ <div class="nav-group">
+  <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
+ </div>
+ <div class="side-label">السوق والاستراتيجيات</div>
+ <div class="nav-group">
+  <a class="nav active" href="/opportunities.html" aria-current="page"><span>◉</span><span class="nav-label">مختبر الفرص</span></a>
+  <a class="nav " href="/backtest-lab.html" ><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
+ </div>
+ <div class="side-label">إدارة الصفقات والأداء</div>
+ <div class="nav-group">
+  <a class="nav " href="/trade-management.html" ><span>⇄</span><span class="nav-label">إدارة التداول والحماية</span></a>
+  <a class="nav " href="/trade-history.html" ><span>▤</span><span class="nav-label">سجل التداول والتقارير</span></a>
+ </div>
+ <div class="side-label">إدارة النظام</div>
+ <div class="nav-group">
+  <a class="nav" href="/"><span>♙</span><span class="nav-label">العملاء والتراخيص</span></a>
+ </div>
+ <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+</aside>
 <main class="main">
 <header class="topbar"><div><div class="eyebrow">LIVE OPPORTUNITY MONITOR</div><h1>مختبر الفرص</h1><p>رصد فرص الذهب وأسباب القرار وحفظ سجل الإشارات دون تنفيذ تداول</p></div><div class="top-actions"><button class="refresh" id="refreshBtn">تحديث الآن</button><a class="avatar" href="/ai-analysis.html">AI</a></div></header>
 <section class="notice" id="marketStatus"><b>حالة السوق</b><span>بانتظار بيانات MT5.</span></section>
@@ -62,4 +79,5 @@ async function loadEvents(){try{const d=await api("/api/opportunities/events?kin
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await analyze();await loadEvents();setInterval(analyze,5000);setInterval(loadEvents,15000)}catch(e){$("serviceState").textContent="تعذر التحقق";$("marketStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",analyze);$("reloadHistory").addEventListener("click",loadEvents);$("historyDays").addEventListener("change",loadEvents);boot();
 </script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=1" defer></script>
 </body></html>
