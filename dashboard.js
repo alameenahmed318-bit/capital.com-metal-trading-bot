@@ -149,14 +149,55 @@ async function azRefreshTradingSettings(){
  }
 }
 async function azRefreshAiCouncil(){
+ const put=(id,value)=>{const el=$(id);if(el)el.textContent=value};
+ const badge=(id,ready,text)=>{const el=$(id);if(!el)return;
+   el.textContent=text;el.classList.toggle("good",ready===true);el.classList.toggle("bad",ready===false)};
  try{
   const d=await api("/api/ai/council");
-  const status=d?.council?.approved===true?"APPROVED":d.connected?"WAIT":"غير متصل";
-  if($("azAiCouncilStatus"))$("azAiCouncilStatus").textContent=status;
+  if(!d.connected){
+    put("azAiCouncilStatus","MT5 غير متصل");
+    badge("azCouncilState",null,"WAIT");
+    badge("azRiskState",null,"WAIT");
+    put("azFastVote","لا توجد بيانات MT5");put("azQwenVote","غير متاح");
+    put("azDeepVote","غير متاح");put("azRiskVote","غير متاح");
+    put("azEngineSignal","WAIT");put("azCouncilBarTime","—");
+    put("azCouncilReason","الطرفية غير متصلة؛ لا تُعرض موافقة دخول.");
+    put("azRiskReason","لا توجد بيانات حساب حديثة للتحقق من المخاطر.");
+    return;
+  }
+  const c=d.council||{},risk=d.risk_guardian||{},votes=c.votes||{};
+  const signal=String(d.signal||"WAIT").toUpperCase();
+  const fmtVote=(key)=>{
+    const v=votes[key];
+    if(!v)return "لم يصل تصويت";
+    const state=String(v.status||"PENDING");
+    const decision=String(v.direction||"WAIT");
+    const valid=Number(v.confidence);
+    const confidence=Number.isFinite(valid)?(" · "+Math.round(valid*100)+"%"):"";
+    return state+" · "+decision+confidence;
+  };
+  put("azFastVote",fmtVote("Fast AI"));put("azQwenVote",fmtVote("Qwen"));
+  put("azDeepVote",fmtVote("DeepSeek"));
+  const allowed=c.approved===true&&risk.approved===true;
+  badge("azCouncilState",c.approved===true,c.approved===true?"APPROVED":"WAIT");
+  badge("azRiskState",risk.approved===true,risk.approved===true?"PASS":"BLOCK");
+  put("azAiCouncilStatus",allowed?"APPROVED":"WAIT");
+  put("azEngineSignal",signal);
+  put("azRiskVote",risk.approved===true?"PASS":"BLOCK");
+  put("azCouncilReason",String(c.reason_ar||"المجلس ينتظر بيانات تصويت حديثة"));
+  put("azRiskReason",String(risk.reason_ar||"لا يوجد تقرير مخاطر مكتمل"));
+  const bar=Number(d.bar_time);
+  put("azCouncilBarTime",Number.isFinite(bar)&&bar>0?
+    new Intl.DateTimeFormat("en-GB-u-nu-latn",{timeZone:"Asia/Dubai",
+      day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(bar*1000)):"—");
  }catch(e){
-  if($("azAiCouncilStatus"))$("azAiCouncilStatus").textContent="غير متاح";
+  put("azAiCouncilStatus","غير متاح");badge("azCouncilState",null,"WAIT");
+  badge("azRiskState",null,"WAIT");
+  put("azCouncilReason","تعذر تحميل التصويت: "+(e.message||"خطأ اتصال"));
+  put("azRiskReason","تعذر تحميل تقرير المخاطر.");
  }
 }
+$("azRefreshCouncilBtn")?.addEventListener("click",azRefreshAiCouncil);
 function azDrawClientMiniChart(rows,currency){
  const host=$("azMiniPerformance");if(!host)return;
  const usable=(rows||[]).filter(r=>Number.isFinite(Number(r.net))&&Number.isFinite(Number(r.time))).slice(0,15).reverse();
