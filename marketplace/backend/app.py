@@ -135,7 +135,9 @@ def issue_owner_pairing(user):
     sb("PUT","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),
        {"app_metadata":metadata},admin=True)
     LICENSE_CACHE.pop("owner",None)
-    return {"engine_id":"owner","pairing_key":secret,"engine_server_url":PUBLIC_ENGINE_URL}
+    identity=license_for_user(uid)
+    if not identity: raise ValueError("معرّف التخزين الخاص بالمالك غير موجود")
+    return {"engine_id":identity["client_id"],"pairing_key":secret,"engine_server_url":PUBLIC_ENGINE_URL}
 
 def validate_owner_terminal(token):
     if not token or len(token)<32: return False
@@ -151,7 +153,15 @@ def validate_owner_terminal(token):
     return bool(expected and hmac.compare_digest(expected,digest))
 
 def validate_license(client_id,token):
-    if client_id=="owner": return validate_owner_terminal(token)
+    if client_id!="owner":
+        try:
+            owner_rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=user_id&limit=1",admin=True)
+            if owner_rows:
+                owner_record=admin_user(owner_rows[0]["user_id"])
+                if (owner_record.get("email") or "").lower()==OWNER_EMAIL:
+                    return validate_owner_terminal(token)
+        except Exception: return False
+    if client_id=="owner": return False
     if not client_id or not token: return False
     token_hash=hashlib.sha256(token.encode()).hexdigest()
     now=time.monotonic()
@@ -199,7 +209,7 @@ def _fetch_trade_settings(client_id):
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
     settings["position_management"]=pm
-    settings["trading_enabled"]=False if client_id=="owner" else bool(clients and clients[0].get("trading_enabled",False))
+    settings["trading_enabled"]=False if (clients and clients[0].get("trading_enabled",False)==False) else bool(clients and clients[0].get("trading_enabled",False))
     return settings
 
 def _store_trade_settings(client_id,settings):
@@ -865,7 +875,7 @@ class Handler(SimpleHTTPRequestHandler):
                     client_id=lic.get("client_id") if lic else ""
                     item=CONNECTIONS.get(client_id) if client_id else None
                 else:
-                    item=CONNECTIONS.get("owner")
+                    item=CONNECTIONS.get((license_for_user(u["id"]) or {}).get("client_id",""))
                 
                 return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
                                            "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
