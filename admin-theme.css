@@ -1,0 +1,90 @@
+/* AL-ZOOL | Reference-inspired dark Owner Control Center (Nov 2026).
+   Styling only. Data and actions are supplied by the existing authenticated app. */
+:root{--az-purple:#8e32f6;--az-violet:#bc6cff;--az-line:#6540ab}
+body:has(#adminView:not(.hidden)){background:#0e0822;color:#f8f4ff}
+body:has(#adminView:not(.hidden)) .wrap{max-width:none;padding:0;margin:0}
+body:has(#adminView:not(.hidden))>.wrap>.top{display:none}
+body:has(#adminView:not(.hidden))>.wrap>footer{background:#0e0822;color:#ac91d7;padding:15px}
+.az-admin-layout{direction:ltr;display:grid;grid-template-columns:234px minmax(0,1fr);gap:0;min-height:100vh;background:radial-gradient(ellipse at 90% 0,#341061 0,transparent 44%),linear-gradient(135deg,#170c35,#0b081d 68%);color:#f6f1ff;border:1px solid #6831bc;box-shadow:inset 0 0 40px #7f34f522}
+.az-admin-sidebar{direction:rtl;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:auto;gap:7px;padding:29px 12px 20px;background:radial-gradient(ellipse at 0 0,#4b1880 0,transparent 60%),linear-gradient(180deg,#1e0e40,#100922);border-right:1px solid #6940b5}
+.az-admin-brand{padding:0 12px 20px;display:flex;flex-direction:column;gap:2px;text-align:right}
+.az-admin-brand .brand-ar{font-size:31px;font-weight:900;color:#fff;line-height:1.3}
+.az-admin-brand .brand-ar span{font-size:28px}
+.az-admin-brand strong{font:800 22px Cairo,Arial,sans-serif;direction:ltr;text-align:right}
+.az-admin-brand small{font-size:12px;letter-spacing:1px;color:#d6c4f8}
+.az-admin-sidebar nav{display:flex;flex-direction:column;gap:5px}
+.az-admin-sidebar nav a,.az-admin-sidebar nav button{display:flex;align-items:center;gap:12px;width:100%;border:1px solid transparent;border-radius:13px;padding:12px 13px;background:transparent;color:#e4dafa;text-decoration:none;font:700 12px Cairo,Arial,sans-serif;cursor:pointer;text-align:right}
+.az-admin-sidebar nav a:hover,.az-admin-sidebar nav button:hover,.az-admin-sidebar nav a.active{background:linear-gradient(100deg,#5224a5,#912ff7);border-color:#ab6bfa;box-shadow:0 0 18px #762df066;color:white}
+.az-admin-sidebar .nav-icon{font:700 22px Arial,sans-serif;display:inline-grid;place-items:center;width:29px;color:#d7b4ff}
+.az-admin-spacer{flex:1;min-height:30px}
+.az-admin-badge{padding:15px;border-radius:14px;text-align:center;border:1px solid #7b42c8;background:linear-gradient(145deg,#452080,#251248);display:flex;flex-direction:column}
+.az-admin-badge span{font-size:22px}
+.az-admin-badge b{font:800 17px Cairo,Arial}
+.az-admin-badge small{font-size:11px;color:#ddd1ef}
+.az-admin-content{direction:rtl;padding:22px clamp(14px,2vw,38px) 35px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.az-admin-content .welcome{order:0;margin:0;display:flex;align-items:center;padding:4px 0 15px;border-bottom:1px solid #483169;gap:14px}
+.az-admin-content .welcome h1{color:#fff;font-size:25px}
+.az-admin-content .welcome .eyebrow{color:#bd9ee9}
+.az-admin-content .welcome p{color:#d2baf1}
+.az-admin-content>.stats{display:none!important}
+.az-admin-content .az-admin-overview{order:1}
+.az-admin-content #adminClients{order:2}
+.az-admin-content #councilPanel{order:3}
+.az-admin-content #actionPanel{order:4}
+.az-admin-content #learningPanel{order:5}
+.az-admin-content #versionsPanel{order:6}
+.az-admin-content #ownerPairPanel{order:7}
+.az-admin-content .connection-panel{order:8}
+.az-admin-content .panel,.az-admin-content .stat{background:linear-gradient(145deg,#241342,#130d2b);color:#f9f5ff;border:1px solid #60339b;box-shadow:0 9px 26px #07021366;border-radius:17px}
+.az-admin-content .panel p,.az-admin-content .muted,.az-admin-content .client-row small,.az-admin-content .stat small{color:#c7b4e5}
+.az-admin-content .panel-head h2,.az-admin-content .panel-head h1{color:white}
+.az-admin-content .btn{border:1px solid #8044c7;transition:box-shadow .2s,transform .2s}
+.az-admin-content .btn:hover{transform:translateY(-1px);box-shadow:0 0 16px #9839f65a}
+.az-admin-content .btn.primary{background:linear-gradient(120deg,#9e38f6,#6530cd);color:white}
+.az-admin-content .btn.ghost,.az-admin-content .btn.secondary{background:#36205f;color:#f0dfff}
+.az-admin-content .btn.danger{background:#532642;color:#ffe6eb;border-color:#995473}
+.az-admin-content input{background:#150e2c;color:#fff;border:1px solid #68449c}
+.az-admin-content .client-row{border:1px solid #56367f;background:#1d113b;align-items:center}
+.az-admin-content .credential{background:#251643;color:#fff;border-color:#663b9d}
+.az-admin-content .credential-title{color:#ce9dff}
+.az-admin-content .pill.online{background:#124335;color:#8affc6}
+.az-admin-content .pill.offline{background:#5e243e;color:#ffaac2}
+.az-admin-content pre{white-space:pre-wrap;word-break:break-word}
+.az-admin-overview .az-status-line{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:4px 3px 13px;font-size:12px;color:#d6c4f6;flex-wrap:wrap}
+.az-live-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#3cdb8b;box-shadow:0 0 12px #34df9a}
+.az-live-dot.off{background:#fa7388;box-shadow:0 0 12px #fa7388}
+.az-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.az-kpi{min-height:143px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:5px;border:1px solid #8244d1;border-radius:16px;padding:15px 6px;background:linear-gradient(145deg,#442078,#20103e);box-shadow:inset 0 1px #ab7fff66,0 10px 21px #0006}
+.az-kpi:nth-child(2){background:linear-gradient(145deg,#223366,#251347)}.az-kpi:nth-child(3){background:linear-gradient(145deg,#303369,#201039)}
+.az-kpi .az-kpi-icon{font-size:28px;filter:drop-shadow(0 0 8px #8c52ff88)}
+.az-kpi .az-kpi-label{font-size:11px;font-weight:700;color:#ded3f7}
+.az-kpi strong{font-size:24px;direction:ltr;color:#fff;line-height:1.3;white-space:nowrap;font-family:Arial,Cairo,sans-serif}
+.az-kpi small{color:#bcabd8;font-size:10px}
+.az-kpi strong.positive{color:#60f5ac}.az-kpi strong.negative{color:#ff92ab}
+.az-admin-performance{margin-top:16px;border:1px solid #8244d1;background:linear-gradient(140deg,#281448,#130b2b);border-radius:18px;padding:21px;box-shadow:0 10px 32px #08031377}
+.az-admin-performance .az-perf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.az-admin-performance h2{margin:0;color:white;font-size:17px}
+.az-range-controls{display:flex;gap:7px;flex-wrap:wrap}
+.az-range-controls button{font:600 11px Cairo;border:1px solid #68409a;border-radius:10px;background:#261342;color:#eee1ff;padding:7px 12px;cursor:pointer}
+.az-range-controls button.active{background:linear-gradient(100deg,#7c2be3,#a538ff);border-color:#b971ff;box-shadow:0 0 11px #8e2ef799}
+.az-chart-wrap{position:relative;margin-top:14px;min-height:220px}
+.az-chart-wrap svg{width:100%;height:250px;display:block}
+.az-chart-wrap .az-chart-empty{color:#c9b3e6;text-align:center;padding:75px 0}
+.az-chart-note{font-size:11px;color:#b59dcb;margin-top:4px}
+.az-admin-content .admin-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:16px}
+.az-admin-content .admin-grid>.clients-panel{grid-column:1/-1;grid-row:1}
+.az-admin-content .admin-grid>section:first-child{grid-column:1/-1;grid-row:2}
+.az-recent-panel{padding:0}
+.az-recent-panel .az-recent-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.az-recent-panel h2{font-size:17px;color:white}
+.az-recent-table{width:100%;border-collapse:collapse;font-size:11px}
+.az-recent-table th,.az-recent-table td{text-align:right;border-bottom:1px solid #503071;padding:12px 8px}
+.az-recent-table th{color:#bba9dc;font-weight:600}
+.az-recent-table tbody tr:last-child td{border:0}
+.az-account-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.az-account-quick a{color:white;text-decoration:none;background:linear-gradient(130deg,#512395,#26134e);border:1px solid #7042b2;border-radius:14px;display:grid;place-items:center;min-height:93px;text-align:center;padding:9px;font-size:12px;font-weight:700}
+.az-account-quick a span{font-size:23px;display:block}
+.az-admin-content .admin-grid .clients-panel{display:block}
+@media(max-width:1150px){.az-kpi-grid{grid-template-columns:repeat(2,1fr)}.az-account-quick{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:850px){.az-admin-layout{grid-template-columns:1fr}.az-admin-sidebar{height:auto;position:relative;padding:14px;gap:4px;border-right:0;border-bottom:1px solid #5f359b}.az-admin-brand{padding:0}.az-admin-brand .brand-ar{font-size:24px}.az-admin-sidebar nav{flex-direction:row;overflow:auto;gap:4px}.az-admin-sidebar nav a,.az-admin-sidebar nav button{white-space:nowrap;width:auto;flex:0 0 auto;padding:8px 10px;font-size:11px}.az-admin-sidebar .nav-icon{font-size:17px;width:18px}.az-admin-spacer,.az-admin-badge{display:none}.az-admin-content{padding:15px}.az-admin-content .welcome{flex-wrap:wrap}.az-admin-content .admin-grid{grid-template-columns:1fr}.az-recent-table{min-width:470px}.az-recent-panel{overflow:auto}}
+@media(max-width:440px){.az-kpi-grid{gap:8px}.az-kpi{min-height:118px;padding:9px}.az-kpi strong{font-size:19px}.az-admin-performance{padding:12px}.az-account-quick a{min-height:70px}.az-admin-content .panel{padding:15px}}
