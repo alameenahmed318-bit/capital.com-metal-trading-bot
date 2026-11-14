@@ -11,6 +11,7 @@ from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
 from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
 from auto_research import schedule as schedule_automatic_research
+from central_action_protocol import propose as propose_central_action, claim as claim_central_action
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -420,6 +421,25 @@ class Handler(SimpleHTTPRequestHandler):
                 "family_votes":decision.get("family_votes") or {},
                 "combination_summary":decision.get("combination_summary") or {},
                 "last_seen":item.get("last_seen")})
+        if path.startswith("/v1/terminal-actions/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+            item=CONNECTIONS.get(client_id)
+            if not item:return self.send_json(409,{"execution_ready":False,"reason_ar":"MT5 غير متصل"})
+            decision=item.get("strategy_decision") or {}
+            settings=get_trade_settings(client_id) or {}
+            now=datetime.now(timezone.utc)
+            gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
+                item.get("received_at"),now,bool(settings.get("trading_enabled")),
+                local_ai_advice=(dict(item["local_ai_advice"],
+                    age_seconds=now.timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0)))
+                    if isinstance(item.get("local_ai_advice"),dict) else None),
+                require_local_ai=LOCAL_AI_REQUIRED)
+            council=council_result(client_id,decision)
+            risk=risk_guardian(item.get("account") or {},item.get("positions") or [])
+            return self.send_json(200,propose_central_action(client_id,item,decision,
+                gate,council,risk,settings,now))
         if path.startswith("/v1/terminal-control/settings/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -985,6 +1005,26 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path.startswith("/v1/terminal-action-claim/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token):
+                    return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+                item=CONNECTIONS.get(client_id)
+                if not item:return self.send_json(409,{"execution_authorized":False,"reason_ar":"MT5 غير متصل"})
+                decision=item.get("strategy_decision") or {}
+                settings=get_trade_settings(client_id) or {}
+                now=datetime.now(timezone.utc)
+                gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
+                    item.get("received_at"),now,bool(settings.get("trading_enabled")),
+                    local_ai_advice=(dict(item["local_ai_advice"],
+                        age_seconds=now.timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0)))
+                        if isinstance(item.get("local_ai_advice"),dict) else None),
+                    require_local_ai=LOCAL_AI_REQUIRED)
+                council=council_result(client_id,decision)
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [])
+                response=claim_central_action(client_id,data.get("authorization_id"),
+                    item,decision,gate,council,risk,settings,sb,now)
+                return self.send_json(200 if response.get("execution_authorized") else 409,response)
             if path.startswith("/v1/local-ai/advice/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
