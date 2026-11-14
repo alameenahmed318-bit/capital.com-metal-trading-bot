@@ -13,6 +13,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Verify Python syntax
-        run: python -m compileall -q marketplace/backend
+        run: python -m compileall -q marketplace/backend mt5_client/ALZOOL_Local_Model_Relay.py tests
       - name: Verify council and memory safety
-        run: python -m unittest discover -s tests -p 'test_ai_council.py' -v
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
