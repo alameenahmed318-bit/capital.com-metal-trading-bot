@@ -416,7 +416,12 @@ class Handler(SimpleHTTPRequestHandler):
         if path in ("/health","/api/health"):
             return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Central Strategy Execution","mt5_connection_api":True,"trading_engine":True,"execution_location":"licensed MT5 terminal"})
         if path=="/api/config":
-            return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
+            missing=[]
+            if not SUPABASE_URL: missing.append("SUPABASE_URL")
+            if not SUPABASE_ANON_KEY: missing.append("SUPABASE_ANON_KEY")
+            if not SUPABASE_SERVICE_ROLE_KEY: missing.append("SUPABASE_SERVICE_ROLE_KEY")
+            return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,
+                "owner_email":OWNER_EMAIL,"ready":not missing,"missing":missing})
         if path=="/api/access/check":
             try:
                 u=current_user(token_of(self)); fresh=admin_user(u["id"])
