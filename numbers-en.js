@@ -24,8 +24,8 @@
           try { if (start !== null && end !== null) el.setSelectionRange(start, end); } catch (_) {}
         }
       }
-      if (el.type === "number") {
-        el.lang = "en";
+      if (el.type === "number" || ["numeric", "decimal"].includes(el.inputMode) || el.hasAttribute("data-number")) {
+        el.lang = "en-US";
         el.dir = "ltr";
         el.style.fontVariantNumeric = "tabular-nums";
       }
@@ -56,6 +56,30 @@
     normalizeAttributes(root);
   }
   apply(document.body);
+
+  // Also normalize values assigned by page JavaScript after this script loads.
+  const inputValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  if (inputValue?.get && inputValue?.set) {
+    Object.defineProperty(HTMLInputElement.prototype, "value", {
+      configurable: inputValue.configurable,
+      enumerable: inputValue.enumerable,
+      get() { return inputValue.get.call(this); },
+      set(value) {
+        const safeValue = (this.type === "password" || this.type === "email") ? value : convert(value);
+        inputValue.set.call(this, safeValue);
+      }
+    });
+  }
+  const textareaValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
+  if (textareaValue?.get && textareaValue?.set) {
+    Object.defineProperty(HTMLTextAreaElement.prototype, "value", {
+      configurable: true,
+      enumerable: textareaValue.enumerable,
+      get() { return textareaValue.get.call(this); },
+      set(value) { textareaValue.set.call(this, convert(value)); }
+    });
+  }
+
   document.addEventListener("input", event => {
     const el = event.target;
     if ((el instanceof HTMLInputElement && el.type !== "password" && el.type !== "email") ||
