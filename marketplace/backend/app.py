@@ -5,6 +5,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
+from multi_model_council import update_council, council_result, risk_guardian
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -628,7 +629,15 @@ class Handler(SimpleHTTPRequestHandler):
                 ),
                 require_local_ai=LOCAL_AI_REQUIRED
             )
-            ready=bool(gate.get("approved"))
+            ai_council=council_result(client_id,decision)
+            risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [])
+            ready=bool(gate.get("approved") and ai_council["approved"] and risk_report["approved"])
+            if not ai_council["approved"]:
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":ai_council["reason_ar"]}
+            if not risk_report["approved"]:
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":risk_report["reason_ar"]}
             council_event=build_council_event(client_id,decision,gate,trading_enabled)
             queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
@@ -644,6 +653,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "authorization_id":gate.get("authorization_id"),
                 "authorization_expires_at":gate.get("expires_at_unix",0),
                 "council":decision.get("council",{}),
+                "multi_model_council":ai_council,"risk_guardian":risk_report,
                 "local_ai_required":LOCAL_AI_REQUIRED,
                 "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
                 "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
@@ -867,6 +877,20 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/council":
+            try:
+                u=current_user(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(client_id) if client_id else None
+                if not item: return self.send_json(200,{"connected":False,"status":"WAIT","reason_ar":"MT5 غير متصل"})
+                decision=item.get("strategy_decision") or {}
+                return self.send_json(200,{"connected":True,"client_id":client_id,
+                    "bar_time":decision.get("bar_time"),"signal":decision.get("decision","WAIT"),
+                    "council":council_result(client_id,decision),
+                    "risk_guardian":risk_guardian(item.get("account") or {},item.get("positions") or [])})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/connection/status":
             try:
                 u=current_user(token_of(self))
@@ -1206,6 +1230,8 @@ class Handler(SimpleHTTPRequestHandler):
                             strategy_last_bar=bar_time
                         except Exception as engine_error:
                             print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
+                if strategy_decision:
+                    update_council(client_id,strategy_decision,safe)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
