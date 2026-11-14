@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
 from multi_model_council import fast_ai, risk_guardian, council_result, update_council, _VOTES, _vote
 from learning_memory import combine_deals
+from position_action_engine import plan_account_actions
 
 GOOD_ACCOUNT={"balance":1000,"equity":980,"free_margin":900}
 DECISION={"decision":"BUY","confidence":.7,"strategy_id":1,"bar_time":1700000000,
@@ -49,6 +50,25 @@ class SafetyTests(unittest.TestCase):
                          "qwen":_vote("Qwen","READY","BUY",.4),
                          "deepseek":_vote("DeepSeek","READY","BUY",.8)}
         self.assertFalse(council_result("test",DECISION)["approved"])
+
+    def test_position_management_never_grants_execution(self):
+        snapshot={"positions":[{"type":0,"volume":0.01,"open_price":2450,
+             "profit":4,"swap":0}],"tick":{"bid":2500,"ask":2501}}
+        settings={"trading_enabled":True,"position_management":{
+            "addon_enabled":True,"addon_max":3,"addon_lot":0.01,
+            "addon_max_lot":0.03,"max_total_lots":0.1}}
+        proposal=plan_account_actions(snapshot,DECISION,{"approved":True},
+                                     {"approved":True},settings)
+        self.assertFalse(proposal["execution_authorized"])
+        self.assertEqual(proposal["buy"],"ADDON_PROPOSAL")
+
+    def test_unapproved_council_blocks_position_increase(self):
+        snapshot={"positions":[{"type":0,"volume":0.01,"open_price":2450,
+             "profit":4}],"tick":{"bid":2500,"ask":2501}}
+        proposal=plan_account_actions(snapshot,DECISION,{"approved":False},
+                  {"approved":True},{"trading_enabled":True,"position_management":{}})
+        self.assertFalse(proposal["execution_authorized"])
+        self.assertEqual(proposal["buy"],"HOLD")
 
     def test_memory_deduplicates_current_deal(self):
         saved=[{"ticket":"1","profit":1},{"ticket":"2","profit":3}]
