@@ -539,6 +539,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
                 "minimum_confidence":0.45,"authorization":gate,
+                "authorization_id":gate.get("authorization_id"),
+                "authorization_expires_at":gate.get("expires_at_unix",0),
                 "council":decision.get("council",{}),
                 "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
         if path=="/api/market/context":
