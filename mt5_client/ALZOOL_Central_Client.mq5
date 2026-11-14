@@ -233,6 +233,9 @@ bool PollCentralDecision()
    string bar_time=JsonField(response,"bar_time");
    string strategy_id=JsonField(response,"strategy_id");
    string execution_ready=JsonField(response,"execution_ready");
+   string authorization_id=JsonField(response,"authorization_id");
+   string authorization_expires=JsonField(response,"authorization_expires_at");
+   StringReplace(authorization_id,"\\"","");
    string combination_id=JsonField(response,"combination_id");
    double entry_reference_price=JsonDouble(response,"entry_reference_price",0.0);
    double entry_atr=JsonDouble(response,"entry_atr",0.0);
@@ -243,7 +246,14 @@ bool PollCentralDecision()
    long parsed_bar=(long)StringToInteger(bar_time);
    int parsed_strategy=(int)StringToInteger(strategy_id);
    int parsed_combination=(int)StringToInteger(combination_id);
-   bool ready=(StringFind(execution_ready,"true")==0);
+   long authorization_expiry=(long)StringToInteger(authorization_expires);
+   long authorization_now=(long)TimeGMT();
+   bool authorization_valid=(StringLen(authorization_id)>=8 &&
+      authorization_expiry>authorization_now &&
+      authorization_expiry-authorization_now<=20);
+   bool ready=(StringFind(execution_ready,"true")==0 && authorization_valid);
+   if(StringFind(execution_ready,"true")==0 && !authorization_valid)
+      Print("AL-ZOOL ENTRY BLOCKED: council authorization missing or expired.");
    if(parsed_bar!=g_aiBarTime || signal!=g_aiSignal)
       Print("AL-ZOOL CENTRAL AI: ",signal," | confidence=",DoubleToString(parsed_confidence*100.0,1),
             "% | ",reason);
