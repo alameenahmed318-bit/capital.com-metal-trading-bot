@@ -754,8 +754,8 @@ bool EvaluateSmartRecovery()
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
       Print("AL-ZOOL SMART RECOVERY armed: account loss=",DoubleToString(groupNet,2),
             " trigger=-",DoubleToString(g_recoveryLossTrigger,2),
-            " total lots=",DoubleToString(totalLots,2),". Waiting for next price movement.");
-       RecoveryLog("RECOVERY_ARMED","بلغ صافي الحساب حد التفعيل؛ ينتظر حركة السعر التالية.",groupNet,totalLots,totalPositions);
+            " total lots=",DoubleToString(totalLots,2),". Waiting for strategy and closed-candle confirmation.");
+       RecoveryLog("RECOVERY_ARMED","بلغ صافي الحساب حد التفعيل؛ بدأت مراقبة تأكيد الانعكاس من الاستراتيجيات والشمعة المغلقة.",groupNet,totalLots,totalPositions);
       return true;
    }
    // Fast confirmation: central strategy signal + one aligned closed candle.
