@@ -80,6 +80,28 @@ class EntryGateTests(unittest.TestCase):
         self.decision["decision"] = "WAIT"
         self.assertFalse(self.gate()["approved"])
 
+    def test_required_local_ai_missing_fails_closed(self):
+        result = self.gate(require_local_ai=True)
+        self.assertFalse(result["approved"])
+        self.assertEqual(result["checks"][-1]["check"], "local_ai")
+
+    def test_required_local_ai_disagreement_fails_closed(self):
+        advice = {"bar_time": self.decision["bar_time"], "direction": "SELL",
+                  "confidence": 0.9, "age_seconds": 1}
+        self.assertFalse(self.gate(local_ai_advice=advice, require_local_ai=True)["approved"])
+
+    def test_required_local_ai_stale_vote_fails_closed(self):
+        advice = {"bar_time": self.decision["bar_time"], "direction": "BUY",
+                  "confidence": 0.9, "age_seconds": 21}
+        self.assertFalse(self.gate(local_ai_advice=advice, require_local_ai=True)["approved"])
+
+    def test_required_local_ai_matching_vote_passes(self):
+        advice = {"bar_time": self.decision["bar_time"], "direction": "BUY",
+                  "confidence": 0.8, "age_seconds": 1}
+        result = self.gate(local_ai_advice=advice, require_local_ai=True)
+        self.assertTrue(result["approved"])
+        self.assertEqual(result["checks"][-1]["check"], "local_ai_vote")
+
 
 if __name__ == "__main__":
     unittest.main()
