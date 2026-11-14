@@ -114,6 +114,12 @@ def banned(u):
     try: return datetime.fromisoformat(val.replace("Z","+00:00"))>datetime.now(timezone.utc)
     except Exception: return False
 
+def connection_for_authenticated_user(user):
+    """Never let owner requests borrow a different customer's MT5 connection."""
+    identity=license_for_user(user["id"])
+    client_id=(identity or {}).get("client_id","")
+    return client_id, (CONNECTIONS.get(client_id) if client_id else None)
+
 def license_for_user(user_id):
     rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,expires_at,revoked&limit=1",admin=True)
     return rows[0] if rows else None
@@ -471,11 +477,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self))
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
-                else:
-                    lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
+                client_id,item=connection_for_authenticated_user(u)
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management,updated_at&limit=1",admin=True)
@@ -712,11 +714,7 @@ class Handler(SimpleHTTPRequestHandler):
                 u=current_user(token_of(self)); t_user=time.perf_counter()
                 t_admin=t_user
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
-                    item=CONNECTIONS.get(client_id) if client_id else None
+                client_id,item=connection_for_authenticated_user(u)
                 t_lookup=time.perf_counter()
                 connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
                 if not connected:
@@ -740,17 +738,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self)); fresh=admin_user(u["id"])
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    # Resolve the owner's stable licensed client_id from Supabase first.
-                    # CONNECTIONS is intentionally ephemeral and may be empty after a Render restart.
-                    lic=license_for_user(u["id"])
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(lic or {}).get("client_id") or (item or {}).get("client_id","")
-                    if client_id:
-                        item=CONNECTIONS.get(client_id) or item
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
-                    item=CONNECTIONS.get(client_id) if client_id else None
+                # Owner and client data always come from their own authenticated identity.
+                client_id,item=connection_for_authenticated_user(u)
                 connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
                 account=(item or {}).get("account",{}) if connected else {}
                 positions=(item or {}).get("positions",[]) if connected else []
@@ -827,9 +816,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 lic=license_for_user(u["id"])
                 client_id=(lic or {}).get("client_id","")
-                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
+                # Do not fall back to another user's latest connection.
                 if not client_id: return self.send_json(200,{"events":[],"count":0})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 limit=max(1,min(500,int(finite_number((params.get("limit") or ["200"])[0],200))))
@@ -1124,11 +1111,7 @@ class Handler(SimpleHTTPRequestHandler):
             if path=="/api/trade-management/settings":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
-                else:
-                    lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
+                client_id,item=connection_for_authenticated_user(u)
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 single_enabled=data.get("single_enabled") is True
                 group_enabled=data.get("group_enabled") is True
@@ -1250,9 +1233,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 lic=license_for_user(u["id"])
                 client_id=(lic or {}).get("client_id","")
-                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
+                # Do not fall back to another user's latest connection.
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 event_type=str(data.get("event_type") or "")
                 if event_type not in ("SIGNAL_CREATED","WAIT"):
