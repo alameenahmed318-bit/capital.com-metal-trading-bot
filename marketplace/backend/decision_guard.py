@@ -73,6 +73,51 @@ def build_qwen_vote_event(client_id, advice, decision):
         },
     }
 
+
+def build_council_event(client_id, decision, gate, trading_enabled):
+    """Create one compact audit event explaining a central council decision."""
+    if not isinstance(decision, dict) or not isinstance(gate, dict):
+        return None
+    bar_time = int(_number(decision.get("bar_time")))
+    if bar_time <= 0:
+        return None
+    safe_client = str(client_id or "")[:80]
+    if not safe_client:
+        return None
+    signal = str(decision.get("decision", "WAIT")).upper()
+    approved = gate.get("approved") is True
+    if approved:
+        event_type = "AI_COUNCIL_DECISION"
+        outcome = signal
+    elif signal in ("BUY", "SELL") and trading_enabled:
+        event_type = "AI_COUNCIL_VETO"
+        outcome = "WAIT"
+    else:
+        event_type = "AI_COUNCIL_WAIT"
+        outcome = "WAIT"
+    strategy_id = int(_number(decision.get("strategy_id")))
+    checks = gate.get("checks") if isinstance(gate.get("checks"), list) else []
+    family_votes = decision.get("family_votes") if isinstance(decision.get("family_votes"), dict) else {}
+    combo = decision.get("combination_summary") if isinstance(decision.get("combination_summary"), dict) else {}
+    return {
+        "event_id": f"council:{safe_client}:{bar_time}:{strategy_id}",
+        "client_id": safe_client,
+        "event_type": event_type,
+        "payload": {
+            "bar_time": bar_time,
+            "outcome": outcome,
+            "central_direction": signal,
+            "approved": approved,
+            "strategy_id": strategy_id,
+            "strategy_name": str(decision.get("strategy_name", ""))[:120],
+            "confidence": _number(decision.get("confidence")),
+            "reason_ar": str(gate.get("reason_ar", ""))[:500],
+            "checks": checks[:20],
+            "family_votes": {str(k)[:80]: str(v)[:12] for k, v in list(family_votes.items())[:20]},
+            "combination_summary": {str(k)[:12]: int(_number(v)) for k, v in combo.items()},
+        },
+    }
+
 def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled, local_ai_advice=None, require_local_ai=False):
     """Return a structured authorization record; any uncertainty means WAIT."""
     checks = []
