@@ -125,7 +125,33 @@ def issue_license(user_id):
         sb("POST","/rest/v1/alzool_engine_clients",row,admin=True)
     return {"client_id":client_id,"client_token":token,"expires_at":expires}
 
+def issue_owner_pairing(user):
+    """Pair the owner's terminal without creating a client licence."""
+    uid=user["id"]
+    record=admin_user(uid)
+    metadata=dict(record.get("app_metadata") or {})
+    secret=secrets.token_urlsafe(40)
+    metadata["alzool_owner_mt5_hash"]=hashlib.sha256(secret.encode()).hexdigest()
+    sb("PUT","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),
+       {"app_metadata":metadata},admin=True)
+    LICENSE_CACHE.pop("owner",None)
+    return {"engine_id":"owner","pairing_key":secret,"engine_server_url":PUBLIC_ENGINE_URL}
+
+def validate_owner_terminal(token):
+    if not token or len(token)<32: return False
+    digest=hashlib.sha256(token.encode()).hexdigest()
+    now=time.monotonic()
+    cached=LICENSE_CACHE.get("owner")
+    if cached and cached.get("valid_until",0)>now:
+        return hmac.compare_digest(cached.get("token_hash",""),digest)
+    users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
+    matched=next((u for u in users if (u.get("email") or "").lower()==OWNER_EMAIL),None)
+    expected=((matched or {}).get("app_metadata") or {}).get("alzool_owner_mt5_hash","")
+    LICENSE_CACHE["owner"]={"token_hash":expected,"valid_until":now+30}
+    return bool(expected and hmac.compare_digest(expected,digest))
+
 def validate_license(client_id,token):
+    if client_id=="owner": return validate_owner_terminal(token)
     if not client_id or not token: return False
     token_hash=hashlib.sha256(token.encode()).hexdigest()
     now=time.monotonic()
@@ -173,7 +199,7 @@ def _fetch_trade_settings(client_id):
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
     settings["position_management"]=pm
-    settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
+    settings["trading_enabled"]=False if client_id=="owner" else bool(clients and clients[0].get("trading_enabled",False))
     return settings
 
 def _store_trade_settings(client_id,settings):
@@ -1074,11 +1100,11 @@ class Handler(SimpleHTTPRequestHandler):
                 sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,
                    prefer="resolution=ignore-duplicates,return=minimal")
                 return self.send_json(200,{"saved":True,"event_id":row["event_id"]})
-            if path=="/api/owner/engine-license":
+            if path=="/api/owner/terminal-pair":
                 u=owner(token)
-                credentials=issue_license(u.get("id"))
-                return self.send_json(200,{"engine":credentials,"engine_server_url":PUBLIC_ENGINE_URL,
-                    "message":"تم إصدار ترخيص المالك. احتفظ بالرمز في مكان آمن؛ لن يتم تخزينه كنص صريح."})
+                return self.send_json(200,issue_owner_pairing(u))
+            if path=="/api/owner/engine-license":
+                return self.send_json(410,{"error":"تم إلغاء تراخيص المالك؛ استخدم اقتران MT5 الخاص بالمالك."})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
