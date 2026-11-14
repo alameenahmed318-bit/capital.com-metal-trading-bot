@@ -96,6 +96,9 @@ def main():
         raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
     print("AL-ZOOL LOCAL AI READY | models=Qwen, DeepSeek | trading execution=OFF",flush=True)
     last_bar=0
+    submitted=set()
+    attempts={}
+    last_attempt={}
     while True:
         try:
             url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
@@ -110,10 +113,18 @@ def main():
                 time.sleep(POLL_SECONDS);continue
             if bar!=last_bar:
                 last_bar=bar
-                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-                    futures={pool.submit(model_vote,m,context):m for m in MODELS}
+                submitted.clear()
+                attempts.clear()
+                last_attempt.clear()
+            pending=[model for model in MODELS if model not in submitted
+                and attempts.get(model,0)<2 and time.monotonic()-last_attempt.get(model,-60)>=12]
+            if pending:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=len(pending)) as pool:
+                    futures={pool.submit(model_vote,model,context):model for model in pending}
                     for future in concurrent.futures.as_completed(futures):
                         model=futures[future]
+                        attempts[model]=attempts.get(model,0)+1
+                        last_attempt[model]=time.monotonic()
                         try:vote=future.result()
                         except Exception as exc:
                             print(model+" ERROR "+type(exc).__name__,flush=True)
@@ -125,10 +136,14 @@ def main():
                         try:
                             ack=request_json(server+"/v1/local-ai/advice/"+
                                 urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
+                            if ack.get("accepted") is True:
+                                submitted.add(model)
                             print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
                                 "% | accepted="+str(ack.get("accepted",False)),flush=True)
                         except urllib.error.HTTPError as exc:
                             print(model+" central rejected vote: HTTP="+str(exc.code),flush=True)
+                            if exc.code in (401,403,409):
+                                attempts[model]=2 # Authentication or stale bar: do not retry it.
             if args.once:break
         except KeyboardInterrupt:
             print("Local AI stopped",flush=True);break
