@@ -59,7 +59,7 @@ async function boot(){
  }
 }
 async function refresh(){
- $("clock").textContent=new Intl.DateTimeFormat("en-AE",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
+ $("clock").textContent=new Intl.DateTimeFormat("en-AE-u-nu-latn",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
  const fmt=v=>v==null?"—":new Intl.NumberFormat("en-US",{maximumFractionDigits:2}).format(v);
  try{
   const d=await api("/api/connection/status");
@@ -95,7 +95,7 @@ async function refresh(){
   $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
   $("closedTrades").innerHTML=rows.length?rows.map(t=>{
-   const date=t.time?new Intl.DateTimeFormat("en-GB",{dateStyle:"short",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date(t.time*1000)):"—";
+   const date=t.time?new Intl.DateTimeFormat("en-GB-u-nu-latn",{dateStyle:"short",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date(t.time*1000)):"—";
    const side=Number(t.type)===0?"شراء":Number(t.type)===1?"بيع":"—";
    const net=Number(t.net||0);
    return "<tr><td>"+escapeHtml(date)+"</td><td>"+escapeHtml(t.symbol||"—")+"</td><td>"+side+"</td><td>"+fmt(t.volume)+"</td><td class='"+(net>=0?"positive":"negative")+"'>"+fmt(net)+" "+escapeHtml(currency)+"</td></tr>";
