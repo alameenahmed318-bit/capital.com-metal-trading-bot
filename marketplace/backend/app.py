@@ -902,6 +902,18 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/research":
+            try:
+                u=owner(token_of(self))
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"معرّف التخزين غير موجود"})
+                cid=urllib.parse.quote(identity["client_id"],safe="")
+                logs=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=eq."+cid+
+                    "&event_type=eq.AI_RESEARCH_RESULT&select=created_at,payload"+
+                    "&order=created_at.desc&limit=5",admin=True)
+                return self.send_json(200,{"auto_activate":False,"runs":logs})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/versions":
             try:
                 u=owner(token_of(self))
@@ -1233,6 +1245,11 @@ class Handler(SimpleHTTPRequestHandler):
                 identity=license_for_user(u["id"])
                 if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
                 result=activate_strategy_version(identity["client_id"],data.get("id"),sb)
+                event={"event_id":"version:"+identity["client_id"]+":"+str(result["id"])+":"+str(time.time_ns()),
+                    "client_id":identity["client_id"],"event_type":"AI_VERSION_ACTIVATED",
+                    "payload":{"version_id":result["id"],"previous_id":result.get("previous_id"),
+                        "changed_by":"owner","trading_activated":False}}
+                queue_ai_diagnostic_event(event)
                 return self.send_json(200,result)
             if path=="/api/owner/terminal-pair":
                 u=owner(token)
