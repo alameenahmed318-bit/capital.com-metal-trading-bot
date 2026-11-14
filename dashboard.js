@@ -16,6 +16,7 @@ async function refreshAutoTrading(){
   toggle.checked=!!d.trading_enabled;
   toggle.disabled=(!mt5Connected&&!d.trading_enabled)||autoTradingBusy;
   state.textContent=d.trading_enabled?"مفعّل":"متوقف";
+  if($("azAutoMirror"))$("azAutoMirror").textContent=d.trading_enabled?"مفعّل":"متوقف";
   state.className="state "+(d.trading_enabled?"active":"muted");
   help.textContent=mt5Connected?"التحكم مربوط بالخادم وMT5": "اتصل بـ MT5 أولاً لتفعيل التداول الآلي";
  }catch(e){
@@ -50,6 +51,7 @@ async function boot(){
   const {data}=await supabaseClient.auth.getSession();
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
+  if($("azCurrentUser"))$("azCurrentUser").textContent=data.session.user?.user_metadata?.name||data.session.user?.email||"حساب التداول";
   await api("/api/access/check");
   $("serviceState").textContent="تم التحقق من الحساب";
   await refresh();
@@ -68,16 +70,21 @@ async function refresh(){
    setState("mt5Status","متصل","pending");
    const a=d.connection?.account||{};
    $("mt5Meta").textContent="آخر نبضة: "+(d.connection?.last_seen||"وصلت من MT5")+(a.server?" · "+a.server:"");
+   azUpdateConnectionDisplay(true,d.connection?.last_seen);
   }else{
    setState("mt5Status","غير متصل","muted");
    $("mt5Meta").textContent="لم تصل نبضة خلال آخر 30 ثانية";
+   azUpdateConnectionDisplay(false);
   }
  }catch(e){
   mt5Connected=false;
   setState("mt5Status","غير متاح","muted");
   $("mt5Meta").textContent=e.message;
+  azUpdateConnectionDisplay(false);
  }
  await refreshAutoTrading();
+ azRefreshTradingSettings();
+ azRefreshAiCouncil();
  try{
   const s=await api("/api/dashboard/summary");
   const currency=s.currency||"";
@@ -91,9 +98,12 @@ async function refresh(){
   const dailyProfitEl=$("dailyProfit");if(dailyProfitEl)dailyProfitEl.textContent=daily.profit==null?"—":fmt(daily.profit)+" "+currency;
   const dailyLossEl=$("dailyLoss");if(dailyLossEl)dailyLossEl.textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
   const dailyNetEl=$("dailyNet");if(dailyNetEl)dailyNetEl.textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
+  if(dailyNetEl){dailyNetEl.style.color=Number(daily.net)<0?"#d35470":"#28174a"}
   const dailyTradesEl=$("dailyTrades");if(dailyTradesEl)dailyTradesEl.textContent=daily.trades==null?"—":fmt(daily.trades);
   $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
+  azDrawClientMiniChart(rows,s.currency||"");
+  if($("azPerformanceNote"))$("azPerformanceNote").textContent="نتائج آخر "+rows.length+" مركز مغلق مستلم من سجل MT5؛ ليست توقعات";
   $("closedTrades").innerHTML=rows.length?rows.map(t=>{
    const date=t.time?new Intl.DateTimeFormat("en-GB-u-nu-latn",{dateStyle:"short",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date(t.time*1000)):"—";
    const side=Number(t.type)===0?"شراء":Number(t.type)===1?"بيع":"—";
@@ -111,6 +121,57 @@ async function refresh(){
   $("dailyMeta").textContent="تعذر جلب سجل الصفقات: "+e.message;
   $("closedTrades").innerHTML="<tr><td colspan='5' class='empty-cell'>تعذر تحميل سجل MT5: "+escapeHtml(e.message)+"</td></tr>";
  }
+}
+
+function azUpdateConnectionDisplay(connected,lastSeen=null){
+ const title=$("azBannerTitle"),sub=$("azBannerSub"),icon=$("azBannerCheck"),badge=$("azBannerMt5"),badgeText=$("azBannerMt5Text");
+ if(title)title.textContent=connected?"حسابك نشط وMT5 متصل":"حسابك معتمد — MT5 غير متصل";
+ if(sub)sub.textContent=connected?"بيانات الطرفية متاحة؛ التداول يعتمد على حالة التفعيل":"تحتاج اتصال MT5 فعلي لاستقبال الأسعار والمراكز";
+ if(icon)icon.classList.toggle("disconnected",!connected);
+ if(badge)badge.classList.toggle("connected",connected);
+ if(badgeText)badgeText.textContent=connected?"متصل":"غير متصل";
+ if($("azQuickConnection"))$("azQuickConnection").textContent=connected?"MT5 متصل":"MT5 غير متصل";
+ if($("azLastSeen"))$("azLastSeen").textContent=lastSeen?String(lastSeen).replace("T"," ").slice(0,19):"—";
+}
+async function azRefreshTradingSettings(){
+ try{
+  const d=await api("/api/trade-management/settings");
+  const p=d.settings?.position_management||{};
+  // Show only values with a documented current source, never use recovery/add-on lots as base entry lot.
+  if($("azLotValue"))$("azLotValue").textContent=Number.isFinite(Number(p.base_lot))&&Number(p.base_lot)>0?Number(p.base_lot).toFixed(2):"—";
+  if($("azMaxPositions"))$("azMaxPositions").textContent=Number.isInteger(Number(p.max_positions))&&Number(p.max_positions)>0?String(p.max_positions):"—";
+  if($("azManagementMode"))$("azManagementMode").textContent=String(p.mode||"—");
+  // BUY/SELL controls remain disabled until the central engine supports directional toggles.
+  if($("azBuyToggle")){$("azBuyToggle").checked=p.buy_enabled===true;$("azBuyToggle").disabled=true}
+  if($("azSellToggle")){$("azSellToggle").checked=p.sell_enabled===true;$("azSellToggle").disabled=true}
+ }catch(e){
+  if($("azManagementMode"))$("azManagementMode").textContent="غير متاح";
+ }
+}
+async function azRefreshAiCouncil(){
+ try{
+  const d=await api("/api/ai/council");
+  const status=d?.council?.approved===true?"APPROVED":d.connected?"WAIT":"غير متصل";
+  if($("azAiCouncilStatus"))$("azAiCouncilStatus").textContent=status;
+ }catch(e){
+  if($("azAiCouncilStatus"))$("azAiCouncilStatus").textContent="غير متاح";
+ }
+}
+function azDrawClientMiniChart(rows,currency){
+ const host=$("azMiniPerformance");if(!host)return;
+ const usable=(rows||[]).filter(r=>Number.isFinite(Number(r.net))&&Number.isFinite(Number(r.time))).slice(0,15).reverse();
+ if(usable.length<2){host.innerHTML='<div class="az-mini-empty">لا توجد صفقات مغلقة كافية لرسم الأداء</div>';return}
+ const values=[];let sum=0;
+ for(const r of usable){sum+=Number(r.net);values.push(sum)}
+ const lo=Math.min(0,...values),hi=Math.max(0,...values),span=Math.max(1,hi-lo),n=values.length;
+ const x=i=>20+i/(n-1)*360;
+ const y=v=>112-(v-lo)/span*94;
+ const points=values.map((v,i)=>[x(i),y(v)]);
+ const line=points.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+ const dots=points.map(p=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.8" fill="#8939ea"/>').join("");
+ host.innerHTML='<svg role="img" aria-label="صافي نتائج آخر الصفقات المغلقة" viewBox="0 0 400 135" preserveAspectRatio="none"><defs><linearGradient id="azClientFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#9951fa" stop-opacity=".46"/><stop offset="1" stop-color="#b98afa" stop-opacity=".02"/></linearGradient></defs>'+
+ '<path d="'+line+' L 380 115 L 20 115 Z" fill="url(#azClientFill)"/>'+
+ '<path d="'+line+'" fill="none" stroke="#8c35ed" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg>';
 }
 
 const OLLAMA_URL="http://127.0.0.1:11434";
