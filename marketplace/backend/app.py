@@ -865,7 +865,7 @@ class Handler(SimpleHTTPRequestHandler):
                     client_id=lic.get("client_id") if lic else ""
                     item=CONNECTIONS.get(client_id) if client_id else None
                 else:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    item=CONNECTIONS.get("owner")
                 
                 return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
                                            "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
@@ -906,7 +906,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "bar_time":bar_time,"direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
-                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 event_type=str(data.get("event_type") or "")
                 allowed=("RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY")
                 if event_type not in allowed: return self.send_json(400,{"error":"نوع حدث التعافي غير مسموح"})
@@ -919,7 +919,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"saved":True,"event_type":event_type})
             if path.startswith("/v1/terminal-history/batch/"):
                 client_id=path.rsplit("/",1)[-1]
-                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 symbol=str(data.get("symbol") or "")[:40]
                 timeframe=str(data.get("timeframe") or "")[:20]
                 if not symbol or not timeframe: return self.send_json(400,{"error":"رمز السوق أو الفريم غير صالح"})
@@ -1125,7 +1125,7 @@ class Handler(SimpleHTTPRequestHandler):
             parts=path.strip("/").split("/")
             if len(parts)==4 and parts[:3]==["v1","terminal-state","live"]:
                 client_id=parts[3]
-                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 account=data.get("account") or {}
                 if not isinstance(account,dict): return self.send_json(400,{"error":"بيانات الطرفية غير صحيحة"})
                 safe={"login":str(account.get("login",""))[:40],"server":str(account.get("server",""))[:100],
