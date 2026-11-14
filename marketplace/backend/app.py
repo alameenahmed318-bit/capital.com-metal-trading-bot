@@ -552,7 +552,7 @@ class Handler(SimpleHTTPRequestHandler):
                 trading_enabled=trading_enabled,
                 local_ai_advice=(
                     {**item.get("local_ai_advice",{}),
-                     "age_seconds":(datetime.now(timezone.utc)-item["local_ai_advice"].get("received_at",datetime.min.replace(tzinfo=timezone.utc))).total_seconds()}
+                     "age_seconds":datetime.now(timezone.utc).timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0))}
                     if isinstance(item.get("local_ai_advice"),dict) else None
                 ),
                 require_local_ai=LOCAL_AI_REQUIRED
@@ -834,7 +834,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"موديل Qwen غير معتمد لهذا الربط"})
                 item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
-                    "received_at":datetime.now(timezone.utc)}
+                    "received_at_unix":time.time()}
                 return self.send_json(200,{"accepted":True,"bar_time":bar_time,
                     "direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
