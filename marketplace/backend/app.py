@@ -571,6 +571,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "authorization_id":gate.get("authorization_id"),
                 "authorization_expires_at":gate.get("expires_at_unix",0),
                 "council":decision.get("council",{}),
+                "local_ai_required":LOCAL_AI_REQUIRED,
+                "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
                 "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
         if path=="/api/market/context":
             try:
