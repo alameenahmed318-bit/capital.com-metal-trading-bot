@@ -16,6 +16,30 @@ def _number(value, default=0.0):
         return default
 
 
+
+def retain_current_local_ai_advice(advice, decision, now_unix):
+    """Keep a Qwen vote across MT5 telemetry refreshes only for its live closed bar."""
+    if not isinstance(advice, dict) or not isinstance(decision, dict):
+        return None
+    try:
+        bar_time = int(_number(advice.get("bar_time")))
+        current_bar = int(_number(decision.get("bar_time")))
+        received_at = _number(advice.get("received_at_unix"), -1.0)
+        age = float(now_unix) - received_at
+        confidence = _number(advice.get("confidence"), -1.0)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    direction = str(advice.get("direction", "WAIT")).upper()
+    if bar_time <= 0 or bar_time != current_bar:
+        return None
+    if age < 0 or age > 20:
+        return None
+    if direction not in ("BUY", "SELL", "WAIT") or not 0 <= confidence <= 1:
+        return None
+    if advice.get("model") != "qwen2.5:3b":
+        return None
+    return dict(advice)
+
 def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled, local_ai_advice=None, require_local_ai=False):
     """Return a structured authorization record; any uncertainty means WAIT."""
     checks = []
