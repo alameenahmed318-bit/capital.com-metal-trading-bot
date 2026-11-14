@@ -520,17 +520,24 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
+            council_gate=decision.get("execution_council") if isinstance(decision.get("execution_council"),dict) else {}
+            council_approved=council_gate.get("approved") is True and council_gate.get("final_decision")==signal
             ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
-                   1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
+                   council_approved and 1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
             bar_time=int(finite_number(decision.get("bar_time",0)))
+            if not council_approved and signal in ("BUY","SELL"):
+                reason_ar="تم منع التنفيذ: لا يوجد اعتماد صريح من مجلس التصويت"
+            else:
+                reason_ar=decision.get("reason_ar","بانتظار اكتمال بيانات التحليل")
             return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
-                "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
+                "confidence":confidence,"reason_ar":reason_ar,
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
                 "bar_time":decision.get("bar_time",0),"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
+                "council_approved":council_approved,"council":council_gate,
                 "minimum_confidence":0.45,
-                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
+                "message":"اعتماد مجلس التصويت مكتمل؛ القرار جاهز لفحص MT5" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "المجلس لم يعتمد الدخول أو لم تكتمل شروط التنفيذ")})
         if path=="/api/market/context":
             try:
                 import time
@@ -1044,6 +1051,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "mtf_bias":evaluated.get("mtf_bias",{}),
                                 "adaptive":evaluated["adaptive"],
                                 "council":evaluated["council"],
+                                "execution_council":evaluated.get("execution_council",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
                                 "strategy_count":evaluated["strategy_count"],
