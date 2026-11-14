@@ -16,8 +16,9 @@ $("ownerPairBtn").addEventListener("click",async()=>{
   const btn=$("ownerPairBtn");btn.disabled=true;
   try{
     const d=await api("/api/owner/terminal-pair","POST",{});
-    ownerPairingData={InpOwnerMode:true,InpServerUrl:d.engine_server_url,InpOwnerPairingKey:d.pairing_key,InpEnableCentralTrading:false};
+    ownerPairingData={InpOwnerMode:true,InpServerUrl:d.engine_server_url,InpOwnerConnectionId:d.engine_id,InpOwnerPairingKey:d.pairing_key,InpEnableCentralTrading:false};
     $("ownerPairServer").textContent=d.engine_server_url;
+    $("ownerPairId").textContent=d.engine_id;
     $("ownerPairKey").textContent=d.pairing_key;
     $("ownerPairResult").classList.remove("hidden");
   }catch(e){msg("ownerPairError",e.message||"فشل اقتران جهاز المالك")}
