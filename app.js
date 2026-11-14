@@ -9,6 +9,26 @@ $("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("login
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
 async function refreshClients(){const d=await api("/api/admin/clients");$("clientCount").textContent=d.clients.length;$("activeCount").textContent=d.clients.filter(x=>x.active).length;const host=$("clientsList");host.replaceChildren();if(!d.clients.length){host.textContent="لا يوجد عملاء حالياً.";return}for(const c of d.clients){const card=document.createElement("article");card.className="client-row";const info=document.createElement("div");const name=document.createElement("b");name.textContent=c.name||c.email;const meta=document.createElement("small");meta.textContent=c.email+" • "+(c.licensed?"ترخيص موجود":"لا يوجد ترخيص");info.append(name,meta);const actions=document.createElement("div");actions.className="actions";const toggle=document.createElement("button");toggle.className="btn small "+(c.active?"ghost":"secondary");toggle.textContent=c.active?"إيقاف":"تفعيل";toggle.onclick=async()=>{try{await api("/api/admin/clients/"+c.id,"PATCH",{active:!c.active});await refreshClients()}catch(e){alert(e.message)}};const del=document.createElement("button");del.className="btn danger small";del.textContent="حذف";del.onclick=async()=>{if(!confirm("حذف حساب هذا العميل؟"))return;try{await api("/api/admin/clients/"+c.id,"DELETE");await refreshClients()}catch(e){alert(e.message)}};actions.append(toggle,del);card.append(info,actions);host.append(card)}}
+let ownerPairingData=null;
+$("ownerPairBtn").addEventListener("click",async()=>{
+  msg("ownerPairError","");
+  if(!confirm("ربط MT5 للمالك: إصدار مفتاح جديد سيُلغي أي اقتران سابق. متابعة؟"))return;
+  const btn=$("ownerPairBtn");btn.disabled=true;
+  try{
+    const d=await api("/api/owner/terminal-pair","POST",{});
+    ownerPairingData={InpOwnerMode:true,InpServerUrl:d.engine_server_url,InpOwnerPairingKey:d.pairing_key,InpEnableCentralTrading:false};
+    $("ownerPairServer").textContent=d.engine_server_url;
+    $("ownerPairKey").textContent=d.pairing_key;
+    $("ownerPairResult").classList.remove("hidden");
+  }catch(e){msg("ownerPairError",e.message||"فشل اقتران جهاز المالك")}
+  finally{btn.disabled=false}
+});
+$("ownerPairDownload").addEventListener("click",()=>{
+  if(!ownerPairingData)return;
+  const blob=new Blob([JSON.stringify(ownerPairingData,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="AL-ZOOL-Owner-MT5-Pairing.json";a.click();URL.revokeObjectURL(a.href);
+});
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
