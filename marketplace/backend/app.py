@@ -773,7 +773,7 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
                 event_type=str(data.get("event_type") or "")
-                allowed=("RECOVERY_ARMED","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY")
+                allowed=("RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY")
                 if event_type not in allowed: return self.send_json(400,{"error":"نوع حدث التعافي غير مسموح"})
                 event_key=str(data.get("event_id") or "").strip()
                 payload=data.get("payload") if isinstance(data.get("payload"),dict) else None
