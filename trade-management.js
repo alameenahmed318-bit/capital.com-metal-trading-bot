@@ -184,7 +184,7 @@ function money(v,c){return v==null?"—":fmt(v)+" "+esc(c||"");}
 function setPnl(el,v,c){el.textContent=money(v,c);el.classList.remove("pnl-positive","pnl-negative","pnl-neutral");el.classList.add(pnlClass(v));}
 function direction(type){const n=Number(type);return n===0?'<span class="direction buy">شراء</span>':n===1?'<span class="direction sell">بيع</span>':'<span class="direction">—</span>';}
 function orderType(type){return ({0:"شراء بسعر السوق",1:"بيع بسعر السوق",2:"Buy Limit",3:"Sell Limit",4:"Buy Stop",5:"Sell Stop",6:"Buy Stop Limit",7:"Sell Stop Limit"})[Number(type)]||"أمر معلّق";}
-function timeText(value){if(!value)return "—";const d=new Date(value);return Number.isNaN(d.getTime())?"—":new Intl.DateTimeFormat("en-AE",{dateStyle:"short",timeStyle:"short"}).format(d);}
+function timeText(value){if(!value)return "—";const d=new Date(value);return Number.isNaN(d.getTime())?"—":new Intl.DateTimeFormat("en-AE-u-nu-latn",{dateStyle:"short",timeStyle:"short"}).format(d);}
 function emptyRow(cols,msg){return "<tr><td colspan='"+cols+"' class='empty-cell'>"+esc(msg)+"</td></tr>";}
 function renderPositions(rows,currency){
  const body=$("positionsBody"),mobile=$("positionsMobile");
@@ -206,7 +206,7 @@ function renderOrders(rows,currency){
 }
 async function refresh(){
  if(refreshBusy||!accessToken)return;refreshBusy=true;$("refreshBtn").disabled=true;
- $("clock").textContent=new Intl.DateTimeFormat("en-AE",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
+ $("clock").textContent=new Intl.DateTimeFormat("en-AE-u-nu-latn",{dateStyle:"medium",timeStyle:"short"}).format(new Date());
  try{
   const s=await api("/api/dashboard/summary"),currency=s.currency||s.account?.currency||"";
   setPnl($("floating"),s.floating_pl,currency);
