@@ -1,0 +1,100 @@
+/* AL-ZOOL Design 1 — light workspace, purple navigation */
+:root{
+ color-scheme:light;
+ --bg:#f4f5fa;--panel:#ffffff;--panel2:#f7f7fc;--line:#e6e7f0;
+ --ink:#242338;--muted:#77788e;--purple:#7655d8;--purple-soft:#eee9fb;
+ --cyan:#198b83;--profit:#198b83;--loss:#d35470;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--ink)}
+body{font-family:Cairo,Arial,sans-serif}
+.shell{grid-template-columns:260px minmax(0,1fr);background:var(--bg);transition:grid-template-columns .22s ease}
+.sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden;z-index:20;padding:22px 15px;background:#242238;border:0;border-left:1px solid #37334f;color:#f8f7ff;transition:width .22s ease,padding .22s ease}
+.brand{padding:5px 8px 25px;gap:11px;color:#fff}
+.brand small{color:#aaa7c2}
+.brand-mark{background:linear-gradient(140deg,#a58aff,#684bc0);box-shadow:0 7px 18px #17142c66}
+.side-label{padding:13px 12px 8px;color:#9894b3;font-size:10px;font-weight:700}
+.nav-group{margin:0 0 12px}
+.nav{position:relative;gap:11px;margin:3px 0;padding:11px 12px;border:1px solid transparent;border-radius:11px;color:#d2d0e1;font-size:12px;white-space:nowrap;transition:background .15s ease,border-color .15s ease}
+.nav span{width:22px;flex:0 0 22px;text-align:center;font-size:16px;color:#b7a5f5}
+.nav:hover{background:#ffffff12;color:#fff}
+.nav.active{background:#44396b;border:1px solid #65549a;color:#fff;box-shadow:inset -3px 0 #b9a6ff}
+.nav.active span{color:#fff}
+.side-bottom{margin-top:auto;background:#ffffff0b;border:1px solid #ffffff1c;border-radius:12px;color:#ddd9ef}
+.side-bottom small{color:#aaa7c2}
+.live-dot{background:#62c9b9;box-shadow:0 0 10px #62c9b966}
+.main{max-width:1800px;padding:28px 30px;color:var(--ink)}
+.topbar h1{color:#26243b;font-weight:800}
+.topbar p,.muted,.chart-foot{color:#77788e}
+.date-chip,.refresh{background:#fff;border-color:#e2e3ed;color:#56566d;box-shadow:0 2px 8px #25234408}
+.avatar{box-shadow:0 4px 12px #5a469522}
+.kpi,.card{background:#fff;border:1px solid #e6e7f0;border-radius:16px;box-shadow:0 5px 20px #25234408}
+.kpi{min-height:118px}
+.kpi-head,.kpi small{color:#77788e}
+.kpi strong{color:#29263f}
+.kpi-head i,.shield,.icon-tile{color:#7655d8}
+.notice{background:#f0ecfb;border:1px solid #ddd4f6;color:#57438d}
+.notice span{color:#75669a}
+.market-tag{background:#e7f5f2;color:#198b83}
+.chart-wrap{background:#f8f9fc;border-color:#e6e7f0}
+.status-row{border-color:#ececf3}
+.status-row b{color:#302d45}
+.status-row small{color:#838399}
+.state.pending{background:#fff4e7;color:#a56b2b}
+.state.muted{background:#f0f0f5;color:#69697e}
+.daily-grid div,.ai-facts div{background:#f5f4fa}
+.ai-result{background:#faf9fd;border-color:#e6e3f1}
+.ai-toolbar{background:#f6f4fc;border-color:#e6e3f1}
+.ai-reasons{color:#514e65}
+.ai-risk{background:#fff6e9;color:#90662f}
+.history-table th,.history-table td{border-color:#ececf3}
+.history-table td{color:#302d45}
+footer{color:#89899b}
+.section-nav a{background:#f6f4fc;border-color:#e6e3f1;color:#5a4a8a}
+.section-nav a:hover{border-color:#a995e8;color:#4c3788}
+.count-chip{background:#eee9fb;color:#6446bd}
+.read-only{background:#f0f0f5;color:#6d6b80}
+.protection-item,.close-option,.sl-settings-panel,.entry-guard-panel{background:#f8f7fc;border-color:#e6e3f1}
+.protection-icon{background:#eee9fb;color:#7655d8}
+.recovery-monitor,.recovery-log-wrap{background:#f8f7fc;border-color:#e6e3f1}
+.recovery-metrics>div,.recovery-log-item{background:#fff;border-color:#e6e7f0}
+.recovery-state{background:#eee9fb;border-color:#d9cff4;color:#6446bd}
+.recovery-live-message{color:#5c4d82}
+.recovery-log-item p{color:#343149}
+.close-option input[type=number],.close-option input[inputmode=decimal],.close-option input[inputmode=numeric],
+.sl-settings-grid input,.sl-settings-grid select,.entry-guard-grid input,
+#positionManagement input,#positionManagement select,#positionManagement input[type=number],#positionManagement #pmMode{
+ background:#fff!important;color:#29263f!important;-webkit-text-fill-color:#29263f!important;border:1px solid #d9d8e7!important;color-scheme:light
+}
+#positionManagement input::placeholder{color:#85849a!important}
+#positionManagement select option{background:#fff;color:#29263f}
+#positionManagement .pm-option label,#positionManagement label{color:#5e5c73}
+.pm-mode-row{border-color:#e6e3f1}
+.ui-sidebar-toggle{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px solid #ffffff20;background:#ffffff0b;color:#e8e5f7;border-radius:10px;padding:9px 10px;margin:0 0 14px;font:inherit;font-size:11px;cursor:pointer}
+.ui-sidebar-toggle:hover{background:#ffffff16}
+.ui-sidebar-toggle .toggle-glyph{font-size:17px;color:#c9baff}
+.shell.ui-collapsed{grid-template-columns:82px minmax(0,1fr)}
+.ui-collapsed .sidebar{padding-inline:10px}
+.ui-collapsed .brand{justify-content:center;padding:4px 0 22px}
+.ui-collapsed .brand>span:last-child,.ui-collapsed .side-label,.ui-collapsed .nav .nav-label,.ui-collapsed .side-bottom>span:not(.live-dot),.ui-collapsed .side-bottom small,.ui-collapsed .ui-sidebar-toggle .toggle-label{display:none}
+.ui-collapsed .nav{justify-content:center;padding:12px 5px}
+.ui-collapsed .nav span{width:auto;flex:0 0 auto;font-size:19px}
+.ui-collapsed .side-bottom{display:flex;justify-content:center;padding:12px 5px}
+@media(max-width:800px){
+ .shell,.shell.ui-collapsed{grid-template-columns:1fr}
+ .sidebar{position:relative;height:auto;min-height:0;padding:12px 13px;display:flex;flex-direction:row;align-items:center;gap:8px;overflow-x:auto;overflow-y:hidden;border:0;border-bottom:1px solid #37334f}
+ .brand,.ui-collapsed .brand{padding:0;margin-left:auto;flex:0 0 auto}
+ .brand>span:last-child{display:block!important}
+ .ui-sidebar-toggle{width:auto;flex:0 0 auto;margin:0;padding:8px 10px}
+ .ui-sidebar-toggle .toggle-label{display:inline!important}
+ .side-label{display:none}
+ .nav-group{display:flex;align-items:center;gap:4px;flex:0 0 auto;margin:0}
+ .nav{flex:0 0 auto;padding:9px 10px;font-size:11px}
+ .nav .nav-label{display:inline!important}
+ .side-bottom{display:none}
+ .ui-collapsed .sidebar{padding:12px 13px}
+ .ui-collapsed .brand>span:last-child{display:block}
+ .ui-collapsed .nav{justify-content:flex-start;padding:9px 10px}
+ .ui-collapsed .nav span{width:22px;flex:0 0 22px;font-size:16px}
+ .main{padding:20px 13px}
+}
+@media(max-width:420px){.main{padding:17px 11px}.topbar h1{font-size:21px}}

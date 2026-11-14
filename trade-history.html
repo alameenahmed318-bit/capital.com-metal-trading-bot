@@ -1,15 +1,39 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#11121b"><title>AL-ZOOL | سجل التداول</title>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#242238"><title>AL-ZOOL | سجل التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/dashboard.css?v=2">
+<link rel="stylesheet" href="/ui-shell.css?v=1">
 <style>
 .th-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.th-stat,.th-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.th-stat small{display:block;color:var(--muted);font-size:11px}.th-stat strong{display:block;font-size:22px;margin-top:7px;overflow-wrap:anywhere}.th-card{margin:14px 0}.th-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.th-actions input,.th-actions select,.th-actions button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit}.th-table-wrap{overflow:auto}.th-table{width:100%;border-collapse:collapse;min-width:700px;font-size:12px}.th-table th,.th-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.th-table th{color:var(--muted)}.positive{color:#48c99a}.negative{color:#ff7888}
 @media(max-width:850px){.th-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style></head>
 <body><div class="shell"><aside class="sidebar">
-<a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a><div class="side-label">القائمة الرئيسية</div>
-<a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a><a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a><a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a><a class="nav" href="/opportunities.html"><span>◉</span> مختبر الفرص</a><a class="nav active" href="/trade-history.html"><span>▤</span> سجل التداول</a><a class="nav" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a><a class="nav" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a>
-<div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <div class="side-label">الرئيسية</div>
+ <div class="nav-group">
+  <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
+ </div>
+ <div class="side-label">مركز الذكاء الاصطناعي</div>
+ <div class="nav-group">
+  <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
+ </div>
+ <div class="side-label">السوق والاستراتيجيات</div>
+ <div class="nav-group">
+  <a class="nav " href="/opportunities.html" ><span>◉</span><span class="nav-label">مختبر الفرص</span></a>
+  <a class="nav " href="/backtest-lab.html" ><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
+ </div>
+ <div class="side-label">إدارة الصفقات والأداء</div>
+ <div class="nav-group">
+  <a class="nav " href="/trade-management.html" ><span>⇄</span><span class="nav-label">إدارة التداول والحماية</span></a>
+  <a class="nav active" href="/trade-history.html" aria-current="page"><span>▤</span><span class="nav-label">سجل التداول والتقارير</span></a>
+ </div>
+ <div class="side-label">إدارة النظام</div>
+ <div class="nav-group">
+  <a class="nav" href="/"><span>♙</span><span class="nav-label">العملاء والتراخيص</span></a>
+ </div>
+ <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+</aside>
 <main class="main"><header class="topbar"><div><div class="eyebrow">MT5 EXECUTION HISTORY</div><h1>سجل التداول</h1><p>سجل الصفقات المغلقة من تنفيذ MT5 مع صافي الربح والتكاليف</p></div><div class="top-actions"><button class="refresh" id="refreshBtn">تحديث</button><a class="avatar" href="/dashboard.html">AZ</a></div></header>
 <section class="notice" id="historyStatus"><b>مصدر السجل</b><span>يتم تحميل الصفقات المغلقة المحفوظة من MT5.</span></section>
 <section class="th-grid"><article class="th-stat"><small>عدد الصفقات المغلقة</small><strong id="tradeCount">—</strong></article><article class="th-stat"><small>نسبة الصفقات الرابحة</small><strong id="winRate">—</strong></article><article class="th-stat"><small>صافي النتيجة</small><strong id="netTotal">—</strong></article><article class="th-stat"><small>عدد سجلات التنفيذ الخام</small><strong id="dealRows">—</strong></article></section>
@@ -29,4 +53,5 @@ function renderEvents(){const names={TRADE_OPENED:"فتح صفقة",TRADE_CLOSED
 async function load(){try{$("historyStatus").innerHTML="<b>جاري تحديث السجل</b><span>يتم جلب الصفقات المغلقة وأحداث MT5.</span>";const d=await api("/api/trade-history?days="+$("days").value+"&limit=5000");trades=d.trades||[];currency=d.currency||"";$("tradeCount").textContent=Number(d.count||0).toLocaleString("en-US");$("winRate").textContent=d.win_rate==null?"—":fmt(d.win_rate)+"%";$("netTotal").textContent=fmt(d.net)+" "+currency;$("netTotal").className=Number(d.net||0)>=0?"positive":"negative";$("dealRows").textContent=Number(d.deal_rows||0).toLocaleString("en-US");try{const ev=await api("/api/opportunities/events?kind=trades&days="+$("days").value+"&limit=300");tradeEvents=ev.events||[]}catch(e){tradeEvents=[]}$("historyStatus").innerHTML="<b>تم تحميل السجل</b><span>الفترة: "+($("days").selectedOptions[0]?.textContent||"")+" · المصدر: MT5 / قاعدة البيانات.</span>";render();renderEvents()}catch(e){$("historyStatus").innerHTML="<b>تعذر تحميل السجل</b><span>"+esc(e.message)+"</span>";$("tradesTable").innerHTML="<div class='th-stat'>"+esc(e.message)+"</div>"}}
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await load()}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("historyStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",load);$("days").addEventListener("change",load);$("search").addEventListener("input",()=>{render();renderEvents()});$("resultFilter").addEventListener("change",render);boot();
-</script><script src="/numbers-en.js?v=3"></script></body></html>
+</script><script src="/numbers-en.js?v=3"></script><script src="/ui-shell.js?v=1" defer></script>
+</body></html>

@@ -1,8 +1,34 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#11121b"><title>AL-ZOOL | تحليل الذهب AI</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/dashboard.css?v=2"></head>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#242238"><title>AL-ZOOL | تحليل الذهب AI</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/dashboard.css?v=2">
+<link rel="stylesheet" href="/ui-shell.css?v=1"></head>
 <body><div class="shell">
-<aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a><div class="side-label">القائمة الرئيسية</div>
-<a class="nav" href="/opportunities.html"><span>◉</span> مختبر الفرص</a><a class="nav" href="/trade-history.html"><span>▤</span> سجل التداول</a><a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a><a class="nav active" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a><a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a><a class="nav" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a><a class="nav" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a><div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+<aside class="sidebar">
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <div class="side-label">الرئيسية</div>
+ <div class="nav-group">
+  <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
+ </div>
+ <div class="side-label">مركز الذكاء الاصطناعي</div>
+ <div class="nav-group">
+  <a class="nav active" href="/ai-analysis.html" aria-current="page"><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
+ </div>
+ <div class="side-label">السوق والاستراتيجيات</div>
+ <div class="nav-group">
+  <a class="nav " href="/opportunities.html" ><span>◉</span><span class="nav-label">مختبر الفرص</span></a>
+  <a class="nav " href="/backtest-lab.html" ><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
+ </div>
+ <div class="side-label">إدارة الصفقات والأداء</div>
+ <div class="nav-group">
+  <a class="nav " href="/trade-management.html" ><span>⇄</span><span class="nav-label">إدارة التداول والحماية</span></a>
+  <a class="nav " href="/trade-history.html" ><span>▤</span><span class="nav-label">سجل التداول والتقارير</span></a>
+ </div>
+ <div class="side-label">إدارة النظام</div>
+ <div class="nav-group">
+  <a class="nav" href="/"><span>♙</span><span class="nav-label">العملاء والتراخيص</span></a>
+ </div>
+ <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+</aside>
 <main class="main"><header class="topbar"><div><div class="eyebrow">AL-ZOOL INTELLIGENCE CENTER</div><h1>تحليل الذهب بالذكاء الاصطناعي</h1><p>تحليل مستقل لبيانات XAUUSD القادمة من MT5 باستخدام Ollama المحلي</p></div><div class="top-actions"><a class="refresh" href="/">الاتصال والعملاء</a><a class="avatar" href="/dashboard.html">AZ</a></div></header>
 <section class="notice"><b>ملاحظة مهمة</b><span>هذه الصفحة للتحليل والاستشارة فقط. لا تفتح أو تغلق صفقات ولا ترسل أوامر تداول إلى MT5.</span></section>
 <section class="card ai-card"><div class="card-title"><div><span class="eyebrow">LOCAL MODEL</span><h2>محرك Qwen 2.5 · 3B</h2></div><span class="market-tag">Ollama · محلي</span></div><div class="ai-toolbar"><div><b id="aiModelLabel">qwen2.5:3b</b><small id="aiHelp">يتم التحقق من Ollama وبيانات MT5…</small></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="aiAnalyzeBtn" class="refresh" type="button">تحليل الذهب الآن</button><button id="autoToggleBtn" class="refresh" type="button">إيقاف التحليل التلقائي</button><button id="diagToggleBtn" class="refresh" type="button">تشخيص سبب التأخير</button></div></div><div id="aiResult" class="ai-result"><div class="ai-placeholder">جارٍ التحقق من تسجيل الدخول واتصال النموذج المحلي.</div></div><div id="diagPanel" style="display:none;margin-top:14px;padding:14px;border:1px solid #34364a;border-radius:12px;background:#171824"><b>تشخيص أداء التحليل</b><div id="diagSummary" style="margin-top:8px;color:#c8c8d8;font-size:13px">لم يبدأ التشخيص بعد.</div><ol id="diagRows" style="margin:8px 18px 0 0;color:#c8c8d8;font-size:12px;line-height:1.9"></ol></div><p class="chart-foot">يعتمد التحليل على آخر 100 شمعة مستلمة من MT5 عند توفرها. لا توجد ضمانات للربح، ولا يتم تنفيذ أي قرار تلقائياً.</p></section>
@@ -89,4 +115,5 @@ function startAutoAnalysis(){if(autoTimer)return;autoEnabled=true;$("autoToggleB
 function stopAutoAnalysis(){autoEnabled=false;if(autoTimer){clearInterval(autoTimer);autoTimer=null}$("autoToggleBtn").textContent="تشغيل التحليل التلقائي";$("aiHelp").textContent="التحليل التلقائي متوقف."}
 $("aiAnalyzeBtn").addEventListener("click",analyze);$("autoToggleBtn").addEventListener("click",()=>autoEnabled?stopAutoAnalysis():startAutoAnalysis());boot();
 </script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=1" defer></script>
 </body></html>
