@@ -533,7 +533,8 @@ class Handler(SimpleHTTPRequestHandler):
             bar_time=int(finite_number(decision.get("bar_time",0)))
             output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
             return self.send_json(200,{"signal":output_signal,
-                "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
+                "confidence":confidence,"reason_ar":(decision.get("reason_ar","بانتظار اكتمال بيانات التحليل") if ready else gate.get("reason_ar","تم رفض الدخول بواسطة المجلس أو الحماية")),
+                "decision_reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
                 "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
