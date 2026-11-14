@@ -2,18 +2,42 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#11121b"><title>AL-ZOOL | مختبر الاختبار التاريخي</title>
+<meta name="theme-color" content="#242238"><title>AL-ZOOL | مختبر الاختبار التاريخي</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/dashboard.css?v=2">
+<link rel="stylesheet" href="/ui-shell.css?v=1">
 <style>
 .lab-intro{margin-bottom:16px}.lab-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}.lab-controls label{display:grid;gap:6px;color:var(--muted);font-size:12px}.lab-controls select,.lab-controls input{width:100%;min-width:0;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}.lab-note{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px;line-height:1.9}.lab-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:16px 0}.lab-stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.lab-stat small{display:block;color:var(--muted);font-size:11px}.lab-stat strong{display:block;font-size:22px;margin-top:7px;overflow-wrap:anywhere}.lab-results{display:grid;grid-template-columns:1fr 1fr;gap:14px}.lab-table{width:100%;border-collapse:collapse;font-size:11px;min-width:600px}.lab-table th,.lab-table td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.lab-table th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel)}.lab-table-wrap{overflow:auto;max-height:620px}.lab-state{padding:14px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);text-align:center;line-height:1.8}.lab-progress{height:7px;background:var(--panel2);border-radius:20px;overflow:hidden;margin-top:12px}.lab-progress span{display:block;height:100%;width:0;background:var(--purple);transition:width .2s}.lab-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.lab-actions button{cursor:pointer}.lab-actions button:disabled{opacity:.5;cursor:wait}.lab-tag{font-size:11px;color:var(--muted)}.positive{color:#48c99a}.negative{color:#ff7888}
 @media(max-width:1100px){.lab-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.lab-controls{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:900px){.lab-results{grid-template-columns:1fr}}@media(max-width:600px){.lab-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lab-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.lab-stat strong{font-size:19px}}
 </style></head>
 <body><div class="shell">
-<aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
-<div class="side-label">القائمة الرئيسية</div>
-<a class="nav" href="/opportunities.html"><span>◉</span> مختبر الفرص</a><a class="nav" href="/trade-history.html"><span>▤</span> سجل التداول</a><a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a><a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a><a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a><a class="nav active" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a><a class="nav" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a>
-<div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+<aside class="sidebar">
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <div class="side-label">الرئيسية</div>
+ <div class="nav-group">
+  <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
+ </div>
+ <div class="side-label">مركز الذكاء الاصطناعي</div>
+ <div class="nav-group">
+  <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
+ </div>
+ <div class="side-label">السوق والاستراتيجيات</div>
+ <div class="nav-group">
+  <a class="nav " href="/opportunities.html" ><span>◉</span><span class="nav-label">مختبر الفرص</span></a>
+  <a class="nav active" href="/backtest-lab.html" aria-current="page"><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
+ </div>
+ <div class="side-label">إدارة الصفقات والأداء</div>
+ <div class="nav-group">
+  <a class="nav " href="/trade-management.html" ><span>⇄</span><span class="nav-label">إدارة التداول والحماية</span></a>
+  <a class="nav " href="/trade-history.html" ><span>▤</span><span class="nav-label">سجل التداول والتقارير</span></a>
+ </div>
+ <div class="side-label">إدارة النظام</div>
+ <div class="nav-group">
+  <a class="nav" href="/"><span>♙</span><span class="nav-label">العملاء والتراخيص</span></a>
+ </div>
+ <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+</aside>
 <main class="main"><header class="topbar"><div><div class="eyebrow">STRATEGY RESEARCH CENTER</div><h1>مختبر الاختبار التاريخي</h1><p>اختبار 200 استراتيجية و1000 تركيبة على أرشيف شموع MT5 المحفوظ</p></div><div class="top-actions"><a class="refresh" href="/dashboard.html">لوحة القيادة</a><a class="avatar" href="/">AZ</a></div></header>
 <section class="card lab-intro"><div class="card-title"><div><span class="eyebrow">HISTORICAL BACKTEST</span><h2>إعداد الاختبار</h2></div><span class="market-tag">محاكاة مستقلة · دون تداول</span></div>
 <div class="lab-controls">
@@ -245,4 +269,5 @@ $("timeframe").addEventListener("change",()=>setState("تم تغيير الفر�
 $("symbol").addEventListener("change",()=>setState("تم تغيير الرمز؛ اضغط بدء الاختبار."));
 boot();
 </script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=1" defer></script>
 </body></html>
