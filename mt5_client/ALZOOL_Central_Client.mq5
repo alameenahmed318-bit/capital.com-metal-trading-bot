@@ -11,14 +11,16 @@ CTrade g_trade;
 #property description "AL-ZOOL MT5 telemetry and local profit protection"
 
 input group "بيانات الاتصال بالخادم"
-input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
+input string InpServerUrl = "https://al-zool-central-engine.onrender.com";
+input bool InpOwnerMode = true;
+input string InpOwnerPairingKey = "";
 input string InpEngineId = "";
 input string InpEngineToken = "";
 input int InpHttpTimeoutMs = 8000;
 input int InpHeartbeatSeconds = 5;
 input int InpCandlesToSend = 120;
 input group "إعدادات تنفيذ الدخول المركزي"
-input bool InpEnableCentralTrading = true;
+input bool InpEnableCentralTrading = false;
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
 input int InpMaxOpenPositions = 10;
@@ -88,6 +90,19 @@ string MtfDirection(const ENUM_TIMEFRAMES tf,const int fastHandle,const int slow
    return "WAIT";
 }
 
+string ConnectionId()
+{
+   return InpOwnerMode ? "owner" : InpEngineId;
+}
+string ConnectionKey()
+{
+   return InpOwnerMode ? InpOwnerPairingKey : InpEngineToken;
+}
+bool ConnectionReady()
+{
+   return InpOwnerMode ? StringLen(InpOwnerPairingKey)>=32 :
+      (StringLen(InpEngineId)>=8 && StringLen(InpEngineToken)>=20);
+}
 string BaseUrl()
 {
    string u=InpServerUrl;
@@ -159,13 +174,13 @@ double JsonDouble(const string json,const string key,double fallback)
 bool PollTradeSettings()
 {
    g_serverTradingEnabled=false;
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   if(!ConnectionReady()) return false;
    char data[],result[];
    ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+ConnectionId(),
                        headers,1500,data,result,response_headers);
    if(code!=200)
    {
@@ -213,13 +228,13 @@ bool PollTradeSettings()
 }
 bool PollCentralDecision()
 {
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   if(!ConnectionReady()) return false;
    char data[],result[];
    ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+InpEngineId,
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId(),
                        headers,1500,data,result,response_headers);
    if(code!=200)
    {
@@ -824,7 +839,7 @@ void AppendCandle(string &out,const MqlRates &bar,int digits)
 }
 bool SendHistoricalBatch()
 {
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   if(!ConnectionReady()) return false;
    MqlRates rates[];
    ArraySetAsSeries(rates,true);
    int wanted=(int)MathMax(20,MathMin(10000,InpHistoricalCandlesToSend));
@@ -867,10 +882,10 @@ bool SendHistoricalBatch()
    char data[],result[];
    StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-history/batch/"+InpEngineId,
+   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-history/batch/"+ConnectionId(),
                        headers,30000,data,result,response_headers);
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    if(code!=200)
@@ -893,9 +908,9 @@ int StrategyIdFromComment(const string comment)
 
 bool SendLiveSnapshot()
 {
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
+   if(!ConnectionReady())
    {
-      g_status="أدخل معرّف الاتصال ورمز الترخيص";
+      g_status=InpOwnerMode ? "أدخل مفتاح اقتران جهاز المالك" : "أدخل معرّف الاتصال ورمز العميل";
       return false;
    }
 
@@ -1082,10 +1097,10 @@ bool SendLiveSnapshot()
    char data[],result[];
    StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-state/live/"+InpEngineId,
+   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-state/live/"+ConnectionId(),
                        headers,InpHttpTimeoutMs,data,result,response_headers);
    if(code!=200)
    {
