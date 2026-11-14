@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
-from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -710,7 +710,7 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
-                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED"],
+                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
                     "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY"]
                 }.get(kind)
                 query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")
@@ -836,8 +836,17 @@ class Handler(SimpleHTTPRequestHandler):
                 item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
-                return self.send_json(200,{"accepted":True,"bar_time":bar_time,
-                    "direction":direction,"model":model})
+                diagnostic_saved=False
+                event=build_qwen_vote_event(client_id,item["local_ai_advice"],decision)
+                if event:
+                    try:
+                        sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
+                           event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
+                        diagnostic_saved=True
+                    except Exception as diagnostic_error:
+                        print("QWEN_DIAGNOSTIC_SAVE_WARNING:",str(diagnostic_error)[:180],flush=True)
+                return self.send_json(200,{"accepted":True,"diagnostic_saved":diagnostic_saved,
+                    "bar_time":bar_time,"direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
