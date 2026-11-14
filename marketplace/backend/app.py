@@ -524,7 +524,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "reason_ar":str(decision.get("reason_ar",""))[:500],
                 "context":decision.get("context",{}),
                 "candles":candles[:24],
-                "local_ai_required":LOCAL_AI_REQUIRED
+                "local_ai_required":LOCAL_AI_REQUIRED,
+                "local_ai_vote_current":(isinstance(item.get("local_ai_advice"),dict) and int(finite_number(item["local_ai_advice"].get("bar_time",0)))==int(finite_number(decision.get("bar_time",0))) and datetime.now(timezone.utc).timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0))<=20)
             })
         if path.startswith("/v1/terminal-decision/"):
             client_id=path.rsplit("/",1)[-1]
