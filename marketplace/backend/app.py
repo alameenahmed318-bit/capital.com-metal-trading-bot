@@ -5,7 +5,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
-from multi_model_council import update_council, council_result, risk_guardian, accept_local_qwen_vote
+from multi_model_council import update_council, council_result, risk_guardian, accept_local_model_vote
 from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
@@ -967,19 +967,23 @@ class Handler(SimpleHTTPRequestHandler):
                 reason=str(data.get("reason_ar",""))[:500]
                 current_bar=int(finite_number(decision.get("bar_time",0)))
                 if bar_time<=0 or bar_time!=current_bar:
-                    return self.send_json(409,{"error":"تصويت Qwen لا يخص الشمعة الحالية"})
+                    return self.send_json(409,{"error":"تصويت النموذج لا يخص الشمعة الحالية"})
                 if direction not in ("BUY","SELL","WAIT") or confidence<0 or confidence>1:
-                    return self.send_json(400,{"error":"صيغة تصويت Qwen غير صالحة"})
-                if model!="qwen2.5:3b":
-                    return self.send_json(400,{"error":"موديل Qwen غير معتمد لهذا الربط"})
-                item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
+                    return self.send_json(400,{"error":"صيغة تصويت النموذج غير صالحة"})
+                if model not in ("qwen2.5:3b","deepseek-r1:1.5b"):
+                    return self.send_json(400,{"error":"موديل AI غير معتمد لهذا الربط"})
+                advice={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
-                accept_local_qwen_vote(client_id,item["local_ai_advice"],decision)
-                diagnostic_queued=False
-                event=build_qwen_vote_event(client_id,item["local_ai_advice"],decision)
-                if event:
-                    diagnostic_queued=queue_ai_diagnostic_event(event)
+                if not accept_local_model_vote(client_id,advice,decision):
+                    return self.send_json(409,{"error":"مجلس النماذج غير جاهز لهذه الشمعة"})
+                if model=="qwen2.5:3b":
+                    item["local_ai_advice"]=advice
+                    event=build_qwen_vote_event(client_id,advice,decision)
+                else:
+                    event={"event_id":f"deepseek:{client_id}:{bar_time}","client_id":client_id,
+                        "event_type":"AI_DEEPSEEK_VOTE","payload":advice}
+                diagnostic_queued=queue_ai_diagnostic_event(event) if event else False
                 return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
                     "bar_time":bar_time,"direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
