@@ -51,6 +51,7 @@ bool g_recoveryEnabled=false;
 double g_recoveryLossTrigger=0.0;
 bool g_recoveryCycleActive=false;
 double g_recoveryReferencePrice=0.0;
+datetime g_recoveryLastDiagnosticBar=0;
 string g_recoveryActiveKey="",g_recoveryPriceKey="";
 string g_serverStopLossMode="ATR";
 double g_serverStopLossValue=1.8;
@@ -607,7 +608,7 @@ bool ClosePositionTicket(const ulong ticket,const string scope)
    Print("AL-ZOOL ",scope," close completed ticket ",ticket," retcode=",retcode);
    return true;
 }
-void RecoveryLog(const string eventType,const string message,const double net,const double lots,const int positions,const string direction="")
+void RecoveryLog(const string eventType,const string message,const double net,const double lots,const int positions,const string direction="",const int strategyId=0,const double confidence=0.0,const string analysis="")
 {
    static ulong lastThrottleMs=0;
    ulong now=GetTickCount64();
@@ -618,7 +619,9 @@ void RecoveryLog(const string eventType,const string message,const double net,co
    string payload="{\"message_ar\":\""+JsonEscape(message)+"\"";
    payload+=",\"net\":"+JNum(net,2)+",\"lots\":"+JNum(lots,3);
    payload+=",\"positions\":"+IntegerToString(positions);
-   payload+=",\"symbol\":\""+JsonEscape(_Symbol)+"\",\"direction\":\""+JsonEscape(direction)+"\"}";
+   payload+=",\"symbol\":\""+JsonEscape(_Symbol)+"\",\"direction\":\""+JsonEscape(direction)+"\"";
+   payload+=",\"strategy_id\":"+IntegerToString(strategyId)+",\"confidence\":"+JNum(confidence,3);
+   payload+=",\"analysis_ar\":\""+JsonEscape(analysis)+"\"}";
    string body="{\"event_id\":\""+eventId+"\",\"event_type\":\""+eventType+"\",\"payload\":"+payload+"}";
    char data[],result[];StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
@@ -659,6 +662,7 @@ void ResetRecoveryCycle()
 {
    g_recoveryCycleActive=false;
    g_recoveryReferencePrice=0.0;
+   g_recoveryLastDiagnosticBar=0;
    if(StringLen(g_recoveryActiveKey)>0 && GlobalVariableCheck(g_recoveryActiveKey)) GlobalVariableDel(g_recoveryActiveKey);
    if(StringLen(g_recoveryPriceKey)>0 && GlobalVariableCheck(g_recoveryPriceKey)) GlobalVariableDel(g_recoveryPriceKey);
 }
@@ -754,8 +758,36 @@ bool EvaluateSmartRecovery()
        RecoveryLog("RECOVERY_ARMED","بلغ صافي الحساب حد التفعيل؛ ينتظر حركة السعر التالية.",groupNet,totalLots,totalPositions);
       return true;
    }
-   if(MathAbs(tick.bid-g_recoveryReferencePrice)<_Point*0.1) return true;
-   ENUM_ORDER_TYPE orderType=(tick.bid>g_recoveryReferencePrice?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
+   // Fast confirmation: central strategy signal + one aligned closed candle.
+   datetime closedBar=iTime(_Symbol,(ENUM_TIMEFRAMES)_Period,1);
+   double closedOpen=iOpen(_Symbol,(ENUM_TIMEFRAMES)_Period,1);
+   double closedClose=iClose(_Symbol,(ENUM_TIMEFRAMES)_Period,1);
+   string recoveryDirection=g_aiSignal;
+   string waitReason="";
+   if(closedBar<=0 || closedOpen<=0.0 || closedClose<=0.0)
+      waitReason="بانتظار اكتمال بيانات الشمعة المغلقة للتأكد من الانعكاس.";
+   else if(recoveryDirection!="BUY" && recoveryDirection!="SELL")
+      waitReason="الاستراتيجيات لم تؤكد اتجاه الانعكاس بعد: "+g_aiReason;
+   else if(g_aiBarTime!=(long)closedBar)
+      waitReason="بانتظار تحديث تحليل الاستراتيجيات للشمعة المغلقة الحالية.";
+   else if(g_aiConfidence<0.45)
+      waitReason="إشارة الاستراتيجيات ضعيفة حالياً؛ ينتظر تأكيداً أوضح.";
+   else if(recoveryDirection=="BUY" && closedClose<=closedOpen)
+      waitReason="تحليل الاستراتيجيات يميل للشراء لكن الشمعة المغلقة لم تؤكد الصعود بعد.";
+   else if(recoveryDirection=="SELL" && closedClose>=closedOpen)
+      waitReason="تحليل الاستراتيجيات يميل للبيع لكن الشمعة المغلقة لم تؤكد الهبوط بعد.";
+   if(waitReason!="")
+   {
+      if(closedBar>0 && g_recoveryLastDiagnosticBar!=(datetime)closedBar)
+      {
+         RecoveryLog("RECOVERY_WAITING",waitReason,groupNet,totalLots,totalPositions,
+                     recoveryDirection,g_aiStrategyId,g_aiConfidence,g_aiReason);
+         g_recoveryLastDiagnosticBar=closedBar;
+      }
+      return true;
+   }
+   g_recoveryLastDiagnosticBar=closedBar;
+   ENUM_ORDER_TYPE orderType=(recoveryDirection=="BUY"?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
    double rawLots=totalLots*3.0;
    double minLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
    double maxLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
@@ -765,7 +797,7 @@ bool EvaluateSmartRecovery()
    {
       Print("AL-ZOOL SMART RECOVERY blocked: exact x3 lot ",DoubleToString(rawLots,8),
             " is outside broker min/max/step. No automatic lot reduction.");
-       RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي لأن حجم ×3 لا يطابق حدود أو خطوة لوت الوسيط.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
+       RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي لأن حجم ×3 لا يطابق حدود أو خطوة لوت الوسيط.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),g_aiStrategyId,g_aiConfidence,g_aiReason);
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
       return true;
@@ -776,7 +808,7 @@ bool EvaluateSmartRecovery()
    {
       Print("AL-ZOOL SMART RECOVERY blocked: insufficient free margin for exact x3 lot ",
             DoubleToString(rawLots,2),".");
-       RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي لعدم كفاية الهامش الحر لحجم ×3.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
+       RecoveryLog("RECOVERY_BLOCKED","تم منع التعافي لعدم كفاية الهامش الحر لحجم ×3.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),g_aiStrategyId,g_aiConfidence,g_aiReason);
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
       return true;
@@ -797,12 +829,12 @@ bool EvaluateSmartRecovery()
       Print("AL-ZOOL SMART RECOVERY opened ",(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),
             " exact x3 lot=",DoubleToString(rawLots,2),
             " account positions=",totalPositions," group net=",DoubleToString(groupNet,2));
-       RecoveryLog("RECOVERY_OPENED","تم فتح صفقة التعافي بالحجم ×3.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
+       RecoveryLog("RECOVERY_OPENED","تم فتح صفقة التعافي بالحجم ×3 بعد تأكيد الاستراتيجيات والشمعة المغلقة.",groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),g_aiStrategyId,g_aiConfidence,g_aiReason);
    }
    else
    {
       Print("AL-ZOOL SMART RECOVERY order rejected: ",g_trade.ResultRetcodeDescription());
-       RecoveryLog("RECOVERY_REJECTED","رفض الوسيط أمر التعافي: "+g_trade.ResultRetcodeDescription(),groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"));
+       RecoveryLog("RECOVERY_REJECTED","رفض الوسيط أمر التعافي: "+g_trade.ResultRetcodeDescription(),groupNet,rawLots,totalPositions,(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),g_aiStrategyId,g_aiConfidence,g_aiReason);
       g_recoveryReferencePrice=tick.bid;
       if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
    }
