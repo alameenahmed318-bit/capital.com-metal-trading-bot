@@ -116,5 +116,5 @@ function startAutoAnalysis(){if(autoTimer)return;autoEnabled=true;$("autoToggleB
 function stopAutoAnalysis(){autoEnabled=false;if(autoTimer){clearInterval(autoTimer);autoTimer=null}$("autoToggleBtn").textContent="تشغيل التحليل التلقائي";$("aiHelp").textContent="التحليل التلقائي متوقف."}
 $("aiAnalyzeBtn").addEventListener("click",analyze);$("autoToggleBtn").addEventListener("click",()=>autoEnabled?stopAutoAnalysis():startAutoAnalysis());boot();
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=1" defer></script>
+<script src="/ui-shell.js?v=studio-20261114-1" defer></script>
 </body></html>
