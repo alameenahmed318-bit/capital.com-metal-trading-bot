@@ -23,7 +23,10 @@ class EntryGateTests(unittest.TestCase):
         return evaluate_entry_gate(**args)
 
     def test_valid_council_and_risk_pass(self):
-        self.assertTrue(self.gate()["approved"])
+        result = self.gate()
+        self.assertTrue(result["approved"])
+        self.assertTrue(result["authorization_id"])
+        self.assertGreater(result["expires_at_unix"], int(self.now.timestamp()))
 
     def test_trading_off_fails_closed(self):
         self.assertFalse(self.gate(trading_enabled=False)["approved"])
@@ -31,8 +34,19 @@ class EntryGateTests(unittest.TestCase):
     def test_stale_telemetry_fails_closed(self):
         self.assertFalse(self.gate(received_at=self.now-timedelta(seconds=31))["approved"])
 
+    def test_future_telemetry_fails_closed(self):
+        self.assertFalse(self.gate(received_at=self.now+timedelta(seconds=3))["approved"])
+
     def test_family_disagreement_fails_closed(self):
         self.decision["family_votes"] = {"A": "SELL", "B": "BUY"}
+        self.assertFalse(self.gate()["approved"])
+
+    def test_missing_family_votes_fails_closed(self):
+        self.decision.pop("family_votes")
+        self.assertFalse(self.gate()["approved"])
+
+    def test_combination_tie_fails_closed(self):
+        self.decision["combination_summary"] = {"BUY": 200, "SELL": 200, "WAIT": 600}
         self.assertFalse(self.gate()["approved"])
 
     def test_missing_account_fails_closed(self):
@@ -40,6 +54,26 @@ class EntryGateTests(unittest.TestCase):
 
     def test_no_free_margin_fails_closed(self):
         self.account["free_margin"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_invalid_symbol_fails_closed(self):
+        self.assertFalse(self.gate(symbol="EURUSD")["approved"])
+
+    def test_low_confidence_fails_closed(self):
+        self.decision["confidence"] = 0.44
+        self.assertFalse(self.gate()["approved"])
+
+    def test_invalid_strategy_id_fails_closed(self):
+        self.decision["strategy_id"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_invalid_closed_bar_fails_closed(self):
+        self.decision["bar_time"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_missing_quant_data_fails_closed(self):
+        self.decision["context"] = {"atr": 0}
+        self.decision["entry_atr"] = 0
         self.assertFalse(self.gate()["approved"])
 
     def test_wait_signal_fails_closed(self):
