@@ -1069,6 +1069,11 @@ class Handler(SimpleHTTPRequestHandler):
                 sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,
                    prefer="resolution=ignore-duplicates,return=minimal")
                 return self.send_json(200,{"saved":True,"event_id":row["event_id"]})
+            if path=="/api/owner/engine-license":
+                u=owner(token)
+                credentials=issue_license(u.get("id"))
+                return self.send_json(200,{"engine":credentials,"engine_server_url":PUBLIC_ENGINE_URL,
+                    "message":"تم إصدار ترخيص المالك. احتفظ بالرمز في مكان آمن؛ لن يتم تخزينه كنص صريح."})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
