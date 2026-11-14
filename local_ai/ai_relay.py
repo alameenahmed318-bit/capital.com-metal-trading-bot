@@ -85,7 +85,7 @@ def main():
                 SERVER + "/v1/local-ai/context/" + client_id, token=token, timeout=6
             )
             bar_time = int(context.get("bar_time", 0))
-            if bar_time > 0 and bar_time != last_bar:
+            if bar_time > 0 and (bar_time != last_bar or not context.get("local_ai_vote_current", False)):
                 vote = ask_qwen(context)
                 payload = {
                     "bar_time": bar_time, "direction": vote["direction"],
