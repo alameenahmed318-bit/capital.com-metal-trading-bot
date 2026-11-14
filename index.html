@@ -1,26 +1,12 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4f3f8"><title>AL-ZOOL | الاتصال والتراخيص</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=connection-licensing-only-20261111"><link rel="stylesheet" href="/admin-theme.css?v=20261114-dark-a"></head>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#171a2c"><title>AL-ZOOL | الاتصال والتراخيص</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=connection-licensing-only-20261111"><link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
+</head>
 <body><main class="wrap">
 <header class="top"><div class="brand"><div class="brand-mark">AZ</div><div><strong>AL-ZOOL</strong><small>MT5 CONNECTION & LICENSING</small></div></div><span id="connection" class="status">فحص الخدمة...</span></header>
 <section id="loginView" class="login-layout"><div class="intro"><div class="eyebrow">SECURE CONNECTION PORTAL</div><h1>الزول<br><span>إدارة الاتصال</span></h1><p>بوابة مستقلة لاتصال MetaTrader 5 وإدارة العملاء والتراخيص فقط.</p><div class="feature-line"><i></i> لا توجد وظائف تداول أو تنفيذ صفقات داخل هذه البوابة</div></div>
 <div class="panel login-panel"><div class="panel-head"><span class="eyebrow">SECURE ACCESS</span><h2>تسجيل الدخول</h2><p>أدخل بيانات الحساب المعتمد.</p></div><form id="loginForm"><label>البريد الإلكتروني<input id="loginEmail" type="email" autocomplete="username" required></label><label>كلمة المرور<input id="loginPassword" type="password" autocomplete="current-password" required></label><button class="btn primary" type="submit">دخول</button><p id="loginError" class="error"></p></form><div class="secure-note">الحسابات ينشئها المالك فقط.</div></div></section>
 <section id="adminView" class="hidden az-admin-layout">
-<aside class="az-admin-sidebar">
- <div class="az-admin-brand"><div class="brand-ar">الزول <span>🇸🇩</span></div><strong>AL-ZOOL</strong><small>ADMIN PANEL</small></div>
- <nav aria-label="أقسام لوحة المالك">
-  <a href="#adminOverview" class="active"><span class="nav-icon">⌂</span> لوحة التحكم</a>
-  <a href="#adminClients"><span class="nav-icon">♟</span> إدارة العملاء</a>
-  <a href="/dashboard.html"><span class="nav-icon">▥</span> مراقبة التداول</a>
-  <a href="#actionPanel"><span class="nav-icon">⚙</span> إعدادات المحرك</a>
-  <a href="#ownerPairPanel"><span class="nav-icon">⬡</span> التراخيص والأمان</a>
-  <a href="#councilPanel"><span class="nav-icon">◈</span> مجلس الذكاء</a>
-  <a href="#versionsPanel"><span class="nav-icon">▤</span> سجل الإصدارات</a>
-  <a href="/trade-history.html"><span class="nav-icon">◕</span> التقارير والإحصائيات</a>
-  <a href="#learningPanel"><span class="nav-icon">❖</span> التعلم والتحسين</a>
- </nav>
- <div class="az-admin-spacer"></div><div class="az-admin-badge"><span>♛</span><b>ADMIN</b><small>مدير النظام</small></div>
- <nav><button id="adminSidebarLogoutBtn" type="button"><span class="nav-icon">⇥</span>تسجيل الخروج</button></nav>
-</aside>
+<aside class="az-admin-sidebar" aria-label="قائمة المالك"><div class="az-admin-brand"><span class="brand-mark">🇸🇩</span><div><b>الزول · AL-ZOOL</b><small>OWNER CONTROL CENTER</small></div></div><div class="side-label">مركز القيادة</div><nav><a class="active" href="#adminOverview"><span class="nav-icon">⌂</span> لوحة المالك</a><a href="/dashboard.html"><span class="nav-icon">▥</span> لوحة التداول</a><a href="#adminClients"><span class="nav-icon">♙</span> إدارة العملاء</a><a href="#ownerPairPanel"><span class="nav-icon">⬡</span> الاتصال والتراخيص</a></nav><div class="side-label">الذكاء والتداول</div><nav><a href="#councilPanel"><span class="nav-icon">✧</span> مجلس الذكاء</a><a href="#actionPanel"><span class="nav-icon">⇄</span> إدارة الصفقات</a><a href="#learningPanel"><span class="nav-icon">◈</span> التعلم والذاكرة</a><a href="#versionsPanel"><span class="nav-icon">⌁</span> الاختبارات والإصدارات</a></nav><div class="az-admin-spacer"></div><div class="az-admin-badge"><span>♕</span><b>ADMIN</b><small>المالك — لوحة الإدارة</small></div><nav><button id="adminSidebarLogoutBtn" type="button"><span class="nav-icon">⇥</span> تسجيل الخروج</button></nav></aside>
 <div class="az-admin-content"><div class="welcome"><div><span class="eyebrow">OWNER CONTROL CENTER</span><h1>إدارة <span>العملاء والتراخيص</span></h1><p id="ownerLabel"></p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn secondary" href="/ai-analysis.html">تحليل الذهب AI</a><a class="btn secondary" href="/dashboard.html">لوحة القيادة</a><button class="btn ghost" id="logoutBtn">تسجيل الخروج</button></div></div>
 <section id="adminOverview" class="az-admin-overview">
  <div class="az-status-line"><span><span class="az-live-dot" id="adminLiveDot"></span> <span id="adminConnectionLine">جارٍ فحص اتصال MT5 والخادم</span></span><time id="adminClock" dir="ltr">—</time></div>
