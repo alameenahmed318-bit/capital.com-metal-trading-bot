@@ -12,6 +12,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate browser scripts
+        run: |
+          for js in app.js dashboard.js numbers-en.js strategy-engine.js trade-management.js ui-shell.js; do
+            node --check "$js"
+          done
+      - name: Validate Windows PowerShell bootstrap syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $scriptPath = Join-Path $pwd "mt5_client/ALZOOL_Check_and_Start.ps1"
+          [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw "Bootstrap PowerShell script has syntax errors"
+          }
       - name: Verify Python syntax
         run: python -m compileall -q marketplace/backend mt5_client/ALZOOL_Local_Model_Relay.py tests
       - name: Verify council and memory safety
