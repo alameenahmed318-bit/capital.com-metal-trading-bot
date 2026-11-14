@@ -12,6 +12,7 @@ from strategy_experiments import sanitize_profile, compare_profiles
 from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
 from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
+from system_readiness import owner_readiness
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -407,6 +408,30 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
+        if path=="/health":
+            return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
+                "server_utc":datetime.now(timezone.utc).isoformat(),
+                "trading_enabled_by_health_check":False})
+        if path=="/api/owner/readiness":
+            try:
+                user=owner(token_of(self))
+                identity=license_for_user(user["id"])
+                cid=(identity or {}).get("client_id","")
+                snapshot=CONNECTIONS.get(cid) if cid else None
+                settings=get_trade_settings(cid) if cid else {}
+                decision=(snapshot or {}).get("strategy_decision") or {}
+                council=council_result(cid,decision) if cid else {}
+                latest_candle=None
+                if cid:
+                    rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+
+                        urllib.parse.quote(cid,safe="")+
+                        "&select=candle_time&order=candle_time.desc&limit=1",admin=True)
+                    if rows:latest_candle=rows[0].get("candle_time")
+                result=owner_readiness(identity,snapshot,settings,council,latest_candle)
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(503,{"error":"تعذر إتمام فحص الجاهزية",
+                "reason_type":type(e).__name__})
         if path.startswith("/v1/local-ai/context/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
