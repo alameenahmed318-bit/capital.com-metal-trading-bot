@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone, timedelta
-from decision_guard import evaluate_entry_gate
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice
 
 
 class EntryGateTests(unittest.TestCase):
@@ -101,6 +101,30 @@ class EntryGateTests(unittest.TestCase):
         result = self.gate(local_ai_advice=advice, require_local_ai=True)
         self.assertTrue(result["approved"])
         self.assertEqual(result["checks"][-1]["check"], "local_ai_vote")
+
+
+    def test_qwen_vote_survives_same_bar_telemetry_refresh(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+        decision = {"bar_time": 12345}
+        kept = retain_current_local_ai_advice(advice, decision, 1005)
+        self.assertEqual(kept, advice)
+
+    def test_qwen_vote_is_cleared_when_new_bar_arrives(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+        self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12346}, 1005))
+
+    def test_qwen_vote_is_cleared_after_twenty_seconds(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+        self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12345}, 1021))
+
+    def test_qwen_vote_with_unknown_model_is_cleared(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "unknown-model", "received_at_unix": 1000}
+        self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12345}, 1005))
+
 
 
 if __name__ == "__main__":
