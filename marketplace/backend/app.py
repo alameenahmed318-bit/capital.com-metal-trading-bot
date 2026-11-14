@@ -399,6 +399,26 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
+        if path.startswith("/v1/local-ai/context/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+            item=CONNECTIONS.get(client_id)
+            if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                return self.send_json(409,{"error":"بيانات MT5 غير حديثة"})
+            decision=item.get("strategy_decision") or {}
+            if not decision:return self.send_json(409,{"error":"التحليل لم يكتمل"})
+            context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
+            return self.send_json(200,{"client_id":client_id,
+                "bar_time":int(finite_number(decision.get("bar_time"))),
+                "direction":decision.get("decision","WAIT"),
+                "confidence":finite_number(decision.get("confidence")),
+                "strategy_id":int(finite_number(decision.get("strategy_id"))),
+                "entry_reference_price":finite_number(decision.get("entry_reference_price")),
+                "atr":finite_number(context.get("atr")),
+                "family_votes":decision.get("family_votes") or {},
+                "combination_summary":decision.get("combination_summary") or {},
+                "last_seen":item.get("last_seen")})
         if path.startswith("/v1/terminal-control/settings/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
