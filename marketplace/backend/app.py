@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -11,10 +12,12 @@ SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
+LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1","true","yes","on")
 CONNECTIONS={}
 LICENSE_CACHE={}
 TRADE_SETTINGS_CACHE={}
 SETTINGS_REFRESHING=set()
+AI_EVENT_CACHE={}
 CACHE_LOCK=threading.RLock()
 LICENSE_CACHE_TTL_SECONDS=60.0
 SETTINGS_CACHE_REFRESH_SECONDS=2.0
@@ -38,6 +41,34 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
             obj=json.loads(detail); detail=obj.get("msg") or obj.get("message") or detail
         except Exception: pass
         raise ValueError(str(detail)[:300])
+
+
+def persist_ai_diagnostic_event(event):
+    """Persist AI diagnostics off latency-sensitive request paths."""
+    try:
+        sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
+           event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
+    except Exception as exc:
+        print("AI_DIAGNOSTIC_SAVE_WARNING:",str(exc)[:180],flush=True)
+
+
+def queue_ai_diagnostic_event(event):
+    """Deduplicate event writes per bar and keep Supabase off the decision path."""
+    if not isinstance(event,dict) or not event.get("event_id"):
+        return False
+    now=time.monotonic()
+    event_id=str(event["event_id"])
+    with CACHE_LOCK:
+        previous=AI_EVENT_CACHE.get(event_id,0.0)
+        if now-previous<60.0:
+            return False
+        AI_EVENT_CACHE[event_id]=now
+        if len(AI_EVENT_CACHE)>4000:
+            for key,_ in sorted(AI_EVENT_CACHE.items(),key=lambda pair:pair[1])[:1000]:
+                AI_EVENT_CACHE.pop(key,None)
+    threading.Thread(target=persist_ai_diagnostic_event,args=(event,),daemon=True).start()
+    return True
+
 
 def bootstrap_owner():
     password=os.getenv("OWNER_PASSWORD","")
@@ -503,6 +534,28 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0,"live":live})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path.startswith("/v1/local-ai/context/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+            item=CONNECTIONS.get(client_id)
+            if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+            decision=item.get("strategy_decision") or {}
+            if not decision:
+                return self.send_json(409,{"error":"لا يوجد قرار مركزي لتحليله"})
+            candles=item.get("closed_candles") or []
+            return self.send_json(200,{
+                "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
+                "bar_time":int(finite_number(decision.get("bar_time",0))),
+                "decision":decision.get("decision","WAIT"),
+                "confidence":finite_number(decision.get("confidence",0)),
+                "reason_ar":str(decision.get("reason_ar",""))[:500],
+                "context":decision.get("context",{}),
+                "candles":candles[:24],
+                "local_ai_required":LOCAL_AI_REQUIRED,
+                "local_ai_vote_current":(isinstance(item.get("local_ai_advice"),dict) and int(finite_number(item["local_ai_advice"].get("bar_time",0)))==int(finite_number(decision.get("bar_time",0))) and datetime.now(timezone.utc).timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0))<=20)
+            })
         if path.startswith("/v1/terminal-decision/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -520,17 +573,39 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
-            ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
-                   1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
+            gate=evaluate_entry_gate(
+                decision=decision,
+                account=item.get("account") or {},
+                symbol=item.get("symbol",""),
+                received_at=item.get("received_at"),
+                now=datetime.now(timezone.utc),
+                trading_enabled=trading_enabled,
+                local_ai_advice=(
+                    {**item.get("local_ai_advice",{}),
+                     "age_seconds":datetime.now(timezone.utc).timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0))}
+                    if isinstance(item.get("local_ai_advice"),dict) else None
+                ),
+                require_local_ai=LOCAL_AI_REQUIRED
+            )
+            ready=bool(gate.get("approved"))
+            council_event=build_council_event(client_id,decision,gate,trading_enabled)
+            queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
-            return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
-                "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
+            output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
+            return self.send_json(200,{"signal":output_signal,
+                "confidence":confidence,"reason_ar":(decision.get("reason_ar","بانتظار اكتمال بيانات التحليل") if ready else gate.get("reason_ar","تم رفض الدخول بواسطة المجلس أو الحماية")),
+                "decision_reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
-                "bar_time":decision.get("bar_time",0),"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
+                "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
-                "minimum_confidence":0.45,
-                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
+                "minimum_confidence":0.45,"authorization":gate,
+                "authorization_id":gate.get("authorization_id"),
+                "authorization_expires_at":gate.get("expires_at_unix",0),
+                "council":decision.get("council",{}),
+                "local_ai_required":LOCAL_AI_REQUIRED,
+                "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
+                "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
         if path=="/api/market/context":
             try:
                 import time
@@ -666,7 +741,7 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
-                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED"],
+                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
                     "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY"]
                 }.get(kind)
                 query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")
@@ -769,6 +844,35 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path.startswith("/v1/local-ai/advice/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token):
+                    return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                item=CONNECTIONS.get(client_id)
+                if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                    return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+                decision=item.get("strategy_decision") or {}
+                bar_time=int(finite_number(data.get("bar_time",0)))
+                direction=str(data.get("direction","WAIT")).upper()
+                confidence=finite_number(data.get("confidence",-1),-1)
+                model=str(data.get("model",""))[:80]
+                reason=str(data.get("reason_ar",""))[:500]
+                current_bar=int(finite_number(decision.get("bar_time",0)))
+                if bar_time<=0 or bar_time!=current_bar:
+                    return self.send_json(409,{"error":"تصويت Qwen لا يخص الشمعة الحالية"})
+                if direction not in ("BUY","SELL","WAIT") or confidence<0 or confidence>1:
+                    return self.send_json(400,{"error":"صيغة تصويت Qwen غير صالحة"})
+                if model!="qwen2.5:3b":
+                    return self.send_json(400,{"error":"موديل Qwen غير معتمد لهذا الربط"})
+                item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
+                    "confidence":confidence,"model":model,"reason_ar":reason,
+                    "received_at_unix":time.time()}
+                diagnostic_queued=False
+                event=build_qwen_vote_event(client_id,item["local_ai_advice"],decision)
+                if event:
+                    diagnostic_queued=queue_ai_diagnostic_event(event)
+                return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
+                    "bar_time":bar_time,"direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
@@ -1044,6 +1148,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "mtf_bias":evaluated.get("mtf_bias",{}),
                                 "adaptive":evaluated["adaptive"],
                                 "council":evaluated["council"],
+                                "family_votes":evaluated.get("family_votes",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
                                 "strategy_count":evaluated["strategy_count"],
@@ -1060,6 +1165,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
                     "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
+                    "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
                 return self.send_json(200,{"accepted":True,"telemetry":True,

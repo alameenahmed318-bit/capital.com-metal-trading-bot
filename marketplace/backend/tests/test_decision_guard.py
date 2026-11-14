@@ -1,0 +1,180 @@
+import unittest
+from datetime import datetime, timezone, timedelta
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
+
+
+class EntryGateTests(unittest.TestCase):
+    def setUp(self):
+        self.now = datetime.now(timezone.utc)
+        self.decision = {
+            "decision": "BUY", "confidence": 0.72, "strategy_id": 12,
+            "bar_time": int(self.now.timestamp()) - 60,
+            "entry_reference_price": 2350.0, "entry_atr": 3.0,
+            "context": {"atr": 3.0},
+            "family_votes": {"EMA Trend": "BUY", "RSI Momentum": "BUY", "MACD": "SELL"},
+            "combination_summary": {"BUY": 420, "SELL": 180, "WAIT": 400},
+        }
+        self.account = {"balance": 1000, "equity": 990, "free_margin": 800}
+
+    def gate(self, **overrides):
+        args = dict(decision=self.decision, account=self.account, symbol="XAUUSD",
+                    received_at=self.now, now=self.now, trading_enabled=True)
+        args.update(overrides)
+        return evaluate_entry_gate(**args)
+
+    def test_valid_council_and_risk_pass(self):
+        result = self.gate()
+        self.assertTrue(result["approved"])
+        self.assertTrue(result["authorization_id"])
+        self.assertGreater(result["expires_at_unix"], int(self.now.timestamp()))
+
+    def test_trading_off_fails_closed(self):
+        self.assertFalse(self.gate(trading_enabled=False)["approved"])
+
+    def test_stale_telemetry_fails_closed(self):
+        self.assertFalse(self.gate(received_at=self.now-timedelta(seconds=31))["approved"])
+
+    def test_future_telemetry_fails_closed(self):
+        self.assertFalse(self.gate(received_at=self.now+timedelta(seconds=3))["approved"])
+
+    def test_family_disagreement_fails_closed(self):
+        self.decision["family_votes"] = {"A": "SELL", "B": "BUY"}
+        self.assertFalse(self.gate()["approved"])
+
+    def test_missing_family_votes_fails_closed(self):
+        self.decision.pop("family_votes")
+        self.assertFalse(self.gate()["approved"])
+
+    def test_combination_tie_fails_closed(self):
+        self.decision["combination_summary"] = {"BUY": 200, "SELL": 200, "WAIT": 600}
+        self.assertFalse(self.gate()["approved"])
+
+    def test_missing_account_fails_closed(self):
+        self.assertFalse(self.gate(account={})["approved"])
+
+    def test_no_free_margin_fails_closed(self):
+        self.account["free_margin"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_invalid_symbol_fails_closed(self):
+        self.assertFalse(self.gate(symbol="EURUSD")["approved"])
+
+    def test_low_confidence_fails_closed(self):
+        self.decision["confidence"] = 0.44
+        self.assertFalse(self.gate()["approved"])
+
+    def test_invalid_strategy_id_fails_closed(self):
+        self.decision["strategy_id"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_invalid_closed_bar_fails_closed(self):
+        self.decision["bar_time"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_missing_quant_data_fails_closed(self):
+        self.decision["context"] = {"atr": 0}
+        self.decision["entry_atr"] = 0
+        self.assertFalse(self.gate()["approved"])
+
+    def test_wait_signal_fails_closed(self):
+        self.decision["decision"] = "WAIT"
+        self.assertFalse(self.gate()["approved"])
+
+    def test_required_local_ai_missing_fails_closed(self):
+        result = self.gate(require_local_ai=True)
+        self.assertFalse(result["approved"])
+        self.assertEqual(result["checks"][-1]["check"], "local_ai")
+
+    def test_required_local_ai_disagreement_fails_closed(self):
+        advice = {"bar_time": self.decision["bar_time"], "direction": "SELL",
+                  "confidence": 0.9, "age_seconds": 1}
+        self.assertFalse(self.gate(local_ai_advice=advice, require_local_ai=True)["approved"])
+
+    def test_required_local_ai_stale_vote_fails_closed(self):
+        advice = {"bar_time": self.decision["bar_time"], "direction": "BUY",
+                  "confidence": 0.9, "age_seconds": 21}
+        self.assertFalse(self.gate(local_ai_advice=advice, require_local_ai=True)["approved"])
+
+    def test_required_local_ai_matching_vote_passes(self):
+        advice = {"bar_time": self.decision["bar_time"], "direction": "BUY",
+                  "confidence": 0.8, "age_seconds": 1}
+        result = self.gate(local_ai_advice=advice, require_local_ai=True)
+        self.assertTrue(result["approved"])
+        self.assertEqual(result["checks"][-1]["check"], "local_ai_vote")
+
+
+    def test_qwen_vote_survives_same_bar_telemetry_refresh(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+        decision = {"bar_time": 12345}
+        kept = retain_current_local_ai_advice(advice, decision, 1005)
+        self.assertEqual(kept, advice)
+
+    def test_qwen_vote_is_cleared_when_new_bar_arrives(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+        self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12346}, 1005))
+
+    def test_qwen_vote_is_cleared_after_twenty_seconds(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+        self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12345}, 1021))
+
+    def test_qwen_vote_with_unknown_model_is_cleared(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "unknown-model", "received_at_unix": 1000}
+        self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12345}, 1005))
+
+
+
+    def test_qwen_vote_event_has_deduplicated_bar_key_and_safe_payload(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b", "reason_ar": "اتجاه صاعد"}
+        decision = {"bar_time": 12345, "decision": "BUY", "confidence": 0.72}
+        event = build_qwen_vote_event("client-123", advice, decision)
+        self.assertEqual(event["event_id"], "qwen:client-123:12345")
+        self.assertEqual(event["event_type"], "AI_QWEN_VOTE")
+        self.assertEqual(event["payload"]["central_direction"], "BUY")
+        self.assertNotIn("token", event["payload"])
+
+    def test_qwen_vote_event_rejects_wrong_bar_or_model(self):
+        advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
+                  "model": "qwen2.5:3b"}
+        self.assertIsNone(build_qwen_vote_event("client-123", advice, {"bar_time": 12346}))
+        advice["model"] = "unknown"
+        self.assertIsNone(build_qwen_vote_event("client-123", advice, {"bar_time": 12345}))
+
+
+
+    def test_council_approval_event_records_authorized_direction(self):
+        decision = {"bar_time": 12345, "decision": "BUY", "strategy_id": 12,
+                    "strategy_name": "Trend", "confidence": 0.8,
+                    "family_votes": {"Trend": "BUY"},
+                    "combination_summary": {"BUY": 500, "SELL": 200}}
+        gate = {"approved": True, "reason_ar": "موافقة المجلس",
+                "checks": [{"check": "risk", "passed": True}]}
+        event = build_council_event("client-123", decision, gate, True)
+        self.assertEqual(event["event_type"], "AI_COUNCIL_DECISION")
+        self.assertEqual(event["payload"]["outcome"], "BUY")
+        self.assertTrue(event["payload"]["approved"])
+
+    def test_council_veto_event_records_wait_when_gate_rejects_entry(self):
+        decision = {"bar_time": 12345, "decision": "SELL", "strategy_id": 7,
+                    "confidence": 0.7}
+        gate = {"approved": False, "reason_ar": "Qwen غير متاح",
+                "checks": [{"check": "local_ai", "passed": False}]}
+        event = build_council_event("client-123", decision, gate, True)
+        self.assertEqual(event["event_type"], "AI_COUNCIL_VETO")
+        self.assertEqual(event["payload"]["outcome"], "WAIT")
+
+    def test_council_wait_event_is_recorded_without_entry_signal(self):
+        decision = {"bar_time": 12345, "decision": "WAIT", "strategy_id": 0}
+        gate = {"approved": False, "reason_ar": "لا توجد إشارة",
+                "checks": []}
+        event = build_council_event("client-123", decision, gate, False)
+        self.assertEqual(event["event_type"], "AI_COUNCIL_WAIT")
+
+
+
+if __name__ == "__main__":
+    unittest.main()
