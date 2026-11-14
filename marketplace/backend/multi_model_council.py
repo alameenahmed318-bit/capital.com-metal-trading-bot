@@ -5,6 +5,7 @@ connections. No remote model is marked approved when unavailable. The trading
 gate must require both matching fresh votes; this module NEVER places orders.
 """
 import json
+import concurrent.futures
 import math
 import os
 import threading
@@ -19,7 +20,9 @@ _QWEN_MODEL=os.getenv("QWEN_MODEL","qwen2.5:3b").strip()
 _DEEPSEEK_KEY=os.getenv("DEEPSEEK_API_KEY","").strip()
 _DEEPSEEK_MODEL=os.getenv("DEEPSEEK_MODEL","deepseek-chat").strip()
 _DEEPSEEK_URL="https://api.deepseek.com/chat/completions"
-_TIMEOUT=4
+_TIMEOUT=max(4,min(30,int(os.getenv("AI_MODEL_TIMEOUT_SECONDS","12"))))
+_DEEPSEEK_LOCAL_URL=os.getenv("DEEPSEEK_LOCAL_URL","").strip()
+_DEEPSEEK_LOCAL_MODEL=os.getenv("DEEPSEEK_LOCAL_MODEL","deepseek-r1:1.5b").strip()
 
 def _num(v,default=0.0):
     try:
@@ -78,7 +81,17 @@ def _qwen(decision):
         return _vote("Qwen","ERROR",reason="فشل اتصال Qwen: "+type(exc).__name__)
 
 def _deepseek(decision):
-    if not _DEEPSEEK_KEY:return _vote("DeepSeek","NOT_CONFIGURED",reason="DEEPSEEK_API_KEY غير مضبوط")
+    if not _DEEPSEEK_KEY and not _DEEPSEEK_LOCAL_URL:
+        return _vote("DeepSeek","NOT_CONFIGURED",reason="DeepSeek API أو الاتصال المحلي غير مضبوط")
+    if not _DEEPSEEK_KEY and _DEEPSEEK_LOCAL_URL:
+        try:
+            result=_json_post(_DEEPSEEK_LOCAL_URL.rstrip("/")+"/api/generate",
+                {"model":_DEEPSEEK_LOCAL_MODEL,"prompt":_prompt(decision),
+                 "stream":False,"format":"json","options":{"temperature":0,"num_predict":180}},
+                {},timeout=_TIMEOUT)
+            return _parse("DeepSeek",result.get("response",""))
+        except Exception as exc:
+            return _vote("DeepSeek","ERROR",reason="فشل DeepSeek المحلي: "+type(exc).__name__)
     try:
         result=_json_post(_DEEPSEEK_URL,{"model":_DEEPSEEK_MODEL,"temperature":0,
             "response_format":{"type":"json_object"},
@@ -120,8 +133,12 @@ def risk_guardian(account,positions=None,limits=None):
             "drawdown_pct":round(drawdown,2)}
 
 def _worker(client_id,bar,decision,account):
-    qwen=_qwen(decision)
-    deepseek=_deepseek(decision)
+    # Run both remote/local model calls concurrently; never block MT5 telemetry.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        qwen_future=pool.submit(_qwen,decision)
+        deepseek_future=pool.submit(_deepseek,decision)
+        qwen=qwen_future.result()
+        deepseek=deepseek_future.result()
     with _LOCK:
         item=_VOTES.get(client_id)
         if item and item["bar_time"]==bar:
@@ -144,19 +161,29 @@ def update_council(client_id,decision,account):
     threading.Thread(target=_worker,args=(client_id,bar,dict(decision),dict(account)),
                      daemon=True,name="alzool-council").start()
 
-def accept_local_qwen_vote(client_id,advice,decision):
-    """Trusted MT5 relay can contribute its already-authenticated local Qwen vote."""
+def accept_local_model_vote(client_id,advice,decision):
+    """Accept owner-terminal authenticated local Qwen or DeepSeek vote."""
     bar=int(_num(decision.get("bar_time")))
     if bar<=0 or bar!=int(_num(advice.get("bar_time"))):return False
     direction=str(advice.get("direction","WAIT")).upper()
-    confidence=_num(advice.get("confidence"))
-    if direction not in ("BUY","SELL","WAIT") or not 0<=confidence<=1:return False
+    confidence=_num(advice.get("confidence"),-1)
+    model_id=str(advice.get("model",""))
+    identity={"qwen2.5:3b":("Qwen","local_qwen"),
+              "deepseek-r1:1.5b":("DeepSeek","local_deepseek")}.get(model_id)
+    if not identity or direction not in ("BUY","SELL","WAIT") or not 0<=confidence<=1:return False
+    name,key=identity
     with _LOCK:
         state=_VOTES.get(client_id)
         if not state or state.get("bar_time")!=bar:return False
-        state["local_qwen"]=_vote("Qwen","READY",direction,confidence,advice.get("reason_ar",""))
-        state["local_qwen_time"]=time.time()
+        vote=_vote(name,"READY",direction,confidence,advice.get("reason_ar",""))
+        vote["model_id"]=model_id
+        state[key]=vote
+        state[key+"_time"]=time.time()
     return True
+
+def accept_local_qwen_vote(client_id,advice,decision):
+    """Backward compatible Qwen vote handler."""
+    return accept_local_model_vote(client_id,advice,decision)
 
 def council_result(client_id,decision):
     signal=str(decision.get("decision","WAIT")).upper()
@@ -165,8 +192,9 @@ def council_result(client_id,decision):
         v=dict(_VOTES.get(client_id) or {})
     if not v or v.get("bar_time")!=bar:
         return {"approved":False,"status":"WAIT","reason_ar":"المجلس لم يصوّت على الشمعة الحالية","votes":v}
-    local=v.get("local_qwen") if time.time()-v.get("local_qwen_time",0)<=20 else None
-    votes=[v.get("fast",{}),local or v.get("qwen",{}),v.get("deepseek",{})]
+    qwen_local=v.get("local_qwen") if time.time()-v.get("local_qwen_time",0)<=30 else None
+    deepseek_local=v.get("local_deepseek") if time.time()-v.get("local_deepseek_time",0)<=30 else None
+    votes=[v.get("fast",{}),qwen_local or v.get("qwen",{}),deepseek_local or v.get("deepseek",{})]
     approved=(signal in ("BUY","SELL") and all(x.get("status")=="READY"
         and x.get("direction")==signal and _num(x.get("confidence"))>=.5 for x in votes))
     return {"approved":approved,"status":signal if approved else "WAIT",
