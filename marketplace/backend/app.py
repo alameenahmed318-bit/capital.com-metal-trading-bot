@@ -6,6 +6,7 @@ from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
 from multi_model_council import update_council, council_result, risk_guardian, accept_local_qwen_vote
+from learning_memory import memory_snapshot, combine_deals
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -877,6 +878,20 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/learning":
+            try:
+                u=current_user(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id: return self.send_json(200,{"status":"NO_CONNECTION","memory_count":0})
+                memory=memory_snapshot(client_id,sb)
+                current=CONNECTIONS.get(client_id) or {}
+                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []))
+                return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
+                    "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
+                    "wins":profile["wins"],"losses":profile["losses"],"top_strategies":profile["strategies"][:10]})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/council":
             try:
                 u=current_user(token_of(self))
@@ -1202,7 +1217,7 @@ class Handler(SimpleHTTPRequestHandler):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
-                            live_learning=live_learning_profile(closed_deals)
+                            live_learning=live_learning_profile(combine_deals(memory_snapshot(client_id,sb)["deals"],closed_deals))
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
                             evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],combination_weights=live_learning.get("combination_weights"),mtf_bias=mtf_bias,mode="AUTO")
