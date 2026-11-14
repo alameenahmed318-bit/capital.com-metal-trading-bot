@@ -1305,7 +1305,8 @@ void OnTimer()
    if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
    {
       bool sent=SendLiveSnapshot();
-      if(sent) g_online=true;
+      g_online=sent; // A failed heartbeat must not leave the terminal showing online.
+      if(!sent) g_serverTradingEnabled=false;
       g_lastSnapshotMs=now;
    }
    if(InpEnableCentralPositionManagement &&
