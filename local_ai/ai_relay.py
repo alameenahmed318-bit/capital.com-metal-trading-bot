@@ -83,13 +83,24 @@ def ask_qwen(context):
         timeout=INFERENCE_TIMEOUT,
     )
     raw = (result.get("message") or {}).get("content", "")
+    return normalize_vote(raw, context.get("decision"))
+
+
+def normalize_vote(raw, central_direction):
+    """Validate a Qwen JSON vote and fail closed on malformed/disagreeing output."""
     vote = json.loads(raw)
+    if not isinstance(vote, dict):
+        raise ValueError("Qwen vote must be a JSON object")
     direction = str(vote.get("direction", "WAIT")).upper()
     confidence = float(vote.get("confidence", 0))
     reason = str(vote.get("reason_ar", "لم يقدم Qwen سبباً"))[:300]
     if direction not in ("BUY", "SELL", "WAIT") or not 0 <= confidence <= 1:
         raise ValueError("Qwen returned an invalid vote")
-    if direction not in ("WAIT", context.get("decision")):
+    central = str(central_direction or "WAIT").upper()
+    if central not in ("BUY", "SELL"):
+        direction = "WAIT"
+        reason = "لا توجد إشارة مركزية صالحة؛ انتظار"
+    elif direction not in ("WAIT", central):
         direction = "WAIT"
         reason = "Qwen لم يؤيد اتجاه المحرك المركزي؛ انتظار"
     return {"direction": direction, "confidence": confidence, "reason_ar": reason}
