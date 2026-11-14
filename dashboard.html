@@ -43,6 +43,23 @@
   <article class="kpi"><div class="kpi-head"><i>▥</i><span>الصفقات المفتوحة</span></div><strong id="openTrades">—</strong><small>من الطرفية المتصلة</small></article>
   <article class="kpi"><div class="kpi-head"><i>♕</i><span>صافي أرباح اليوم</span></div><strong id="dailyNet">—</strong><small>بعملة حساب MT5</small></article>
  </section>
+ <section class="az-ai-council-details" id="aiCouncilLive" aria-label="مجلس الذكاء وحارس المخاطر">
+  <article class="az-ai-votes">
+   <div class="card-title"><h2>✧ مجلس الذكاء الاصطناعي</h2><span id="azCouncilState" class="az-council-state">WAIT</span></div>
+   <div class="az-model-row"><b>Fast AI — التحليل السريع</b><span id="azFastVote">بانتظار التصويت</span></div>
+   <div class="az-model-row"><b>Qwen — النموذج المحلي</b><span id="azQwenVote">بانتظار التصويت</span></div>
+   <div class="az-model-row"><b>DeepSeek — التحليل العميق</b><span id="azDeepVote">بانتظار التصويت</span></div>
+   <p class="muted" id="azCouncilReason">لا يوجد قرار متاح بعد، ولا يعني ظهور اللوحة الموافقة على دخول صفقة.</p>
+  </article>
+  <article class="az-ai-guard">
+   <div class="card-title"><h2>⬡ Risk Guardian — حماية الحساب</h2><span id="azRiskState" class="az-council-state">WAIT</span></div>
+   <div class="az-model-row"><b>حالة فحص المخاطرة</b><span id="azRiskVote">بانتظار بيانات المحرك</span></div>
+   <div class="az-model-row"><b>إشارة المحرك</b><span id="azEngineSignal">WAIT</span></div>
+   <div class="az-model-row"><b>الشمعة المحللة</b><span id="azCouncilBarTime" dir="ltr">—</span></div>
+   <p class="muted" id="azRiskReason">تصويت النماذج وموافقة المخاطر منفصلان عن تشغيل التداول الحقيقي.</p>
+   <button class="refresh" type="button" id="azRefreshCouncilBtn">⟳ تحديث المجلس</button>
+  </article>
+ </section>
  <section class="card az-client-settings" id="tradingSettingsPanel">
   <div class="card-title"><div><h2>⚙ إعدادات التداول الخاصة بك</h2><p class="muted">الإعدادات قابلة للتعديل من شاشة إدارة التداول</p></div><span class="shield">⚙</span></div>
   <div class="az-trade-settings-grid">
