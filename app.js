@@ -4,11 +4,102 @@ async function api(path,method="GET",body=null){const headers={"Content-Type":"a
 function show(id){["loginView","adminView","clientView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 function msg(id,value){$(id).textContent=value||""}
 async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
-async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true)}}
+async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl();await refreshAdminOverview()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true)}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("loginError","");if(!supabaseReady||!sb?.auth){msg("loginError","تسجيل الدخول متوقف لأن إعدادات Supabase لم تكتمل بعد. راجع رسالة إعداد الخادم أعلاه.");return;}try{const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)throw error;session=data.session;await route()}catch(x){msg("loginError",x.message||"تعذر تسجيل الدخول")}});
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
-async function refreshClients(){const d=await api("/api/admin/clients");$("clientCount").textContent=d.clients.length;$("activeCount").textContent=d.clients.filter(x=>x.active).length;const host=$("clientsList");host.replaceChildren();if(!d.clients.length){host.textContent="لا يوجد عملاء حالياً.";return}for(const c of d.clients){const card=document.createElement("article");card.className="client-row";const info=document.createElement("div");const name=document.createElement("b");name.textContent=c.name||c.email;const meta=document.createElement("small");meta.textContent=c.email+" • "+(c.licensed?"ترخيص موجود":"لا يوجد ترخيص");info.append(name,meta);const actions=document.createElement("div");actions.className="actions";const toggle=document.createElement("button");toggle.className="btn small "+(c.active?"ghost":"secondary");toggle.textContent=c.active?"إيقاف":"تفعيل";toggle.onclick=async()=>{try{await api("/api/admin/clients/"+c.id,"PATCH",{active:!c.active});await refreshClients()}catch(e){alert(e.message)}};const del=document.createElement("button");del.className="btn danger small";del.textContent="حذف";del.onclick=async()=>{if(!confirm("حذف حساب هذا العميل؟"))return;try{await api("/api/admin/clients/"+c.id,"DELETE");await refreshClients()}catch(e){alert(e.message)}};actions.append(toggle,del);card.append(info,actions);host.append(card)}}
+async function refreshClients(){const d=await api("/api/admin/clients");azSetAdminClients(d.clients);$("clientCount").textContent=d.clients.length;$("activeCount").textContent=d.clients.filter(x=>x.active).length;const host=$("clientsList");host.replaceChildren();if(!d.clients.length){host.textContent="لا يوجد عملاء حالياً.";return}for(const c of d.clients){const card=document.createElement("article");card.className="client-row";const info=document.createElement("div");const name=document.createElement("b");name.textContent=c.name||c.email;const meta=document.createElement("small");meta.textContent=c.email+" • "+(c.licensed?"ترخيص موجود":"لا يوجد ترخيص");info.append(name,meta);const actions=document.createElement("div");actions.className="actions";const toggle=document.createElement("button");toggle.className="btn small "+(c.active?"ghost":"secondary");toggle.textContent=c.active?"إيقاف":"تفعيل";toggle.onclick=async()=>{try{await api("/api/admin/clients/"+c.id,"PATCH",{active:!c.active});await refreshClients()}catch(e){alert(e.message)}};const del=document.createElement("button");del.className="btn danger small";del.textContent="حذف";del.onclick=async()=>{if(!confirm("حذف حساب هذا العميل؟"))return;try{await api("/api/admin/clients/"+c.id,"DELETE");await refreshClients()}catch(e){alert(e.message)}};actions.append(toggle,del);card.append(info,actions);host.append(card)}}
+// Dark admin dashboard — real account/client data only; never generates fake P/L.
+let azAdminRecent=[],azAdminTrades=[],azAdminCurrency="",azAdminRange=7;
+const azAdminNumber=v=>v==null||!Number.isFinite(Number(v))?"—":new Intl.NumberFormat("en-US",{maximumFractionDigits:2}).format(Number(v));
+const azAdminMoney=v=>v==null?"—":azAdminNumber(v)+(azAdminCurrency?" "+azAdminCurrency:"");
+function azSetAdminClients(rows){
+  azAdminRecent=Array.isArray(rows)?rows:[];
+  const total=$("adminClientCount"),active=$("adminActiveCount"),table=$("adminRecentClients");
+  if(total)total.textContent=azAdminNumber(azAdminRecent.length);
+  if(active)active.textContent=azAdminNumber(azAdminRecent.filter(c=>c.active).length);
+  if(!table)return;
+  table.replaceChildren();
+  if(!azAdminRecent.length){
+    const tr=document.createElement("tr");const td=document.createElement("td");
+    td.colSpan=3;td.textContent="لا يوجد عملاء مسجلون";tr.append(td);table.append(tr);return;
+  }
+  for(const c of azAdminRecent.slice(0,5)){
+    const tr=document.createElement("tr");
+    for(const value of [c.name||c.email||"—",c.email||"—",c.active?"نشط":"موقوف"]){
+      const td=document.createElement("td");td.textContent=value;tr.append(td);
+    }
+    table.append(tr);
+  }
+}
+function azDrawAdminChart(){
+ const host=$("adminPerformanceChart");if(!host)return;
+ const now=new Date(),days=azAdminRange;
+ const dates=[],values=[],totals=new Map();
+ const dateKey=d=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dubai",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
+ for(let i=days-1;i>=0;i--){const d=new Date(now.getTime()-i*86400000);dates.push(dateKey(d))}
+ for(const t of azAdminTrades){
+  if(!Number.isFinite(Number(t.time)))continue;
+  const key=dateKey(new Date(Number(t.time)*1000));
+  if(dates.includes(key))totals.set(key,(totals.get(key)||0)+Number(t.net||0));
+ }
+ if(!azAdminTrades.length||!Array.from(totals.values()).some(x=>Number.isFinite(x))){
+   host.innerHTML='<div class="az-chart-empty">لا توجد صفقات مغلقة مسجلة لهذه الفترة</div>';return;
+ }
+ let cumulative=0;
+ for(const d of dates){cumulative+=totals.get(d)||0;values.push(cumulative)}
+ const min=Math.min(0,...values),max=Math.max(0,...values),span=Math.max(1,max-min);
+ const x=i=>52+(i/(Math.max(1,values.length-1)))*710;
+ const y=v=>205-((v-min)/span)*160;
+ const pts=values.map((v,i)=>[x(i),y(v)]);
+ const line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+ const area=line+" L "+x(values.length-1).toFixed(1)+" 208 L 52 208 Z";
+ const grids=Array.from({length:5},(_,i)=>'<line x1="52" y1="'+(45+i*40)+'" x2="762" y2="'+(45+i*40)+'" stroke="#6b4497" opacity=".34" />').join("");
+ const labels=dates.map((date,i)=>i===0||i===dates.length-1||days<=7?
+ '<text x="'+x(i).toFixed(1)+'" y="237" text-anchor="middle" font-size="11" fill="#c6b3e4">'+date.slice(5)+'</text>':"").join("");
+ const circles=pts.map(p=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.7" fill="#fff" stroke="#b459ff" stroke-width="2" />').join("");
+ host.innerHTML='<svg viewBox="0 0 800 252" role="img" aria-label="صافي نتائج الصفقات المغلقة عبر الأيام" preserveAspectRatio="none"><defs><linearGradient id="azProfitArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9c32ff" stop-opacity=".55"/><stop offset="100%" stop-color="#9c32ff" stop-opacity=".04"/></linearGradient></defs>'+
+ grids+'<path d="'+area+'" fill="url(#azProfitArea)"/><path d="'+line+'" fill="none" stroke="#b25bff" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>'+circles+
+ '<text x="52" y="26" font-size="12" fill="#f5e8ff">'+azAdminMoney(cumulative)+'</text>'+labels+'</svg>';
+}
+async function refreshAdminOverview(){
+ if($("adminView")?.classList.contains("hidden"))return;
+ const clock=$("adminClock");
+ if(clock)clock.textContent=new Intl.DateTimeFormat("en-GB-u-nu-latn",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date());
+ try{
+  const status=await api("/api/connection/status");
+  if($("adminConnectionLine"))$("adminConnectionLine").textContent=status.connected?"MT5 متصل بالمحرك المركزي":"MT5 غير متصل حالياً";
+  if($("adminLiveDot"))$("adminLiveDot").classList.toggle("off",!status.connected);
+ }catch(e){
+  if($("adminConnectionLine"))$("adminConnectionLine").textContent="تعذر فحص اتصال MT5";
+  $("adminLiveDot")?.classList.add("off");
+ }
+ try{
+  const d=await api("/api/dashboard/summary");
+  azAdminTrades=Array.isArray(d.closed_trades)?d.closed_trades:[];
+  azAdminCurrency=d.currency||"";
+  if($("adminOpenTrades"))$("adminOpenTrades").textContent=d.connected?azAdminNumber(d.open_trades):"—";
+  if($("adminDailyNet")){
+    const v=d.daily?.net;
+    const el=$("adminDailyNet");el.textContent=v==null?"—":azAdminMoney(v);
+    el.classList.toggle("positive",v>0);el.classList.toggle("negative",v<0);
+  }
+  azDrawAdminChart();
+ }catch(e){
+  if($("adminOpenTrades"))$("adminOpenTrades").textContent="—";
+  if($("adminDailyNet"))$("adminDailyNet").textContent="—";
+  if($("adminPerformanceChart"))$("adminPerformanceChart").textContent="تعذر قراءة سجل MT5: "+e.message;
+ }
+}
+for(const button of document.querySelectorAll("[data-admin-days]")){
+ button.addEventListener("click",()=>{
+  azAdminRange=Number(button.dataset.adminDays)||7;
+  document.querySelectorAll("[data-admin-days]").forEach(x=>x.classList.toggle("active",x===button));
+  azDrawAdminChart();
+ });
+}
+$("adminSidebarLogoutBtn")?.addEventListener("click",logout);
+
 let ownerPairingData=null;
 $("ownerPairBtn").addEventListener("click",async()=>{
   msg("ownerPairError","");
@@ -170,5 +261,5 @@ async function refreshCouncil(){
 $("refreshCouncilBtn").addEventListener("click",refreshCouncil);
 async function refreshConnection(client=false){try{const d=await api("/api/connection/status");const connected=d.connected;const html=connected?'<span class="pill online">متصل</span>':'<span class="pill offline">غير متصل</span>';const account=d.connection?.account||{};const details=html+(connected?'<div class="connection-meta">الحساب: '+safe(account.login)+' • الخادم: '+safe(account.server)+' • الرمز: '+safe(account.symbol)+'</div><small>آخر نبضة: '+safe(d.connection.last_seen)+'</small>':'<div class="muted">لم تصل نبضة اتصال خلال آخر 30 ثانية.</div>');const target=$(client?"clientConnection":"connectionDetails");if(target)target.innerHTML=details;$("connection").textContent=connected?"MT5 متصل":"MT5 غير متصل"}catch(e){$("connection").textContent="تعذر قراءة حالة MT5"}}
 function safe(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-setInterval(()=>{if(session){if(!$("adminView").classList.contains("hidden"))refreshConnection();else if(!$("clientView").classList.contains("hidden"))refreshConnection(true)}},10000);
+setInterval(()=>{if(session){if(!$("adminView").classList.contains("hidden")){refreshConnection();refreshAdminOverview()}else if(!$("clientView").classList.contains("hidden"))refreshConnection(true)}},20000);
 boot();
