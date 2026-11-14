@@ -319,3 +319,16 @@ body:not(:has(#adminView:not(.hidden))) .intro p{color:#c5b8d9!important}
  .az-dark-topstrip{padding:9px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* Owner readiness audit: clear failures instead of decorative success badges. */
+.az-readiness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.az-readiness-item{display:flex;justify-content:space-between;align-items:center;gap:10px;
+ background:#151630;border:1px solid #493866;border-radius:12px;padding:12px 13px;min-width:0}
+.az-readiness-item div{display:flex;flex-direction:column;min-width:0;gap:3px}
+.az-readiness-item b{color:#f2eaff;font-size:11px;font-weight:800}
+.az-readiness-item small{color:#b8a6ce;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.az-readiness-item strong{white-space:nowrap;font-size:10px}
+.az-readiness-pass{color:#2ae8a4!important}
+.az-readiness-block{color:#ffadbc!important}
+#ownerReadinessPanel #ownerReadinessStatus{margin:11px 0;color:#d0bbf4!important;font-size:12px;font-weight:800}
+@media(max-width:660px){.az-readiness-grid{grid-template-columns:1fr}}
