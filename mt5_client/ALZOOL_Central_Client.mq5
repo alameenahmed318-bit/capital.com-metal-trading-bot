@@ -7,8 +7,8 @@
 #include <Trade/Trade.mqh>
 
 CTrade g_trade;
-#property version "2.32"
-#property description "AL-ZOOL MT5 telemetry and local profit protection"
+#property version "2.40"
+#property description "AL-ZOOL central AI voting and single-use action authorization"
 
 input group "بيانات الاتصال بالخادم"
 input string InpServerUrl = "https://al-zool-central-engine.onrender.com";
