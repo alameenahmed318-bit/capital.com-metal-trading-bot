@@ -41,6 +41,16 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
         except Exception: pass
         raise ValueError(str(detail)[:300])
 
+
+def persist_qwen_vote_event(event):
+    """Persist model diagnostics off the relay request path."""
+    try:
+        sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
+           event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
+    except Exception as exc:
+        print("QWEN_DIAGNOSTIC_SAVE_WARNING:",str(exc)[:180],flush=True)
+
+
 def bootstrap_owner():
     password=os.getenv("OWNER_PASSWORD","")
     if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and password): return
@@ -836,16 +846,12 @@ class Handler(SimpleHTTPRequestHandler):
                 item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
-                diagnostic_saved=False
+                diagnostic_queued=False
                 event=build_qwen_vote_event(client_id,item["local_ai_advice"],decision)
                 if event:
-                    try:
-                        sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
-                           event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
-                        diagnostic_saved=True
-                    except Exception as diagnostic_error:
-                        print("QWEN_DIAGNOSTIC_SAVE_WARNING:",str(diagnostic_error)[:180],flush=True)
-                return self.send_json(200,{"accepted":True,"diagnostic_saved":diagnostic_saved,
+                    threading.Thread(target=persist_qwen_vote_event,args=(event,),daemon=True).start()
+                    diagnostic_queued=True
+                return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
                     "bar_time":bar_time,"direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
