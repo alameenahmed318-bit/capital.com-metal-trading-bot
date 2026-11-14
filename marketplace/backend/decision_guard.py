@@ -40,6 +40,39 @@ def retain_current_local_ai_advice(advice, decision, now_unix):
         return None
     return dict(advice)
 
+
+def build_qwen_vote_event(client_id, advice, decision):
+    """Build a compact, deduplicated Supabase diagnostic event for one closed bar."""
+    if not isinstance(advice, dict) or not isinstance(decision, dict):
+        return None
+    bar_time = int(_number(advice.get("bar_time")))
+    if bar_time <= 0 or bar_time != int(_number(decision.get("bar_time"))):
+        return None
+    direction = str(advice.get("direction", "WAIT")).upper()
+    confidence = _number(advice.get("confidence"), -1.0)
+    if direction not in ("BUY", "SELL", "WAIT") or not 0 <= confidence <= 1:
+        return None
+    if advice.get("model") != "qwen2.5:3b":
+        return None
+    safe_client = str(client_id or "")[:80]
+    if not safe_client:
+        return None
+    return {
+        "event_id": f"qwen:{safe_client}:{bar_time}",
+        "client_id": safe_client,
+        "event_type": "AI_QWEN_VOTE",
+        "payload": {
+            "source": "local_ollama",
+            "model": "qwen2.5:3b",
+            "bar_time": bar_time,
+            "direction": direction,
+            "confidence": confidence,
+            "reason_ar": str(advice.get("reason_ar", ""))[:500],
+            "central_direction": str(decision.get("decision", "WAIT")).upper(),
+            "central_confidence": _number(decision.get("confidence")),
+        },
+    }
+
 def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled, local_ai_advice=None, require_local_ai=False):
     """Return a structured authorization record; any uncertainty means WAIT."""
     checks = []
