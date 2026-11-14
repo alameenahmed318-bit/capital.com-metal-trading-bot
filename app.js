@@ -33,6 +33,21 @@ $("ownerPairDownload").addEventListener("click",()=>{
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
+async function refreshActions(){
+  const target=$("actionsSummary");if(!target)return;
+  try{
+    const d=await api("/api/ai/actions");
+    const lines=["حالة التنفيذ: "+(d.execution_authorized?"AUTHORIZED":"DIAGNOSTIC ONLY"),
+      "القرار BUY: "+(d.buy||"HOLD"),"القرار SELL: "+(d.sell||"HOLD"),
+      "السبب: "+(d.reason_ar||"—")];
+    for(const a of d.actions||[]){
+      lines.push(a.side+" | "+a.action+" | أقصى لوت مقترح "+a.lot_cap+
+        " | ATR "+a.atr_distance+" | P/L "+a.floating_net+" | "+a.reason_ar);
+    }
+    target.textContent=lines.join("\n");
+  }catch(e){target.textContent="فشل تحميل إدارة الصفقات: "+(e.message||"غير معروف")}
+}
+$("refreshActionsBtn").addEventListener("click",refreshActions);
 async function refreshLearning(){
   const target=$("learningSummary");if(!target)return;
   try{
