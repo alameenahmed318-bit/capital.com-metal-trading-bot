@@ -1051,6 +1051,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "mtf_bias":evaluated.get("mtf_bias",{}),
                                 "adaptive":evaluated["adaptive"],
                                 "council":evaluated["council"],
+                                "execution_council":evaluated.get("execution_council",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
                                 "strategy_count":evaluated["strategy_count"],
