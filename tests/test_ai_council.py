@@ -52,7 +52,7 @@ class SafetyTests(unittest.TestCase):
         self.assertFalse(council_result("test",DECISION)["approved"])
 
     def test_position_management_never_grants_execution(self):
-        snapshot={"positions":[{"type":0,"volume":0.01,"open_price":2450,
+        snapshot={"symbol":"XAUUSD","positions":[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":2450,
              "profit":4,"swap":0}],"tick":{"bid":2500,"ask":2501}}
         settings={"trading_enabled":True,"position_management":{
             "addon_enabled":True,"addon_max":3,"addon_lot":0.01,
@@ -63,7 +63,7 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(proposal["buy"],"ADDON_PROPOSAL")
 
     def test_unapproved_council_blocks_position_increase(self):
-        snapshot={"positions":[{"type":0,"volume":0.01,"open_price":2450,
+        snapshot={"symbol":"XAUUSD","positions":[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":2450,
              "profit":4}],"tick":{"bid":2500,"ask":2501}}
         proposal=plan_account_actions(snapshot,DECISION,{"approved":False},
                   {"approved":True},{"trading_enabled":True,"position_management":{}})
