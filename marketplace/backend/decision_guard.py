@@ -4,7 +4,7 @@ This is a deterministic first-stage council/risk gate. It deliberately does not
 pretend that remote/local LLM agents are connected; model orchestration is a
 separate, hardware-aware stage.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import math
 
 
@@ -107,5 +107,6 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
         "checks": checks,
         "authorization_id": f"AZ-{bar_time}-{strategy_id}-{signal}",
         "issued_at": now.astimezone(timezone.utc).isoformat(),
-        "expires_at": now.astimezone(timezone.utc).isoformat(),
+        "expires_at": (now.astimezone(timezone.utc) + timedelta(seconds=15)).isoformat(),
+        "expires_at_unix": int(now.timestamp()) + 15,
     }
