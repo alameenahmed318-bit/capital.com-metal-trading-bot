@@ -44,7 +44,7 @@ def memory_snapshot(client_id,request):
 def combine_deals(persisted,live):
     """Deduplicate stored and live deal records by deal ticket."""
     combined={}
-    for source in (persisted or [],live or []):
+    for source in ((persisted or [])+(live or [])):
         if not isinstance(source,dict):continue
         key=str(source.get("ticket") or "").strip()
         if not key:continue
