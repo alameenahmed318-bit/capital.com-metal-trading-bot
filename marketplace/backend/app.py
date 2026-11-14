@@ -5,7 +5,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
-from multi_model_council import update_council, council_result, risk_guardian
+from multi_model_council import update_council, council_result, risk_guardian, accept_local_qwen_vote
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -932,6 +932,7 @@ class Handler(SimpleHTTPRequestHandler):
                 item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
+                accept_local_qwen_vote(client_id,item["local_ai_advice"],decision)
                 diagnostic_queued=False
                 event=build_qwen_vote_event(client_id,item["local_ai_advice"],decision)
                 if event:
