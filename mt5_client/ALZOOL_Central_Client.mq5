@@ -14,6 +14,7 @@ input group "بيانات الاتصال بالخادم"
 input string InpServerUrl = "https://al-zool-central-engine.onrender.com";
 input bool InpOwnerMode = true;
 input string InpOwnerPairingKey = "";
+input string InpOwnerConnectionId = "";
 input string InpEngineId = "";
 input string InpEngineToken = "";
 input int InpHttpTimeoutMs = 8000;
@@ -92,7 +93,7 @@ string MtfDirection(const ENUM_TIMEFRAMES tf,const int fastHandle,const int slow
 
 string ConnectionId()
 {
-   return InpOwnerMode ? "owner" : InpEngineId;
+   return InpOwnerMode ? InpOwnerConnectionId : InpEngineId;
 }
 string ConnectionKey()
 {
@@ -100,7 +101,7 @@ string ConnectionKey()
 }
 bool ConnectionReady()
 {
-   return InpOwnerMode ? StringLen(InpOwnerPairingKey)>=32 :
+   return InpOwnerMode ? (StringLen(InpOwnerPairingKey)>=32 && StringLen(InpOwnerConnectionId)>=8) :
       (StringLen(InpEngineId)>=8 && StringLen(InpEngineToken)>=20);
 }
 string BaseUrl()
