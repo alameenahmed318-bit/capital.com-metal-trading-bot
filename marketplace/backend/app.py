@@ -5,7 +5,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
-from multi_model_council import update_council, council_result, risk_guardian, accept_local_model_vote
+from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
@@ -443,7 +443,7 @@ class Handler(SimpleHTTPRequestHandler):
                     if isinstance(item.get("local_ai_advice"),dict) else None),
                 require_local_ai=LOCAL_AI_REQUIRED)
             council=council_result(client_id,decision)
-            risk=risk_guardian(item.get("account") or {},item.get("positions") or [])
+            risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
             return self.send_json(200,propose_central_action(client_id,item,decision,
                 gate,council,risk,settings,now))
         if path.startswith("/v1/terminal-control/settings/"):
@@ -677,7 +677,7 @@ class Handler(SimpleHTTPRequestHandler):
                 require_local_ai=LOCAL_AI_REQUIRED
             )
             ai_council=council_result(client_id,decision)
-            risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [])
+            risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
             ready=bool(gate.get("approved") and ai_council["approved"] and risk_report["approved"])
             if not ai_council["approved"]:
                 gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
@@ -953,8 +953,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "execution_authorized":False,"actions":[],"reason_ar":"لا توجد بيانات MT5 حديثة"})
                 decision=item.get("strategy_decision") or {}
                 council=council_result(client_id,decision)
-                risk=risk_guardian(item.get("account") or {},item.get("positions") or [])
                 settings=get_trade_settings(client_id) or {}
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
                 result=plan_account_actions(item,decision,council,risk,settings)
                 return self.send_json(200,result)
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
@@ -984,7 +984,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"connected":True,"client_id":client_id,
                     "bar_time":decision.get("bar_time"),"signal":decision.get("decision","WAIT"),
                     "council":council_result(client_id,decision),
-                    "risk_guardian":risk_guardian(item.get("account") or {},item.get("positions") or [])})
+                    "risk_guardian":risk_guardian(item.get("account") or {},item.get("positions") or [],
+                        risk_limits_from_settings(get_trade_settings(client_id) or {}))})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/connection/status":
@@ -1021,7 +1022,7 @@ class Handler(SimpleHTTPRequestHandler):
                         if isinstance(item.get("local_ai_advice"),dict) else None),
                     require_local_ai=LOCAL_AI_REQUIRED)
                 council=council_result(client_id,decision)
-                risk=risk_guardian(item.get("account") or {},item.get("positions") or [])
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
                 response=claim_central_action(client_id,data.get("authorization_id"),
                     item,decision,gate,council,risk,settings,sb,now)
                 return self.send_json(200 if response.get("execution_authorized") else 409,response)
