@@ -4,7 +4,7 @@ async function api(path,method="GET",body=null){const headers={"Content-Type":"a
 function show(id){["loginView","adminView","clientView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 function msg(id,value){$(id).textContent=value||""}
 async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
-async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true)}}
+async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true)}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("loginError","");if(!supabaseReady||!sb?.auth){msg("loginError","تسجيل الدخول متوقف لأن إعدادات Supabase لم تكتمل بعد. راجع رسالة إعداد الخادم أعلاه.");return;}try{const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)throw error;session=data.session;await route()}catch(x){msg("loginError",x.message||"تعذر تسجيل الدخول")}});
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
@@ -33,6 +33,53 @@ $("ownerPairDownload").addEventListener("click",()=>{
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
+async function refreshVersions(){
+  const host=$("versionList");if(!host)return;
+  try{
+    const data=await api("/api/ai/versions");
+    host.replaceChildren();
+    if(!data.versions?.length){host.textContent="لا توجد إصدارات محفوظة بعد.";return}
+    for(const v of data.versions){
+      const card=document.createElement("article");card.className="client-row";
+      const info=document.createElement("div");const title=document.createElement("b");
+      title.textContent=v.version_label+" • "+v.status;
+      const details=document.createElement("small");
+      const test=v.test_summary||{},candidate=test.candidate||{};
+      details.textContent="الإنشاء: "+String(v.created_at||"").slice(0,19)+
+        " | إشارات الاختبار: "+(candidate.signals??"—")+
+        " | دقة الاتجاه: "+(candidate.signals?Math.round((candidate.hit_rate||0)*100)+"%":"غير كافية");
+      info.append(title,details);card.append(info);
+      if(v.status==="CANDIDATE"||v.status==="ARCHIVED"){
+        const btn=document.createElement("button");btn.className="btn secondary small";
+        btn.type="button";btn.textContent="اختيار هذا الإصدار";
+        btn.onclick=async()=>{
+          if(!confirm("تغيير أوزان الاستراتيجيات إلى "+v.version_label+"؟\nلن يتم تفعيل التداول. ويمكن الرجوع إلى إصدار سابق."))return;
+          btn.disabled=true;
+          try{await api("/api/ai/versions/activate","POST",{id:v.id});await refreshVersions()}
+          catch(e){msg("versionError",e.message||"فشل تغيير الإصدار");btn.disabled=false}
+        };
+        card.append(btn);
+      }
+      host.append(card);
+    }
+  }catch(e){msg("versionError",e.message||"تعذر تحميل الإصدارات")}
+}
+$("refreshVersionsBtn").addEventListener("click",()=>{msg("versionError","");refreshVersions()});
+$("runExperimentBtn").addEventListener("click",async()=>{
+  msg("versionError","");
+  const btn=$("runExperimentBtn");btn.disabled=true;
+  $("versionTestResult").textContent="جاري التقييم التاريخي دون إرسال أي أمر إلى MT5...";
+  try{
+    const d=await api("/api/ai/versions/test","POST",{});
+    const x=d.test_summary||{},b=x.baseline||{},c=x.candidate||{};
+    $("versionTestResult").textContent="النسخة المقترحة: "+d.version_label+
+      " | إشارات الأساس: "+(b.signals??0)+" | إصابات: "+(b.hits??0)+
+      " | إشارات المرشح: "+(c.signals??0)+" | إصابات: "+(c.hits??0)+
+      " | لا تنشيط تلقائي؛ النتيجة ليست اختبار أرباح";
+    await refreshVersions();
+  }catch(e){msg("versionError",e.message||"تعذر تشغيل الاختبار")}
+  finally{btn.disabled=false}
+});
 async function refreshActions(){
   const target=$("actionsSummary");if(!target)return;
   try{
