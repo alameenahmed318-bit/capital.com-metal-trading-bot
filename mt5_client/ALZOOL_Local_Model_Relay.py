@@ -1,0 +1,147 @@
+"""AL-ZOOL local AI relay: real Qwen 2.5 + DeepSeek-R1 Ollama votes.
+
+Run on the PC hosting Ollama, not on Render. The relay sends only validated
+closed-bar directional votes. It NEVER opens orders, manages positions,
+overrides model consensus or bypasses central trading controls.
+
+Example (PowerShell):
+  python mt5_client/ALZOOL_Local_Model_Relay.py --credentials "C:\\path\\AL-ZOOL-Owner-MT5-Pairing.json"
+
+Environment variables are also supported:
+  ALZOOL_ENGINE_URL, ALZOOL_OWNER_CONNECTION_ID, ALZOOL_OWNER_PAIRING_KEY
+"""
+import argparse
+import concurrent.futures
+import json
+import math
+import os
+import pathlib
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+
+MODELS=("qwen2.5:3b","deepseek-r1:1.5b")
+OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
+POLL_SECONDS=3
+MODEL_TIMEOUT_SECONDS=48
+
+def request_json(url,method="GET",payload=None,token=None,timeout=12):
+    headers={"Accept":"application/json"}
+    if token:headers["Authorization"]="Bearer "+token
+    if payload is not None:headers["Content-Type"]="application/json"
+    raw=json.dumps(payload,ensure_ascii=False).encode() if payload is not None else None
+    req=urllib.request.Request(url,data=raw,headers=headers,method=method)
+    with urllib.request.urlopen(req,timeout=timeout) as response:
+        return json.loads(response.read(32000).decode("utf-8"))
+
+def credentials(path):
+    data={}
+    if path:
+        data=json.loads(pathlib.Path(path).read_text(encoding="utf-8-sig"))
+    server=str(data.get("InpServerUrl") or os.getenv("ALZOOL_ENGINE_URL","")).rstrip("/")
+    owner_mode=data.get("InpOwnerMode",True) is True
+    identity=str(data.get("InpOwnerConnectionId" if owner_mode else "InpEngineId") or
+            os.getenv("ALZOOL_OWNER_CONNECTION_ID",""))
+    key=str(data.get("InpOwnerPairingKey" if owner_mode else "InpEngineToken") or
+            os.getenv("ALZOOL_OWNER_PAIRING_KEY",""))
+    if not server.startswith("https://") or not identity or len(key)<32:
+        raise ValueError("بيانات الاقتران ناقصة: صدّر ملف ربط المالك الجديد من لوحة AL-ZOOL")
+    if any(x in identity for x in "/?&#"):
+        raise ValueError("معرّف الاتصال غير صالح")
+    return server,identity,key
+
+def validate_response(model,result):
+    raw=str(result.get("response",""))
+    start=raw.find("{");end=raw.rfind("}")
+    try:
+        parsed=json.loads(raw[start:end+1])
+        direction=str(parsed["direction"]).upper()
+        confidence=float(parsed["confidence"])
+        reason=str(parsed.get("reason_ar",""))[:350]
+        if direction not in ("BUY","SELL","WAIT") or not math.isfinite(confidence) or not 0<=confidence<=1:
+            raise ValueError("invalid vote")
+        return {"model":model,"direction":direction,"confidence":confidence,"reason_ar":reason}
+    except (ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return None
+
+def model_vote(model,context):
+    snapshot={k:context.get(k) for k in ("bar_time","direction","confidence",
+        "strategy_id","entry_reference_price","atr","family_votes","combination_summary")}
+    prompt=("You are an independent XAUUSD analysis VETO voter. Do not infer unseen market facts. "
+        "Analyze the signal; if ambiguous return WAIT. Respond only JSON: "
+        '{"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"short Arabic rationale"}. '
+        "Never make claims that an order was placed. "
+        "Closed-bar snapshot: "+json.dumps(snapshot,ensure_ascii=False))
+    result=request_json(OLLAMA_URL+"/api/generate",method="POST",
+        payload={"model":model,"prompt":prompt,"stream":False,"format":"json",
+                 "options":{"temperature":0,"num_predict":128,"num_ctx":1024}},
+        timeout=MODEL_TIMEOUT_SECONDS)
+    return validate_response(model,result)
+
+def main():
+    parser=argparse.ArgumentParser(description="AL-ZOOL Qwen and DeepSeek local voting relay")
+    parser.add_argument("--credentials",help="Downloaded owner pairing JSON file")
+    parser.add_argument("--once",action="store_true",help="Inspect one closed-bar vote cycle")
+    args=parser.parse_args()
+    server,identity,key=credentials(args.credentials)
+    try:
+        installed={row.get("name") for row in request_json(OLLAMA_URL+"/api/tags",timeout=8).get("models",[])}
+    except Exception as exc:
+        raise RuntimeError("Ollama غير متصل على اللابتوب: "+type(exc).__name__) from exc
+    missing=[model for model in MODELS if model not in installed]
+    if missing:
+        raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
+    print("AL-ZOOL LOCAL AI READY | models=Qwen, DeepSeek | trading execution=OFF",flush=True)
+    last_bar=0
+    while True:
+        try:
+            url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
+            context=request_json(url,token=key,timeout=12)
+            bar=int(context.get("bar_time",0))
+            if bar<=0:
+                if args.once:break
+                time.sleep(POLL_SECONDS);continue
+            age=time.time()-bar
+            if age<0 or age>180:
+                if args.once:print("Old bar: no model vote",flush=True);break
+                time.sleep(POLL_SECONDS);continue
+            if bar!=last_bar:
+                last_bar=bar
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                    futures={pool.submit(model_vote,m,context):m for m in MODELS}
+                    for future in concurrent.futures.as_completed(futures):
+                        model=futures[future]
+                        try:vote=future.result()
+                        except Exception as exc:
+                            print(model+" ERROR "+type(exc).__name__,flush=True)
+                            continue
+                        if vote is None:
+                            print(model+" INVALID_JSON; no vote submitted",flush=True)
+                            continue
+                        vote["bar_time"]=bar
+                        try:
+                            ack=request_json(server+"/v1/local-ai/advice/"+
+                                urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
+                            print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
+                                "% | accepted="+str(ack.get("accepted",False)),flush=True)
+                        except urllib.error.HTTPError as exc:
+                            print(model+" central rejected vote: HTTP="+str(exc.code),flush=True)
+            if args.once:break
+        except KeyboardInterrupt:
+            print("Local AI stopped",flush=True);break
+        except urllib.error.HTTPError as exc:
+            print("Central connection failed: HTTP="+str(exc.code),flush=True)
+            if args.once:break
+        except Exception as exc:
+            print("Relay error: "+type(exc).__name__,flush=True)
+            if args.once:raise
+        time.sleep(POLL_SECONDS)
+
+if __name__=="__main__":
+    try:main()
+    except (ValueError,RuntimeError) as exc:
+        print(str(exc),file=sys.stderr)
+        sys.exit(1)
