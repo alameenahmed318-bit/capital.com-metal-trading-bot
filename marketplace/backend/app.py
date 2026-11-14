@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
-from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -17,6 +17,7 @@ CONNECTIONS={}
 LICENSE_CACHE={}
 TRADE_SETTINGS_CACHE={}
 SETTINGS_REFRESHING=set()
+AI_EVENT_CACHE={}
 CACHE_LOCK=threading.RLock()
 LICENSE_CACHE_TTL_SECONDS=60.0
 SETTINGS_CACHE_REFRESH_SECONDS=2.0
@@ -42,13 +43,31 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
         raise ValueError(str(detail)[:300])
 
 
-def persist_qwen_vote_event(event):
-    """Persist model diagnostics off the relay request path."""
+def persist_ai_diagnostic_event(event):
+    """Persist AI diagnostics off latency-sensitive request paths."""
     try:
         sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
            event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
     except Exception as exc:
-        print("QWEN_DIAGNOSTIC_SAVE_WARNING:",str(exc)[:180],flush=True)
+        print("AI_DIAGNOSTIC_SAVE_WARNING:",str(exc)[:180],flush=True)
+
+
+def queue_ai_diagnostic_event(event):
+    """Deduplicate event writes per bar and keep Supabase off the decision path."""
+    if not isinstance(event,dict) or not event.get("event_id"):
+        return False
+    now=time.monotonic()
+    event_id=str(event["event_id"])
+    with CACHE_LOCK:
+        previous=AI_EVENT_CACHE.get(event_id,0.0)
+        if now-previous<60.0:
+            return False
+        AI_EVENT_CACHE[event_id]=now
+        if len(AI_EVENT_CACHE)>4000:
+            for key,_ in sorted(AI_EVENT_CACHE.items(),key=lambda pair:pair[1])[:1000]:
+                AI_EVENT_CACHE.pop(key,None)
+    threading.Thread(target=persist_ai_diagnostic_event,args=(event,),daemon=True).start()
+    return True
 
 
 def bootstrap_owner():
@@ -569,6 +588,8 @@ class Handler(SimpleHTTPRequestHandler):
                 require_local_ai=LOCAL_AI_REQUIRED
             )
             ready=bool(gate.get("approved"))
+            council_event=build_council_event(client_id,decision,gate,trading_enabled)
+            queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
             output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
             return self.send_json(200,{"signal":output_signal,
@@ -849,8 +870,7 @@ class Handler(SimpleHTTPRequestHandler):
                 diagnostic_queued=False
                 event=build_qwen_vote_event(client_id,item["local_ai_advice"],decision)
                 if event:
-                    threading.Thread(target=persist_qwen_vote_event,args=(event,),daemon=True).start()
-                    diagnostic_queued=True
+                    diagnostic_queued=queue_ai_diagnostic_event(event)
                 return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
                     "bar_time":bar_time,"direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
