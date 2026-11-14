@@ -116,6 +116,15 @@ def fast_ai(decision,account):
         return _vote("Fast AI","READY",reason="حارس المخاطر: الحساب غير آمن")
     return _vote("Fast AI","READY",signal,confidence,"توافق السعر وATR والعائلات وسلامة الحساب")
 
+def risk_limits_from_settings(settings):
+    """Read owner-configured caps; never infer permissions from AI votes."""
+    pm=(settings or {}).get("position_management") or {}
+    return {
+        "max_drawdown_pct":_num(pm.get("max_drawdown_pct",5),5),
+        "max_positions":_num(pm.get("max_positions",10),10),
+        "max_total_lots":_num(pm.get("max_total_lots",0.10),.10),
+    }
+
 def risk_guardian(account,positions=None,limits=None):
     limits=limits or {}
     balance=_num(account.get("balance"));equity=_num(account.get("equity"))
@@ -125,12 +134,20 @@ def risk_guardian(account,positions=None,limits=None):
     max_drawdown=max(0,min(100,_num(limits.get("max_drawdown_pct",5),5)))
     drawdown=max(0,(balance-equity)/balance*100)
     if drawdown>max_drawdown:
-        return {"approved":False,"reason_ar":"تجاوز حد تراجع حقوق الملكية"}
+        return {"approved":False,"reason_ar":"تجاوز حد تراجع حقوق الملكية",
+                "drawdown_pct":round(drawdown,2)}
     max_positions=max(0,int(_num(limits.get("max_positions",10),10)))
     if len(positions or [])>=max_positions:
-        return {"approved":False,"reason_ar":"تجاوز عدد الصفقات المسموح"}
+        return {"approved":False,"reason_ar":"تجاوز عدد الصفقات المسموح",
+                "open_positions":len(positions or []),"max_positions":max_positions}
+    total_lots=sum(max(0,_num(p.get("volume"))) for p in positions or [] if isinstance(p,dict))
+    max_total_lots=_num(limits.get("max_total_lots",.10),.10)
+    if max_total_lots<=0 or total_lots+1e-8>=max_total_lots:
+        return {"approved":False,"reason_ar":"سقف اللوت الإجمالي يمنع فتح صفقات جديدة",
+                "total_lots":round(total_lots,4),"max_total_lots":max_total_lots}
     return {"approved":True,"reason_ar":"حارس المخاطر موافق",
-            "drawdown_pct":round(drawdown,2)}
+            "drawdown_pct":round(drawdown,2),
+            "total_lots":round(total_lots,4),"max_total_lots":max_total_lots}
 
 def _worker(client_id,bar,decision,account):
     # Run both remote/local model calls concurrently; never block MT5 telemetry.
