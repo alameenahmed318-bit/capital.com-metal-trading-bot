@@ -51,7 +51,7 @@ bool g_recoveryEnabled=false;
 double g_recoveryLossTrigger=0.0;
 bool g_recoveryCycleActive=false;
 double g_recoveryReferencePrice=0.0;
-datetime g_recoveryLastDiagnosticBar=0;
+string g_recoveryLastWaitReason="";
 string g_recoveryActiveKey="",g_recoveryPriceKey="";
 string g_serverStopLossMode="ATR";
 double g_serverStopLossValue=1.8;
@@ -662,7 +662,7 @@ void ResetRecoveryCycle()
 {
    g_recoveryCycleActive=false;
    g_recoveryReferencePrice=0.0;
-   g_recoveryLastDiagnosticBar=0;
+   g_recoveryLastWaitReason="";
    if(StringLen(g_recoveryActiveKey)>0 && GlobalVariableCheck(g_recoveryActiveKey)) GlobalVariableDel(g_recoveryActiveKey);
    if(StringLen(g_recoveryPriceKey)>0 && GlobalVariableCheck(g_recoveryPriceKey)) GlobalVariableDel(g_recoveryPriceKey);
 }
@@ -778,15 +778,17 @@ bool EvaluateSmartRecovery()
       waitReason="تحليل الاستراتيجيات يميل للبيع لكن الشمعة المغلقة لم تؤكد الهبوط بعد.";
    if(waitReason!="")
    {
-      if(closedBar>0 && g_recoveryLastDiagnosticBar!=(datetime)closedBar)
+      // Upload only when the diagnostic reason changes, avoiding repeated HTTP
+      // calls on every tick or candle while the terminal keeps streaming prices.
+      if(waitReason!=g_recoveryLastWaitReason)
       {
          RecoveryLog("RECOVERY_WAITING",waitReason,groupNet,totalLots,totalPositions,
                      recoveryDirection,g_aiStrategyId,g_aiConfidence,g_aiReason);
-         g_recoveryLastDiagnosticBar=closedBar;
+         g_recoveryLastWaitReason=waitReason;
       }
       return true;
    }
-   g_recoveryLastDiagnosticBar=closedBar;
+   g_recoveryLastWaitReason="";
    ENUM_ORDER_TYPE orderType=(recoveryDirection=="BUY"?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
    double rawLots=totalLots*3.0;
    double minLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
