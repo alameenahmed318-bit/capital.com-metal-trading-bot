@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
-from decision_guard import evaluate_entry_gate
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -1129,7 +1129,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
                     "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
-                    "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
+                    "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,\n                    "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
                 return self.send_json(200,{"accepted":True,"telemetry":True,
