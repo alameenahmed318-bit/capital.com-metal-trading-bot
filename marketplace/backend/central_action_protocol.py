@@ -128,6 +128,11 @@ def claim(client_id,nonce,snapshot,decision,gate,council,risk,settings,db,now):
     with _LOCK:
         state=_PENDING.get(client_id)
         if state and state["nonce"]==nonce:state["claimed"]=True
+    actual_now=datetime.now(timezone.utc)
+    if not 0<=_age_seconds(snapshot,actual_now)<=15:
+        return {"execution_authorized":False,"reason_ar":"انتهت صلاحية لقطة MT5 بعد تسجيل التصريح"}
+    if actual_now.timestamp()-verified["bar_time"]>125:
+        return {"execution_authorized":False,"reason_ar":"انتهت صلاحية قرار الشمعة"}
     return {"execution_authorized":True,"side":verified["side"],
         "action":verified["action"],"lot_cap":verified["lot_cap"],
         "bar_time":verified["bar_time"],"expires_at_unix":int(time.time()+5),
