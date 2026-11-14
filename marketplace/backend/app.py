@@ -7,6 +7,7 @@ from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
 from multi_model_council import update_council, council_result, risk_guardian, accept_local_qwen_vote
 from learning_memory import memory_snapshot, combine_deals
+from position_action_engine import plan_account_actions
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -878,6 +879,22 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/actions":
+            try:
+                u=current_user(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(client_id) if client_id else None
+                if not item: return self.send_json(200,{"mode":"DIAGNOSTIC_ONLY",
+                    "execution_authorized":False,"actions":[],"reason_ar":"لا توجد بيانات MT5 حديثة"})
+                decision=item.get("strategy_decision") or {}
+                council=council_result(client_id,decision)
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [])
+                settings=get_trade_settings(client_id) or {}
+                result=plan_account_actions(item,decision,council,risk,settings)
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/learning":
             try:
                 u=current_user(token_of(self))
