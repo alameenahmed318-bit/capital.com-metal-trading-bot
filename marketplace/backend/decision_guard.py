@@ -16,7 +16,7 @@ def _number(value, default=0.0):
         return default
 
 
-def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled):
+def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled, local_ai_advice=None, require_local_ai=False):
     """Return a structured authorization record; any uncertainty means WAIT."""
     checks = []
     def reject(code, reason):
@@ -99,6 +99,19 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
     if balance <= 0 or equity <= 0 or free_margin <= 0:
         return reject("risk_guardian_account", "حالة الرصيد أو حقوق الملكية أو الهامش الحر غير آمنة")
     passed("risk_guardian_account", "الرصيد وحقوق الملكية والهامش الحر موجبة")
+
+    if require_local_ai:
+        if not isinstance(local_ai_advice, dict):
+            return reject("local_ai", "تصويت Qwen المحلي غير متاح؛ المجلس ينتظر")
+        advice_bar = int(_number(local_ai_advice.get("bar_time")))
+        advice_age = _number(local_ai_advice.get("age_seconds"), 9999.0)
+        advice_direction = str(local_ai_advice.get("direction", "WAIT")).upper()
+        advice_confidence = _number(local_ai_advice.get("confidence"))
+        if advice_bar != bar_time or advice_age < 0 or advice_age > 20:
+            return reject("local_ai_freshness", "تصويت Qwen قديم أو لا يخص الشمعة الحالية")
+        if advice_direction != signal or advice_confidence < 0.50 or advice_confidence > 1.0:
+            return reject("local_ai_vote", "Qwen لم يؤيد اتجاه الدخول بثقة كافية؛ WAIT")
+        passed("local_ai_vote", f"Qwen المحلي يؤيد {signal} بثقة {advice_confidence:.0%}")
 
     return {
         "approved": True,
