@@ -109,8 +109,8 @@ def claim(client_id,nonce,snapshot,decision,gate,council,risk,settings,db,now):
              ("bar_time","side","action","fingerprint","lot_cap")):
             return {"execution_authorized":False,"reason_ar":"تغيّر الحساب أو قرار الإدارة"}
         state["claiming"]=True
-    event_id="central-action:"+client_id+":"+str(verified["bar_time"])+":"+
-        verified["side"]+":"+verified["action"]
+    event_id=("central-action:"+client_id+":"+str(verified["bar_time"])+":"+
+        verified["side"]+":"+verified["action"])
     row={"event_id":event_id,"client_id":client_id,
         "event_type":"CENTRAL_ACTION_CLAIM",
         "payload":{"side":verified["side"],"action":verified["action"],
