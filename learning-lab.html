@@ -1,18 +1,40 @@
 <!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#11121b"><title>AL-ZOOL | ذاكرة وتعلّم AI</title>
+<meta name="theme-color" content="#242238"><title>AL-ZOOL | ذاكرة وتعلّم AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/dashboard.css?v=2">
+<link rel="stylesheet" href="/ui-shell.css?v=1">
 <style>
 .learn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.learn-stat,.learn-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}.learn-stat small{display:block;color:var(--muted);font-size:11px}.learn-stat strong{display:block;font-size:23px;margin-top:7px;overflow-wrap:anywhere}.learn-card{margin:14px 0}.learn-card h2{font-size:17px;margin:0 0 12px}.learn-note{font-size:12px;line-height:1.9;color:var(--muted);padding:12px;border:1px solid var(--line);border-radius:11px;margin:12px 0}.learn-table-wrap{overflow:auto}.learn-table{width:100%;border-collapse:collapse;min-width:640px;font-size:12px}.learn-table th,.learn-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.learn-table th{color:var(--muted);font-weight:600}.positive{color:#48c99a}.negative{color:#ff7888}.muted{color:var(--muted)}.learn-actions{display:flex;gap:10px;flex-wrap:wrap}.learn-actions a{display:inline-flex;padding:9px 13px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;font-size:12px}
 @media(max-width:900px){.learn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.learn-stat strong{font-size:19px}}
 </style></head>
 <body><div class="shell"><aside class="sidebar">
-<a class="brand" href="/"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
-<div class="side-label">القائمة الرئيسية</div>
-<a class="nav" href="/opportunities.html"><span>◉</span> مختبر الفرص</a><a class="nav" href="/trade-history.html"><span>▤</span> سجل التداول</a>
-<a class="nav" href="/"><span>⌁</span> الاتصال والعملاء</a><a class="nav" href="/ai-analysis.html"><span>✧</span> تحليل الذهب AI</a><a class="nav" href="/dashboard.html"><span>▦</span> لوحة القيادة</a><a class="nav" href="/backtest-lab.html"><span>⌁</span> مختبر الاختبار التاريخي</a><a class="nav active" href="/learning-lab.html"><span>✧</span> ذاكرة وتعلّم AI</a>
-<div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <div class="side-label">الرئيسية</div>
+ <div class="nav-group">
+  <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
+ </div>
+ <div class="side-label">مركز الذكاء الاصطناعي</div>
+ <div class="nav-group">
+  <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav active" href="/learning-lab.html" aria-current="page"><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
+ </div>
+ <div class="side-label">السوق والاستراتيجيات</div>
+ <div class="nav-group">
+  <a class="nav " href="/opportunities.html" ><span>◉</span><span class="nav-label">مختبر الفرص</span></a>
+  <a class="nav " href="/backtest-lab.html" ><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
+ </div>
+ <div class="side-label">إدارة الصفقات والأداء</div>
+ <div class="nav-group">
+  <a class="nav " href="/trade-management.html" ><span>⇄</span><span class="nav-label">إدارة التداول والحماية</span></a>
+  <a class="nav " href="/trade-history.html" ><span>▤</span><span class="nav-label">سجل التداول والتقارير</span></a>
+ </div>
+ <div class="side-label">إدارة النظام</div>
+ <div class="nav-group">
+  <a class="nav" href="/"><span>♙</span><span class="nav-label">العملاء والتراخيص</span></a>
+ </div>
+ <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+</aside>
 <main class="main"><header class="topbar"><div><div class="eyebrow">ADAPTIVE STRATEGY MEMORY</div><h1>ذاكرة وتعلّم AI</h1><p>حفظ جولات الاختبار، تشخيص النتائج، وتحسين قرارات النماذج تدريجيًا</p></div><div class="top-actions"><a class="refresh" href="/backtest-lab.html">تشغيل اختبار جديد</a></div></header>
 <section class="learn-grid">
 <article class="learn-stat"><small>جولات الاختبار المحفوظة</small><strong id="runCount">—</strong></article>
@@ -92,4 +114,5 @@ async function load(){
 }
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});load();
 </script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=1" defer></script>
 </body></html>
