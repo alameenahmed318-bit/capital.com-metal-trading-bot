@@ -1129,7 +1129,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
                     "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
-                    "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,\n                    "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
+                    "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
+                    "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
                 return self.send_json(200,{"accepted":True,"telemetry":True,
