@@ -22,6 +22,9 @@ input int InpHeartbeatSeconds = 5;
 input int InpCandlesToSend = 120;
 input group "إعدادات تنفيذ الدخول المركزي"
 input bool InpEnableCentralTrading = false;
+input bool InpEnableCentralPositionManagement = false;
+input double InpMaxCentralActionLots = 0.01;
+input double InpMaxCentralTotalLots = 0.10;
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
 input int InpMaxOpenPositions = 10;
@@ -69,7 +72,7 @@ int g_entryMaxDelayBars=1;
 double g_entryMaxDeviationATR=0.5;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 int g_m5Fast=INVALID_HANDLE,g_m5Slow=INVALID_HANDLE,g_m15Fast=INVALID_HANDLE,g_m15Slow=INVALID_HANDLE,g_h1Fast=INVALID_HANDLE,g_h1Slow=INVALID_HANDLE;
-ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
+ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0,g_lastActionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
 double g_aiConfidence=0.0;
 long g_aiBarTime=0;
@@ -227,6 +230,125 @@ bool PollTradeSettings()
    g_entryMaxDeviationATR=MathMax(0.05,MathMin(20.0,JsonDouble(response,"entry_max_deviation_atr",0.5)));
    return true;
 }
+bool ExecuteOneCentralAction(const string side,const string action,const double requestedLots,const long barTime)
+{
+   if(!InpEnableCentralTrading || !InpEnableCentralPositionManagement || !g_serverTradingEnabled)
+      return false;
+   if(side!="BUY" && side!="SELL") return false;
+   if(action!="ADDON_PROPOSAL" && action!="COOLING_PROPOSAL" && action!="RECOVERY_PROPOSAL")
+      return false;
+   if(StringFind(_Symbol,"XAUUSD")!=0 || barTime<=0) return false;
+   if(PositionsTotal()>=InpMaxOpenPositions || !IsAccountDirectionAllowed(side))
+      return false;
+   if(requestedLots<=0.0 || requestedLots>InpMaxCentralActionLots+1e-8)
+      return false;
+   double totalLots=0.0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      totalLots+=PositionGetDouble(POSITION_VOLUME);
+   }
+   if(totalLots+requestedLots>InpMaxCentralTotalLots+1e-8) return false;
+   double lots=NormalizeTradeLots(requestedLots);
+   if(lots<=0.0 || lots>requestedLots+1e-8 || lots>InpMaxCentralActionLots+1e-8)
+      return false; // Never round up beyond either central or local risk cap.
+   double atr[];
+   ArraySetAsSeries(atr,true);
+   if(g_atrHandle==INVALID_HANDLE || CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0)
+      return false;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick) || tick.ask<=0.0 || tick.bid<=0.0)
+      return false;
+   int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+   double stopLevel=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
+   double stopDistance=MathMax(atr[0]*InpStopLossATR,stopLevel+_Point);
+   double sl=side=="BUY"?
+      NormalizeDouble(tick.ask-stopDistance,digits):
+      NormalizeDouble(tick.bid+stopDistance,digits);
+   if(sl<=0.0) return false;
+   string tag=action=="ADDON_PROPOSAL"?"ALZOOL-ADD":
+              (action=="COOLING_PROPOSAL"?"ALZOOL-COOL":"ALZOOL-RECOVERY");
+   g_trade.SetExpertMagicNumber(InpTradeMagic);
+   g_trade.SetDeviationInPoints(InpDeviationPoints);
+   g_trade.SetTypeFillingBySymbol(_Symbol);
+   bool sent=side=="BUY"?
+      g_trade.Buy(lots,_Symbol,0.0,sl,0.0,tag):
+      g_trade.Sell(lots,_Symbol,0.0,sl,0.0,tag);
+   uint code=g_trade.ResultRetcode();
+   bool accepted=sent && (code==TRADE_RETCODE_DONE ||
+                            code==TRADE_RETCODE_DONE_PARTIAL ||
+                            code==TRADE_RETCODE_PLACED);
+   if(accepted)
+   {
+      string key="AZ_CENTRAL_PM_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
+      GlobalVariableSet(key,(double)barTime);
+      Print("AL-ZOOL CENTRAL ACTION ",action," side=",side," lot=",DoubleToString(lots,3),
+            " bar=",barTime," retcode=",code);
+   }
+   else Print("AL-ZOOL CENTRAL ACTION REJECTED ",action," ",g_trade.ResultRetcodeDescription());
+   return accepted;
+}
+bool PollCentralActions()
+{
+   if(!InpEnableCentralTrading || !InpEnableCentralPositionManagement ||
+      !g_serverTradingEnabled || !ConnectionReady()) return false;
+   if(StringFind(_Symbol,"XAUUSD")!=0) return false;
+   string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
+   char empty[],result[];
+   ArrayResize(empty,0);
+   string response_headers;
+   ResetLastError();
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-actions/"+ConnectionId(),
+                       headers,3000,empty,result,response_headers);
+   if(code!=200)
+   {
+      Print("AL-ZOOL central action poll failed: HTTP=",code," err=",GetLastError());
+      return false;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   if(!JsonBool(response,"execution_ready")) return false;
+   string side=JsonField(response,"side");
+   string action=JsonField(response,"action");
+   string nonce=JsonField(response,"authorization_id");
+   StringReplace(side,"\"","");
+   StringReplace(action,"\"","");
+   StringReplace(nonce,"\"","");
+   long bar=(long)StringToInteger(JsonField(response,"bar_time"));
+   long expires=(long)StringToInteger(JsonField(response,"expires_at_unix"));
+   double lots=JsonDouble(response,"lot_cap",0.0);
+   long now=(long)TimeGMT();
+   if(StringLen(nonce)<20 || bar<=0 || expires<=now || expires-now>30) return false;
+   string key="AZ_CENTRAL_PM_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
+   if(GlobalVariableCheck(key) && (long)GlobalVariableGet(key)==bar) return false;
+   if(PositionsTotal()>=InpMaxOpenPositions || !IsAccountDirectionAllowed(side) ||
+      lots<=0.0 || lots>InpMaxCentralActionLots+1e-8) return false;
+   // Claim the unique central authorization before submitting any broker order.
+   string body="{\"authorization_id\":\""+JsonEscape(nonce)+"\"}";
+   char data[],claimResult[];
+   StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string claimHeaders="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
+   ResetLastError();
+   code=WebRequest("POST",BaseUrl()+"/v1/terminal-action-claim/"+ConnectionId(),
+                   claimHeaders,5000,data,claimResult,response_headers);
+   string confirmed=CharArrayToString(claimResult,0,-1,CP_UTF8);
+   if(code!=200 || !JsonBool(confirmed,"execution_authorized"))
+   {
+      Print("AL-ZOOL central action not authorized: HTTP=",code," err=",GetLastError());
+      return false;
+   }
+   string claimSide=JsonField(confirmed,"side");
+   string claimAction=JsonField(confirmed,"action");
+   StringReplace(claimSide,"\"","");
+   StringReplace(claimAction,"\"","");
+   double confirmedLots=JsonDouble(confirmed,"lot_cap",0.0);
+   long claimExpires=(long)StringToInteger(JsonField(confirmed,"expires_at_unix"));
+   if(claimSide!=side || claimAction!=action || MathAbs(confirmedLots-lots)>1e-6 ||
+      claimExpires<=(long)TimeGMT()) return false;
+   return ExecuteOneCentralAction(side,action,lots,bar);
+}
+
 bool PollCentralDecision()
 {
    if(!ConnectionReady()) return false;
@@ -1121,7 +1243,8 @@ int OnInit()
 {
    if(InpHeartbeatSeconds<5 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
       InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5 ||
-      InpTradeLots<=0 || InpMaxOpenPositions<1 || InpATRPeriod<2 ||
+      InpTradeLots<=0 || InpMaxCentralActionLots<=0 || InpMaxCentralTotalLots<=0 ||
+      InpMaxOpenPositions<1 || InpATRPeriod<2 ||
       InpStopLossATR<=0 || InpTrailStartATR<=0 || InpTrailDistanceATR<=0)
    {
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
@@ -1184,6 +1307,12 @@ void OnTimer()
       bool sent=SendLiveSnapshot();
       if(sent) g_online=true;
       g_lastSnapshotMs=now;
+   }
+   if(InpEnableCentralPositionManagement &&
+      (g_lastActionPollMs==0 || now-g_lastActionPollMs>=3000))
+   {
+      PollCentralActions();
+      g_lastActionPollMs=now;
    }
    if(g_lastHistoryAttempt==0 || TimeCurrent()-g_lastHistoryAttempt>=InpHistoryUploadMinutes*60)
    {
