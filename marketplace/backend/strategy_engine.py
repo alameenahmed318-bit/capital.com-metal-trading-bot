@@ -196,6 +196,32 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
+def evaluate_execution_council(signal, context, council):
+    """Fail-closed execution gate: the independent council must endorse the same side."""
+    reasons=[]
+    signal=str(signal or "WAIT").upper()
+    council_direction=str((council or {}).get("direction","WAIT")).upper()
+    if signal not in ("BUY","SELL"):
+        reasons.append("لا توجد إشارة دخول نهائية")
+    if council_direction != signal:
+        reasons.append("مجلس التصويت لم يوافق على اتجاه الإشارة")
+    if signal=="BUY" and context.get("buy_trap"):
+        reasons.append("رُصد احتمال فخ شراء")
+    if signal=="SELL" and context.get("sell_trap"):
+        reasons.append("رُصد احتمال فخ بيع")
+    atr_ratio=float(context.get("atr_ratio",1.0) or 1.0)
+    if atr_ratio >= 2.2:
+        reasons.append("التقلب السعري مرتفع بصورة غير طبيعية")
+    return {
+        "approved": not reasons,
+        "candidate": signal,
+        "direction": council_direction,
+        "reasons": reasons,
+        "risk_regime": context.get("regime","غير محدد"),
+        "atr_ratio": round(atr_ratio,4)
+    }
+
+
 def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None):
     weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
@@ -252,6 +278,16 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
     winning_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
     selected_combo_id=int(winning_combos[0]["id"]) if winning_combos else 0
-    council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
-    council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+    council=build_ai_council(rates,votes,context,adaptive)
+    execution_council=evaluate_execution_council(final,context,council)
+    if final in ("BUY","SELL") and not execution_council["approved"]:
+        final="WAIT"
+        reason="مجلس الحسم رفض الدخول: "+"؛ ".join(execution_council["reasons"])
+        sid=0
+        selected_combo_id=0
+        name="AZ AI VOTE COUNCIL — WAIT"
+    council["direction"]=final
+    council["seats"][-1]=(council["seats"][-1][0],{"BUY":"موافقة شراء","SELL":"موافقة بيع","WAIT":"رفض الدخول / انتظار"}[final],"قرار المجلس النهائي قبل السماح بالتنفيذ")
+    execution_council["approved"]=bool(execution_council["approved"] and final in ("BUY","SELL"))
+    execution_council["final_decision"]=final
+    return {"decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"execution_council":execution_council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
