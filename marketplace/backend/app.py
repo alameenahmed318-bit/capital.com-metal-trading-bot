@@ -10,6 +10,7 @@ from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
 from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
+from auto_research import schedule as schedule_automatic_research
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -1343,6 +1344,10 @@ class Handler(SimpleHTTPRequestHandler):
                     "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
+                if strategy_decision:
+                    schedule_automatic_research(client_id,str(data.get("symbol",""))[:40],
+                        str(data.get("timeframe",""))[:20],sb,live_learning_profile,
+                        combine_deals(memory_snapshot(client_id,sb)["deals"],closed_deals))
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
