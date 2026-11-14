@@ -66,10 +66,10 @@
    <div class="recovery-monitor" aria-live="polite">
     <div class="recovery-monitor-head"><b>مراقبة التعافي المباشرة</b><span id="recoveryState" class="recovery-state">بانتظار اتصال MT5</span></div>
     <div class="recovery-metrics"><div><small>الربح العائم (ربح + سواب)</small><strong id="recoveryNet">—</strong></div><div><small>حد التفعيل</small><strong id="recoveryTriggerView">—</strong></div><div><small>إجمالي اللوتات</small><strong id="recoveryLots">—</strong></div><div><small>عدد المراكز</small><strong id="recoveryPositions">—</strong></div></div>
-    <p id="recoveryLiveMessage" class="recovery-live-message">ستظهر هنا حالة التعافي ورسائل MT5 عند وصول الأحداث. حساب التعافي نفسه يضم العمولات والرسوم التاريخية أيضاً.</p>
+    <p id="recoveryLiveMessage" class="recovery-live-message">ستظهر هنا حالة التعافي ورسائل MT5 عند وصول الأحداث، مع سبب الانتظار وإشارة الاستراتيجية ودرجة الثقة ووقت الفتح. حساب التعافي نفسه يضم العمولات والرسوم التاريخية أيضاً.</p>
    </div>
    <div class="recovery-log-wrap"><div class="recovery-log-head"><b>سجل التعافي الذكي</b><button type="button" id="refreshRecoveryLog" class="refresh">تحديث السجل</button></div><div id="recoveryLog" class="recovery-log"><div class="empty-state">بانتظار أول حدث من MT5</div></div></div>
-   <p class="section-note">لن يبدأ التعافي قبل إدخال حد خسارة موجب وحفظه. عند بلوغ الحد الذي تحدده، يحسب MT5 مجموع لوتات كل المراكز المفتوحة ويفتح صفقة تعافٍ بلوت يساوي مجموعها × 3، في اتجاه حركة السعر التالية على رمز الشارت. عند وصول صافي المجموعة إلى التعادل أو الربح، يحاول إغلاق جميع المراكز المفتوحة. إذا لم يسمح الوسيط باللوت المطلوب أو لم يكفِ الهامش، لن يخفّض اللوت تلقائيًا ولن يفتح الصفقة. هذه آلية عالية المخاطر وقد تجعل حجم التعرض ×3.</p>
+   <p class="section-note">لن يبدأ التعافي قبل إدخال حد خسارة موجب وحفظه. عند بلوغ الحد الذي تحدده، يتسلّح التعافي أولاً ثم ينتظر إشارة الاستراتيجيات المركزية واتجاه شمعة مغلقة متوافقين. عند التأكيد يفتح صفقة تعافٍ بلوت يساوي مجموع لوتات المراكز × 3، ويسجّل سبب الانتظار ووقت الفتح والتحليل المستخدم. عند وصول صافي المجموعة إلى التعادل أو الربح، يحاول إغلاق جميع المراكز المفتوحة. إذا لم يسمح الوسيط باللوت المطلوب أو لم يكفِ الهامش، لن يخفّض اللوت تلقائيًا ولن يفتح الصفقة. هذه آلية عالية المخاطر وقد تجعل حجم التعرض ×3.</p>
   </div>
  </section>
  <section class="card" id="positions">
