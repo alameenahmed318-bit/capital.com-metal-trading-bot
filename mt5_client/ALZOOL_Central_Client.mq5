@@ -235,7 +235,6 @@ bool PollCentralDecision()
    string execution_ready=JsonField(response,"execution_ready");
    string authorization_id=JsonField(response,"authorization_id");
    string authorization_expires=JsonField(response,"authorization_expires_at");
-   StringReplace(authorization_id,"\\"","");
    string combination_id=JsonField(response,"combination_id");
    double entry_reference_price=JsonDouble(response,"entry_reference_price",0.0);
    double entry_atr=JsonDouble(response,"entry_atr",0.0);
@@ -406,6 +405,18 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
 }
 void ManagePositionAddons()
 {
+   // Fail closed: add-on/cooling orders must not bypass the central council.
+   // The action-specific council authorization endpoint is a later implementation stage.
+   static datetime lastCouncilBlockLog=0;
+   if(g_addonEnabled || g_coolingEnabled)
+   {
+      if(TimeCurrent()-lastCouncilBlockLog>=60)
+      {
+         Print("AL-ZOOL ADD-ON/COOLING WAIT: no action-specific central council authorization.");
+         lastCouncilBlockLog=TimeCurrent();
+      }
+      return;
+   }
    if(!g_serverTradingEnabled || !InpEnableCentralTrading ||
       (!g_addonEnabled && !g_coolingEnabled) || g_atrHandle==INVALID_HANDLE) return;
    double atr[]; ArraySetAsSeries(atr,true);
@@ -687,6 +698,15 @@ bool EvaluateSmartRecovery()
    double groupNet=RecoveryGroupNet(totalLots,totalPositions);
    if(totalPositions<=0){g_recoveryReferencePrice=0.0;return false;}
    if(groupNet>-g_recoveryLossTrigger) return false;
+   // The legacy price-following x2 recovery path has no central council authorization.
+   // Keep protective group-close handling active, but never open an unapproved recovery order.
+   static datetime lastRecoveryCouncilBlockLog=0;
+   if(TimeCurrent()-lastRecoveryCouncilBlockLog>=60)
+   {
+      Print("AL-ZOOL RECOVERY WAIT: legacy recovery entry blocked pending x3 closed-bar council authorization.");
+      lastRecoveryCouncilBlockLog=TimeCurrent();
+   }
+   return false;
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0) return true;
    if(g_recoveryReferencePrice<=0.0)
