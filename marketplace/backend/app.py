@@ -922,6 +922,19 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/actions/control":
+            try:
+                u=owner(token_of(self))
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بالمحرك"})
+                settings=get_trade_settings(identity["client_id"]) or {}
+                pm=settings.get("position_management") or {}
+                return self.send_json(200,{"enabled":pm.get("central_actions_enabled") is True,
+                    "trading_enabled":settings.get("trading_enabled") is True,
+                    "requires_mt5_opt_in":True,
+                    "message":"لا تنفيذ بدون موافقة المجلس، تأكيد المالك، ومفتاح MT5 المحلي"})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/research":
             try:
                 u=owner(token_of(self))
@@ -1255,6 +1268,32 @@ class Handler(SimpleHTTPRequestHandler):
                 sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,
                    prefer="resolution=ignore-duplicates,return=minimal")
                 return self.send_json(200,{"saved":True,"event_id":row["event_id"]})
+            if path=="/api/ai/actions/control":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بالمحرك"})
+                enabled=data.get("enabled")
+                if not isinstance(enabled,bool):
+                    return self.send_json(400,{"error":"قيمة التفعيل غير صالحة"})
+                if enabled and data.get("confirmed_risk") is not True:
+                    return self.send_json(400,{"error":"يلزم تأكيد المخاطر لتفعيل الإدارة المركزية"})
+                cid=urllib.parse.quote(identity["client_id"],safe="")
+                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid+
+                    "&select=position_management&limit=1",admin=True)
+                pm=dict((rows[0] if rows else {}).get("position_management") or {})
+                pm["central_actions_enabled"]=enabled
+                if rows:
+                    changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
+                        {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
+                        admin=True,prefer="return=representation")
+                else:
+                    changed=sb("POST","/rest/v1/alzool_engine_trade_settings",
+                        {"client_id":identity["client_id"],"position_management":pm},
+                        admin=True,prefer="return=representation")
+                if not changed:return self.send_json(502,{"error":"لم يتم حفظ مفتاح الإدارة"})
+                TRADE_SETTINGS_CACHE.pop(identity["client_id"],None)
+                return self.send_json(200,{"enabled":enabled,
+                    "message":"تم حفظ مفتاح الإدارة؛ لا يعمل دون تفعيل منفصل في MT5 وموافقة المجلس"})
             if path=="/api/ai/versions/test":
                 u=owner(token)
                 identity=license_for_user(u["id"])
