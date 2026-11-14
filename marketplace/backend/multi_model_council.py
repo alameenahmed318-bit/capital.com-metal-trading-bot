@@ -144,6 +144,20 @@ def update_council(client_id,decision,account):
     threading.Thread(target=_worker,args=(client_id,bar,dict(decision),dict(account)),
                      daemon=True,name="alzool-council").start()
 
+def accept_local_qwen_vote(client_id,advice,decision):
+    """Trusted MT5 relay can contribute its already-authenticated local Qwen vote."""
+    bar=int(_num(decision.get("bar_time")))
+    if bar<=0 or bar!=int(_num(advice.get("bar_time"))):return False
+    direction=str(advice.get("direction","WAIT")).upper()
+    confidence=_num(advice.get("confidence"))
+    if direction not in ("BUY","SELL","WAIT") or not 0<=confidence<=1:return False
+    with _LOCK:
+        state=_VOTES.get(client_id)
+        if not state or state.get("bar_time")!=bar:return False
+        state["local_qwen"]=_vote("Qwen","READY",direction,confidence,advice.get("reason_ar",""))
+        state["local_qwen_time"]=time.time()
+    return True
+
 def council_result(client_id,decision):
     signal=str(decision.get("decision","WAIT")).upper()
     bar=int(_num(decision.get("bar_time")))
@@ -151,7 +165,8 @@ def council_result(client_id,decision):
         v=dict(_VOTES.get(client_id) or {})
     if not v or v.get("bar_time")!=bar:
         return {"approved":False,"status":"WAIT","reason_ar":"المجلس لم يصوّت على الشمعة الحالية","votes":v}
-    votes=[v.get("fast",{}),v.get("qwen",{}),v.get("deepseek",{})]
+    local=v.get("local_qwen") if time.time()-v.get("local_qwen_time",0)<=20 else None
+    votes=[v.get("fast",{}),local or v.get("qwen",{}),v.get("deepseek",{})]
     approved=(signal in ("BUY","SELL") and all(x.get("status")=="READY"
         and x.get("direction")==signal and _num(x.get("confidence"))>=.5 for x in votes))
     return {"approved":approved,"status":signal if approved else "WAIT",
