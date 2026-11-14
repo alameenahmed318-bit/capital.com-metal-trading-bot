@@ -8,6 +8,8 @@ from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, 
 from multi_model_council import update_council, council_result, risk_guardian, accept_local_qwen_vote
 from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
+from strategy_experiments import sanitize_profile, compare_profiles
+from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -879,6 +881,15 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/versions":
+            try:
+                u=owner(token_of(self))
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين مرتبط بحساب المالك"})
+                return self.send_json(200,{"versions":strategy_versions(identity["client_id"],sb),
+                    "note":"Rollback changes strategy weights only; it never activates trading."})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:200]})
         if path=="/api/ai/actions":
             try:
                 u=current_user(token_of(self))
@@ -1167,6 +1178,37 @@ class Handler(SimpleHTTPRequestHandler):
                 sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,
                    prefer="resolution=ignore-duplicates,return=minimal")
                 return self.send_json(200,{"saved":True,"event_id":row["event_id"]})
+            if path=="/api/ai/versions/test":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
+                client_id=identity["client_id"]
+                item=CONNECTIONS.get(client_id) or {}
+                symbol=str(item.get("symbol") or "XAUUSD")[:40]
+                timeframe=str(item.get("timeframe") or "M1")[:20]
+                if not symbol.upper().startswith("XAUUSD"):return self.send_json(409,{"error":"اختبار الإصدارات مخصص لشموع الذهب"})
+                q=urllib.parse.quote
+                rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
+                    "&symbol=eq."+q(symbol,safe="")+"&timeframe=eq."+q(timeframe,safe="")+
+                    "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"+
+                    "&order=candle_time.desc&limit=190",admin=True)
+                if len(rows)<75:return self.send_json(409,{"error":"لا توجد 75 شمعة تاريخية محفوظة على الأقل"})
+                memory=memory_snapshot(client_id,sb)
+                history=combine_deals(memory["deals"],item.get("closed_deals") or [])
+                learned=live_learning_profile(history)
+                candidate=sanitize_profile(learned["weights"],learned.get("combination_weights") or {})
+                baseline=get_active_strategy_profile(client_id,sb) or {"strategy_weights":{},"combination_weights":{}}
+                summary=compare_profiles(list(reversed(rows)),baseline,candidate)
+                saved=save_candidate(client_id,candidate,summary,sb)
+                return self.send_json(200,{"id":saved["id"],"version_label":saved["version_label"],
+                    "status":"CANDIDATE","test_summary":summary,
+                    "message":"اختبار تاريخي تشخيصي؛ لا يشغّل التداول ولا يغير الإصدار الحالي"})
+            if path=="/api/ai/versions/activate":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
+                result=activate_strategy_version(identity["client_id"],data.get("id"),sb)
+                return self.send_json(200,result)
             if path=="/api/owner/terminal-pair":
                 u=owner(token)
                 return self.send_json(200,issue_owner_pairing(u))
@@ -1237,7 +1279,11 @@ class Handler(SimpleHTTPRequestHandler):
                             live_learning=live_learning_profile(combine_deals(memory_snapshot(client_id,sb)["deals"],closed_deals))
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
-                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],combination_weights=live_learning.get("combination_weights"),mtf_bias=mtf_bias,mode="AUTO")
+                            chosen_profile=get_active_strategy_profile(client_id,sb)
+                            strategy_weights=(chosen_profile or {}).get("strategy_weights") or live_learning["weights"]
+                            combination_weights=(chosen_profile or {}).get("combination_weights") or live_learning.get("combination_weights")
+                            evaluated=evaluate_market(list(reversed(candles)),weights=strategy_weights,
+                                combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO")
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "entry_reference_price":finite_number(candles[0].get("close")),
