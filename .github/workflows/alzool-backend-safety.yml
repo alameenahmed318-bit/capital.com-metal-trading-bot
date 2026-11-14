@@ -1,0 +1,21 @@
+name: AL-ZOOL backend safety tests
+on:
+  push:
+    branches:
+      - work/alzool-foundation-20261114
+  pull_request:
+    branches:
+      - alzool-gold-sniper-web
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile backend Python
+        run: python -m compileall -q marketplace/backend
+      - name: Run decision safety tests
+        working-directory: marketplace/backend
+        run: python -m unittest discover -s tests -v
