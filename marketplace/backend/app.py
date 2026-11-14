@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
+from decision_guard import evaluate_entry_gate
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -520,17 +521,26 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
-            ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
-                   1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
+            gate=evaluate_entry_gate(
+                decision=decision,
+                account=item.get("account") or {},
+                symbol=item.get("symbol",""),
+                received_at=item.get("received_at"),
+                now=datetime.now(timezone.utc),
+                trading_enabled=trading_enabled
+            )
+            ready=bool(gate.get("approved"))
             bar_time=int(finite_number(decision.get("bar_time",0)))
-            return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
+            output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
+            return self.send_json(200,{"signal":output_signal,
                 "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
-                "bar_time":decision.get("bar_time",0),"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
+                "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
-                "minimum_confidence":0.45,
-                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
+                "minimum_confidence":0.45,"authorization":gate,
+                "council":decision.get("council",{}),
+                "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
         if path=="/api/market/context":
             try:
                 import time
@@ -1044,6 +1054,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "mtf_bias":evaluated.get("mtf_bias",{}),
                                 "adaptive":evaluated["adaptive"],
                                 "council":evaluated["council"],
+                                "family_votes":evaluated.get("family_votes",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
                                 "strategy_count":evaluated["strategy_count"],
