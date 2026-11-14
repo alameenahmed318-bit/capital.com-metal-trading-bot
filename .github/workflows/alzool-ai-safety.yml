@@ -1,0 +1,18 @@
+name: AL-ZOOL central AI safety tests
+on:
+  push:
+    branches:
+      - work/alzool-foundation-20261114
+  workflow_dispatch:
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Python syntax
+        run: python -m compileall -q marketplace/backend
+      - name: Verify council and memory safety
+        run: python -m unittest discover -s tests -p 'test_ai_council.py' -v
