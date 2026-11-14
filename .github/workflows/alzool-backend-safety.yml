@@ -14,8 +14,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Compile backend Python
-        run: python -m compileall -q marketplace/backend
+      - name: Compile backend and local AI Python
+        run: python -m compileall -q marketplace/backend local_ai
       - name: Run decision safety tests
         working-directory: marketplace/backend
         run: python -m unittest discover -s tests -v
+      - name: Run local Qwen relay unit tests
+        working-directory: local_ai
+        run: python -m unittest test_ai_relay -v
