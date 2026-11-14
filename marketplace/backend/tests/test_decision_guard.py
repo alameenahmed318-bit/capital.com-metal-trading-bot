@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone, timedelta
-from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
 
 
 class EntryGateTests(unittest.TestCase):
@@ -143,6 +143,36 @@ class EntryGateTests(unittest.TestCase):
         self.assertIsNone(build_qwen_vote_event("client-123", advice, {"bar_time": 12346}))
         advice["model"] = "unknown"
         self.assertIsNone(build_qwen_vote_event("client-123", advice, {"bar_time": 12345}))
+
+
+
+    def test_council_approval_event_records_authorized_direction(self):
+        decision = {"bar_time": 12345, "decision": "BUY", "strategy_id": 12,
+                    "strategy_name": "Trend", "confidence": 0.8,
+                    "family_votes": {"Trend": "BUY"},
+                    "combination_summary": {"BUY": 500, "SELL": 200}}
+        gate = {"approved": True, "reason_ar": "موافقة المجلس",
+                "checks": [{"check": "risk", "passed": True}]}
+        event = build_council_event("client-123", decision, gate, True)
+        self.assertEqual(event["event_type"], "AI_COUNCIL_DECISION")
+        self.assertEqual(event["payload"]["outcome"], "BUY")
+        self.assertTrue(event["payload"]["approved"])
+
+    def test_council_veto_event_records_wait_when_gate_rejects_entry(self):
+        decision = {"bar_time": 12345, "decision": "SELL", "strategy_id": 7,
+                    "confidence": 0.7}
+        gate = {"approved": False, "reason_ar": "Qwen غير متاح",
+                "checks": [{"check": "local_ai", "passed": False}]}
+        event = build_council_event("client-123", decision, gate, True)
+        self.assertEqual(event["event_type"], "AI_COUNCIL_VETO")
+        self.assertEqual(event["payload"]["outcome"], "WAIT")
+
+    def test_council_wait_event_is_recorded_without_entry_signal(self):
+        decision = {"bar_time": 12345, "decision": "WAIT", "strategy_id": 0}
+        gate = {"approved": False, "reason_ar": "لا توجد إشارة",
+                "checks": []}
+        event = build_council_event("client-123", decision, gate, False)
+        self.assertEqual(event["event_type"], "AI_COUNCIL_WAIT")
 
 
 
