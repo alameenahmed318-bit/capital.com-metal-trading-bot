@@ -12,6 +12,7 @@ SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
+LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1","true","yes","on")
 CONNECTIONS={}
 LICENSE_CACHE={}
 TRADE_SETTINGS_CACHE={}
@@ -504,6 +505,27 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0,"live":live})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path.startswith("/v1/local-ai/context/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+            item=CONNECTIONS.get(client_id)
+            if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+            decision=item.get("strategy_decision") or {}
+            if not decision:
+                return self.send_json(409,{"error":"لا يوجد قرار مركزي لتحليله"})
+            candles=item.get("closed_candles") or []
+            return self.send_json(200,{
+                "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
+                "bar_time":int(finite_number(decision.get("bar_time",0))),
+                "decision":decision.get("decision","WAIT"),
+                "confidence":finite_number(decision.get("confidence",0)),
+                "reason_ar":str(decision.get("reason_ar",""))[:500],
+                "context":decision.get("context",{}),
+                "candles":candles[:24],
+                "local_ai_required":LOCAL_AI_REQUIRED
+            })
         if path.startswith("/v1/terminal-decision/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -527,7 +549,13 @@ class Handler(SimpleHTTPRequestHandler):
                 symbol=item.get("symbol",""),
                 received_at=item.get("received_at"),
                 now=datetime.now(timezone.utc),
-                trading_enabled=trading_enabled
+                trading_enabled=trading_enabled,
+                local_ai_advice=(
+                    {**item.get("local_ai_advice",{}),
+                     "age_seconds":(datetime.now(timezone.utc)-item["local_ai_advice"].get("received_at",datetime.min.replace(tzinfo=timezone.utc))).total_seconds()}
+                    if isinstance(item.get("local_ai_advice"),dict) else None
+                ),
+                require_local_ai=LOCAL_AI_REQUIRED
             )
             ready=bool(gate.get("approved"))
             bar_time=int(finite_number(decision.get("bar_time",0)))
@@ -782,6 +810,31 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path.startswith("/v1/local-ai/advice/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token):
+                    return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                item=CONNECTIONS.get(client_id)
+                if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                    return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+                decision=item.get("strategy_decision") or {}
+                bar_time=int(finite_number(data.get("bar_time",0)))
+                direction=str(data.get("direction","WAIT")).upper()
+                confidence=finite_number(data.get("confidence",-1),-1)
+                model=str(data.get("model",""))[:80]
+                reason=str(data.get("reason_ar",""))[:500]
+                current_bar=int(finite_number(decision.get("bar_time",0)))
+                if bar_time<=0 or bar_time!=current_bar:
+                    return self.send_json(409,{"error":"تصويت Qwen لا يخص الشمعة الحالية"})
+                if direction not in ("BUY","SELL","WAIT") or confidence<0 or confidence>1:
+                    return self.send_json(400,{"error":"صيغة تصويت Qwen غير صالحة"})
+                if model!="qwen2.5:3b":
+                    return self.send_json(400,{"error":"موديل Qwen غير معتمد لهذا الربط"})
+                item["local_ai_advice"]={"bar_time":bar_time,"direction":direction,
+                    "confidence":confidence,"model":model,"reason_ar":reason,
+                    "received_at":datetime.now(timezone.utc)}
+                return self.send_json(200,{"accepted":True,"bar_time":bar_time,
+                    "direction":direction,"model":model})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
