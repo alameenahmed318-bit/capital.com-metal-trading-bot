@@ -4,7 +4,7 @@ async function api(path,method="GET",body=null){const headers={"Content-Type":"a
 function show(id){["loginView","adminView","clientView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 function msg(id,value){$(id).textContent=value||""}
 async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
-async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true)}}
+async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true)}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("loginError","");if(!supabaseReady||!sb?.auth){msg("loginError","تسجيل الدخول متوقف لأن إعدادات Supabase لم تكتمل بعد. راجع رسالة إعداد الخادم أعلاه.");return;}try{const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)throw error;session=data.session;await route()}catch(x){msg("loginError",x.message||"تعذر تسجيل الدخول")}});
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
@@ -33,6 +33,20 @@ $("ownerPairDownload").addEventListener("click",()=>{
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
 $("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
 $("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
+async function refreshResearch(){
+  const target=$("researchSummary");if(!target)return;
+  try{
+    const result=await api("/api/ai/research");
+    const runs=result.runs||[];
+    if(!runs.length){target.textContent="لم تنفذ اختبارات تلقائية بعد؛ يبدأ التقييم عند وصول شموع جديدة.";return}
+    target.textContent=runs.map(r=>{
+      const p=r.payload||{},test=p.test||{},candidate=test.candidate||{};
+      return String(r.created_at||"").slice(0,19)+" | "+(p.status||"UNKNOWN")+
+        " | الشموع "+(p.candles??"—")+" | إشارات المرشح "+(candidate.signals??0)+
+        " | تنشيط تلقائي: NO";
+    }).join("\n");
+  }catch(e){target.textContent="تعذر تحميل اختبارات التعلم: "+(e.message||"غير معروف")}
+}
 async function refreshVersions(){
   const host=$("versionList");if(!host)return;
   try{
@@ -64,7 +78,7 @@ async function refreshVersions(){
     }
   }catch(e){msg("versionError",e.message||"تعذر تحميل الإصدارات")}
 }
-$("refreshVersionsBtn").addEventListener("click",()=>{msg("versionError","");refreshVersions()});
+$("refreshVersionsBtn").addEventListener("click",()=>{msg("versionError","");refreshVersions();refreshResearch()});
 $("runExperimentBtn").addEventListener("click",async()=>{
   msg("versionError","");
   const btn=$("runExperimentBtn");btn.disabled=true;
