@@ -37,6 +37,7 @@ async function loadCloseSettings(){
  $("recoveryEnabled").checked=!!pm.recovery_enabled;
  $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
  $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
+ window.recoverySettings=pm;updateRecoveryMonitor(null,pm,s.currency||"");await loadRecoveryLog();
  updatePmModeUI();
 }
 function updateStopLossHelp(){
@@ -129,6 +130,30 @@ async function savePositionManagement(){
  }catch(e){$("pmMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("savePositionManagement").disabled=false;}
 }
+function updateRecoveryMonitor(summary,pm=window.recoverySettings||{},currency=""){
+ const positions=Array.isArray(summary?.positions)?summary.positions:[];
+ const net=positions.reduce((sum,p)=>sum+Number(p.profit||0)+Number(p.swap||0),0),lots=positions.reduce((sum,p)=>sum+Number(p.volume||0),0);
+ $("recoveryNet").textContent=summary?.connected?fmt(net,2)+" "+currency:"—";$("recoveryNet").className=net<0?"recovery-loss":net>0?"recovery-profit":"";
+ $("recoveryLots").textContent=summary?.connected?fmt(lots,3):"—";$("recoveryPositions").textContent=summary?.connected?fmt(positions.length,0):"—";
+ $("recoveryTriggerView").textContent=Number(pm.recovery_loss_trigger||0)>0?fmt(pm.recovery_loss_trigger,2)+" "+currency:"غير محدد";
+ const last=window.lastRecoveryEvent||null;let state="بانتظار اتصال MT5",message="بانتظار بيانات MT5.";
+ if(!summary?.connected){state="MT5 غير متصل";message="لا تصل بيانات حديثة من MT5؛ لا يمكن تأكيد حالة التنفيذ.";}
+ else if(pm.recovery_enabled!==true){state="متوقف";message="التعافي متوقف حسب الإعدادات المحفوظة.";}
+ else if(!(Number(pm.recovery_loss_trigger)>0)){state="بانتظار حد الخسارة";message="حدد حد خسارة موجباً واحفظ الإعدادات حتى يبدأ الرصد.";}
+ else if(last){const labels={RECOVERY_ARMED:"بلغ صافي الحساب حد التفعيل؛ بدأت مراقبة الانعكاس.",RECOVERY_WAITING:"لم يفتح التعافي بعد؛ ينتظر توافق تحليل الاستراتيجيات مع الشمعة المغلقة.",RECOVERY_OPENED:"تم فتح صفقة التعافي بالحجم ×3 بعد التأكيد.",RECOVERY_BLOCKED:"منع MT5 فتح الصفقة لسبب أمان أو شروط الوسيط.",RECOVERY_REJECTED:"رفض الوسيط تنفيذ أمر التعافي.",RECOVERY_CLOSED:"اكتملت دورة التعافي وأُغلقت جميع المراكز.",RECOVERY_CLOSE_RETRY:"بعض المراكز ما زالت مفتوحة؛ سيعيد MT5 محاولة الإغلاق."};
+ state=({RECOVERY_ARMED:"بدأت مراقبة الانعكاس",RECOVERY_WAITING:"بانتظار تأكيد الانعكاس",RECOVERY_OPENED:"صفقة التعافي مفتوحة",RECOVERY_BLOCKED:"التعافي محجوب",RECOVERY_REJECTED:"رفض الوسيط الأمر",RECOVERY_CLOSED:"اكتملت دورة التعافي",RECOVERY_CLOSE_RETRY:"إعادة محاولة الإغلاق"})[last.event_type]||"مراقبة نشطة";message=last.payload?.message_ar||labels[last.event_type]||"آخر حدث: "+last.event_type;
+ }else{state="مراقبة نشطة";message="الإعدادات محفوظة؛ ينتظر MT5 تحقق حد الخسارة المحدد.";}
+ $("recoveryState").textContent=state;$("recoveryLiveMessage").textContent=message;
+}
+async function loadRecoveryLog(){
+ try{const d=await api("/api/opportunities/events?kind=trades&days=30&limit=100"),events=(d.events||[]).filter(e=>String(e.event_type||"").startsWith("RECOVERY_"));
+ window.lastRecoveryEvent=events[0]||null;
+ if(!events.length){$("recoveryLog").innerHTML='<div class="empty-state">لا توجد أحداث تعافٍ مسجلة خلال آخر 30 يوماً.</div>';return;}
+  const labels={RECOVERY_ARMED:"بدء المراقبة",RECOVERY_WAITING:"تشخيص سبب الانتظار",RECOVERY_OPENED:"فتح صفقة التعافي",RECOVERY_BLOCKED:"منع آمن",RECOVERY_REJECTED:"رفض الأمر",RECOVERY_CLOSED:"اكتمال الإغلاق",RECOVERY_CLOSE_RETRY:"إعادة محاولة الإغلاق"};
+  $("recoveryLog").innerHTML=events.map(e=>{const p=e.payload||{},details=[p.symbol,p.direction,p.lots!=null?"Lots "+fmt(p.lots,3):"",p.net!=null?"Net "+fmt(p.net,2):"",p.positions!=null?"Positions "+fmt(p.positions,0):"",p.strategy_id?"Strategy #"+p.strategy_id:"",p.confidence!=null?"Confidence "+fmt(Number(p.confidence)*100,1)+"%":"",p.analysis_ar?"AI: "+p.analysis_ar:""].filter(Boolean).join(" · ");return '<article class="recovery-log-item"><div class="recovery-log-top"><b>'+esc(labels[e.event_type]||e.event_type)+'</b><time>'+esc(timeText(e.created_at))+'</time></div><p>'+esc(p.message_ar||"حدث تعافٍ من MT5")+(p.direction?" · "+esc(p.direction):"")+(p.strategy_id?" · Strategy #"+esc(p.strategy_id):"")+(p.confidence!=null?" · "+esc(fmt(Number(p.confidence)*100,1))+"%":"") +'</p><small>'+esc(details)+'</small></article>';}).join("");
+ }catch(e){$("recoveryLog").innerHTML='<div class="empty-state">تعذر تحميل سجل التعافي: '+esc(e.message)+'</div>';}
+}
+
 async function saveRecoverySettings(){
  const raw=$("recoveryLossTrigger").value.trim();
  const trigger=Number(raw.replace(/,/g,""));
@@ -191,6 +216,7 @@ async function refresh(){
   $("floatingMeta").textContent=s.connected?"يتغير تلقائيًا مع بيانات MT5":"بانتظار اتصال MT5";
   renderPositions(Array.isArray(s.positions)?s.positions:[],currency);
   renderOrders(Array.isArray(s.orders)?s.orders:[],currency);
+  updateRecoveryMonitor(s,window.recoverySettings||{},currency);
   $("lastSeen").textContent=timeText(s.last_seen);
   $("serviceState").textContent=s.connected?"بيانات MT5 مباشرة":"بانتظار اتصال MT5";
   if(s.connected){$("dataNotice").innerHTML="<b>MT5 متصل</b><span>آخر تحديث: "+esc(timeText(s.last_seen))+" · تتم قراءة المراكز والأوامر مباشرة دون إرسال أوامر تداول.</span>";}
@@ -234,6 +260,8 @@ $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
 $("saveRecoverySettings").addEventListener("click",saveRecoverySettings);
+$("refreshRecoveryLog").addEventListener("click",loadRecoveryLog);
+setInterval(()=>{if(accessToken)loadRecoveryLog();},5000);
 $("pmMode").addEventListener("change",updatePmModeUI);
 $("stopLossMode").addEventListener("change",updateStopLossHelp);
 boot();setInterval(()=>{if(accessToken)refresh();},2000);
