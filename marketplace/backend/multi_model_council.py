@@ -268,12 +268,12 @@ def council_result(client_id,decision):
             or _num(v.get("confidence"))<.5),None)
         if problem is None:reason="المجلس ينتظر موافقة نهائية"
         else:
-            name,v=problem
-            status=v.get("status","MISSING")
+            name,invalid_vote=problem
+            status=invalid_vote.get("status","MISSING")
             if status!="READY":
                 reason=f"{name}: التصويت غير جاهز ({status})"
-            elif v.get("direction")!=signal:
-                reason=f"{name}: اتجاه التصويت {v.get('direction','WAIT')} يخالف {signal}"
+            elif invalid_vote.get("direction")!=signal:
+                reason=f"{name}: اتجاه التصويت {invalid_vote.get('direction','WAIT')} يخالف {signal}"
             else:
                 reason=f"{name}: ثقة التصويت أقل من 50%"
     return {"approved":approved,"status":signal if approved else "WAIT",
