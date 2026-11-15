@@ -36,7 +36,7 @@ def retain_current_local_ai_advice(advice, decision, now_unix):
         return None
     if direction not in ("BUY", "SELL", "WAIT") or not 0 <= confidence <= 1:
         return None
-    if advice.get("model") != "qwen2.5:3b":
+    if advice.get("model") != "qwen3.5:4b":
         return None
     return dict(advice)
 
@@ -52,7 +52,7 @@ def build_qwen_vote_event(client_id, advice, decision):
     confidence = _number(advice.get("confidence"), -1.0)
     if direction not in ("BUY", "SELL", "WAIT") or not 0 <= confidence <= 1:
         return None
-    if advice.get("model") != "qwen2.5:3b":
+    if advice.get("model") != "qwen3.5:4b":
         return None
     safe_client = str(client_id or "")[:80]
     if not safe_client:
@@ -63,7 +63,7 @@ def build_qwen_vote_event(client_id, advice, decision):
         "event_type": "AI_QWEN_VOTE",
         "payload": {
             "source": "local_ollama",
-            "model": "qwen2.5:3b",
+            "model": "qwen3.5:4b",
             "bar_time": bar_time,
             "direction": direction,
             "confidence": confidence,
