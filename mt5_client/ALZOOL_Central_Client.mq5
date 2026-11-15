@@ -18,7 +18,7 @@ input string InpOwnerConnectionId = "";
 input string InpEngineId = "";
 input string InpEngineToken = "";
 input int InpHttpTimeoutMs = 8000;
-input int InpHeartbeatSeconds = 3;
+input int InpHeartbeatSeconds = 2;
 input int InpCandlesToSend = 120;
 input group "إعدادات تنفيذ الدخول المركزي"
 input bool InpEnableCentralTrading = false;
@@ -360,12 +360,22 @@ bool PollCentralDecision()
    string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
+   ulong startedMs=GetTickCount64();
    int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId(),
                        headers,1500,data,result,response_headers);
+   ulong elapsedMs=GetTickCount64()-startedMs;
    if(code!=200)
    {
       if(code!=409) Print("AL-ZOOL central decision poll failed: HTTP=",code," err=",GetLastError());
       return false;
+   }
+   static ulong lastDecisionLatencyLog=0;
+   ulong metricAt=GetTickCount64();
+   if(elapsedMs>1200 || lastDecisionLatencyLog==0 ||
+      metricAt-lastDecisionLatencyLog>=30000)
+   {
+      Print("AL-ZOOL LATENCY decision_http_ms=",elapsedMs);
+      lastDecisionLatencyLog=metricAt;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    string signal=JsonField(response,"signal");
@@ -1202,8 +1212,8 @@ bool SendLiveSnapshot()
    }
    // Only send the complete closed-deal archive on a change or refresh.
    // Account balance, positions, orders, ticks and candles remain live.
-   body+=historyRefreshed ? g_cachedClosedDealsJson :
-      ",\"closed_deals\":[],\"closed_deals_unchanged\":true";
+   body+=(historyRefreshed ? g_cachedClosedDealsJson :
+      ",\"closed_deals\":[],\"closed_deals_unchanged\":true");
 
    MqlTick tick;
    bool have_tick=SymbolInfoTick(_Symbol,tick);
