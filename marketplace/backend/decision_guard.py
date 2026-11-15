@@ -155,9 +155,9 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
         return reject("signal", "قرار المحرك WAIT؛ لا يوجد تصريح دخول")
     passed("signal", "اتجاه القرار صالح")
     confidence = _number(decision.get("confidence"))
-    if confidence < 0.45 or confidence > 1.0:
+    if confidence < 0.55 or confidence > 1.0:
         return reject("confidence", "ثقة القرار أقل من الحد المعتمد أو غير صالحة")
-    passed("confidence", "الثقة اجتازت الحد الحالي 45%")
+    passed("confidence", "الثقة اجتازت الحد الحالي 55%")
 
     strategy_id = int(_number(decision.get("strategy_id")))
     if not 1 <= strategy_id <= 200:
