@@ -113,16 +113,17 @@ function draw(resp){
   const details=document.createElement("div");details.className="live-detail";details.textContent=signal==="WAIT"?"بدون ترجيح":"ثقة القواعد: "+(Number(item.confidence||0)*100).toFixed(1)+"% · ليست احتمالية ربح";
   const sent=journal.some(e=>e&&e.payload&&String(e.payload.bot_id)===String(item.id)&&Number(e.payload.bar_time)===activeBar);
   const delivery=document.createElement("div");delivery.className="live-detail";
-  delivery.textContent=sent?"✓ أُرسلت نتيجة هذه الشمعة للمحرك":"لم تُرصد رسالة لهذه الشمعة في السجل";
+  delivery.textContent=sent?"✓ نتيجة محفوظة في سجل المحرك الداخلي":"لا توجد رسالة مسجلة لهذه الشمعة";
   article.append(title,pill,p,details,delivery);grid.append(article);
  }
  const central=safeSignal(resp.central_decision),consensus=safeSignal(resp.consensus?.signal);
+ const fresh=resp.market_data_fresh===true;
  const bar=resp.bar_time?new Date(Number(resp.bar_time)*1000).toLocaleString("en-GB",{timeZone:"Asia/Dubai",hour12:false}):"غير متاح";
- brief.textContent="قرار المحرك المركزي: "+translate[central]+" · رأي المساعدين: "+translate[consensus]+" · شمعة مغلقة: "+bar+" (الإمارات) · التصويت استشاري فقط";
- state.textContent=resp.status==="READY"?"التحليل نشط · "+(resp.timeframe||"MT5"):"بيانات الشموع غير كافية";
+ brief.textContent=(fresh?"قرار المحرك المركزي: ":"آخر قرار مسجل، وليس قراراً مباشراً: ")+translate[central]+" · رأي البوتات: "+translate[consensus]+" · شمعة مغلقة: "+bar+" (الإمارات) · "+(fresh?"بيانات حديثة":"بيانات قديمة أو السوق مغلق")+" · استشاري فقط";
+ state.textContent=resp.status!=="READY"?"بيانات الشموع غير كافية":fresh?"التحليل حديث · "+(resp.timeframe||"MT5"):"التحليل تاريخي · لا توجد شمعة حديثة";
  const feed=resp.signal_bus||{};
  const sentCount=votes.filter(item=>journal.some(e=>e&&e.payload&&String(e.payload.bot_id)===String(item.id)&&Number(e.payload.bar_time)===activeBar)).length;
- bus.textContent="ملخص إرسال الشمعة الحالية: "+sentCount+" من "+votes.length+" تقارير مسجلة في المحرك · "+Number(feed.last_bar_dispatch_count||0)+" مؤهلة للإرسال إلى Supabase (الحفظ غير مؤكد).";
+ bus.textContent=(fresh?"تقارير الشمعة الحديثة: ":"آخر تقارير محفوظة تاريخياً: ")+sentCount+" من "+votes.length+" في الذاكرة · "+Number(feed.last_bar_dispatch_count||0)+" محاولة إرسال غير مؤكدة إلى Supabase.";
 
 }
 async function getSession(){
