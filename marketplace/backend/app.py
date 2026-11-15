@@ -1439,10 +1439,15 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
-                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
-                # Persist history asynchronously; the live MT5 heartbeat must never
-                # wait on a slow Supabase historical upsert of repeated closed deals.
-                queue_closed_deals(client_id,closed_deals,sb)
+                previous=CONNECTIONS.get(client_id,{})
+                if data.get("closed_deals_unchanged") is True:
+                    # Compact heartbeat: the client only resends the historical
+                    # archive on a trade event or its periodic refresh.
+                    closed_deals=previous.get("closed_deals") or []
+                else:
+                    closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
+                    # Historical persistence must never block real-time ticks.
+                    queue_closed_deals(client_id,closed_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
