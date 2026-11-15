@@ -15,6 +15,7 @@ from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
 from telemetry_persistence import queue_closed_deals
 from system_readiness import owner_readiness
+from bot_advisors import analyze_advisors
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -531,6 +532,37 @@ class Handler(SimpleHTTPRequestHandler):
                 if cached:
                     return self.send_json(200,cached["settings"])
                 return self.send_json(503,{"error":"تعذر تحديث إعدادات التداول مؤقتاً"})
+        if path=="/api/bot-advisors":
+            # Owner/client authenticated read-only strategy assistants.
+            # No historical data from other customers, no order or settings actions.
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                identity=license_for_user(u["id"])
+                if not identity or identity.get("revoked"):
+                    return self.send_json(403,{"error":"لا يوجد اتصال MT5 مخوّل لهذا الحساب"})
+                client_id=identity["client_id"]
+                item=CONNECTIONS.get(client_id)
+                if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                    return self.send_json(409,{"error":"MT5 غير متصل أو البيانات أقدم من 30 ثانية. لا نعرض توصيات قديمة.","connected":False})
+                if not str(item.get("symbol","")).upper().startswith("XAUUSD"):
+                    return self.send_json(409,{"error":"مساعدو المكتبة مخصصون حالياً لشارت الذهب XAUUSD.","connected":True})
+                # A chronological list of CLOSED candles only, not the forming bar.
+                analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
+                central=(item.get("strategy_decision") or {}).get("decision","WAIT")
+                result={**analysis,"connected":True,
+                    "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
+                    "central_decision":central,"received_at":item.get("last_seen"),
+                    "execution_enabled":False,
+                    "commercial_bots_connected":False,
+                    "central_alignment":(
+                        "AGREE" if central==analysis["consensus"]["signal"] and central in ("BUY","SELL")
+                        else "CONFLICT" if central in ("BUY","SELL") and analysis["consensus"]["signal"] in ("BUY","SELL")
+                        else "NO_DIRECTIONAL_CONSENSUS"
+                    )}
+                return self.send_json(200,result)
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception: return self.send_json(502,{"error":"تعذر إكمال التحليل الاستشاري"})
         if path=="/api/auto-trading":
             try:
                 u=current_user(token_of(self))
