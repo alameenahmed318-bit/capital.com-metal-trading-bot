@@ -556,7 +556,9 @@ class Handler(SimpleHTTPRequestHandler):
                 current_candle=(item.get("closed_candles") or [{}])[0]
                 if not isinstance(analysis,dict) or int(finite_number(analysis.get("bar_time",0)))!=int(finite_number(current_candle.get("time",0))):
                     analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
-                central=(item.get("strategy_decision") or {}).get("decision","WAIT")
+                central=(current_decision.get("decision","WAIT")
+                         if int(finite_number(current_decision.get("bar_time",0)))==
+                            int(finite_number(analysis.get("bar_time",0))) else "WAIT")
                 result={**analysis,"connected":True,
                     "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
                     "central_decision":central,"received_at":item.get("last_seen"),
@@ -1577,7 +1579,9 @@ class Handler(SimpleHTTPRequestHandler):
                     # bus and the existing async Supabase diagnostics queue.
                     bot_events=build_bot_messages(client_id,str(data.get("symbol","")),
                         str(data.get("timeframe","")),bot_report,
-                        (strategy_decision or {}).get("decision","WAIT"))
+                        ((strategy_decision or {}).get("decision","WAIT")
+                         if int(finite_number((strategy_decision or {}).get("bar_time",0)))==
+                            int(finite_number(bot_report.get("bar_time",0))) else "WAIT"))
                     bot_history=update_history(bot_history,bot_events)
                     bot_dispatch_count=sum(bool(queue_ai_diagnostic_event(e)) for e in bot_events)
                 if strategy_decision:
