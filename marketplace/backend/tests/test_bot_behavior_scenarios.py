@@ -5,6 +5,7 @@ message schemas and safety properties; they are NOT backtests of profitability.
 """
 import copy
 import json
+import time
 import unittest
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history
@@ -78,6 +79,40 @@ class TradingBotBehaviorTests(unittest.TestCase):
         self.assertEqual(len({x["event_id"] for x in update_history(messages,second)}),10)
         other=build_bot_messages("another-account","XAUUSD","PERIOD_M1",first)
         self.assertTrue(set(x["event_id"] for x in messages).isdisjoint(x["event_id"] for x in other))
+
+    def test_false_breakout_with_long_upper_wick_is_rejected(self):
+        bars=regime([0.0])
+        bars[-1]={**bars[-1],"open":2300.0,"high":2305.0,
+                  "low":2299.9,"close":2300.01}
+        result=analyze_advisors(bars)
+        breakout=next(x for x in result["advisors"] if x["id"]=="breakout")
+        self.assertEqual(breakout["signal"],"WAIT")
+        self.assertEqual(result["consensus"]["signal"],"WAIT")
+        print("BOT_SCENARIO_FALSE_BREAKOUT="+json.dumps({
+            "last_high":2305.0,"last_close":result["last_close"],
+            "prior20_high":breakout["evidence"]["prior20_high"],
+            "breakout_signal":breakout["signal"]},ensure_ascii=False),flush=True)
+
+    def test_low_tick_volume_blocks_breakout_and_fast_momentum(self):
+        bars=regime([1.0,.5,-.7])
+        bars[-1]["tick_volume"]=0
+        report=analyze_advisors(bars)
+        bot={x["id"]:x["signal"] for x in report["advisors"]}
+        self.assertEqual(bot["scalping"],"WAIT")
+        self.assertEqual(bot["breakout"],"WAIT")
+        self.assertEqual(bot["ensemble"],"WAIT")
+        self.assertEqual(report["consensus"]["signal"],"WAIT")
+        print("BOT_SCENARIO_NO_VOLUME="+json.dumps({
+            "signal":report["consensus"]["signal"],"votes":bot},ensure_ascii=False),flush=True)
+
+    def test_analytical_cpu_time_without_network_or_db(self):
+        rows=regime([1.0,.5,-.7],n=120)
+        start=time.perf_counter()
+        for _ in range(250):
+            report=analyze_advisors(rows)
+        elapsed_ms=(time.perf_counter()-start)*1000
+        self.assertEqual(report["status"],"READY")
+        print("BOT_BENCHMARK_CPU_MS_PER_120_CANDLES="+str(round(elapsed_ms/250,4)),flush=True)
 
     def test_bad_or_insufficient_market_data_does_not_trade(self):
         normal=regime([1.0,.5,-.7])
