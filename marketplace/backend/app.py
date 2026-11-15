@@ -286,6 +286,20 @@ def finite_number(value, default=0.0):
     except (TypeError, ValueError, OverflowError):
         return default
 
+def entry_direction_capacity(positions, symbol, signal, settings):
+    """Count all gold positions (including manual/external) before a fresh entry."""
+    pm=(settings or {}).get("position_management") or {}
+    cap=max(1,min(20,int(finite_number(pm.get("max_positions_per_direction",2),2))))
+    if signal not in ("BUY","SELL"):
+        return {"approved":False,"reason_ar":"لا يوجد اتجاه دخول صالح","max_per_direction":cap}
+    position_type=0 if signal=="BUY" else 1
+    count=sum(1 for p in (positions or []) if isinstance(p,dict)
+              and str(p.get("symbol") or "")==symbol
+              and int(finite_number(p.get("type"),-1))==position_type)
+    return {"approved":count<cap,"open_same_side":count,"max_per_direction":cap,
+            "reason_ar":"الحد الأقصى لصفقات الاتجاه مفتوح" if count>=cap else "عدد صفقات الاتجاه ضمن المسموح"}
+
+
 def clean_telemetry_rows(rows, allowed, limit=200):
     if not isinstance(rows,list): return []
     cleaned=[]
@@ -734,13 +748,18 @@ class Handler(SimpleHTTPRequestHandler):
             )
             ai_council=council_result(client_id,decision)
             risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
-            ready=bool(gate.get("approved") and ai_council["approved"] and risk_report["approved"])
+            direction_limit=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),signal,control_settings)
+            ready=bool(gate.get("approved") and ai_council["approved"] and risk_report["approved"]
+                       and direction_limit["approved"])
             if not ai_council["approved"]:
                 gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
                       "expires_at_unix":0,"reason_ar":ai_council["reason_ar"]}
             if not risk_report["approved"]:
                 gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
                       "expires_at_unix":0,"reason_ar":risk_report["reason_ar"]}
+            if not direction_limit["approved"] and signal in ("BUY","SELL"):
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":direction_limit["reason_ar"]}
             council_event=build_council_event(client_id,decision,gate,trading_enabled)
             queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
@@ -757,6 +776,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "authorization_expires_at":gate.get("expires_at_unix",0),
                 "council":decision.get("council",{}),
                 "multi_model_council":ai_council,"risk_guardian":risk_report,
+                "direction_limit":direction_limit,
                 "local_ai_required":LOCAL_AI_REQUIRED,
                 "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
                 "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
