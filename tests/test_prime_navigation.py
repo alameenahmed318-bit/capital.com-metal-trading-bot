@@ -9,7 +9,7 @@ class PrimeNavigationTests(unittest.TestCase):
         html=(ROOT/"prime.html").read_text(encoding="utf-8")
         css=(ROOT/"prime.css").read_text(encoding="utf-8")
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
-        self.assertIn("/prime.js?v=sudan-20261115-3",html)
+        self.assertIn("/prime.js?v=sudan-20261115-bots1",html)
         self.assertIn("/prime.css?v=sudan-20261115-1",html)
         self.assertIn('id="primeFrame"',html)
         self.assertIn('id="primeNav"',html)
@@ -38,6 +38,15 @@ class PrimeNavigationTests(unittest.TestCase):
         self.assertIn("n>0?",history)
         self.assertIn("n<0?",history)
         self.assertIn("dir='ltr'",history)
+
+    def test_bot_library_uses_one_visible_card_grid_and_real_route(self):
+        html=(ROOT/"bots-library.html").read_text(encoding="utf-8")
+        js=(ROOT/"prime.js").read_text(encoding="utf-8")
+        self.assertEqual(html.count('id="liveAdvisors"'),1)
+        self.assertNotIn('id="botSignalHistory"',html)
+        self.assertIn('id="signalBusStatus"',html)
+        self.assertIn('"/bots-library.html"',js)
+        self.assertIn('data-section="bots"',(ROOT/"prime.html").read_text(encoding="utf-8"))
 
     def test_existing_connected_modules_remain_accessible(self):
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
