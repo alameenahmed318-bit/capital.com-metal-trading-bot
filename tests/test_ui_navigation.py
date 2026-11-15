@@ -18,8 +18,8 @@ class NavigationTests(unittest.TestCase):
         for page in PAGES:
             with self.subTest(page=page):
                 data=(ROOT/page).read_text(encoding="utf-8")
-                self.assertIn("/ui-shell.js?v=nav-20261115-1",data)
-                self.assertIn("/ui-navigation.css?v=nav-20261115-1",data)
+                self.assertIn("/ui-shell.js?v=nav-20261115-2",data)
+                self.assertIn("/ui-navigation.css?v=nav-20261115-3",data)
                 self.assertIn('class="sidebar"',data)
     def test_shortcut_anchors_exist_on_each_page(self):
         nav=(ROOT/"ui-shell.js").read_text(encoding="utf-8")
@@ -40,7 +40,7 @@ class NavigationTests(unittest.TestCase):
         html=(ROOT/"index.html").read_text(encoding="utf-8")
         script=(ROOT/"admin-navigation.js").read_text(encoding="utf-8")
         self.assertIn("/admin-navigation.js?v=nav-20261115-1",html)
-        self.assertIn("/ui-navigation.css?v=nav-20261115-2",html)
+        self.assertIn("/ui-navigation.css?v=nav-20261115-3",html)
         for section in ("adminOverview","adminClients","ownerPairPanel","councilPanel","actionPanel","learningPanel","versionsPanel"):
             self.assertIn('id="'+section+'"',html)
             self.assertIn('["'+section+'",',script)
