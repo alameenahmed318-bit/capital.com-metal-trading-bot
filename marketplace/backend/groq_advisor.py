@@ -121,7 +121,8 @@ def _call_groq(snapshot, *, api_key=None, timeout=None):
     req = urllib.request.Request(
         API_URL,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                 "Accept": "application/json", "User-Agent": "AL-ZOOL-Groq-Client/1.0"},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=_TIMEOUT if timeout is None else timeout) as response:
@@ -168,19 +169,40 @@ def review(decision):
 
 
 def _safe_http_status(exc):
-    """Report only well-known Groq error codes, never response text or secrets."""
+    """Classify 403 safely: do not print request keys, response text, or HTML."""
     if exc.code == 403:
         try:
-            data = json.loads(exc.read(2048).decode("utf-8"))
+            body = exc.read(8192)
+            # Groq returns JSON on permission failures, while edge/firewall
+            # rejections often return HTML or plain text.
+            data = json.loads(body.decode("utf-8"))
             error = data.get("error") if isinstance(data, dict) else None
-            code = error.get("code") if isinstance(error, dict) else None
-            if code == "model_permission_blocked_org":
-                return "MODEL_BLOCKED_ORG_403"
-            if code == "model_permission_blocked_project":
-                return "MODEL_BLOCKED_PROJECT_403"
+            if isinstance(error, dict):
+                code = error.get("code")
+                if code == "model_permission_blocked_org":
+                    return "MODEL_BLOCKED_ORG_403"
+                if code == "model_permission_blocked_project":
+                    return "MODEL_BLOCKED_PROJECT_403"
+                error_type = str(error.get("type") or "")
+                message = str(error.get("message") or "").lower()
+                if error_type == "permissions_error":
+                    return "GROQ_PERMISSIONS_ERROR_403"
+                if any(phrase in message for phrase in ("region", "country", "geograph", "territor", "location")):
+                    return "GEO_RESTRICTION_403"
+                if any(phrase in message for phrase in ("organization restricted", "account restricted", "account suspended")):
+                    return "ACCOUNT_RESTRICTION_403"
+                if any(phrase in message for phrase in ("invalid api key", "api key", "authentication")):
+                    return "KEY_PERMISSION_403"
+                return "GROQ_JSON_ERROR_403"
+            return "GROQ_JSON_UNKNOWN_403"
         except (ValueError, TypeError, UnicodeDecodeError, OSError, AttributeError):
-            pass
-        return "FORBIDDEN_403_OTHER"
+            try:
+                ct = str(exc.headers.get("Content-Type", "")).lower()
+                if "html" in ct or body.lstrip().lower().startswith((b"<html", b"<!doctype html")):
+                    return "HTML_EDGE_BLOCK_403"
+            except (AttributeError, NameError):
+                pass
+            return "NON_JSON_BLOCK_403"
     if exc.code == 401:
         return "UNAUTHORIZED_401"
     if exc.code == 429:
