@@ -16,7 +16,7 @@ from central_action_protocol import propose as propose_central_action, claim as 
 from telemetry_persistence import queue_closed_deals
 from system_readiness import owner_readiness
 from bot_advisors import analyze_advisors
-from bot_signal_bus import build_bot_messages, update_history
+from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -559,7 +559,13 @@ class Handler(SimpleHTTPRequestHandler):
                 central=(current_decision.get("decision","WAIT")
                          if int(finite_number(current_decision.get("bar_time",0)))==
                             int(finite_number(analysis.get("bar_time",0))) else "WAIT")
+                candle_age_sec=int(time.time()-finite_number(analysis.get("bar_time",0)))
+                analysis_fresh=(analysis.get("status")=="READY" and
+                                market_bar_fresh(analysis.get("bar_time"),item.get("timeframe"),time.time()))
                 result={**analysis,"connected":True,
+                    "market_data_fresh":analysis_fresh,
+                    "candle_age_seconds":candle_age_sec,
+                    "data_status":"RECENT" if analysis_fresh else "STALE_OR_UNAVAILABLE",
                     "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
                     "central_decision":central,"received_at":item.get("last_seen"),
                     "signal_journal":(item.get("bot_signal_history") or [])[-15:],
