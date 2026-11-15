@@ -1,14 +1,14 @@
 # AL-ZOOL Local Qwen Relay
 
 ## Purpose
-This optional local process runs on the same Windows PC as MT5 and Ollama. It reads the current central decision from the licensed AL-ZOOL server, asks the already-installed `qwen2.5:3b` model for an independent BUY/SELL/WAIT vote, and posts that vote back to the server.
+This optional local process runs on the same Windows PC as MT5 and Ollama. It reads the current central decision from the licensed AL-ZOOL server, asks the already-installed `qwen3.5:4b` model for an independent BUY/SELL/WAIT vote, and posts that vote back to the server.
 
 It never places, modifies, or closes orders. It does not run inside the MT5 tick/timer path, and MT5 does not wait for the model. The MT5 terminal continues to execute only server-authorized decisions.
 
 ## Requirements
 - Python 3.10+
 - Ollama running at `http://127.0.0.1:11434`
-- Existing model `qwen2.5:3b`
+- Existing model `qwen3.5:4b`
 - The licensed MT5 Engine ID and Engine Token
 
 No model is downloaded automatically. Check the installed model first:
@@ -17,7 +17,7 @@ No model is downloaded automatically. Check the installed model first:
 ollama list
 ```
 
-If `qwen2.5:3b` is absent, stop here and choose a model explicitly; this relay will not pull model weights.
+If `qwen3.5:4b` is absent, stop here and choose a model explicitly; this relay will not pull model weights.
 
 ## Run on Windows
 From the repository root:
