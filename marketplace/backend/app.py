@@ -1567,7 +1567,7 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
     def end_headers(self):
         self.send_header("X-Content-Type-Options","nosniff"); self.send_header("Referrer-Policy","strict-origin-when-cross-origin")
-        self.send_header("X-Frame-Options","DENY"); super().end_headers()
+        self.send_header("X-Frame-Options","SAMEORIGIN"); self.send_header("Content-Security-Policy","frame-ancestors 'self'"); super().end_headers()
 
 if __name__=="__main__":
     bootstrap_owner()
