@@ -172,11 +172,19 @@ def update_council(client_id,decision,account):
         if len(_VOTES)>=_MAX_ENTRIES:
             oldest=min(_VOTES,key=lambda k:_VOTES[k].get("updated_at",0))
             _VOTES.pop(oldest,None)
-        _VOTES[client_id]={"bar_time":bar,"status":"PENDING",
-            "fast":fast_ai(decision,account),"qwen":_vote("Qwen","PENDING"),
-            "deepseek":_vote("DeepSeek","PENDING"),"updated_at":time.time()}
-    threading.Thread(target=_worker,args=(client_id,bar,dict(decision),dict(account)),
-                     daemon=True,name="alzool-council").start()
+        remote_qwen=bool(_QWEN_URL)
+        remote_deepseek=bool(_DEEPSEEK_KEY or _DEEPSEEK_LOCAL_URL)
+        _VOTES[client_id]={"bar_time":bar,
+            "status":"PENDING" if remote_qwen or remote_deepseek else "AWAITING_LOCAL_VOTES",
+            "fast":fast_ai(decision,account),
+            "qwen":_vote("Qwen","PENDING" if remote_qwen else "NOT_CONFIGURED"),
+            "deepseek":_vote("DeepSeek","PENDING" if remote_deepseek else "NOT_CONFIGURED"),
+            "updated_at":time.time()}
+    # On owner laptops the local relay supplies both model votes. Never
+    # allocate a useless cloud worker when neither remote model is configured.
+    if remote_qwen or remote_deepseek:
+        threading.Thread(target=_worker,args=(client_id,bar,dict(decision),dict(account)),
+                         daemon=True,name="alzool-council").start()
 
 def accept_local_model_vote(client_id,advice,decision):
     """Accept owner-terminal authenticated local Qwen or DeepSeek vote."""
@@ -214,8 +222,27 @@ def council_result(client_id,decision):
     votes=[v.get("fast",{}),qwen_local or v.get("qwen",{}),deepseek_local or v.get("deepseek",{})]
     approved=(signal in ("BUY","SELL") and all(x.get("status")=="READY"
         and x.get("direction")==signal and _num(x.get("confidence"))>=.5 for x in votes))
+    # A precise WAIT reason avoids confusing disconnected/missing votes with
+    # actual disagreement. Fail closed; this changes diagnostics, not authority.
+    if approved:
+        reason="المجلس متعدد النماذج وافق"
+    elif signal not in ("BUY","SELL"):
+        reason="المحرك الكمي اختار WAIT"
+    else:
+        problem=next(((name,v) for name,v in zip(("Fast AI","Qwen","DeepSeek"),votes)
+            if v.get("status")!="READY" or v.get("direction")!=signal
+            or _num(v.get("confidence"))<.5),None)
+        if problem is None:reason="المجلس ينتظر موافقة نهائية"
+        else:
+            name,v=problem
+            status=v.get("status","MISSING")
+            if status!="READY":
+                reason=f"{name}: التصويت غير جاهز ({status})"
+            elif v.get("direction")!=signal:
+                reason=f"{name}: اتجاه التصويت {v.get('direction','WAIT')} يخالف {signal}"
+            else:
+                reason=f"{name}: ثقة التصويت أقل من 50%"
     return {"approved":approved,"status":signal if approved else "WAIT",
-            "reason_ar":"المجلس متعدد النماذج وافق" if approved else
-                        "بانتظار توافق Fast AI وQwen وDeepSeek على نفس الاتجاه",
+            "reason_ar":reason,
             "votes":{voter.get("model","unknown"):voter for voter in votes},
             "bar_time":bar}
