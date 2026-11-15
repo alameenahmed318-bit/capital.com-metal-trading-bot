@@ -110,7 +110,7 @@ def fast_ai(decision,account):
     families=decision.get("family_votes") or {}
     supports=sum(1 for v in families.values() if v==signal)
     oppose=sum(1 for v in families.values() if v in ("BUY","SELL") and v!=signal)
-    if signal not in ("BUY","SELL") or confidence<.45 or atr<=0 or price<=0 or supports<=oppose:
+    if signal not in ("BUY","SELL") or confidence<.55 or atr<=0 or price<=0 or supports<=oppose:
         return _vote("Fast AI","READY",reason="التحليل الكمي لا يجيز الدخول")
     if _num(account.get("equity"))<=0 or _num(account.get("free_margin"))<=0:
         return _vote("Fast AI","READY",reason="حارس المخاطر: الحساب غير آمن")
