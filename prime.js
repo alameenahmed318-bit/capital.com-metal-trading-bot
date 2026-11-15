@@ -16,7 +16,8 @@ const CONFIG={
  research:{label:"الاستراتيجيات",title:"الاستراتيجيات والتعلّم",subtitle:"نتائج التعلم وتدقيق الاستراتيجيات والاختبارات",source:"مركز البحث والتعلّم",url:"/learning-lab.html",tabs:[
   ["learning","التعلم والذاكرة","/learning-lab.html"],["audit","تدقيق الاستراتيجيات","/learning-lab.html#strategyAuditPanel"],
   ["backtest","الاختبارات التاريخية","/backtest-lab.html"]]},
- reports:{label:"التقارير",title:"الأداء والتقارير",subtitle:"الصفقات المغلقة وسجلات التنفيذ والنتائج",source:"سجل التداول",url:"/trade-history.html",tabs:[
+ bots:{label:"البوتات العالمية",title:"مكتبة البوتات العالمية",subtitle:"مقارنة بوتات الذهب العالمية ودراسة أفضل الأفكار لـ AL-ZOOL",source:"المكتبة المرجعية المستقلة",url:"/bots-library.html",tabs:[]},
+  reports:{label:"التقارير",title:"الأداء والتقارير",subtitle:"الصفقات المغلقة وسجلات التنفيذ والنتائج",source:"سجل التداول",url:"/trade-history.html",tabs:[
   ["history","الصفقات المغلقة","#tradesTable"],["events","أحداث التنفيذ","#tradeEventsTable"],["performance","أداء الحساب","/dashboard.html#accountPerformance"]]},
  admin:{label:"الإدارة",title:"العملاء والتراخيص",subtitle:"المالك، العملاء، تراخيص الاتصال وربط MT5",source:"بوابة الاتصال والتراخيص",url:"/",tabs:[
   ["overview","لوحة المالك","#adminOverview"],["clients","العملاء","#adminClients"],
@@ -33,7 +34,7 @@ const normalizeUrl=(raw)=>{
  try{
   const url=new URL(raw,location.origin);
   if(url.origin!==location.origin)return null;
-  if(!["/","/index.html","/dashboard.html","/trade-management.html","/opportunities.html","/ai-analysis.html","/learning-lab.html","/backtest-lab.html","/trade-history.html"].includes(url.pathname))return null;
+  if(!["/","/index.html","/dashboard.html","/trade-management.html","/opportunities.html","/ai-analysis.html","/learning-lab.html","/backtest-lab.html","/trade-history.html","/bots-library.html"].includes(url.pathname))return null;
   return url.pathname+url.hash;
  }catch{return null;}
 };
@@ -60,6 +61,7 @@ function matchRoute(url){
  if(path==="/ai-analysis.html")return ["ai",hash==="#diagPanel"?"diagnostics":"analysis"];
  if(path==="/learning-lab.html")return ["research",hash==="#strategyAuditPanel"?"audit":"learning"];
  if(path==="/backtest-lab.html")return ["research","backtest"];
+ if(path==="/bots-library.html")return ["bots",""];
  if(path==="/trade-history.html")return ["reports",hash==="#tradeEventsTable"?"events":"history"];
  if(path==="/"||path==="/index.html"){
   return ["admin",{"#adminClients":"clients","#ownerPairPanel":"license","#actionPanel":"engine"}[hash]||"overview"];
