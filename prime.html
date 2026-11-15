@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0e14">
+<title>AL-ZOOL PRIME | مركز التحكم السوداني الموحد</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/prime.css?v=sudan-20261115-1">
+</head>
+<body>
+<div class="az-app" id="azApp">
+  <aside class="az-sidebar" id="primeSidebar" aria-label="أقسام AL-ZOOL">
+    <a class="az-brand" href="#home" data-section="home" aria-label="الزول برايم الرئيسية">
+      <span class="az-brand-lockup">
+        <span class="az-logo">AZ<span class="az-star"></span></span>
+        <span class="az-sudan-emblem" title="جمهورية السودان" aria-label="علم السودان">
+          <svg viewBox="0 0 32 24" role="img" aria-label="علم السودان" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="8" fill="#d73543"/><rect y="8" width="32" height="8" fill="#f8f8fc"/><rect y="16" width="32" height="8" fill="#101217"/><path d="M0 0L16 12L0 24Z" fill="#15834f"/></svg>
+        </span>
+      </span>
+      <span class="az-brand-word"><strong>الزول <em>PRIME</em></strong><small>UNIFIED TRADING INTELLIGENCE</small></span>
+    </a>
+    <div class="az-sidebar-line" aria-hidden="true"></div>
+    <div class="az-filter" role="search"><span aria-hidden="true">⌕</span><input id="primeSearch" type="search" aria-label="البحث عن الخدمات" autocomplete="off" placeholder="ابحث عن خدمة أو قسم..."><kbd>Ctrl K</kbd></div>
+    <nav class="az-main-nav" id="primeNav" aria-label="القائمة الرئيسية">
+      <div class="az-nav-caption">WORKSPACE / القيادة</div>
+      <button class="az-nav-item active" data-section="home"><span class="az-nav-icon">⌂</span><span>الرئيسية</span><span class="az-nav-arrow">‹</span></button>
+      <button class="az-nav-item" data-section="trading"><span class="az-nav-icon">⇄</span><span>التداول وإدارة الصفقات</span><span class="az-nav-arrow">‹</span></button>
+      <button class="az-nav-item" data-section="market"><span class="az-nav-icon">◉</span><span>السوق والفرص</span><span class="az-nav-arrow">‹</span></button>
+      <div class="az-nav-caption">INTELLIGENCE / الذكاء والتطوير</div>
+      <button class="az-nav-item" data-section="ai"><span class="az-nav-icon">✧</span><span>الذكاء ومجلس التصويت</span><span class="az-nav-arrow">‹</span></button>
+      <button class="az-nav-item" data-section="research"><span class="az-nav-icon">◈</span><span>الاستراتيجيات والتعلّم</span><span class="az-nav-arrow">‹</span></button>
+      <div class="az-nav-caption">OPERATIONS / النتائج والإدارة</div>
+      <button class="az-nav-item" data-section="reports"><span class="az-nav-icon">▤</span><span>التقارير والأداء</span><span class="az-nav-arrow">‹</span></button>
+      <button class="az-nav-item" data-section="admin"><span class="az-nav-icon">♙</span><span>العملاء والتراخيص</span><span class="az-nav-arrow">‹</span></button>
+      <button class="az-nav-item" data-section="settings"><span class="az-nav-icon">⚙</span><span>الإعدادات والحماية</span><span class="az-nav-arrow">‹</span></button>
+      <p class="az-no-results" id="primeNoResults" hidden>ما لقينا قسم بهذا الاسم</p>
+    </nav>
+    <div class="az-side-status">
+      <span class="az-pulse" id="primePulse"></span><span><strong>محرك AL-ZOOL</strong><small id="primeServerStatus">جارٍ فحص الخادم</small></span>
+    </div>
+    <div class="az-sudan-line" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  </aside>
+  <div class="az-main">
+    <header class="az-top">
+      <div class="az-top-name">
+        <button id="primeMobileMenu" class="az-menu-btn" type="button" aria-label="فتح القائمة" aria-expanded="false">☰</button>
+        <div><div class="az-breadcrumb">AL-ZOOL PRIME <span>/</span> <span id="primeBreadcrumb">الرئيسية</span></div>
+        <h1 id="primeTitle">مركز القيادة</h1><p id="primeSubtitle">كل أدوات المحرك والتداول في واجهة واحدة</p></div>
+      </div>
+      <div class="az-top-tools">
+        <span class="az-chip"><span class="az-chip-led"></span><span id="primeStatusLabel">جارٍ التحقق من الخادم</span></span>
+        <span class="az-chip az-hide-small">XAUUSD / GOLD</span>
+        <span class="az-owner">AZ</span>
+      </div>
+    </header>
+    <div class="az-studio-notice" id="primeNotice">
+      <span class="az-notice-symbol">✦</span>
+      <span><strong>مركز التحكم الموحد</strong> — الصفحات الأصلية تعمل داخل هذه اللوحة دون تغيير اتصال MT5 أو منطق التداول. حالتا الخادم والحساب مختلفتان؛ راجع اتصال MT5 داخل الرئيسية.</span>
+    </div>
+    <section class="az-modules" id="primeModules" aria-label="اختصارات الخدمات">
+      <button type="button" data-go="trading" data-tab="positions"><span>⇄</span> الصفقات المفتوحة</button>
+      <button type="button" data-go="trading" data-tab="recovery"><span>⟲</span> التعافي الذكي</button>
+      <button type="button" data-go="ai" data-tab="analysis"><span>✧</span> التحليل الذكي</button>
+      <button type="button" data-go="admin" data-tab="clients"><span>♙</span> إدارة العملاء</button>
+    </section>
+    <div class="az-workspace-head">
+      <div><span class="az-eyebrow">ACTIVE WORKSPACE</span><h2 id="primeWorkspaceTitle">الرئيسية</h2></div>
+      <span class="az-workspace-tag"><span></span> <span id="primeActiveSource">بيانات لوحة القيادة</span></span>
+    </div>
+    <nav id="primeTabs" class="az-tabs" aria-label="الأقسام الداخلية" hidden></nav>
+    <section class="az-module-shell" aria-label="محتوى القسم المحدد">
+      <div class="az-loading" id="primeLoading" role="status"><span class="az-spinner"></span> جارٍ عرض القسم...</div>
+      <iframe id="primeFrame" title="محتوى AL-ZOOL" src="/dashboard.html" referrerpolicy="same-origin"></iframe>
+    </section>
+    <footer class="az-footer"><span>AL-ZOOL PRIME · SUDANESE INTELLIGENCE TERMINAL</span><span>هوية سودانية معاصرة · جميع الخدمات في لوحة واحدة</span></footer>
+  </div>
+</div>
+<div class="az-mobile-overlay" id="primeOverlay" hidden></div>
+<script defer src="/prime.js?v=sudan-20261115-1"></script>
+</body>
+</html>
