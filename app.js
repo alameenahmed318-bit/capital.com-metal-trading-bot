@@ -30,6 +30,20 @@ function downloadClientZip(packageData){
  document.body.append(link);link.click();link.remove();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+async function loadClientBasicSettings(){
+ try{
+  const response=await api("/api/client/basic-settings");
+  const p=response.settings||{};
+  $("clientSingleEnabled").checked=p.single_enabled===true;
+  $("clientSingleProfit").value=Number(p.single_profit_target??1);
+  $("clientGroupEnabled").checked=p.group_enabled===true;
+  $("clientGroupProfit").value=Number(p.group_profit_target??5);
+  $("clientStopEnabled").checked=p.stop_loss_enabled===true;
+  $("clientStopMode").value=p.stop_loss_mode==="POINTS"?"POINTS":"ATR";
+  $("clientStopValue").value=Number(p.stop_loss_value??1.8);
+  msg("clientBasicStatus","الإعدادات الأساسية جاهزة.");
+ }catch(error){msg("clientBasicStatus",error.message||"تعذر تحميل الإعدادات");}
+}
 $("clientPackageDownload").addEventListener("click",async()=>{
  if(!confirm("تنزيل حزمة جديدة سيبطل رمز الاتصال السابق. هل تريد المتابعة؟"))return;
  const button=$("clientPackageDownload");button.disabled=true;
