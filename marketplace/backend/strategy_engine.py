@@ -52,6 +52,36 @@ def _rsi_cached(closes,period):
     return 100.0 if loss==0 else 100-100/(1+gain/loss)
 def rsi(closes,period=14):return _rsi_cached(tuple(float(v) for v in closes),int(period))
 
+def wilder_adx(rates,period=14):
+    """Standard Wilder TR/+DM/-DM smoothing and DX smoothing; no future candles."""
+    if len(rates)<2*period+1:return 0.0
+    trs=[]; plus_dm=[]; minus_dm=[]
+    for prev,current in zip(rates[:-1],rates[1:]):
+        ph,pl,pc=float(prev["high"]),float(prev["low"]),float(prev["close"])
+        h,l=float(current["high"]),float(current["low"])
+        up=h-ph;down=pl-l
+        trs.append(max(h-l,abs(h-pc),abs(l-pc)))
+        plus_dm.append(up if up>down and up>0 else 0.0)
+        minus_dm.append(down if down>up and down>0 else 0.0)
+    tr=sum(trs[:period]);positive=sum(plus_dm[:period]);negative=sum(minus_dm[:period])
+    dx_values=[]
+    for i in range(period-1,len(trs)):
+        if i>=period:
+            tr=tr-tr/period+trs[i]
+            positive=positive-positive/period+plus_dm[i]
+            negative=negative-negative/period+minus_dm[i]
+        plus_di=100*positive/tr if tr>0 else 0.0
+        minus_di=100*negative/tr if tr>0 else 0.0
+        total=plus_di+minus_di
+        dx_values.append(100*abs(plus_di-minus_di)/total if total>0 else 0.0)
+    if len(dx_values)<period:return 0.0
+    adx=sum(dx_values[:period])/period
+    for value in dx_values[period:]:
+        adx=(adx*(period-1)+value)/period
+    return round(max(0.,min(100.,adx)),3)
+
+
+
 def _base(rates,s):
     if len(rates)<60:return "WAIT","بيانات الشموع غير كافية"
     c=[float(x["close"]) for x in rates]; h=[float(x["high"]) for x in rates]
@@ -156,10 +186,7 @@ def analyze_market_context(rates):
     op,hi,lo,cl=o[-1],h[-1],l[-1],c[-1]; span=max(hi-lo,1e-9); pos=(cl-lo)/span; body=abs(cl-op)
     uw=(hi-max(op,cl))/span; lw=(min(op,cl)-lo)/span; ph=max(h[-21:-1]); pl=min(l[-21:-1])
     buy_trap=hi>ph and cl<ph and uw>.35; sell_trap=lo<pl and cl>pl and lw>.35; mom=rsi(c,14) or 50.
-    plus=[]; minus=[]
-    for i in range(max(1,len(rates)-14),len(rates)):
-        up=h[i]-h[i-1]; down=l[i-1]-l[i]; plus.append(max(up,0.) if up>down else 0.); minus.append(max(down,0.) if down>up else 0.)
-    tr14=max(sum(tr[-14:]),1e-9); pdi=100*sum(plus)/tr14; mdi=100*sum(minus)/tr14; adx=100*abs(pdi-mdi)/max(pdi+mdi,1e-9)
+    adx=wilder_adx(rates,14)  # Actual Wilder ADX, not the old DI imbalance proxy.
     vw=None
     if "tick_volume" in rates[-1]:
         sample=rates[-30:]; vv=[max(1.,float(x.get("tick_volume",1))) for x in sample]; typical=[(float(x["high"])+float(x["low"])+float(x["close"]))/3 for x in sample]; vw=sum(a*b for a,b in zip(typical,vv))/sum(vv)
