@@ -45,6 +45,25 @@ class SafetyTests(unittest.TestCase):
         _VOTES["test"]["deepseek"]=_vote("DeepSeek","READY","BUY",.8)
         self.assertTrue(council_result("test",DECISION)["approved"])
 
+    def test_missing_model_reports_exact_reason(self):
+        _VOTES["test"]={"bar_time":1700000000,
+            "fast":_vote("Fast AI","READY","BUY",.7),
+            "qwen":_vote("Qwen","NOT_CONFIGURED"),
+            "deepseek":_vote("DeepSeek","READY","BUY",.9)}
+        report=council_result("test",DECISION)
+        self.assertFalse(report["approved"])
+        self.assertIn("Qwen",report["reason_ar"])
+        self.assertIn("NOT_CONFIGURED",report["reason_ar"])
+
+    def test_disagreement_reports_exact_reason(self):
+        _VOTES["test"]={"bar_time":1700000000,
+            "fast":_vote("Fast AI","READY","BUY",.7),
+            "qwen":_vote("Qwen","READY","BUY",.8),
+            "deepseek":_vote("DeepSeek","READY","SELL",.8)}
+        report=council_result("test",DECISION)
+        self.assertFalse(report["approved"])
+        self.assertIn("DeepSeek",report["reason_ar"])
+
     def test_low_confidence_council_veto(self):
         _VOTES["test"]={"bar_time":1700000000,"fast":_vote("Fast AI","READY","BUY",.7),
                          "qwen":_vote("Qwen","READY","BUY",.4),
