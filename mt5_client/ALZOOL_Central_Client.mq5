@@ -1319,11 +1319,6 @@ void OnTimer()
    ManageEntryTrailing();
    ManagePositionAddons();
    ulong now=GetTickCount64();
-   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
-   {
-      PollTradeSettings();
-      g_lastSettingsPollMs=now;
-   }
    // Publish fresh prices and closed-bar data BEFORE asking for a decision.
    // Previously the decision poll ran first and often saw the previous heartbeat.
    if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
@@ -1332,6 +1327,11 @@ void OnTimer()
       g_online=sent;
       if(!sent) g_serverTradingEnabled=false;
       g_lastSnapshotMs=GetTickCount64();
+   }
+   if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
+   {
+      PollTradeSettings();
+      g_lastSettingsPollMs=now;
    }
    if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
    {
