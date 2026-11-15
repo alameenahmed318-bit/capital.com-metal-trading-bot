@@ -18,6 +18,7 @@ from system_readiness import owner_readiness
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
 from offline_m1_smoke import run as run_offline_m1_smoke
+from client_onboarding import build_bundle as build_client_bundle, CLIENT_SERVER as CLIENT_ONBOARDING_URL
 from groq_advisor import verify_credentials as verify_groq_credentials
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -56,6 +57,23 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
             obj=json.loads(detail); detail=obj.get("msg") or obj.get("message") or detail
         except Exception: pass
         raise ValueError(str(detail)[:300])
+
+
+def send_client_password_setup(email):
+    """Request a normal Supabase password-recovery email; no keys/passwords emailed.
+
+    Delivery requires Supabase Auth SMTP and CLIENT_SERVER in Auth redirect allowlist.
+    A rejected request never destroys the newly created account.
+    """
+    email=str(email or "").strip().lower()
+    try:
+        target=urllib.parse.quote(CLIENT_ONBOARDING_URL+"/",safe="")
+        sb("POST","/auth/v1/recover?redirect_to="+target,{"email":email})
+        return "REQUEST_ACCEPTED"
+    except Exception as exc:
+        # Never log email, auth tokens or full provider errors.
+        print("CLIENT_WELCOME_EMAIL_WARNING:",type(exc).__name__,flush=True)
+        return "NOT_SENT"
 
 
 def persist_ai_diagnostic_event(event):
@@ -1469,6 +1487,27 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,issue_owner_pairing(u))
             if path=="/api/owner/engine-license":
                 return self.send_json(410,{"error":"تم إلغاء تراخيص المالك؛ استخدم اقتران MT5 الخاص بالمالك."})
+            if path=="/api/client/onboarding-package":
+                u=current_user(token)
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    return self.send_json(403,{"error":"هذه الخدمة مخصصة للعميل فقط"})
+                if banned(admin_user(u["id"])):
+                    return self.send_json(403,{"error":"حساب العميل موقوف"})
+                record=license_for_user(u["id"])
+                if not record or record.get("revoked"):
+                    return self.send_json(403,{"error":"اتصال العميل غير مرخص أو موقوف"})
+                try:
+                    expires=datetime.fromisoformat(str(record["expires_at"]).replace("Z","+00:00"))
+                    if expires<=datetime.now(timezone.utc):
+                        return self.send_json(403,{"error":"انتهى الترخيص، تواصل مع الإدارة"})
+                except (KeyError,ValueError,TypeError):
+                    return self.send_json(403,{"error":"بيانات الترخيص غير صالحة"})
+                # Only regenerate after an explicit click; this invalidates the older token.
+                credentials=issue_license(u["id"])
+                bundle=build_client_bundle(credentials["client_id"],credentials["client_token"],
+                                           email=u.get("email",""))
+                return self.send_json(200,{"onboarding":bundle,"token_rotated":True,
+                    "warning_ar":"رمز الاتصال السابق انتهى. حمّل الملف الجديد على MT5."})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
@@ -1480,8 +1519,15 @@ class Handler(SimpleHTTPRequestHandler):
                     try: sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(u.get("id",""),safe=""),admin=True)
                     except Exception: pass
                     raise
+                # Build the private installation package for this owner response only.
+                # Password setup invitation is a separate Auth email; no credentials emailed.
+                bundle=build_client_bundle(credentials["client_id"],credentials["client_token"],
+                                           email=email,password=password)
+                welcome=send_client_password_setup(email)
                 return self.send_json(201,{"id":u.get("id"),"email":email,"name":name,"password":password,"engine":credentials,
-                                          "engine_server_url":PUBLIC_ENGINE_URL,"message":"بيانات الدخول والترخيص والاتصال فقط. لا توجد صلاحيات تداول."})
+                                          "engine_server_url":CLIENT_ONBOARDING_URL,
+                                          "onboarding":bundle,"welcome_email_status":welcome,
+                                          "message":"ملف MT5 جاهز. بريد إعداد كلمة المرور يعتمد على إرسال Supabase Auth. التداول غير مفعّل تلقائياً."})
             if path=="/api/access/check":
                 u=current_user(token)
                 if banned(admin_user(u["id"])): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
