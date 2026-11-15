@@ -75,3 +75,28 @@
  #alzool-site-nav .nav{font-size:12px!important}
 }
 @media(prefers-reduced-motion:reduce){#alzool-site-nav.sidebar,.az-nav-overlay{transition:none!important}}
+
+/* Owner portal: section navigation and usable mobile menu */
+.az-owner-shortcuts{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:12px 14px;background:#1c1832;border:1px solid #62478c;border-radius:12px}
+.az-owner-shortcuts>b{font:800 12px Cairo,Arial;color:#efdcff}
+.az-owner-shortcuts>a{display:inline-flex;text-decoration:none;font:700 11px Cairo,Arial;padding:7px 10px;border:1px solid #604883;border-radius:9px;color:#f3e8ff!important;background:#30254a;white-space:nowrap}
+.az-owner-shortcuts>a:hover{background:#6945a3!important;color:#fff!important}
+.az-admin-content [id]{scroll-margin-top:20px}
+.az-owner-mobile-bar,.az-owner-overlay{display:none}
+@media(max-width:900px){
+ .az-admin-layout{display:block!important;grid-template-columns:1fr!important}
+ .az-owner-mobile-bar{display:flex!important;position:sticky;top:0;z-index:80;padding:8px 12px;background:#19152c;border-bottom:1px solid #584477}
+ .az-owner-menu-trigger{background:#452c66;color:white;border:1px solid #8b61af;padding:9px 14px;border-radius:10px;font:800 12px Cairo,Arial}
+ #az-owner-menu.az-admin-sidebar{display:flex!important;flex-direction:column!important;align-items:stretch!important;position:fixed!important;z-index:100!important;top:0!important;right:0!important;bottom:0!important;left:auto!important;width:min(320px,88vw)!important;height:100dvh!important;padding:22px 13px!important;transform:translateX(110%);transition:transform .2s!important;overflow-y:auto!important;overflow-x:hidden!important}
+ .az-owner-menu-open #az-owner-menu.az-admin-sidebar{transform:translateX(0)}
+ #az-owner-menu.az-admin-sidebar>.side-label{display:block!important;margin-top:12px!important}
+ #az-owner-menu.az-admin-sidebar nav{display:grid!important;grid-template-columns:1fr!important;gap:4px!important;width:100%!important}
+ #az-owner-menu.az-admin-sidebar nav>a,#az-owner-menu.az-admin-sidebar nav>button{width:100%!important;white-space:normal!important;justify-content:flex-start!important;min-height:40px!important}
+ #az-owner-menu .az-admin-spacer{display:block!important;min-height:8px!important}
+ .az-owner-overlay{display:block;position:fixed;inset:0;background:#05030caa;z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+ .az-owner-menu-open .az-owner-overlay{opacity:1;pointer-events:auto}
+ body.az-owner-nav-lock{overflow:hidden}
+ .az-owner-shortcuts{flex-wrap:nowrap;overflow-x:auto;padding:9px}
+ .az-owner-shortcuts>b{flex:0 0 auto}
+ .az-owner-shortcuts>a{flex:0 0 auto}
+}
