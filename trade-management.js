@@ -186,7 +186,7 @@ async function saveRecoverySettings(){
    position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,
     recovery_max_lot:recoveryMaxLot,recovery_user_configured:true}
   })});
-  $("recoveryMessage").textContent=enabled?"تم حفظ شروط التعافي. التنفيذ يتطلب تصريح المجلس وتفعيل إدارة المراكز المركزية وMT5 بعد اختبار Demo.":"تم حفظ التعافي بوضع الإيقاف.";
+  $("recoveryMessage").textContent=enabled?"تم حفظ شروط التعافي. التنفيذ متاح للحساب التجريبي أو الحقيقي المتصل، بحسب مفاتيح التداول والمجلس وإعداداتك؛ لا يوجد شرط لنوع الحساب.":"تم حفظ التعافي بوضع الإيقاف.";
  }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveRecoverySettings").disabled=false;}
 }
