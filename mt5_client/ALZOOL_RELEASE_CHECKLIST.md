@@ -26,9 +26,9 @@ tested. The cloud service can deploy successfully while a Windows EA remains old
 5. The private owner pairing key has previously been visible in a screenshot.
    Re-pair in the owner dashboard **once**, save the JSON file locally,
    and use the new values. Never paste keys into support chats or logs.
-6. Install and run Ollama. Check for `qwen2.5:3b` and
+6. Install and run Ollama. Check for `qwen3.5:4b` and
    `deepseek-r1:1.5b`. If absent, install them with
-   `ollama pull qwen2.5:3b` and `ollama pull deepseek-r1:1.5b`.
+   `ollama pull qwen3.5:4b` and `ollama pull deepseek-r1:1.5b`.
 7. Start the read-only local vote relay:
    `python mt5_client/ALZOOL_Local_Model_Relay.py --credentials "FULL_PATH_TO_OWNER_PAIRING.json"`.
    The relay sends only model votes; it cannot place broker orders.
