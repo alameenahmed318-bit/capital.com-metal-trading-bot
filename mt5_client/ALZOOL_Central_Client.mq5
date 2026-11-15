@@ -1237,8 +1237,10 @@ bool SendLiveSnapshot()
    string headers="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
+   ulong requestStartedMs=GetTickCount64();
    int code=WebRequest("POST",BaseUrl()+"/v1/terminal-state/live/"+ConnectionId(),
                        headers,InpHttpTimeoutMs,data,result,response_headers);
+   ulong totalRequestMs=GetTickCount64()-requestStartedMs;
    if(code!=200)
    {
       string response=CharArrayToString(result,0,-1,CP_UTF8);
@@ -1249,7 +1251,18 @@ bool SendLiveSnapshot()
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    g_status="متصل — تم إرسال بيانات الحساب والصفقات والشموع";
-   Print("AL-ZOOL telemetry accepted: ",StringSubstr(response,0,300));
+   // Distinguish server CPU time from end-to-end network time.
+   // Report every 30 seconds (or when slow), without printing pairing keys.
+   static ulong lastMetricLogMs=0;
+   ulong stamp=GetTickCount64();
+   if(totalRequestMs>1500 || lastMetricLogMs==0 || stamp-lastMetricLogMs>=30000)
+   {
+      double serverMs=JsonDouble(response,"server_processing_ms",-1.0);
+      Print("AL-ZOOL LATENCY telemetry_http_ms=",totalRequestMs,
+            " server_processing_ms=",DoubleToString(serverMs,1),
+            " payload_bytes=",ArraySize(data));
+      lastMetricLogMs=stamp;
+   }
    return true;
 }
 
