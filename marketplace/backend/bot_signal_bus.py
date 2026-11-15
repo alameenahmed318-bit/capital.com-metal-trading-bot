@@ -72,6 +72,28 @@ def build_bot_messages(client_id, symbol, timeframe, report, central_direction="
     return messages
 
 
+
+def market_bar_fresh(bar_time, timeframe, now_unix):
+    """Whether a closed MT5 bar can truthfully be labelled a *recent* analysis.
+
+    A live terminal heartbeat alone is insufficient (e.g. weekend/closed market).
+    Unknown broker timeframes deliberately never assert LIVE.
+    This affects UI labels only and is not an order authorization.
+    """
+    import re
+    try:
+        bar=int(bar_time)
+        now=int(now_unix)
+        tf=str(timeframe or "").upper()
+        m=re.fullmatch(r"(?:PERIOD_)?(M|H)([0-9]{1,3})",tf)
+        if not m: return False
+        interval=int(m.group(2))*(60 if m.group(1)=="M" else 3600)
+        if interval<=0 or interval>86400: return False
+        age=now-bar
+        return -120<=age<=max(180,interval*2+60)
+    except (TypeError,ValueError,OverflowError):
+        return False
+
 def update_history(previous, messages, max_items=50):
     """In-memory bounded per-account signal journal; no other client is included."""
     history = list(previous) if isinstance(previous, list) else []
