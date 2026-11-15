@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c1018">
+<title>AL-ZOOL PRIME | مكتبة البوتات العالمية</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1018;--panel:#121a24;--panel2:#17212d;--line:#283543;--ink:#f3f7f8;--muted:#a8b9c6;--gold:#e4c283;--green:#40c38e;--red:#f68a91}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 92% 0%,#17332b 0%,transparent 32%),radial-gradient(ellipse at 5% 25%,#2a2022 0%,transparent 33%),var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;line-height:1.7}
+a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:auto;padding:clamp(16px,3vw,34px)}
+.eyebrow{font:700 11px/1.4 "Segoe UI",sans-serif;letter-spacing:.16em;color:var(--gold);text-transform:uppercase}
+.hero{border:1px solid #3a493f;background:linear-gradient(115deg,#153329b8,#171c2bd9 70%);border-radius:22px;padding:clamp(20px,3vw,34px);position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;top:0;right:0;width:5px;height:100%;background:linear-gradient(#ce3f4b 0 33%,#f8fafc 33% 67%,#121212 67%)}
+.hero-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.flag{font-size:26px;line-height:1}.hero h1{margin:12px 0 6px;font-size:clamp(24px,3.3vw,36px);line-height:1.35}.hero p{margin:0;color:#c6d3d5;max-width:850px}.capsule{display:inline-flex;align-items:center;gap:7px;border:1px solid #597464;border-radius:99px;background:#2345346b;padding:6px 12px;font-size:12px;color:#bce8d1;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 24px}.stat{border:1px solid var(--line);border-radius:15px;background:#151d27;padding:14px 18px}.stat strong{font-size:24px;display:block;color:#fff;font-variant-numeric:tabular-nums}.stat small{color:var(--muted);font-size:12px}
+.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:22px 0 12px}.section-head h2{font-size:20px;margin:0}.section-head p{font-size:12px;color:var(--muted);margin:0}.controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.filters{display:flex;gap:7px;flex-wrap:wrap}.filter{border:1px solid var(--line);border-radius:10px;color:#d8e2e8;background:#17212b;padding:7px 13px;cursor:pointer}.filter[aria-pressed="true"]{color:#0f1a18;background:var(--gold);border-color:var(--gold);font-weight:800}.search{min-width:200px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#111a24;color:#fff;outline:none}.search:focus{border-color:var(--gold)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:14px}.bot{background:linear-gradient(160deg,#182431 0%,#111923 100%);border:1px solid #30404c;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:10px;min-height:306px}.bot h3{font:750 20px/1.4 "Segoe UI",Tahoma,sans-serif;direction:ltr;text-align:right;margin:0;color:white}.bot .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.rating{background:#223426;border:1px solid #39694d;border-radius:8px;color:#b3edc9;font-weight:800;padding:4px 10px;font-size:14px;direction:ltr;font-variant-numeric:tabular-nums}.tag{background:#262e3b;border:1px solid #384454;color:#c4d5e0;border-radius:8px;padding:4px 9px;font-size:11px}.bot p{margin:0;color:#c2d1d8;font-size:14px}.bot ul{margin:0;padding-inline-start:20px;color:#b0c0cc;font-size:13px}.bot li{padding:2px 0}.action{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.action a{display:inline-flex;align-items:center;justify-content:center;border:1px solid #b89760;background:#3c3225;color:#fbe1b0;border-radius:10px;padding:8px 14px;text-decoration:none;font-weight:750;font-size:13px}.action a:hover{background:#5e4a2e}.origin{font-size:11px;color:#92a8b2}
+.note{margin:19px 0 25px;border:1px solid #536145;border-radius:14px;padding:15px 18px;background:#272b1cc9;color:#e6dfc3;font-size:13px}.note strong{color:#f7d99d}
+.ideas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.idea{padding:18px;border:1px solid var(--line);background:#141f29;border-radius:15px}.idea h3{margin:0 0 7px;font-size:16px;color:#f0d8a5}.idea p{margin:0;color:#bed0d9;font-size:13px}
+.rules{margin-top:20px;background:#101822;border:1px solid #294437;border-radius:16px;padding:18px}.rules h3{margin:0 0 7px;font-size:16px;color:#a8e3c0}.rules p{margin:0;color:#c2d0d9;font-size:13px}.empty{padding:20px;border:1px dashed var(--line);border-radius:12px;text-align:center;color:var(--muted)}.footer{padding:19px 0;color:#8fa4af;font-size:11px;text-align:center}
+@media(max-width:700px){.stats,.ideas{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.search{width:100%}.hero{border-radius:16px}.wrap{padding:14px}.stat strong{font-size:19px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="hero" aria-labelledby="pageTitle">
+ <div class="hero-head"><span class="eyebrow">AL-ZOOL PRIME / GLOBAL BOT INTELLIGENCE</span><span class="capsule"><span class="flag" aria-hidden="true">🇸🇩</span> مكتبة بحثية مستقلة</span></div>
+ <h1 id="pageTitle">مكتبة البوتات العالمية</h1>
+ <p>مرجع منظم لدراسة بوتات الذهب الأعلى تقييماً ضمن قائمة مختارة من سوق MQL5، واستخلاص أفكار عامة لتحسين AL-ZOOL. هذه ليست بوتات مثبتة أو موصولة بمحرك التداول.</p>
+</section>
+<section class="stats" aria-label="ملخص المكتبة">
+ <div class="stat"><strong dir="ltr">05</strong><small>بوتات مرجعية موثّقة المصدر</small></div>
+ <div class="stat"><strong dir="ltr">03</strong><small>أنماط استراتيجية ندرسها</small></div>
+ <div class="stat"><strong>بحث فقط</strong><small>لا أوامر تداول ولا تعديل للإعدادات</small></div>
+</section>
+<section aria-labelledby="botsHeading">
+ <div class="section-head"><div><h2 id="botsHeading">البوتات المرجعية</h2><p>التقييمات المنشورة على MQL5 وقت المراجعة: 15 نوفمبر 2026 · قد تتغير</p></div>
+ <div class="controls"><input class="search" id="botSearch" type="search" placeholder="ابحث عن بوت..." aria-label="بحث في البوتات">
+ <div class="filters" role="group" aria-label="تصفية حسب النوع"><button class="filter" data-kind="all" aria-pressed="true">الكل</button><button class="filter" data-kind="ai" aria-pressed="false">ذكاء اصطناعي</button><button class="filter" data-kind="selective" aria-pressed="false">دخول انتقائي</button><button class="filter" data-kind="multi" aria-pressed="false">استراتيجيات متعددة</button><button class="filter" data-kind="breakout" aria-pressed="false">اختراق وسرعة</button></div></div></div>
+ <div class="grid" id="botGrid">
+  <article class="bot" data-kind="ai" data-search="my ai gold ذكاء اصطناعي neural gold">
+   <div class="top"><span class="rating">★ 4.92/5</span><span class="tag">AI / H1</span></div>
+   <h3>My AI Gold</h3><p>نموذج تجاري يعلن استخدام شبكات عصبية لتحليل الذهب مع وقف وهدف محددين لكل صفقة.</p>
+   <ul><li>اكتشاف أنماط السوق</li><li>نسبة عائد/مخاطرة معلنة 1:2</li><li>دراسة قرارات النموذج قبل الدخول</li></ul>
+   <div class="action"><a href="https://www.mql5.com/en/market/product/194000" target="_blank" rel="noopener noreferrer">المصدر الرسمي ↗</a><span class="origin">تقييم متجر، ليس نتيجة موثّقة</span></div>
+  </article>
+  <article class="bot" data-kind="selective" data-search="quantum titan mt5 دخول انتقائي risk gold">
+   <div class="top"><span class="rating">★ 4.76/5</span><span class="tag">SELECTIVE / XAUUSD</span></div>
+   <h3>Quantum Titan MT5</h3><p>يركز بحسب وصف المطور على الفرص المنتقاة، ووقف الخسارة وحماية الربح بصورة مستقلة.</p>
+   <ul><li>انتقاء الإشارة بدلاً من كثرة الدخول</li><li>وقف مسبق لكل صفقة</li><li>Trailing Stop وحماية الأرباح</li></ul>
+   <div class="action"><a href="https://www.mql5.com/en/market/product/113770" target="_blank" rel="noopener noreferrer">المصدر الرسمي ↗</a><span class="origin">تقييم متجر، ليس نتيجة موثّقة</span></div>
+  </article>
+  <article class="bot" data-kind="breakout" data-search="gold snap سريع scalping جني أرباح">
+   <div class="top"><span class="rating">★ 4.52/5</span><span class="tag">FAST EXIT / GOLD</span></div>
+   <h3>Gold Snap</h3><p>يركز على جني الأرباح بوتيرة أسرع، مع تعديل المعلمات وفق حركة السعر بحسب وصف المطور.</p>
+   <ul><li>حماية الأرباح القصيرة</li><li>تعديل المعلمات وفق نطاق السعر</li><li>دراسة خروج أسرع في سوق متقلب</li></ul>
+   <div class="action"><a href="https://www.mql5.com/en/market/product/172673" target="_blank" rel="noopener noreferrer">المصدر الرسمي ↗</a><span class="origin">تقييم متجر، ليس نتيجة موثّقة</span></div>
+  </article>
+  <article class="bot" data-kind="breakout" data-search="gold house mt5 breakout اختراق swing">
+   <div class="top"><span class="rating">★ 4.51/5</span><span class="tag">BREAKOUT / SWING</span></div>
+   <h3>Gold House MT5</h3><p>بوت اختراقات واتجاهات الذهب، يعلن وجود ثلاثة أوضاع تداول قابلة للاختيار.</p>
+   <ul><li>تقييم صحة الاختراق</li><li>ثلاثة أنماط تداول معلنة</li><li>مقارنة بين الاستمرار والتراجع</li></ul>
+   <div class="action"><a href="https://www.mql5.com/en/market/product/165036" target="_blank" rel="noopener noreferrer">المصدر الرسمي ↗</a><span class="origin">تقييم متجر، ليس نتيجة موثّقة</span></div>
+  </article>
+  <article class="bot" data-kind="multi" data-search="the gold reaper mt5 multi strategy multi timeframe استراتيجيات متعددة">
+   <div class="top"><span class="rating">★ 4.36/5</span><span class="tag">MULTI-STRATEGY</span></div>
+   <h3>The Gold Reaper MT5</h3><p>بوت يعلن استخدام استراتيجيات وتأكيدات متعددة وعملًا عبر أكثر من إطار زمني.</p>
+   <ul><li>تنويع الاستراتيجيات بحسب السوق</li><li>تأكيد متعدد قبل الإشارة</li><li>دراسة توزيع المخاطر بين الأنماط</li></ul>
+   <div class="action"><a href="https://www.mql5.com/en/market/product/111357" target="_blank" rel="noopener noreferrer">المصدر الرسمي ↗</a><span class="origin">تقييم متجر، ليس نتيجة موثّقة</span></div>
+  </article>
+ </div>
+ <p id="botEmpty" class="empty" hidden>لا توجد نتائج مطابقة. جرّب كلمة أخرى.</p>
+</section>
+<div class="note"><strong>مهم:</strong> التقييمات تقييمات مستخدمين في متجر MQL5، وليست ترتيباً عالمياً أو دليلاً على ربحية التداول. معلومات الميزات مستمدة من وصف مطوري البوتات، ولم تُفحص شفرتها الخاصة أو نتائجها على حساب AL-ZOOL.</div>
+<section aria-labelledby="ideasHeading">
+ <div class="section-head"><div><h2 id="ideasHeading">ماذا نستفيد داخل AL-ZOOL؟</h2><p>أفكار تصميم أصلية مستلهمة من الأنماط العامة، وليست نسخاً من أكواد تجارية</p></div></div>
+ <div class="ideas">
+  <article class="idea"><h3>01 · محرك استراتيجيات متعددة</h3><p>يقارن نتائج عائلات الاستراتيجيات في السوق الحالي، ويختار الأقرب لطبيعة الحركة قبل التصويت المركزي.</p></article>
+  <article class="idea"><h3>02 · دخول انتقائي قابل للتفسير</h3><p>يسجل أسباب BUY أو SELL أو WAIT وفحص الانعكاس الكاذب وحدود المخاطرة مع مرجعية شمعة الإغلاق.</p></article>
+  <article class="idea"><h3>03 · خروج وحماية محسوبة</h3><p>يقارن طرق حماية الربح ووقف الخسارة وإغلاق الصفقة الواحدة والمجموعة دون تعديل إعداداتك الحالية.</p></article>
+ </div>
+ <div class="rules"><h3>حالة الدمج مع محرك التداول</h3><p>المكتبة للعرض والدراسة فقط. لا يتم تشغيل أي بوت خارجي أو استنساخ منطق مغلق المصدر أو فتح صفقات. أي استراتيجية جديدة لا تُضاف لمحرك التنفيذ إلا بعد تطوير مستقل، واختبار تاريخي واقعي، واختبار تجريبي، ومراجعة تحكمك في المخاطر.</p></div>
+</section>
+<footer class="footer">AL-ZOOL PRIME · GLOBAL BOT RESEARCH · 🇸🇩 هوية سودانية · مصادر عامة مستقلة</footer>
+</main>
+<script>
+(()=>{"use strict";
+ const buttons=[...document.querySelectorAll(".filter")];
+ const cards=[...document.querySelectorAll(".bot")];
+ const search=document.getElementById("botSearch");
+ const empty=document.getElementById("botEmpty");
+ let category="all";
+ function update(){
+  const q=search.value.trim().toLocaleLowerCase("ar");
+  let count=0;
+  for(const card of cards){
+   const match=(category==="all"||card.dataset.kind===category)&&(!q||(card.dataset.search+" "+card.querySelector("h3").textContent+" "+card.textContent).toLocaleLowerCase("ar").includes(q));
+   card.hidden=!match;if(match)count++;
+  }
+  empty.hidden=count>0;
+ }
+ for(const b of buttons)b.addEventListener("click",()=>{category=b.dataset.kind;for(const x of buttons)x.setAttribute("aria-pressed",String(x===b));update();});
+ search.addEventListener("input",update);
+})();
+</script>
+</body>
+</html>
