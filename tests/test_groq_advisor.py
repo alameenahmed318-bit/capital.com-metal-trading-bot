@@ -89,7 +89,8 @@ class GroqAdvisoryTests(unittest.TestCase):
             "direction":"BUY","confidence":1.0,"reason_ar":"موافق"})}}]}
         with patch.object(g,"KEY","test-key"),patch.object(g,"_call_groq",return_value=response):
             _groq_worker("test",d["bar_time"],d)
-        self.assertEqual(council_result("test",d)["groq_advisory"]["direction"],"BUY")
+        groq_vote=council_result("test",d)["groq_advisory"]
+        self.assertEqual(groq_vote["direction"],"BUY",msg=str(groq_vote))
         self.assertFalse(council_result("test",d)["approved"])
         _VOTES["test"]["deepseek"]=_vote("DeepSeek","READY","BUY",.8)
         self.assertTrue(council_result("test",d)["approved"])
