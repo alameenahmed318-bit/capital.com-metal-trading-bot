@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
 from position_action_engine import plan_account_actions
 from central_action_protocol import _allowed
+from app import entry_direction_capacity
 
 def pos(ticket,volume,profit=-20,open_price=101,symbol="XAUUSD",side=0):
     return {"ticket":str(ticket),"symbol":symbol,"type":side,"volume":volume,
@@ -58,6 +59,26 @@ class PositionActionSafety(unittest.TestCase):
         auth2=_allowed("client",snap,d,gate,{"approved":False},{"approved":True},settings,
                        datetime.now(timezone.utc))
         self.assertFalse(auth2["execution_ready"])
+    def test_entry_blocked_at_two_per_direction(self):
+        positions=[pos(1,.01),pos(2,.02),pos(3,.01,side=1)]
+        result=entry_direction_capacity(positions,"XAUUSD","BUY",{
+            "position_management":{"max_positions_per_direction":2}})
+        self.assertFalse(result["approved"])
+        self.assertEqual(result["open_same_side"],2)
+        self.assertTrue(entry_direction_capacity(positions,"XAUUSD","SELL",{
+            "position_management":{"max_positions_per_direction":2}})["approved"])
+    def test_group_close_retry_blocks_new_entry_and_survives_restart(self):
+        source=(Path(__file__).resolve().parents[1]/"mt5_client"/"ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
+        self.assertIn("g_groupClosePending",source)
+        self.assertIn("GlobalVariableSet(g_groupCloseKey,1.0)",source)
+        self.assertIn("ClosePositionTicket(ticket,\"group-pending\")",source)
+        self.assertIn("if(g_groupClosePending) return;",source)
+        self.assertNotIn("double rawLots=totalLots*2.0;",source)
+        self.assertNotIn("AL-ZOOL ADD-ON/COOLING WAIT: no action-specific",source)
+    def test_owner_learning_is_bound_to_own_license(self):
+        source=(Path(__file__).resolve().parents[1]/"marketplace"/"backend"/"app.py").read_text(encoding="utf-8")
+        self.assertNotIn('select=client_id&order=uploaded_at.desc&limit=1',source)
+        self.assertNotIn('select=client_id&order=created_at.desc&limit=1',source)
     def test_no_positions_no_recovery(self):
         snap,d,settings=scenario([])
         p=plan_account_actions(snap,d,{"approved":True},{"approved":True},settings)
