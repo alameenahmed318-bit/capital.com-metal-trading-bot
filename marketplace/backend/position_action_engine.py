@@ -76,11 +76,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings):
                 if num(p.get("profit"))+num(p.get("swap"))<0 and not
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
             candidate_lot=3*sum(ordinary) if ordinary else 0.0
-        elif (progress<-cooling_band and pm.get("cooling_enabled") is True
+        elif (str(pm.get("mode","AI")).upper()=="AI" and progress<-cooling_band and pm.get("cooling_enabled") is True
               and len(group)<int(num(pm.get("cooling_max",0)))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
             candidate_lot=num(pm.get("cooling_lot"))
-        elif (progress>addon_band and pm.get("addon_enabled") is True
+        elif (str(pm.get("mode","AI")).upper()=="AI" and progress>addon_band and pm.get("addon_enabled") is True
               and len(group)<int(num(pm.get("addon_max",0)))):
             action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
             candidate_lot=num(pm.get("addon_lot"))
