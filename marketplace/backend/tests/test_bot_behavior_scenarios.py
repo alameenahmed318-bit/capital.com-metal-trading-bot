@@ -30,6 +30,7 @@ class TradingBotBehaviorTests(unittest.TestCase):
     def test_bullish_gold_regime_generates_buy_consensus(self):
         candles=regime([1.0,.5,-.7])
         report=analyze_advisors(candles)
+        print("BOT_SCENARIO_BULL="+json.dumps({"close":report["last_close"],"consensus":report["consensus"],"indicators":report["advisors"][0]["evidence"],"bots":[{"id":x["id"],"signal":x["signal"],"confidence":x["confidence"]} for x in report["advisors"]]},ensure_ascii=False),flush=True)
         self.assertEqual(report["status"],"READY")
         self.assertEqual(report["consensus"]["signal"],"BUY")
         self.assertEqual(len(report["advisors"]),5)
@@ -42,6 +43,7 @@ class TradingBotBehaviorTests(unittest.TestCase):
     def test_bearish_gold_regime_generates_sell_consensus(self):
         candles=regime([-1.0,-.5,.7])
         report=analyze_advisors(candles)
+        print("BOT_SCENARIO_BEAR="+json.dumps({"close":report["last_close"],"consensus":report["consensus"],"indicators":report["advisors"][0]["evidence"],"bots":[{"id":x["id"],"signal":x["signal"],"confidence":x["confidence"]} for x in report["advisors"]]},ensure_ascii=False),flush=True)
         self.assertEqual(report["status"],"READY")
         self.assertEqual(report["consensus"]["signal"],"SELL")
         self.assertGreaterEqual(report["consensus"]["sell"],3)
@@ -51,6 +53,7 @@ class TradingBotBehaviorTests(unittest.TestCase):
 
     def test_flat_market_waits_instead_of_inventing_signal(self):
         report=analyze_advisors(regime([0.0]))
+        print("BOT_SCENARIO_FLAT="+json.dumps({"close":report["last_close"],"consensus":report["consensus"],"bots":[{"id":x["id"],"signal":x["signal"]} for x in report["advisors"]]},ensure_ascii=False),flush=True)
         self.assertEqual(report["status"],"READY")
         self.assertEqual(report["consensus"]["signal"],"WAIT")
         self.assertTrue(all(x["signal"]=="WAIT" for x in report["advisors"]))
