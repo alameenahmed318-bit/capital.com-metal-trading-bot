@@ -63,6 +63,19 @@ def _prompt(decision):
              "atr":_num((decision.get("context") or {}).get("atr")),
              "families":decision.get("family_votes") or {},
              "combinations":decision.get("combination_summary") or {}}
+    # Five original quantitative bot messages are real same-bar inputs;
+    # these are NOT votes from the listed commercial MQL5 products.
+    bot_feed=decision.get("advisory_bots") if isinstance(decision.get("advisory_bots"),dict) else {}
+    if (bot_feed.get("status")=="READY" and
+        int(_num(bot_feed.get("bar_time",0)))==int(_num(decision.get("bar_time",0)))):
+        summary["trading_bot_signals"]=[
+            {"bot_id":str(bot.get("id",""))[:32],
+             "signal":str(bot.get("signal","WAIT")),
+             "confidence":_num(bot.get("confidence"))}
+            for bot in bot_feed.get("advisors",[])[:5] if isinstance(bot,dict)
+        ]
+        summary["trading_bot_consensus"]=bot_feed.get("consensus",{})
+
     return ("You are a cautious XAUUSD trade veto agent, not an order executor. "
             "Return ONLY JSON with keys direction (BUY, SELL or WAIT), confidence (0..1), "
             "reason_ar (short Arabic). Disagree or WAIT when data are insufficient. "
@@ -177,6 +190,7 @@ def update_council(client_id,decision,account):
         _VOTES[client_id]={"bar_time":bar,
             "status":"PENDING" if remote_qwen or remote_deepseek else "AWAITING_LOCAL_VOTES",
             "fast":fast_ai(decision,account),
+            "bots":(decision.get("advisory_bots") or {}),
             "qwen":_vote("Qwen","PENDING" if remote_qwen else "NOT_CONFIGURED"),
             "deepseek":_vote("DeepSeek","PENDING" if remote_deepseek else "NOT_CONFIGURED"),
             "updated_at":time.time()}
@@ -245,4 +259,6 @@ def council_result(client_id,decision):
     return {"approved":approved,"status":signal if approved else "WAIT",
             "reason_ar":reason,
             "votes":{voter.get("model","unknown"):voter for voter in votes},
+            "bot_inputs":v.get("bots") if isinstance(v.get("bots"),dict) else {},
+            "bot_inputs_role":"read_only_evidence_to_model_council",
             "bar_time":bar}
