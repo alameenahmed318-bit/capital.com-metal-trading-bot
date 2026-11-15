@@ -108,8 +108,14 @@ function navigate(section,tab="",updateHistory=true){
  showMenu(false);
  if(updateHistory){const route=encodeRoute(section,tab);if(location.hash!==route)history.pushState(null,"",route)}
  currentUrl=requested;
- if(requested===previousUrl&&embeddedReady){
-  try{const dest=requested.split("#")[1];if(dest)frame.contentDocument?.getElementById(dest)?.scrollIntoView({block:"start"})}catch{}
+ if(requested.split("#")[0]===previousUrl.split("#")[0]&&embeddedReady){
+  try{
+   const hash=requested.includes("#")?"#"+requested.split("#").slice(1).join("#"):"";
+   if(hash)frame.contentWindow.location.hash=hash;
+   else frame.contentWindow.history.replaceState(null,"",requested.split("#")[0]);
+   const dest=hash.slice(1);
+   if(dest)frame.contentDocument?.getElementById(dest)?.scrollIntoView({block:"start"});
+  }catch{}
   return;
  }
  loading.hidden=false;
@@ -119,7 +125,13 @@ function navigate(section,tab="",updateHistory=true){
 }
 function applyEmbeddedStyle(doc){
  if(!doc||doc.getElementById("alzool-prime-embedded"))return;
- const style=doc.createElement("style");style.id="alzool-prime-embedded";
+ doc.documentElement.classList.add("az-prime-embedded-root");
+ const theme=doc.createElement("link");
+ theme.id="alzool-prime-embedded";
+ theme.rel="stylesheet";
+ theme.href="/prime-embedded.css?v=sudan-20261115-2";
+ (doc.head||doc.documentElement).appendChild(theme);
+ const style=doc.createElement("style");style.id="alzool-prime-structural";
  style.textContent=`
   /* Embedded module mode — hides only duplicate layout chrome. */
   html,body{min-height:100%!important;background:#0c1018!important}
