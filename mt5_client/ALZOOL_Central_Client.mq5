@@ -36,7 +36,7 @@ input double InpTrailStartATR = 1.0;
 input double InpTrailDistanceATR = 0.8;
 input int InpDeviationPoints = 20;
 input group "الأرشيف التاريخي للاختبار"
-input int InpHistoricalCandlesToSend = 5000;
+input int InpHistoricalCandlesToSend = 500;
 input int InpHistoryUploadMinutes = 15;
 
 struct StrategyPositionLink
@@ -978,13 +978,18 @@ bool SendHistoricalBatch()
    if(!ConnectionReady()) return false;
    MqlRates rates[];
    ArraySetAsSeries(rates,true);
-   int wanted=(int)MathMax(20,MathMin(10000,InpHistoricalCandlesToSend));
+   // Historical sync is lower priority than live trading/telemetry.
+   // Cap batches even when an old chart preset still requests 5000+ bars.
+   int wanted=(int)MathMax(20,MathMin(500,InpHistoricalCandlesToSend));
    int copied=CopyRates(_Symbol,(ENUM_TIMEFRAMES)_Period,1,wanted,rates);
    if(copied<20)
    {
       Print("AL-ZOOL history upload skipped: only ",copied," closed bars are available.");
       return false;
    }
+   static datetime lastUploadedClosedBar=0;
+   if(lastUploadedClosedBar>0 && rates[0].time<=lastUploadedClosedBar)
+      return true; // Do not resend unchanged historical ranges every 15 minutes.
 
    double point=SymbolInfoDouble(_Symbol,SYMBOL_POINT);
    double tick_size=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE);
@@ -1022,7 +1027,7 @@ bool SendHistoricalBatch()
    string response_headers;
    ResetLastError();
    int code=WebRequest("POST",BaseUrl()+"/v1/terminal-history/batch/"+ConnectionId(),
-                       headers,30000,data,result,response_headers);
+                       headers,6000,data,result,response_headers);
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    if(code!=200)
    {
@@ -1030,7 +1035,8 @@ bool SendHistoricalBatch()
             " body=",StringSubstr(response,0,400));
       return false;
    }
-   Print("AL-ZOOL historical candles uploaded: ",sent," bars. ",StringSubstr(response,0,250));
+   lastUploadedClosedBar=rates[0].time;
+   Print("AL-ZOOL historical candles uploaded: ",sent," bars (bounded noncritical sync).");
    return true;
 }
 
