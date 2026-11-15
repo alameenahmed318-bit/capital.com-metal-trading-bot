@@ -1,8 +1,7 @@
-"""AL-ZOOL client onboarding bundles, not a trade-execution service.
+"""AL-ZOOL client configuration bundles; never distribute proprietary source.
 
-This module only packages the real EA source and an MT5 input preset.
-No .ex5 binary exists in the repository; clients compile .mq5 in MetaEditor.
-Credentials are returned to their authenticated owner/client only.
+Only owner-held engine code remains on the server. Customers receive MT5
+connection settings, not .mq5 code or an unverified compiled executable.
 """
 import base64
 from io import BytesIO
@@ -47,17 +46,18 @@ def mt5_inputs(client_id, client_token, server_url=CLIENT_SERVER):
 def build_bundle(client_id, client_token, email="", password=None, ea_source=None):
     """Return ZIP, never store credentials on disk. No order entry is made."""
     inputs=mt5_inputs(client_id,client_token)
-    source=EA_SOURCE.read_bytes() if ea_source is None else ea_source
-    if not source or b"InpEngineToken" not in source or b"InpOwnerMode" not in source:
-        raise ValueError("EA source missing or not compatible")
+    # Kept as optional argument for backward compatibility; NEVER ship mq5 bytes.
+    # Compiled .ex5 must be supplied separately after owner-controlled build.
+    if ea_source is not None:
+        raise ValueError("EA source distribution is disabled")
     email=_one_line(email,254)
     if password is not None:
         password=_one_line(password,256)
     instructions=(
         "AL-ZOOL | MT5 CLIENT SETUP (Windows)\n"
-        "1) Open MetaTrader 5 > File > Open Data Folder > MQL5 > Experts.\n"
-        "2) Copy ALZOOL_Central_Client.mq5 to Experts. Open MetaEditor (F4), compile (F7).\n"
-        "3) The compiled .ex5 is created locally by MetaEditor; NOT included in this ZIP.\n"
+        "1) Obtain the separately supplied, owner-approved AL-ZOOL .ex5 binary.\n"
+        "2) Copy it to MT5 > File > Open Data Folder > MQL5 > Experts.\n"
+        "3) No .mq5 SOURCE or .ex5 executable is included in this settings ZIP.\n"
         "4) In MT5, Tools > Options > Expert Advisors: allow WebRequest for:\n"
         "   "+CLIENT_SERVER+"\n"
         "5) Attach ALZOOL_Central_Client to the XAUUSD M1 chart.\n"
@@ -67,7 +67,7 @@ def build_bundle(client_id, client_token, email="", password=None, ea_source=Non
         "9) Test on a DEMO account. Do not enable trading without reviewing risk and stop-loss.\n"
         "10) Never share the .set file or connection token with a third party.\n"
         "\nArabic / عربي:\n"
-        "هذه حزمة اتصال للعميل. افتح MetaEditor لترجمة ملف mq5 ثم حمّل ملف set من Inputs.\n"
+        "هذه حزمة إعدادات الاتصال فقط. استلم ملف EX5 المعتمد من المالك ثم حمّل ملف set من Inputs.\n"
         "التداول الآلي معطّل افتراضياً، واختبار الحساب التجريبي مطلوب قبل أي تفعيل.\n"
         "تنزيل حزمة جديدة من بوابة العميل يغيّر رمز الاتصال ويبطل الحزمة القديمة.\n"
     )
@@ -81,14 +81,13 @@ def build_bundle(client_id, client_token, email="", password=None, ea_source=Non
         settings+="initial_login_password="+password+"\n"
     archive=BytesIO()
     with ZipFile(archive,"w",ZIP_DEFLATED,compresslevel=6) as z:
-        z.writestr("AL-ZOOL-Client/ALZOOL_Central_Client.mq5",source)
         z.writestr("AL-ZOOL-Client/AL-ZOOL-Client-MT5.set",inputs)
         z.writestr("AL-ZOOL-Client/START_HERE_AR.txt",instructions)
         z.writestr("AL-ZOOL-Client/PRIVATE_CONNECTION.txt",settings)
     return {
-        "filename":"AL-ZOOL-Client-MT5-Setup.zip",
+        "filename":"AL-ZOOL-Client-MT5-Settings.zip",
         "package_base64":base64.b64encode(archive.getvalue()).decode("ascii"),
-        "format":"MQ5_SOURCE_AND_SET",
+        "format":"SET_ONLY_PRIVATE_NO_SOURCE",
         "compiled_ex5_included":False,
         "trading_enabled_by_package":False,
     }
