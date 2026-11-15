@@ -1,5 +1,7 @@
 """Offline safety tests for optional Groq: no external requests or real trades."""
 import json
+import io
+import urllib.error
 import pathlib
 import sys
 import time
@@ -94,6 +96,22 @@ class GroqAdvisoryTests(unittest.TestCase):
         self.assertFalse(council_result("test",d)["approved"])
         _VOTES["test"]["deepseek"]=_vote("DeepSeek","READY","BUY",.8)
         self.assertTrue(council_result("test",d)["approved"])
+
+    def test_groq_permission_error_codes_are_sanitized(self):
+        examples = [
+            ("model_permission_blocked_org", "MODEL_BLOCKED_ORG_403"),
+            ("model_permission_blocked_project", "MODEL_BLOCKED_PROJECT_403"),
+            ("unexpected_reason", "FORBIDDEN_403_OTHER"),
+        ]
+        for code, expected in examples:
+            with self.subTest(code=code):
+                body = json.dumps({"error":{"code":code,"message":"DO NOT LEAK SECRET"}}).encode()
+                err = urllib.error.HTTPError("https://api.groq.com",403,"Forbidden",{},io.BytesIO(body))
+                with patch.object(g,"KEY","test-only"), patch.object(g,"_call_groq",side_effect=err):
+                    self.assertEqual(g.verify_credentials(),expected)
+        err = urllib.error.HTTPError("https://api.groq.com",401,"Unauthorized",{},io.BytesIO(b"{}"))
+        with patch.object(g,"KEY","test-only"), patch.object(g,"_call_groq",side_effect=err):
+            self.assertEqual(g.verify_credentials(),"UNAUTHORIZED_401")
 
     def test_smoke_inference_is_not_an_order(self):
         response={"choices":[{"message":{"content":json.dumps({
