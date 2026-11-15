@@ -125,6 +125,46 @@ if(main&&links.length){
  const topbar=main.querySelector(".topbar");
  if(topbar)topbar.insertAdjacentElement("afterend",shortcuts);else main.prepend(shortcuts);
 }
+// Trade management has many independent control panels. Present one area at
+// a time by default; preserve every form element, event handler and API call.
+if(current==="trade-management.html"&&main){
+ const focusIds=["positions","protection","autoClose","positionManagement","smartRecovery","pending"];
+ const cards=focusIds.map(id=>document.getElementById(id)).filter(Boolean);
+ const sectionNav=main.querySelector(".section-nav");
+ const shortcutSection=main.querySelector(".az-page-shortcuts");
+ if(cards.length&&shortcutSection){
+  document.body.classList.add("az-focus-page");
+  if(sectionNav)sectionNav.classList.add("az-old-section-nav");
+  const heading=shortcutSection.querySelector(".az-shortcuts-heading");
+  const showAll=$("button","az-show-all","عرض كل الأقسام");showAll.type="button";
+  heading?.appendChild(showAll);
+  const focus=(id)=>{
+   const chosen=id==="recoveryLog"?"smartRecovery":id;
+   const all=chosen==="all";
+   for(const card of cards){
+    card.classList.add("az-focus-section");
+    card.hidden=!all&&card.id!==chosen;
+   }
+   for(const a of shortcutSection.querySelectorAll("a.az-shortcut")){
+    a.classList.toggle("selected",!all&&(a.hash.slice(1)===id||a.hash.slice(1)===chosen));
+   }
+   showAll.classList.toggle("selected",all);
+   showAll.textContent=all?"اختر قسماً للتركيز":"عرض كل الأقسام";
+  };
+  shortcutSection.addEventListener("click",e=>{
+   const a=e.target.closest("a.az-shortcut");
+   if(!a)return;
+   focus(decodeURIComponent(a.hash.slice(1)));
+  });
+  showAll.addEventListener("click",()=>focus("all"));
+  const selected=decodeURIComponent((location.hash||"").replace(/^#/,""));
+  focus(focusIds.includes(selected)||selected==="recoveryLog"?selected:"positions");
+  window.addEventListener("hashchange",()=>{
+   const id=decodeURIComponent(location.hash.slice(1));
+   if(focusIds.includes(id)||id==="recoveryLog")focus(id);
+  });
+ }
+}
 // Navigate back to the main list when deep-linked to a section.
 if(location.hash&&document.getElementById(decodeURIComponent(location.hash.slice(1)))){
  requestAnimationFrame(()=>document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({block:"start"}));
