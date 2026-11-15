@@ -23,15 +23,15 @@ class ClientOnboardingTests(unittest.TestCase):
         self.assertIn("\r\n",preset)
         self.assertNotIn("InpOwnerMode=true",preset)
 
-    def test_bundle_contains_source_preset_instructions_and_credentials(self):
+    def test_bundle_only_contains_preset_instructions_and_credentials(self):
         package=build_bundle("client123456789","token-abcdefghijklmnopqrstuvwxyz",
                              email="example@example.com",password="temporary-test-pw")
-        self.assertEqual(package["format"],"MQ5_SOURCE_AND_SET")
+        self.assertEqual(package["format"],"SET_ONLY_PRIVATE_NO_SOURCE")
         self.assertFalse(package["compiled_ex5_included"])
         self.assertFalse(package["trading_enabled_by_package"])
         with ZipFile(io.BytesIO(base64.b64decode(package["package_base64"]))) as z:
             names=z.namelist()
-            self.assertTrue(any(x.endswith(".mq5") for x in names))
+            self.assertFalse(any(x.endswith(".mq5") for x in names))
             self.assertTrue(any(x.endswith(".set") for x in names))
             self.assertFalse(any(x.endswith(".ex5") for x in names))
             preset=z.read("AL-ZOOL-Client/AL-ZOOL-Client-MT5.set").decode()
