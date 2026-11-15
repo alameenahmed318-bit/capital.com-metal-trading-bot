@@ -49,8 +49,8 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now):
         return blocked("تفعيل إجراءات الإدارة المركزية مغلق من إعدادات المالك")
     if not settings.get("trading_enabled"):
         return blocked("زر التداول المركزي متوقف")
-    if pm.get("mode","AI")!="AI":
-        return blocked("وضع الإدارة ليس AI")
+    if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
+        return blocked("وضع الإدارة غير معروف")
     if not gate.get("approved") or not council.get("approved") or not risk.get("approved"):
         return blocked("لا توجد موافقة كاملة من مجلس الدخول وحارس المخاطر")
     if not str(snapshot.get("symbol","")).upper().startswith("XAUUSD"):
