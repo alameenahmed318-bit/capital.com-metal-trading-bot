@@ -129,7 +129,7 @@ function applyEmbeddedStyle(doc){
  const theme=doc.createElement("link");
  theme.id="alzool-prime-embedded";
  theme.rel="stylesheet";
- theme.href="/prime-embedded.css?v=sudan-20261115-2";
+ theme.href="/prime-embedded.css?v=sudan-20261115-3";
  (doc.head||doc.documentElement).appendChild(theme);
  const style=doc.createElement("style");style.id="alzool-prime-structural";
  style.textContent=`
