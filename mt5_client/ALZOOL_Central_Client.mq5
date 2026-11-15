@@ -259,6 +259,11 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
    double lots=NormalizeTradeLots(requestedLots);
    if(lots<=0.0 || lots>requestedLots+1e-8 || lots>InpMaxCentralActionLots+1e-8)
       return false; // Never round up beyond either central or local risk cap.
+   if(action=="RECOVERY_PROPOSAL" && MathAbs(lots-requestedLots)>1e-8)
+   {
+      Print("AL-ZOOL RECOVERY BLOCKED: broker volume step cannot represent exact x3 lot.");
+      return false;
+   }
    double atr[];
    ArraySetAsSeries(atr,true);
    if(g_atrHandle==INVALID_HANDLE || CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0)
@@ -273,6 +278,16 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
       NormalizeDouble(tick.ask-stopDistance,digits):
       NormalizeDouble(tick.bid+stopDistance,digits);
    if(sl<=0.0) return false;
+   ENUM_ORDER_TYPE orderType=(side=="BUY"?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
+   double intendedPrice=(side=="BUY"?tick.ask:tick.bid);
+   double requiredMargin=0.0;
+   if(!OrderCalcMargin(orderType,_Symbol,lots,intendedPrice,requiredMargin) ||
+      !MathIsValidNumber(requiredMargin) || requiredMargin<0.0 ||
+      requiredMargin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+   {
+      Print("AL-ZOOL CENTRAL ACTION BLOCKED: insufficient or unknown free margin.");
+      return false;
+   }
    string tag=action=="ADDON_PROPOSAL"?"ALZOOL-ADD":
               (action=="COOLING_PROPOSAL"?"ALZOOL-COOL":"ALZOOL-RECOVERY");
    g_trade.SetExpertMagicNumber(InpTradeMagic);
