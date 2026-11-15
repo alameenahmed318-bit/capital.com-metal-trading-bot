@@ -16,6 +16,7 @@ from central_action_protocol import propose as propose_central_action, claim as 
 from telemetry_persistence import queue_closed_deals
 from system_readiness import owner_readiness
 from bot_advisors import analyze_advisors
+from bot_signal_bus import build_bot_messages, update_history
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -551,13 +552,19 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(409,{"error":"مساعدو المكتبة مخصصون حالياً لشارت الذهب XAUUSD.","connected":True})
                 # A chronological list of CLOSED candles only, not the forming bar.
                 current_decision=item.get("strategy_decision") or {}
-                analysis=current_decision.get("advisory_bots")
-                if not isinstance(analysis,dict) or int(finite_number(analysis.get("bar_time",0)))!=int(finite_number((item.get("closed_candles") or [{}])[0].get("time",0))):
+                analysis=item.get("bot_report")
+                current_candle=(item.get("closed_candles") or [{}])[0]
+                if not isinstance(analysis,dict) or int(finite_number(analysis.get("bar_time",0)))!=int(finite_number(current_candle.get("time",0))):
                     analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
                 central=(item.get("strategy_decision") or {}).get("decision","WAIT")
                 result={**analysis,"connected":True,
                     "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
                     "central_decision":central,"received_at":item.get("last_seen"),
+                    "signal_journal":(item.get("bot_signal_history") or [])[-15:],
+                    "signal_bus":{"processed_in_central_engine":True,
+                                  "event_type":"BOT_ANALYSIS_SIGNAL",
+                                  "last_bar_dispatch_count":int(item.get("bot_dispatch_count",0)),
+                                  "persistence":"async_best_effort_not_confirmed"},
                     "execution_enabled":False,
                     "commercial_bots_connected":False,
                     "central_alignment":(
@@ -1506,6 +1513,24 @@ class Handler(SimpleHTTPRequestHandler):
                 previous=CONNECTIONS.get(client_id,{})
                 strategy_decision=previous.get("strategy_decision")
                 strategy_last_bar=previous.get("strategy_last_bar")
+                bot_report=previous.get("bot_report")
+                bot_history=previous.get("bot_signal_history") or []
+                bot_dispatch_count=int(previous.get("bot_dispatch_count",0))
+                bot_new=False
+                # Every new CLOSED candle independently activates all five bot engines,
+                # even if the main 200-strategy decision calculation later fails.
+                if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
+                    current_bar=int(candles[0].get("time") or 0)
+                    if current_bar>0 and (
+                        not isinstance(bot_report,dict)
+                        or int(finite_number(bot_report.get("bar_time",0)))!=current_bar
+                    ):
+                        try:
+                            bot_report=analyze_advisors(list(reversed(candles)))
+                            bot_new=(bot_report.get("status")=="READY" and int(bot_report.get("bar_time",0))==current_bar)
+                        except Exception as bot_error:
+                            bot_report=None
+                            print("BOT_ENGINE_WARNING:",type(bot_error).__name__,flush=True)
                 # MT5 sends closed candles newest-first. Evaluate once per newly closed bar.
                 if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
                     bar_time=int(candles[0].get("time") or 0)
@@ -1538,13 +1563,23 @@ class Handler(SimpleHTTPRequestHandler):
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
                                 "bar_time":bar_time,
-                                "advisory_bots":analyze_advisors(list(reversed(candles))),
+                                "advisory_bots":(bot_report if isinstance(bot_report,dict)
+                                                 and int(finite_number(bot_report.get("bar_time",0)))==bar_time
+                                                 else {"status":"WAIT","advisors":[]}),
                                 "generated_at":now.isoformat(),
                                 "execution_ready":False
                             }
                             strategy_last_bar=bar_time
                         except Exception as engine_error:
                             print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
+                if bot_new:
+                    # Each bot sends a distinct same-bar signal to the central
+                    # bus and the existing async Supabase diagnostics queue.
+                    bot_events=build_bot_messages(client_id,str(data.get("symbol","")),
+                        str(data.get("timeframe","")),bot_report,
+                        (strategy_decision or {}).get("decision","WAIT"))
+                    bot_history=update_history(bot_history,bot_events)
+                    bot_dispatch_count=sum(bool(queue_ai_diagnostic_event(e)) for e in bot_events)
                 if strategy_decision:
                     update_council(client_id,strategy_decision,safe)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
@@ -1552,6 +1587,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
                     "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
+                    "bot_report":bot_report,"bot_signal_history":bot_history,
+                    "bot_dispatch_count":bot_dispatch_count,
                     "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
