@@ -13,6 +13,7 @@ from strategy_audit import audit_strategies
 from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
 from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
+from telemetry_persistence import queue_closed_deals
 from system_readiness import owner_readiness
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -1422,19 +1423,9 @@ class Handler(SimpleHTTPRequestHandler):
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
                 closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
-                # Persist MT5 history so closed trades survive Render restarts/deploys.
-                if closed_deals:
-                    persisted=[]
-                    for deal in closed_deals:
-                        deal_id=str(deal.get("ticket") or "")
-                        stamp=int(deal.get("time") or 0)
-                        if not deal_id or stamp<=0: continue
-                        persisted.append({"client_id":client_id,"deal_id":deal_id,
-                            "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
-                            "payload":deal})
-                    if persisted:
-                        sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
-                           persisted,admin=True,prefer="resolution=merge-duplicates")
+                # Persist history asynchronously; the live MT5 heartbeat must never
+                # wait on a slow Supabase historical upsert of repeated closed deals.
+                queue_closed_deals(client_id,closed_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
