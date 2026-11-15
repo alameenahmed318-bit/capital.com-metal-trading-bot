@@ -19,6 +19,9 @@ from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
 from offline_m1_smoke import run as run_offline_m1_smoke
 from client_onboarding import build_bundle as build_client_bundle, CLIENT_SERVER as CLIENT_ONBOARDING_URL
+from client_access import (PUBLIC_UI_ASSETS, PROTECTED_OWNER_ASSETS, OWNER_READ_ENDPOINTS,
+                           OWNER_WRITE_ENDPOINTS, public_static, minimal_terminal_decision,
+                           basic_settings)
 from groq_advisor import verify_credentials as verify_groq_credentials
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -243,6 +246,21 @@ def validate_license(client_id,token):
     LICENSE_CACHE[client_id]={"token_hash":token_hash,"valid":valid,"expires_at":row.get("expires_at",""),
                               "checked_at":now,"valid_until":now+LICENSE_CACHE_TTL_SECONDS}
     return valid
+
+def terminal_is_owner(client_id):
+    """Check the authorized terminal's owner mapping with short-lived cache."""
+    now=time.monotonic()
+    with CACHE_LOCK:
+        cached=OWNER_TERMINAL_ID_CACHE.get(client_id)
+    if cached and cached.get("until",0)>now:
+        return cached.get("is_owner") is True
+    rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+
+            urllib.parse.quote(client_id,safe="")+"&select=user_id&limit=1",admin=True)
+    is_owner=bool(rows and (admin_user(rows[0]["user_id"]).get("email") or "").lower()==OWNER_EMAIL)
+    with CACHE_LOCK:
+        OWNER_TERMINAL_ID_CACHE[client_id]={"is_owner":is_owner,"until":now+10}
+    return is_owner
+
 
 def _fetch_trade_settings(client_id):
     encoded=urllib.parse.quote(client_id,safe="")
@@ -477,8 +495,27 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_response(204); self.send_header("Allow","GET, POST, PATCH, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers","Authorization, Content-Type")
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
+    def do_HEAD(self):
+        path=urllib.parse.urlparse(self.path).path
+        if path in ("/health","/api/health"):
+            self.send_response(200);self.send_header("Cache-Control","no-store");self.end_headers()
+            return
+        if path in ("/strategy-engine.js",):
+            try: owner(token_of(self))
+            except PermissionError: return self.send_error(403,"Forbidden")
+            except Exception: return self.send_error(403,"Forbidden")
+        elif not public_static(path):
+            return self.send_error(404,"Not Found")
+        return super().do_HEAD()
+
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
+        if path in OWNER_READ_ENDPOINTS or path in PROTECTED_OWNER_ASSETS or path=="/strategy-engine.js":
+            try: owner(token_of(self))
+            except PermissionError: return self.send_json(403,{"error":"هذه الصفحة/الخدمة للمالك فقط"})
+            except Exception: return self.send_json(403,{"error":"التحقق من صلاحيات المالك غير متاح"})
+        if path=="/strategy-engine.js":
+            return super().do_GET()
         if path=="/health":
             return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
                 "server_utc":datetime.now(timezone.utc).isoformat(),
@@ -1166,11 +1203,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
                                            "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
             except Exception as e: return self.send_json(403,{"error":str(e)[:180]})
+        if not public_static(path):
+            return self.send_json(404,{"error":"not_found"})
         return super().do_GET()
     def do_POST(self):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path in OWNER_WRITE_ENDPOINTS:
+                owner(token)
             if path.startswith("/v1/terminal-action-claim/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
