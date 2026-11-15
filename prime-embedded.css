@@ -1,0 +1,143 @@
+/* AL-ZOOL PRIME — consistent Sudanese identity INSIDE all legacy modules.
+   Loaded only for same-origin pages when embedded in prime.html.
+   Keeps the original scripts/forms/API hooks untouched. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
+html.az-prime-embedded-root{
+ color-scheme:dark!important;
+ --bg:#0c1018!important;--panel:#171d28!important;--panel2:#202834!important;--line:#354051!important;
+ --ink:#f4f4f7!important;--muted:#a2afc1!important;--purple:#d5b17b!important;--purple-soft:#302a21!important;
+ --cyan:#77b4c9!important;--profit:#49d0a0!important;--loss:#ef7c8c!important;--studio-accent:#d5b17b!important;
+ --studio-accent-soft:#302a21!important;--studio-card:#171d28!important;
+ --studio-shadow:0 8px 30px #04070e38!important;--az-glow:0 0 0 1px #6a59451f,0 8px 20px #04070e35!important;
+}
+html.az-prime-embedded-root,html.az-prime-embedded-root body{
+ min-height:100%!important; background:linear-gradient(145deg,#101620,#0c111a 70%)!important;
+ color:#eef2f7!important; font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif!important;
+ font-size:13px!important;line-height:1.8!important;
+}
+.az-prime-embedded-root *{scrollbar-color:#505e70 #131a25;scrollbar-width:thin}
+.az-prime-embedded-root :focus-visible{outline:2px solid #e6c994!important;outline-offset:2px!important}
+.az-prime-embedded-root button,.az-prime-embedded-root input,.az-prime-embedded-root select,
+.az-prime-embedded-root textarea{font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif!important}
+.az-prime-embedded-root :is(.shell,.shell.ui-collapsed,.az-admin-layout){
+ display:block!important;min-height:0!important;grid-template-columns:1fr!important;max-width:none!important;
+ background:transparent!important;box-shadow:none!important;border:0!important
+}
+.az-prime-embedded-root :is(.shell>.sidebar,.shell>.az-mobile-bar,.az-nav-overlay,.az-page-shortcuts,
+.az-admin-layout>.az-admin-sidebar,.az-owner-mobile-bar,.az-owner-overlay,.az-owner-shortcuts){
+ display:none!important
+}
+.az-prime-embedded-root :is(.main,.shell>.main,.az-admin-content){
+ width:100%!important;max-width:none!important;margin:0!important;padding:24px clamp(16px,2.8vw,36px) 32px!important;
+ background:transparent!important;box-shadow:none!important;min-width:0!important
+}
+.az-prime-embedded-root .az-admin-content{display:block!important}
+.az-prime-embedded-root body:has(#adminView:not(.hidden))>.wrap{max-width:none!important;padding:0!important;margin:0!important}
+.az-prime-embedded-root body:has(#adminView:not(.hidden))>.wrap>.top{display:none!important}
+.az-prime-embedded-root .main>.topbar{margin:0 0 24px!important;padding:0 0 19px!important;border-bottom:1px solid #343e4e!important;background:transparent!important}
+.az-prime-embedded-root :is(.topbar h1,.welcome h1){font-size:clamp(20px,2vw,27px)!important;color:#f4f5f9!important;line-height:1.5!important}
+.az-prime-embedded-root :is(.topbar p,.welcome p,.muted,.eyebrow,.subline){color:#afbbc9!important}
+.az-prime-embedded-root :is(.eyebrow,.az-status-line,.az-nav-caption){color:#d7b57d!important}
+.az-prime-embedded-root :is(.card,.kpi,.panel,.az-kpi,.learn-card,.op-card,.th-card,.lab-stat,.lab-card,
+.az-admin-performance,.az-live-banner,.az-recent-panel,.az-quick-info,.az-client-settings,
+.az-ai-votes,.az-ai-guard,.recovery-monitor,.recovery-log-wrap,.notice,.az-user-top,
+.protection-item,.close-option,.sl-settings-panel,.entry-guard-panel,
+.az-account-quick a,.az-admin-content .panel,.az-admin-content .stat){
+ background:linear-gradient(145deg,#202732,#161d27)!important;
+ border:1px solid #394655!important;
+ border-radius:16px!important;
+ box-shadow:0 8px 28px #05081036,inset 0 1px 0 #ffffff07!important;
+ color:#edf0f6!important
+}
+.az-prime-embedded-root :is(.card,.kpi,.panel,.learn-card,.op-card,.th-card,.lab-stat,
+.az-admin-performance,.az-live-banner,.az-admin-content .panel){position:relative}
+.az-prime-embedded-root :is(.card,.kpi,.panel,.az-live-banner,.az-admin-performance)::before{
+ background:linear-gradient(90deg,#208653,#d5b17b,#cd3c49)!important;
+ content:"";position:absolute;top:0;left:13px;width:84px;height:2px;border-radius:9px;pointer-events:none
+}
+.az-prime-embedded-root :is(.card-title h2,.card h2,.panel h2,.az-ai-votes h2,.az-ai-guard h2,
+.az-admin-content .panel-head h2,.az-admin-performance h2,
+.az-recent-panel h2,.kpi strong,.az-kpi strong,.op-stat strong,.learn-stat strong,.th-stat strong,
+.lab-stat strong,.az-live-banner strong,.az-client-top-kpis strong){
+ color:#f5f6fb!important;text-shadow:none!important
+}
+.az-prime-embedded-root :is(.kpi small,.kpi-head,.az-kpi-label,.card small,.panel p,
+.az-live-banner small,.az-account-quick a,.status-row small,.row small,.metric-label,.learn-note,
+.lab-note,.op-note,.az-chart-note,.az-client-top-kpis .kpi-head){color:#aebac9!important}
+.az-prime-embedded-root :is(.kpi-head i,.shield,.icon-tile,.protection-icon,.az-kpi-icon,
+.az-account-quick a span,.az-quick-info .info-value,.count-chip,.card-title .eyebrow,
+.az-ai-votes .round,.az-ai-guard .round){color:#deb985!important}
+.az-prime-embedded-root :is(.tag,.badge,.market-tag,.count-chip,.az-status-pill,.state.pending,
+.recovery-state,.metric-pill,.read-only){
+ background:#322d28!important;color:#e8c996!important;border:1px solid #71614e!important;
+ border-radius:9px!important;box-shadow:none!important
+}
+.az-prime-embedded-root :is(.btn.primary,.az-admin-content .btn.primary,.refresh.primary,
+button.primary){
+ background:linear-gradient(120deg,#207c50,#145e3a)!important;
+ color:#fff!important;border:1px solid #379a69!important;border-radius:10px!important;
+ box-shadow:0 5px 18px #0f67353a!important
+}
+.az-prime-embedded-root :is(.btn.secondary,.btn.ghost,.az-admin-content .btn.secondary,
+.az-admin-content .btn.ghost,.refresh,.az-settings-link,.section-nav a,.learn-actions a,
+.quick-button,.op-actions button,.lab-actions button,.th-actions button){
+ background:#26303c!important;border:1px solid #566174!important;color:#e1e8f2!important;
+ border-radius:10px!important;box-shadow:none!important
+}
+.az-prime-embedded-root :is(.btn.secondary,.btn.ghost,.refresh,.az-settings-link,.section-nav a,
+.learn-actions a,.op-actions button):hover{border-color:#b6935f!important;color:#fff!important;background:#34404d!important}
+.az-prime-embedded-root :is(input:not([type=checkbox]):not([type=radio]),select,textarea,
+#positionManagement input,#positionManagement select,.az-admin-content input){
+ color:#f5f6fa!important;-webkit-text-fill-color:#f5f6fa!important;
+ color-scheme:dark!important;background:#121a25!important;border:1px solid #4b596a!important;
+ border-radius:10px!important
+}
+.az-prime-embedded-root :is(input,select,textarea)::placeholder{color:#8a99aa!important;-webkit-text-fill-color:#8a99aa!important}
+.az-prime-embedded-root :is(select option){color:#f5f6fa!important;background:#151c27!important}
+.az-prime-embedded-root :is(input[type=checkbox],input[type=radio]){accent-color:#2da46a!important}
+.az-prime-embedded-root :is(.history-table,.lab-table,.op-table,.learn-table,.th-table,.az-recent-table,
+.card table,.panel table,.az-admin-content table){border-collapse:collapse!important;background:transparent!important}
+.az-prime-embedded-root :is(.history-table th,.lab-table th,.op-table th,.learn-table th,.th-table th,
+.az-recent-table th,.card th,.panel th,.az-admin-content th){
+ background:#252e39!important;color:#c2cbd9!important;
+ border-bottom:1px solid #435062!important;font-weight:700!important
+}
+.az-prime-embedded-root :is(.history-table td,.lab-table td,.op-table td,.learn-table td,.th-table td,
+.az-recent-table td,.card td,.panel td,.az-admin-content td){
+ background:transparent!important;color:#e0e5ef!important;border-color:#364353!important
+}
+.az-prime-embedded-root :is(.positive,.good,.buy){color:#55dab0!important}
+.az-prime-embedded-root :is(.negative,.bad,.sell){color:#fd94a1!important}
+.az-prime-embedded-root :is(.notice,.ai-risk,.az-config-note){border-right:3px solid #d4b17c!important}
+.az-prime-embedded-root :is(.chart-wrap,.ai-result,.ai-toolbar,.ai-reasons,.history-table-wrap,
+.az-field-row,.az-toggle-row,.az-quick-info .info-line,
+.daily-grid div,.ai-facts div,.recovery-metrics>div,.recovery-log-item,.mobile-list .item){
+ background:#1a2430!important;color:#dce3ed!important;border-color:#3c485a!important;
+ border-radius:11px!important
+}
+.az-prime-embedded-root .az-admin-content .admin-grid{grid-template-columns:1fr 1fr!important}
+.az-prime-embedded-root .az-admin-content .admin-grid>.clients-panel{grid-column:1/-1!important}
+.az-prime-embedded-root .az-admin-content pre{white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+.az-prime-embedded-root :is(.az-user-bell,.avatar,.brand-mark){background:#312d2b!important;color:#e8bf82!important;box-shadow:none!important}
+.az-prime-embedded-root :is(.tab.active,.az-range-controls button.active){background:#403529!important;color:#f5dab0!important;border:1px solid #aa8758!important}
+.az-prime-embedded-root :is(.az-range-controls button,.lab-controls input,.lab-controls select){
+ border-radius:10px!important
+}
+.az-prime-embedded-root .az-dark-topstrip{background:#1b2630!important;border-color:#56616c!important;color:#b9c8d9!important}
+.az-prime-embedded-root footer{margin-top:28px!important;color:#9eaabc!important}
+.az-prime-embedded-root :is(.recovery-live-message,.az-ai-votes .az-model-row b,.az-ai-guard .az-model-row b){color:#e9d8b6!important}
+.az-prime-embedded-root :is(.az-ai-votes .az-model-row,.az-ai-guard .az-model-row){border-bottom-color:#3c4856!important}
+.az-prime-embedded-root :is(.recovery-log-item p,.status-row b){color:#e9edf4!important}
+.az-prime-embedded-root .az-admin-content .stats{display:none!important}
+.az-prime-embedded-root .az-account-quick{gap:12px!important}
+.az-prime-embedded-root .az-account-quick a{text-decoration:none!important}
+.az-prime-embedded-root .az-admin-content>.welcome{border-bottom:1px solid #354051!important}
+@media(max-width:900px){
+ .az-prime-embedded-root :is(.main,.shell>.main,.az-admin-content){padding:16px 12px 26px!important}
+ .az-prime-embedded-root .az-admin-content .admin-grid{grid-template-columns:1fr!important}
+ .az-prime-embedded-root :is(.kpis,.az-kpi-grid){grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:540px){
+ .az-prime-embedded-root :is(.main,.shell>.main,.az-admin-content){padding:12px 8px 24px!important}
+ .az-prime-embedded-root :is(.card,.kpi,.panel,.az-admin-performance){padding:14px!important}
+}
