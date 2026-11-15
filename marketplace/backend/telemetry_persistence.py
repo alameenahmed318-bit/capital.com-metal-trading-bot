@@ -76,4 +76,7 @@ def _worker(client_id,sb):
                 state["running"]=False
             return
         with _LOCK:
-            _STATE[client_id]["saved"]=fingerprint
+            state=_STATE[client_id]
+            state["saved"]=fingerprint
+            if state["pending"] and state["pending"][0]==fingerprint:
+                state["pending"]=None
