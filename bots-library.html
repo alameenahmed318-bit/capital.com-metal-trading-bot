@@ -8,6 +8,7 @@
 :root{color-scheme:dark;--bg:#0c1018;--panel:#121a24;--panel2:#17212d;--line:#283543;--ink:#f3f7f8;--muted:#a8b9c6;--gold:#e4c283;--green:#40c38e;--red:#f68a91}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 92% 0%,#17332b 0%,transparent 32%),radial-gradient(ellipse at 5% 25%,#2a2022 0%,transparent 33%),var(--bg);color:var(--ink);font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;line-height:1.7}
 a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:auto;padding:clamp(16px,3vw,34px)}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.live-card{border:1px solid #35506a;background:#15232d;border-radius:15px;padding:14px;min-height:148px}.live-card strong{display:block;font-size:14px;margin-bottom:7px}.live-card p{color:#bdd0da;font-size:12px;margin:6px 0 0}.live-pill{display:inline-block;padding:3px 10px;border-radius:7px;background:#33434c;color:#dee9ec;font:800 13px "Segoe UI",sans-serif;direction:ltr}.live-pill.buy{background:#174932;color:#b5f8cf}.live-pill.sell{background:#5b2931;color:#ffd0d1}.live-pill.wait{background:#353d4b;color:#dde2e5}.live-status{font-size:13px;color:#c1d4db;min-height:24px}.live-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.live-toolbar button{border:1px solid #a98d5f;background:#3a342b;color:#ffe2a9;border-radius:10px;padding:8px 14px;cursor:pointer}.live-card[hidden]{display:none!important}.live-brief{padding:10px 13px;border-radius:10px;background:#152d2e;border:1px solid #345355;color:#d3efea;font-size:13px;margin:12px 0}.live-detail{font-size:12px;color:#a2b3c0;margin-top:6px}
 .eyebrow{font:700 11px/1.4 "Segoe UI",sans-serif;letter-spacing:.16em;color:var(--gold);text-transform:uppercase}
 .hero{border:1px solid #3a493f;background:linear-gradient(115deg,#153329b8,#171c2bd9 70%);border-radius:22px;padding:clamp(20px,3vw,34px);position:relative;overflow:hidden}
 .hero:before{content:"";position:absolute;top:0;right:0;width:5px;height:100%;background:linear-gradient(#ce3f4b 0 33%,#f8fafc 33% 67%,#121212 67%)}
@@ -33,6 +34,13 @@ a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:au
  <div class="stat"><strong dir="ltr">05</strong><small>بوتات مرجعية موثّقة المصدر</small></div>
  <div class="stat"><strong dir="ltr">03</strong><small>أنماط استراتيجية ندرسها</small></div>
  <div class="stat"><strong>بحث فقط</strong><small>لا أوامر تداول ولا تعديل للإعدادات</small></div>
+</section>
+<section id="activeAdvisors" aria-labelledby="activeHeading">
+ <div class="section-head"><div><span class="eyebrow">REAL MT5 CLOSED-CANDLE ANALYSIS</span><h2 id="activeHeading">المساعدون الخمسة — تحليل فعلي</h2><p>يحللون آخر شموع الذهب المغلقة من حساب MT5 الخاص بك، ولا ينفذون أي أمر تداول.</p></div>
+ <div class="live-toolbar"><span id="liveStatus" class="live-status" role="status">جارٍ التحقق من اتصال المحرك...</span><button type="button" id="refreshAdvisors">تحديث التحليل</button></div></div>
+ <div class="live-brief" id="liveBrief">بانتظار بيانات شموع MT5 المرخّصة. لا توجد توصيات افتراضية.</div>
+ <div class="live-grid" id="liveAdvisors"></div>
+ <p class="live-detail">هذه خوارزميات تحليل أصلية مبنية داخل AL-ZOOL، وليست البرامج التجارية المعروضة أدناه. يُحسب رأي المساعد متعدد الاستراتيجيات من أصوات الأربعة الآخرين ولا يُعد صوتاً مستقلاً.</p>
 </section>
 <section aria-labelledby="botsHeading">
  <div class="section-head"><div><h2 id="botsHeading">البوتات المرجعية</h2><p>التقييمات المنشورة على MQL5 وقت المراجعة: 15 نوفمبر 2026 · قد تتغير</p></div>
@@ -84,6 +92,57 @@ a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:au
 </section>
 <footer class="footer">AL-ZOOL PRIME · GLOBAL BOT RESEARCH · 🇸🇩 هوية سودانية · مصادر عامة مستقلة</footer>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(()=>{"use strict";
+const state=document.getElementById("liveStatus"),brief=document.getElementById("liveBrief"),grid=document.getElementById("liveAdvisors"),refresh=document.getElementById("refreshAdvisors");
+let busy=false,token=null,sessionClient=null;
+const translate={BUY:"BUY · شراء",SELL:"SELL · بيع",WAIT:"WAIT · انتظار"};
+const safeSignal=s=>s==="BUY"?"BUY":s==="SELL"?"SELL":"WAIT";
+function draw(resp){
+ const votes=Array.isArray(resp.advisors)?resp.advisors:[];
+ grid.replaceChildren();
+ for(const item of votes){
+  const article=document.createElement("article");article.className="live-card";
+  const title=document.createElement("strong");title.textContent=item.name||"مساعد";
+  const signal=safeSignal(item.signal);const pill=document.createElement("span");pill.className="live-pill "+signal.toLowerCase();pill.textContent=translate[signal];
+  const p=document.createElement("p");p.textContent=item.reason_ar||"لا توجد تفاصيل";
+  const details=document.createElement("div");details.className="live-detail";details.textContent=signal==="WAIT"?"بدون ترجيح":"ثقة القواعد: "+(Number(item.confidence||0)*100).toFixed(1)+"% · ليست احتمالية ربح";
+  article.append(title,pill,p,details);grid.append(article);
+ }
+ const central=safeSignal(resp.central_decision),consensus=safeSignal(resp.consensus?.signal);
+ const bar=resp.bar_time?new Date(Number(resp.bar_time)*1000).toLocaleString("en-GB",{timeZone:"Asia/Dubai",hour12:false}):"غير متاح";
+ brief.textContent="قرار المحرك المركزي: "+translate[central]+" · رأي المساعدين: "+translate[consensus]+" · شمعة مغلقة: "+bar+" (الإمارات) · التصويت استشاري فقط";
+ state.textContent=resp.status==="READY"?"التحليل نشط · "+(resp.timeframe||"MT5"):"بيانات الشموع غير كافية";
+}
+async function getSession(){
+ const cfg=await fetch("/api/config",{cache:"no-store",signal:AbortSignal.timeout(8000)}).then(r=>r.json());
+ if(!cfg.ready||!cfg.supabase_url||!cfg.supabase_anon_key)throw Error("إعدادات الاتصال غير جاهزة");
+ if(!window.supabase?.createClient)throw Error("تعذر تحميل تسجيل الدخول");
+ sessionClient=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key);
+ const result=await sessionClient.auth.getSession();
+ token=result.data?.session?.access_token||null;
+ if(!token)throw Error("سجّل دخولك من بوابة AL-ZOOL لعرض تحليلات MT5");
+}
+async function run(){
+ if(busy||document.hidden)return;
+ busy=true;refresh.disabled=true;state.textContent="جارٍ تحليل شموع الذهب...";
+ try{
+  if(!token)await getSession();
+  let response=await fetch("/api/bot-advisors",{headers:{Authorization:"Bearer "+token},cache:"no-store",signal:AbortSignal.timeout(12000)});
+  if(response.status===401||response.status===403){token=null;await getSession();response=await fetch("/api/bot-advisors",{headers:{Authorization:"Bearer "+token},cache:"no-store",signal:AbortSignal.timeout(12000)});}
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(payload.error||"تعذر استلام التحليل");
+  draw(payload);
+ }catch(error){grid.replaceChildren();brief.textContent="لا توجد توصية جديدة؛ لا نعرض إشارات عند انقطاع البيانات أو انتهاء الجلسة.";state.textContent=error.message||"تعذر الاتصال";
+ }finally{busy=false;refresh.disabled=false;}
+}
+refresh.addEventListener("click",run);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)run()});
+setInterval(()=>{if(!document.hidden)run()},20000);
+run();
+})();
+</script>
 <script>
 (()=>{"use strict";
  const buttons=[...document.querySelectorAll(".filter")];
