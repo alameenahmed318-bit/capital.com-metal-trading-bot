@@ -44,9 +44,10 @@ def queue_closed_deals(client_id,deals,sb):
             state={"saved":None,"pending":None,"running":False}
             _STATE[client_id]=state
         if fingerprint==state["saved"]:return False
-        if state["pending"] and state["pending"][0]==fingerprint:return False
-        state["pending"]=(fingerprint,rows)
-        if state["running"]:return True
+        already_pending=bool(state["pending"] and state["pending"][0]==fingerprint)
+        if not already_pending:
+            state["pending"]=(fingerprint,rows)
+        if state["running"]:return not already_pending
         state["running"]=True
     threading.Thread(target=_worker,args=(client_id,sb),
         name="alzool-closed-history",daemon=True).start()
