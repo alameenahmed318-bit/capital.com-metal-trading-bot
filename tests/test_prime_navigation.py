@@ -9,7 +9,7 @@ class PrimeNavigationTests(unittest.TestCase):
         html=(ROOT/"prime.html").read_text(encoding="utf-8")
         css=(ROOT/"prime.css").read_text(encoding="utf-8")
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
-        self.assertIn("/prime.js?v=sudan-20261115-2",html)
+        self.assertIn("/prime.js?v=sudan-20261115-3",html)
         self.assertIn("/prime.css?v=sudan-20261115-1",html)
         self.assertIn('id="primeFrame"',html)
         self.assertIn('id="primeNav"',html)
@@ -23,10 +23,21 @@ class PrimeNavigationTests(unittest.TestCase):
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
         css=(ROOT/"prime-embedded.css").read_text(encoding="utf-8")
         self.assertIn("az-prime-embedded-root",js)
-        self.assertIn("/prime-embedded.css?v=sudan-20261115-2",js)
+        self.assertIn("/prime-embedded.css?v=sudan-20261115-3",js)
         for selector in (".az-prime-embedded-root",".card",".kpi",".az-admin-content"):
             self.assertIn(selector,css)
         self.assertIn("requested.split",js)
+
+    def test_profit_loss_palette_overrides_generic_table_text(self):
+        css=(ROOT/"prime-embedded.css").read_text(encoding="utf-8")
+        history=(ROOT/"trade-history.html").read_text(encoding="utf-8")
+        self.assertIn("td.positive",css)
+        self.assertIn("td.negative",css)
+        self.assertIn("#netTotal.positive",css)
+        self.assertIn("#netTotal.negative",css)
+        self.assertIn("n>0?",history)
+        self.assertIn("n<0?",history)
+        self.assertIn("dir='ltr'",history)
 
     def test_existing_connected_modules_remain_accessible(self):
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
