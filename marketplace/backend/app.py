@@ -1459,7 +1459,8 @@ class Handler(SimpleHTTPRequestHandler):
                     forming=forming[0] if forming else None
                 tick=data.get("tick") if isinstance(data.get("tick"),dict) else {}
                 safe_tick={"bid":finite_number(tick.get("bid")),"ask":finite_number(tick.get("ask")),
-                           "spread":finite_number(tick.get("spread"))}
+                           "spread":finite_number(tick.get("spread")),
+                           "point_size":max(0,finite_number(tick.get("point_size")))}
                 now=datetime.now(timezone.utc)
                 previous=CONNECTIONS.get(client_id,{})
                 strategy_decision=previous.get("strategy_decision")
