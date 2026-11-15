@@ -54,6 +54,8 @@ ulong g_lastClosedDealsBuildMs=0;
 bool g_closedDealsDirty=true;
 string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
+bool g_groupClosePending=false;
+string g_groupCloseKey="";
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
 bool g_serverStopLossEnabled=true;
 bool g_recoveryEnabled=false;
@@ -235,6 +237,7 @@ bool PollTradeSettings()
 }
 bool ExecuteOneCentralAction(const string side,const string action,const double requestedLots,const long barTime)
 {
+   if(g_groupClosePending) return false;
    if(!InpEnableCentralTrading || !InpEnableCentralPositionManagement || !g_serverTradingEnabled)
       return false;
    if(side!="BUY" && side!="SELL") return false;
@@ -466,6 +469,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
                          const int strategyId,const int combinationId,const double referencePrice,
                          const double signalATR,const string reason)
 {
+   if(g_groupClosePending) return; // Never reopen exposure during group closure.
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       confidence<0.45 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
    if(!IsAccountDirectionAllowed(direction))
@@ -698,9 +702,39 @@ bool EvaluateSmartRecovery()
 }
 void EvaluateAutoClose()
 {
-   if(EvaluateSmartRecovery()) return;
    int total=PositionsTotal();
-   if(total<=0) return;
+   if(total<=0)
+   {
+      if(g_groupClosePending && StringLen(g_groupCloseKey)>0)
+         GlobalVariableDel(g_groupCloseKey);
+      g_groupClosePending=false;
+      EvaluateSmartRecovery(); // Reset an old recovery cycle if all positions closed.
+      return;
+   }
+   // Once a group profit target has been hit, retry closing EVERY remaining
+   // position, even after the first success leaves only one position.
+   // Never mistake that remaining position for a new "single TP" case.
+   if(g_groupClosePending)
+   {
+      bool allAccepted=true;
+      for(int k=PositionsTotal()-1;k>=0;k--)
+      {
+         ulong ticket=PositionGetTicket(k);
+         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+         if(!ClosePositionTicket(ticket,"group-pending")) allAccepted=false;
+      }
+      if(PositionsTotal()==0)
+      {
+         g_groupClosePending=false;
+         if(StringLen(g_groupCloseKey)>0) GlobalVariableDel(g_groupCloseKey);
+         Print("AL-ZOOL GROUP CLOSE COMPLETE: all open positions closed.");
+      }
+      else if(!allAccepted)
+         Print("AL-ZOOL GROUP CLOSE PARTIAL: remaining=",PositionsTotal(),
+               ". Retrying at next tick/timer.");
+      return;
+   }
+   if(EvaluateSmartRecovery()) return;
    double groupNet=0.0;
    for(int i=total-1;i>=0;i--)
    {
@@ -708,24 +742,19 @@ void EvaluateAutoClose()
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       groupNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
    }
-   // With 2+ open positions, ONLY the combined group target is evaluated.
-   // Never fall through to the single-position rule in a multi-position account.
    if(total>=2)
    {
       if(g_groupCloseEnabled && groupNet>=g_groupProfitTarget)
       {
-         Print("AL-ZOOL GROUP PROFIT TARGET reached: ",DoubleToString(groupNet,2),
-               " >= ",DoubleToString(g_groupProfitTarget,2),". Closing all open positions.");
-         for(int j=PositionsTotal()-1;j>=0;j--)
-         {
-            ulong ticket=PositionGetTicket(j);
-            if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-            ClosePositionTicket(ticket,"group");
-         }
+         g_groupClosePending=true;
+         if(StringLen(g_groupCloseKey)>0) GlobalVariableSet(g_groupCloseKey,1.0);
+         Print("AL-ZOOL GROUP CLOSE START: ",DoubleToString(groupNet,2),
+               " target=",DoubleToString(g_groupProfitTarget,2),
+               " positions=",total,". All tickets will be retried until closed.");
+         EvaluateAutoClose();
       }
       return;
    }
-   // Exactly one open position: apply the single-position target to that position only.
    if(total==1 && g_singleCloseEnabled)
    {
       ulong ticket=PositionGetTicket(0);
@@ -733,11 +762,7 @@ void EvaluateAutoClose()
       {
          double net=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
          if(net>=g_singleProfitTarget)
-         {
-            Print("AL-ZOOL SINGLE PROFIT TARGET reached ticket ",ticket,": ",
-                  DoubleToString(net,2)," >= ",DoubleToString(g_singleProfitTarget,2));
             ClosePositionTicket(ticket,"single");
-         }
       }
    }
 }
@@ -1076,6 +1101,8 @@ int OnInit()
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
       return INIT_PARAMETERS_INCORRECT;
    }
+   g_groupCloseKey="AZ_GROUP_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_groupClosePending=(GlobalVariableCheck(g_groupCloseKey) && GlobalVariableGet(g_groupCloseKey)>0.5);
    g_recoveryActiveKey="AZ_REC_ACTIVE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
    g_recoveryPriceKey="AZ_REC_PRICE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
    g_recoveryCycleActive=(GlobalVariableCheck(g_recoveryActiveKey) && GlobalVariableGet(g_recoveryActiveKey)>0.5) || RecoveryHasOpenTrade();
