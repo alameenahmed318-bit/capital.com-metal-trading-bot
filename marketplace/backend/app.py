@@ -9,6 +9,7 @@ from multi_model_council import update_council, council_result, risk_guardian, r
 from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
+from strategy_audit import audit_strategies
 from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
 from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
@@ -984,6 +985,36 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,result)
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/strategy-audit":
+            try:
+                u=owner(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id:return self.send_json(409,{"error":"معرّف محرك المالك غير موجود"})
+                snapshot=CONNECTIONS.get(client_id) or {}
+                symbol=str(snapshot.get("symbol") or "XAUUSD")[:40]
+                timeframe=str(snapshot.get("timeframe") or "PERIOD_M1")[:20]
+                if not symbol.upper().startswith("XAUUSD"):
+                    return self.send_json(409,{"error":"تدقيق الاستراتيجيات مخصص للذهب"})
+                q=urllib.parse.quote
+                query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
+                    "&symbol=eq."+q(symbol,safe="")+"&timeframe=eq."+q(timeframe,safe="")+
+                    "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"+
+                    "&order=candle_time.desc&limit=230")
+                rows=sb("GET",query,admin=True)
+                if not rows and timeframe!="PERIOD_M1":
+                    query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
+                        "&symbol=eq."+q(symbol,safe="")+
+                        "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"+
+                        "&order=candle_time.desc&limit=230")
+                    rows=sb("GET",query,admin=True)
+                result=audit_strategies(list(reversed(rows)),max_samples=18)
+                result.update({"symbol":symbol,"timeframe":timeframe,
+                    "source":"stored_closed_candles","read_only":True})
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(503,{"error":"تعذر إكمال التدقيق",
+                "reason_type":type(e).__name__})
         if path=="/api/ai/learning":
             try:
                 u=current_user(token_of(self))
