@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
-from multi_model_council import fast_ai, risk_guardian, council_result, update_council, _VOTES, _vote
+from multi_model_council import fast_ai, risk_guardian, council_result, update_council, accept_local_model_vote, _VOTES, _vote
 from learning_memory import combine_deals
 from position_action_engine import plan_account_actions
 
@@ -32,6 +32,34 @@ class SafetyTests(unittest.TestCase):
 
     def test_risk_guardian_blocks_position_limit(self):
         self.assertFalse(risk_guardian(GOOD_ACCOUNT,[{}]*10)["approved"])
+
+    def test_local_qwen35_vote_is_accepted_and_old_qwen25_is_rejected(self):
+        _VOTES["test"]={"bar_time":DECISION["bar_time"],
+                         "fast":_vote("Fast AI","READY","BUY",.8),
+                         "qwen":_vote("Qwen","NOT_CONFIGURED"),
+                         "deepseek":_vote("DeepSeek","NOT_CONFIGURED")}
+        good={"model":"qwen3.5:4b","bar_time":DECISION["bar_time"],
+              "direction":"BUY","confidence":.75,"reason_ar":"اتجاه صاعد"}
+        self.assertTrue(accept_local_model_vote("test",good,DECISION))
+        self.assertEqual(_VOTES["test"]["local_qwen"]["model_id"],"qwen3.5:4b")
+        self.assertFalse(accept_local_model_vote(
+            "test",{**good,"model":"qwen2.5:3b"},DECISION))
+        self.assertEqual(_VOTES["test"]["local_qwen"]["model_id"],"qwen3.5:4b")
+
+    def test_model_migration_is_consistent_across_server_and_both_relays(self):
+        root=Path(__file__).resolve().parents[1]
+        components={
+            "server":root/"marketplace"/"backend"/"app.py",
+            "main_relay":root/"mt5_client"/"ALZOOL_Local_Model_Relay.py",
+            "optional_relay":root/"local_ai"/"ai_relay.py",
+            "model_guard":root/"marketplace"/"backend"/"decision_guard.py",
+        }
+        for name,path in components.items():
+            with self.subTest(component=name):
+                code=path.read_text(encoding="utf-8")
+                self.assertIn("qwen3.5:4b",code)
+        self.assertIn('"think":False',
+            components["main_relay"].read_text(encoding="utf-8"))
 
     def test_unavailable_models_never_authorize(self):
         result=council_result("test",DECISION)
