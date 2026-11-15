@@ -17,6 +17,7 @@ from telemetry_persistence import queue_closed_deals
 from system_readiness import owner_readiness
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
+from offline_m1_smoke import run as run_offline_m1_smoke
 from groq_advisor import verify_credentials as verify_groq_credentials
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -1655,11 +1656,28 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options","nosniff"); self.send_header("Referrer-Policy","strict-origin-when-cross-origin")
         self.send_header("X-Frame-Options","SAMEORIGIN"); self.send_header("Content-Security-Policy","frame-ancestors 'self'"); super().end_headers()
 
+def _read_stored_m1_for_smoke():
+    """Fetch latest 500 closed XAUUSD M1 candles from one source; read only."""
+    base="/rest/v1/alzool_engine_market_candles?"
+    latest=sb("GET",base+"symbol=eq.XAUUSD&timeframe=eq.PERIOD_M1"
+              "&select=client_id&order=candle_time.desc&limit=1",admin=True)
+    if not latest:return []
+    cid=urllib.parse.quote(str(latest[0]["client_id"]),safe="")
+    result=sb("GET",base+"client_id=eq."+cid+"&symbol=eq.XAUUSD"
+              "&timeframe=eq.PERIOD_M1"
+              "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"
+              "&order=candle_time.desc&limit=500",admin=True)
+    return list(reversed(result or []))
+
+
 if __name__=="__main__":
     # Server-side smoke test, read-only, never exposes the API key.
     if os.getenv("GROQ_VERIFY_ON_STARTUP","false").lower() in ("true","1","yes"):
         threading.Thread(target=lambda: print("GROQ_SMOKE_STATUS:",verify_groq_credentials(),flush=True),
                          daemon=True,name="alzool-groq-smoke").start()
+    if os.getenv("ALZOOL_HISTORICAL_M1_SMOKE","false").strip().lower() in ("true","1","yes"):
+        threading.Thread(target=run_offline_m1_smoke,args=(_read_stored_m1_for_smoke,),
+                         daemon=True,name="alzool-offline-m1-diagnostic").start()
     bootstrap_owner()
     port=int(os.getenv("PORT","10000"))
     print("AL-ZOOL connection/licensing service listening on",port,flush=True)
