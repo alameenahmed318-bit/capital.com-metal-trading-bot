@@ -16,7 +16,7 @@ _LOCK=threading.RLock()
 _VOTES={}
 _MAX_ENTRIES=80
 _QWEN_URL=os.getenv("QWEN_API_URL","").strip()
-_QWEN_MODEL=os.getenv("QWEN_MODEL","qwen2.5:3b").strip()
+_QWEN_MODEL=os.getenv("QWEN_MODEL","qwen3.5:4b").strip()
 _DEEPSEEK_KEY=os.getenv("DEEPSEEK_API_KEY","").strip()
 _DEEPSEEK_MODEL=os.getenv("DEEPSEEK_MODEL","deepseek-chat").strip()
 _DEEPSEEK_URL="https://api.deepseek.com/chat/completions"
@@ -87,7 +87,7 @@ def _qwen(decision):
         # A secure, operator-controlled Ollama relay URL is required on hosted Render.
         url=_QWEN_URL.rstrip("/")+"/api/generate"
         result=_json_post(url,{"model":_QWEN_MODEL,"prompt":_prompt(decision),
-            "stream":False,"format":"json","options":{"num_predict":150,"temperature":0}},
+            "stream":False,"format":"json","think":False,"keep_alive":"30m","options":{"num_predict":150,"temperature":0}},
             {},timeout=_TIMEOUT)
         return _parse("Qwen",result.get("response",""))
     except Exception as exc:
@@ -207,7 +207,7 @@ def accept_local_model_vote(client_id,advice,decision):
     direction=str(advice.get("direction","WAIT")).upper()
     confidence=_num(advice.get("confidence"),-1)
     model_id=str(advice.get("model",""))
-    identity={"qwen2.5:3b":("Qwen","local_qwen"),
+    identity={"qwen3.5:4b":("Qwen","local_qwen"),
               "deepseek-r1:1.5b":("DeepSeek","local_deepseek")}.get(model_id)
     if not identity or direction not in ("BUY","SELL","WAIT") or not 0<=confidence<=1:return False
     name,key=identity
