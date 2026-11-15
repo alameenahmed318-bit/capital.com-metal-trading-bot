@@ -57,12 +57,17 @@ def owner_readiness(identity,snapshot,settings,council,latest_candle,now=None):
     return {
         "checked_at_utc":now.isoformat(),"stage":"DEMO_VALIDATION" if all_checks else "SETUP_REQUIRED",
         "ready_for_demo_validation":bool(all_checks),
+        # Readiness is about connectivity/data/model health, not the MT5
+        # account's demo/live classification. Neither account type is barred.
+        # A live status here is NOT a certification of profitability or safety.
         "ready_for_real_money":False,
+        "account_mode_policy":"DEMO_AND_REAL_SUPPORTED",
+        "account_type_restriction":False,
         "manual_demo_test_required":True,
         "trading_enabled":settings.get("trading_enabled") is True,
         "central_actions_enabled":pm.get("central_actions_enabled") is True,
         "checks":findings,
         "models":models,
         "latest_saved_candle_utc":_as_utc(latest_candle).isoformat() if _as_utc(latest_candle) else None,
-        "note_ar":"لا يعتبر جاهزاً للتداول الحقيقي حتى اختبار MT5 والمجلس والحماية عملياً على حساب تجريبي."
+        "note_ar":"يربط المحرك حساب MT5 التجريبي أو الحقيقي بدون تمييز. الجاهزية التقنية لا تعني أن التداول آمن أو مختبر؛ راجع الاختبارات قبل تشغيل أوامر مالية."
     }
