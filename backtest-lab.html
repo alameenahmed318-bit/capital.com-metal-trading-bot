@@ -70,7 +70,7 @@
 <section class="lab-results"><article class="card"><div class="card-title"><div><span class="eyebrow">STRATEGY PERFORMANCE</span><h2>أفضل الاستراتيجيات</h2></div><span class="market-tag">حسب صافي النتيجة</span></div><div class="lab-table-wrap" id="strategyResults"><div class="lab-state">بانتظار تحميل الأرشيف التاريخي.</div></div></article>
 <article class="card"><div class="card-title"><div><span class="eyebrow">COMBINATION PERFORMANCE</span><h2>أفضل التركيبات</h2></div><span class="market-tag">من أصل 1000</span></div><div class="lab-table-wrap" id="comboResults"><div class="lab-state">بانتظار تحميل الأرشيف التاريخي.</div></div></article></section>
 <footer>AL-ZOOL GOLD SNIPER <span>•</span> مختبر بحثي مستقل · لا ينفذ الصفقات</footer></main></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/strategy-engine.js?v=9"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/owner-strategy-loader.js?v=role-owner-20261115"></script>
 <script>
 const $=id=>document.getElementById(id);let accessToken=null,running=false,historyMeta=null;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -181,6 +181,7 @@ function table(rows,currency){
 async function run(){
  if(running)return;running=true;const btn=$("runBtn");btn.disabled=true;btn.textContent="جارٍ الاختبار…";$("progressBar").style.width="0%";
  try{
+  await window.ALZOOL_STRATEGY_READY;
   if(window.ALZOOLStrategyEngine.size!==200)throw Error("عدد الاستراتيجيات المسجلة ليس 200؛ تم إيقاف الاختبار.");
   const days=Number($("historyDays").value),limit=Number($("sampleLimit").value),tf=$("timeframe").value,symbol=$("symbol").value;
   if(!tf||!symbol)throw Error("لا توجد فريمات تاريخية محفوظة بعد.");
