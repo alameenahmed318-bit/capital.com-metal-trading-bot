@@ -1,4 +1,4 @@
-"""AL-ZOOL local AI relay: real Qwen 2.5 + DeepSeek-R1 Ollama votes.
+"""AL-ZOOL local AI relay: real Qwen 3.5 + DeepSeek-R1 Ollama votes.
 
 Run on the PC hosting Ollama, not on Render. The relay sends only validated
 closed-bar directional votes. It NEVER opens orders, manages positions,
@@ -23,10 +23,10 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-MODELS=("qwen2.5:3b","deepseek-r1:1.5b")
+MODELS=("qwen3.5:4b","deepseek-r1:1.5b")
 OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
 POLL_SECONDS=3
-MODEL_TIMEOUT_SECONDS=48
+MODEL_TIMEOUT_SECONDS=90
 
 def request_json(url,method="GET",payload=None,token=None,timeout=12):
     headers={"Accept":"application/json"}
@@ -77,6 +77,7 @@ def model_vote(model,context):
         "Closed-bar snapshot: "+json.dumps(snapshot,ensure_ascii=False))
     result=request_json(OLLAMA_URL+"/api/generate",method="POST",
         payload={"model":model,"prompt":prompt,"stream":False,"format":"json",
+                 "think":False,"keep_alive":"30m",
                  "options":{"temperature":0,"num_predict":128,"num_ctx":1024}},
         timeout=MODEL_TIMEOUT_SECONDS)
     return validate_response(model,result)
@@ -94,7 +95,7 @@ def main():
     missing=[model for model in MODELS if model not in installed]
     if missing:
         raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
-    print("AL-ZOOL LOCAL AI READY | models=Qwen, DeepSeek | trading execution=OFF",flush=True)
+    print("AL-ZOOL LOCAL AI READY | models=Qwen 3.5 4B, DeepSeek | trading execution=OFF",flush=True)
     last_bar=0
     submitted=set()
     attempts={}
