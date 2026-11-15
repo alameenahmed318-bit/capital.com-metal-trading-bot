@@ -26,6 +26,8 @@ def plan_account_actions(snapshot,decision,council,risk,settings):
             "actions":[],"reason_ar":"لا يوجد قرار إدارة صالح"}
     if not positions:
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
+    if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
+        result["reason_ar"]="وضع إدارة الصفقات غير صالح";return result
     if not (council.get("approved") and risk.get("approved") and settings.get("trading_enabled")):
         result["reason_ar"]="المجلس أو حارس المخاطر أو مفتاح التداول منع إجراءات جديدة";return result
     if atr<=0 or signal not in ("BUY","SELL"):
@@ -67,7 +69,13 @@ def plan_account_actions(snapshot,decision,council,risk,settings):
             action="RECOVERY_PROPOSAL";reason="تعافٍ x3 مشروط بالمجلس وبقيود اللوت والحساب"
             ordinary=[num(p.get("volume")) for p in group if not
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
-            candidate_lot=3*max(ordinary) if ordinary else 0.0
+            # Recovery applies to the SUM of same-symbol, same-side losing
+            # non-recovery positions, never the largest individual position.
+            # Do not accidentally include profitable/manual positions of other symbols.
+            ordinary=[num(p.get("volume")) for p in group
+                if num(p.get("profit"))+num(p.get("swap"))<0 and not
+                str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
+            candidate_lot=3*sum(ordinary) if ordinary else 0.0
         elif (progress<-cooling_band and pm.get("cooling_enabled") is True
               and len(group)<int(num(pm.get("cooling_max",0)))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
@@ -76,11 +84,37 @@ def plan_account_actions(snapshot,decision,council,risk,settings):
               and len(group)<int(num(pm.get("addon_max",0)))):
             action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
             candidate_lot=num(pm.get("addon_lot"))
-        cap=max(0,num(pm.get("addon_max_lot" if action=="ADDON_PROPOSAL" else "cooling_max_lot",0)))
+        # The owner-defined per-side position limit is independent from total
+        # account exposure. Existing manual positions count toward both.
+        side_cap=max(1,min(50,int(num(pm.get("max_positions_per_direction",2),2))))
+        if action!="HOLD" and len(group)>=side_cap:
+            action="HOLD";reason="عدد المراكز في الاتجاه بلغ الحد المحدد"
+        # Manual mode uses fixed distances/lots while all actions still require
+        # the same fresh council and risk authorization.
+        if action=="HOLD" and str(pm.get("mode","AI")).upper()=="MANUAL" and len(group)<side_cap:
+            adverse=max(0,-progress)*atr
+            favorable=max(0,progress)*atr
+            point=max(0,num((snapshot.get("metadata") or {}).get("point_size")))
+            if point<=0:point=max(0,num(tick.get("point_size")))
+            if point>0 and pm.get("cooling_enabled") is True and adverse/point>=num(pm.get("cooling_distance_points"),1)>0:
+                action="COOLING_PROPOSAL";candidate_lot=num(pm.get("cooling_lot"))
+                reason="مسافة التبريد اليدوية تحققت مع الموافقة المركزية"
+            elif point>0 and pm.get("addon_enabled") is True and favorable/point>=num(pm.get("addon_distance_points"),1)>0:
+                action="ADDON_PROPOSAL";candidate_lot=num(pm.get("addon_lot"))
+                reason="مسافة التعزيز اليدوية تحققت مع الموافقة المركزية"
+        if action=="ADDON_PROPOSAL" and str(pm.get("mode","AI")).upper()=="AI":
+            # Incremental lots; never silently multiply a risk setting.
+            base=max(0,num(pm.get("addon_lot",0.01)))
+            candidate_lot=base*max(1,len(group))
+        cap_field=("recovery_max_lot" if action=="RECOVERY_PROPOSAL" else
+                   "addon_max_lot" if action=="ADDON_PROPOSAL" else "cooling_max_lot")
+        cap=max(0,num(pm.get(cap_field,0)))
         room=max(0,max_lots-total_lots)
-        candidate_lot=min(max(0,candidate_lot),cap,room)
-        if candidate_lot<=0 and action!="HOLD":
-            action="HOLD";reason="حدود اللوت تمنع زيادة التعرض"
+        if action!="HOLD" and (candidate_lot<=0 or candidate_lot>cap+1e-8 or candidate_lot>room+1e-8):
+            # Do not convert an exact x3 recovery into a smaller, falsely
+            # labeled x3 order. Block and explain insufficient risk budget.
+            action="HOLD";reason="حجم الإجراء المطلوب يتجاوز سقف اللوت أو التعرض"
+        if action=="HOLD":candidate_lot=0.0
         result[side.lower()]=action
         result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,3),
             "atr_distance":round(progress,3),"floating_net":round(net,2),
