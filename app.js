@@ -44,6 +44,23 @@ async function loadClientBasicSettings(){
   msg("clientBasicStatus","الإعدادات الأساسية جاهزة.");
  }catch(error){msg("clientBasicStatus",error.message||"تعذر تحميل الإعدادات");}
 }
+$("clientBasicForm").addEventListener("submit",async function(e){
+ e.preventDefault();
+ const d={
+  single_enabled:$("clientSingleEnabled").checked,
+  single_profit_target:Number($("clientSingleProfit").value),
+  group_enabled:$("clientGroupEnabled").checked,
+  group_profit_target:Number($("clientGroupProfit").value),
+  stop_loss_enabled:$("clientStopEnabled").checked,
+  stop_loss_mode:$("clientStopMode").value,
+  stop_loss_value:Number($("clientStopValue").value)
+ };
+ msg("clientBasicStatus","جارٍ حفظ الإعدادات...");
+ try{
+  await api("/api/client/basic-settings","POST",d);
+  msg("clientBasicStatus","تم حفظ الإعدادات الأساسية. الذكاء والاستراتيجيات تحت تحكم المالك.");
+ }catch(error){msg("clientBasicStatus",error.message||"تعذر الحفظ");}
+});
 $("clientPackageDownload").addEventListener("click",async()=>{
  if(!confirm("تنزيل حزمة جديدة سيبطل رمز الاتصال السابق. هل تريد المتابعة؟"))return;
  const button=$("clientPackageDownload");button.disabled=true;
