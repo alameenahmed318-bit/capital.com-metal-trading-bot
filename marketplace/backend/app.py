@@ -290,6 +290,14 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         cleaned.append(row)
     return cleaned
 
+def conservative_outcome_weight(wins,losses,net,range_size=0.50,min_samples=8):
+    """Shrink small real-trade samples toward neutral; net includes trade fees."""
+    n=wins+losses
+    if n<min_samples:return 1.0
+    evidence=(wins-losses)/(n+12.0)  # 12 neutral pseudo-observations.
+    if net<=0:evidence=min(evidence,0.0)
+    return round(max(1.0-range_size,min(1.0+range_size,1.0+range_size*evidence)),4)
+
 def live_learning_profile(deals):
     """Build transparent, outcome-based live weights from real closed XAUUSD positions."""
     grouped={}
@@ -331,29 +339,38 @@ def live_learning_profile(deals):
         if 1<=cid<=1000:
             ckey=str(cid); citem=combo_stats.setdefault(ckey,{"combination_id":cid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
             citem["trades"]+=1; citem["net"]+=row["net"]
-            if row["net"]>0: citem["wins"]+=1; combo_weights[ckey]=min(1.15,combo_weights[ckey]*1.01)
-            elif row["net"]<0: citem["losses"]+=1; combo_weights[ckey]=max(0.85,combo_weights[ckey]*0.99)
+            if row["net"]>0: citem["wins"]+=1
+            elif row["net"]<0: citem["losses"]+=1
             else: citem["flat"]+=1
         if not 1<=sid<=200: continue
         key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
         item["trades"]+=1; item["net"]+=row["net"]
         if row["net"]>0:
-            item["wins"]+=1; weights[key]=min(1.5,weights[key]*1.02)
+            item["wins"]+=1
         elif row["net"]<0:
-            item["losses"]+=1; weights[key]=max(0.5,weights[key]*0.98)
+            item["losses"]+=1
         else: item["flat"]+=1
         if row["position_id"] in today_total: matched_today.add(row["position_id"])
     matched=sum(x["trades"] for x in stats.values())
     wins=sum(x["wins"] for x in stats.values()); losses=sum(x["losses"] for x in stats.values())
     coverage=(matched/len(rows)*100.0) if rows else 0.0
     daily_coverage=(len(matched_today)/len(today_total)*100.0) if today_total else 0.0
-    for key,item in stats.items(): item["weight"]=round(weights[key],4)
+    # Statistical shrinkage prevents one lucky closed trade from changing votes.
+    for key,item in stats.items():
+        weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"])
+        item["weight"]=weights[key]
+        item["evidence"]="ELIGIBLE" if item["wins"]+item["losses"]>=8 else "INSUFFICIENT_TRADES"
+    for key,item in combo_stats.items():
+        combo_weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"],range_size=0.15)
+        item["evidence"]="ELIGIBLE" if item["wins"]+item["losses"]>=8 else "INSUFFICIENT_TRADES"
     return {"processed_positions":matched,"closed_positions":len(rows),"unmatched_positions":max(0,len(rows)-matched),
         "wins":wins,"losses":losses,"flat":sum(x["flat"] for x in stats.values()),
         "net":sum(x["net"] for x in rows if x["strategy_id"]),
         "coverage_percent":round(coverage,1),"daily_closed_positions":len(today_total),
         "daily_processed_positions":len(matched_today),"daily_coverage_percent":round(daily_coverage,1),
-        "updated_strategies":sum(1 for x in stats.values() if x["wins"]+x["losses"]>0),
+        "updated_strategies":sum(1 for x in stats.values() if x["weight"]!=1.0),
+        "eligible_strategies":sum(1 for x in stats.values() if x["evidence"]=="ELIGIBLE"),
+        "weight_policy":">=8 NET closed trades; 12 neutral pseudo-observations; net <=0 never boosts",
         "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True),
         "combination_weights":combo_weights,"processed_combinations":sum(x["trades"] for x in combo_stats.values()),
         "combinations":sorted([{**x,"weight":round(combo_weights[str(x["combination_id"])],4)} for x in combo_stats.values()],key=lambda x:(x["net"],x["trades"]),reverse=True)}
