@@ -1426,6 +1426,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"ok":True})
             parts=path.strip("/").split("/")
             if len(parts)==4 and parts[:3]==["v1","terminal-state","live"]:
+                heartbeat_start=time.perf_counter()
                 client_id=parts[3]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 account=data.get("account") or {}
@@ -1510,7 +1511,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
                     "candles_received":len(candles),
-                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles"})
+                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles",
+                    "server_processing_ms":round((time.perf_counter()-heartbeat_start)*1000,1)})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
