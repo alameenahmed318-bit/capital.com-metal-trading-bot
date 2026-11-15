@@ -17,6 +17,7 @@ from telemetry_persistence import queue_closed_deals
 from system_readiness import owner_readiness
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
+from groq_advisor import verify_credentials as verify_groq_credentials
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -1655,6 +1656,10 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("X-Frame-Options","SAMEORIGIN"); self.send_header("Content-Security-Policy","frame-ancestors 'self'"); super().end_headers()
 
 if __name__=="__main__":
+    # Server-side smoke test, read-only, never exposes the API key.
+    if os.getenv("GROQ_VERIFY_ON_STARTUP","false").lower() in ("true","1","yes"):
+        threading.Thread(target=lambda: print("GROQ_SMOKE_STATUS:",verify_groq_credentials(),flush=True),
+                         daemon=True,name="alzool-groq-smoke").start()
     bootstrap_owner()
     port=int(os.getenv("PORT","10000"))
     print("AL-ZOOL connection/licensing service listening on",port,flush=True)
