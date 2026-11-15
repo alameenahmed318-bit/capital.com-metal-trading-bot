@@ -15,9 +15,9 @@ import urllib.request
 
 SERVER = os.getenv("ALZOOL_SERVER_URL", "https://al-zool-gold-sniper.onrender.com").rstrip("/")
 OLLAMA = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-MODEL = os.getenv("ALZOOL_LOCAL_AI_MODEL", "qwen2.5:3b")
+MODEL = os.getenv("ALZOOL_LOCAL_AI_MODEL", "qwen3.5:4b")
 POLL_SECONDS = 2.0
-INFERENCE_TIMEOUT = 8
+INFERENCE_TIMEOUT = 90
 MAX_CONSECUTIVE_FAILURES = 2
 COOLDOWN_SECONDS = 300
 NUM_CTX = 1024
@@ -72,7 +72,8 @@ def ask_qwen(context):
             "model": MODEL,
             "stream": False,
             "format": "json",
-            "keep_alive": "2m",
+            "keep_alive": "30m",
+            "think": False,
             "messages": [{"role": "user", "content": prompt}],
             "options": {
                 "temperature": 0.1,
