@@ -28,6 +28,12 @@ class PrimeNavigationTests(unittest.TestCase):
                 self.assertIn("/"+url,js)
                 self.assertTrue((ROOT/url).is_file())
 
+    def test_embedded_pages_allowed_only_from_same_origin(self):
+        app=(ROOT/"marketplace"/"backend"/"app.py").read_text(encoding="utf-8")
+        self.assertIn('self.send_header("X-Frame-Options","SAMEORIGIN")',app)
+        self.assertIn("frame-ancestors 'self'",app)
+        self.assertNotIn('self.send_header("X-Frame-Options","DENY")',app)
+
     def test_navigation_does_not_modify_execution_settings(self):
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
         self.assertNotIn("/api/auto-trading",js)
