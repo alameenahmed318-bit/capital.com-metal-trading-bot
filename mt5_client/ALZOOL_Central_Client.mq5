@@ -49,7 +49,7 @@ struct StrategyPositionLink
 bool g_online=false;
 bool g_serverTradingEnabled=false;
 datetime g_lastHistoryAttempt=0;
-string g_cachedClosedDealsJson=",\\\"closed_deals\\\":[]";
+string g_cachedClosedDealsJson=",\"closed_deals\":[]";
 ulong g_lastClosedDealsBuildMs=0;
 bool g_closedDealsDirty=true;
 string g_status="بدء الاتصال";
