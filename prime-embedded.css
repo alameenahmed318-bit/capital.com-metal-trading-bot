@@ -141,3 +141,17 @@ button.primary){
  .az-prime-embedded-root :is(.main,.shell>.main,.az-admin-content){padding:12px 8px 24px!important}
  .az-prime-embedded-root :is(.card,.kpi,.panel,.az-admin-performance){padding:14px!important}
 }
+
+/* Profit / loss semantics outrank the generic table text color in PRIME.
+   All tables use the same financial palette; flat results remain neutral. */
+.az-prime-embedded-root :is(.history-table,.lab-table,.op-table,.learn-table,.th-table,.az-recent-table,.card table,.panel table,.az-admin-content table) td.positive,
+.az-prime-embedded-root :is(.history-table,.lab-table,.op-table,.learn-table,.th-table,.az-recent-table,.card table,.panel table,.az-admin-content table) td.pnl-positive,
+.az-prime-embedded-root #netTotal.positive,
+.az-prime-embedded-root #netTotal.pnl-positive{color:#55dab0!important;-webkit-text-fill-color:#55dab0!important;font-weight:700!important}
+.az-prime-embedded-root :is(.history-table,.lab-table,.op-table,.learn-table,.th-table,.az-recent-table,.card table,.panel table,.az-admin-content table) td.negative,
+.az-prime-embedded-root :is(.history-table,.lab-table,.op-table,.learn-table,.th-table,.az-recent-table,.card table,.panel table,.az-admin-content table) td.pnl-negative,
+.az-prime-embedded-root #netTotal.negative,
+.az-prime-embedded-root #netTotal.pnl-negative{color:#ff8d9d!important;-webkit-text-fill-color:#ff8d9d!important;font-weight:700!important}
+.az-prime-embedded-root :is(.history-table,.lab-table,.op-table,.learn-table,.th-table,.az-recent-table,.card table,.panel table,.az-admin-content table) td.neutral,
+.az-prime-embedded-root #netTotal.neutral{color:#d8deeb!important;-webkit-text-fill-color:#d8deeb!important}
+.az-prime-embedded-root :is(.th-table td.positive,.th-table td.negative,.th-table td.neutral){font-variant-numeric:tabular-nums}
