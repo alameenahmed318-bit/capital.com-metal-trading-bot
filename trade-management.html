@@ -78,6 +78,9 @@
     <label for="recoveryLossTrigger">حد تفعيل التعافي — بعملة حساب MT5
      <input id="recoveryLossTrigger" type="number" min="0.01" step="any" inputmode="decimal" lang="en-US" dir="ltr" placeholder="أدخل مبلغًا موجبًا بعملة الحساب">
     </label>
+    <label for="recoveryMaxLot">أقصى لوت مسموح لصفقة التعافي ×3
+     <input id="recoveryMaxLot" type="number" min="0.01" step="0.01" value="0.05" inputmode="decimal" lang="en-US" dir="ltr">
+    </label>
    </div>
    <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">مفعّل افتراضيًا، لكن لن يبدأ قبل تحديد حد الخسارة وحفظه.</span></div>
    <div class="recovery-monitor" aria-live="polite">
@@ -146,7 +149,9 @@
     </div>
    </article>
   </div>
-  <label for="maxTotalLots">أقصى إجمالي لوتات صفقات التعزيز والتبريد</label>
+  <label for="maxPositionsPerDirection">أقصى عدد صفقات لكل اتجاه (بما فيها اليدوية لنفس الذهب)</label>
+  <input id="maxPositionsPerDirection" type="number" min="1" max="20" step="1" value="2" inputmode="numeric" lang="en-US" dir="ltr">
+    <label for="maxTotalLots">أقصى إجمالي لوتات المراكز المفتوحة في الحساب</label>
   <input id="maxTotalLots" type="text" value="0.10" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
   <div class="entry-guard-panel">
    <div class="sl-settings-head"><div><b>حماية توقيت وسعر الدخول</b><small>منع تنفيذ الإشارات القديمة أو الدخول بعد ابتعاد السعر عن نقطة الإشارة</small></div><label class="switch"><input type="checkbox" id="entryGuardEnabled" checked><span></span></label></div>
