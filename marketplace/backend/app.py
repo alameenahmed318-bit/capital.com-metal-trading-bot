@@ -25,6 +25,7 @@ PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onr
 LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1","true","yes","on")
 CONNECTIONS={}
 LICENSE_CACHE={}
+OWNER_TERMINAL_ID_CACHE={}
 TRADE_SETTINGS_CACHE={}
 SETTINGS_REFRESHING=set()
 AI_EVENT_CACHE={}
@@ -170,12 +171,27 @@ def validate_owner_terminal(token):
 
 def validate_license(client_id,token):
     if client_id!="owner":
+        # The owner device previously triggered two Supabase lookups on every
+        # heartbeat, settings poll and decision poll. Cache ONLY the verified
+        # client-id -> owner mapping briefly. The separate owner pairing key is
+        # still validated on every request and retains its own revocation TTL.
         try:
-            owner_rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&select=user_id&limit=1",admin=True)
-            if owner_rows:
-                owner_record=admin_user(owner_rows[0]["user_id"])
-                if (owner_record.get("email") or "").lower()==OWNER_EMAIL:
-                    return validate_owner_terminal(token)
+            now=time.monotonic()
+            with CACHE_LOCK:
+                owner_entry=OWNER_TERMINAL_ID_CACHE.get(client_id)
+            if owner_entry and owner_entry["until"]>now:
+                is_owner=owner_entry["is_owner"]
+            else:
+                owner_rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+
+                    urllib.parse.quote(client_id,safe="")+"&select=user_id&limit=1",admin=True)
+                is_owner=False
+                if owner_rows:
+                    owner_record=admin_user(owner_rows[0]["user_id"])
+                    is_owner=(owner_record.get("email") or "").lower()==OWNER_EMAIL
+                with CACHE_LOCK:
+                    if len(OWNER_TERMINAL_ID_CACHE)>256:OWNER_TERMINAL_ID_CACHE.clear()
+                    OWNER_TERMINAL_ID_CACHE[client_id]={"is_owner":is_owner,"until":now+10}
+            if is_owner:return validate_owner_terminal(token)
         except Exception: return False
     if client_id=="owner": return False
     if not client_id or not token: return False
