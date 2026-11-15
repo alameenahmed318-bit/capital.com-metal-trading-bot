@@ -9,7 +9,7 @@ class PrimeNavigationTests(unittest.TestCase):
         html=(ROOT/"prime.html").read_text(encoding="utf-8")
         css=(ROOT/"prime.css").read_text(encoding="utf-8")
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
-        self.assertIn("/prime.js?v=sudan-20261115-1",html)
+        self.assertIn("/prime.js?v=sudan-20261115-2",html)
         self.assertIn("/prime.css?v=sudan-20261115-1",html)
         self.assertIn('id="primeFrame"',html)
         self.assertIn('id="primeNav"',html)
@@ -18,6 +18,15 @@ class PrimeNavigationTests(unittest.TestCase):
         self.assertIn("--sudan-red",css) if "--sudan-red" in css else self.assertIn("--red:#cf3d4a",css)
         self.assertIn("applyEmbeddedStyle",js)
         self.assertIn("attachInnerLinks",js)
+
+    def test_embedded_modules_receive_prime_design(self):
+        js=(ROOT/"prime.js").read_text(encoding="utf-8")
+        css=(ROOT/"prime-embedded.css").read_text(encoding="utf-8")
+        self.assertIn("az-prime-embedded-root",js)
+        self.assertIn("/prime-embedded.css?v=sudan-20261115-2",js)
+        for selector in (".az-prime-embedded-root",".card",".kpi",".az-admin-content"):
+            self.assertIn(selector,css)
+        self.assertIn("requested.split",js)
 
     def test_existing_connected_modules_remain_accessible(self):
         js=(ROOT/"prime.js").read_text(encoding="utf-8")
