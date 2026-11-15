@@ -36,6 +36,16 @@ def _build_combinations():
 COMBINATIONS=_build_combinations()
 assert len(STRATEGIES)==200 and len({(s["base_kind"],s["gate_kind"]) for s in STRATEGIES})==200
 assert len(COMBINATIONS)==1000 and len({c["members"] for c in COMBINATIONS})==1000
+# Derived once at startup. Previously recomputed 5,000 member counts on
+# every new candle even though combination membership is immutable.
+_MEMBER_FREQUENCY={s["id"]:0 for s in STRATEGIES}
+for _group in COMBINATIONS:
+    for _member in _group["members"]:
+        _MEMBER_FREQUENCY[_member]+=1
+_COMBO_INDEPENDENT_BASE={
+    c["id"]:sum(1/max(1,_MEMBER_FREQUENCY[mid]) for mid in c["members"])/5
+    for c in COMBINATIONS
+}
 
 @lru_cache(maxsize=8192)
 def _ema_cached(values,period):
@@ -239,9 +249,6 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}; cc_weighted={"BUY":0.0,"SELL":0.0,"WAIT":0.0}
     # Repeated members are NOT independent votes. Normalize the entire combination
     # council by the number of appearances of each underlying strategy.
-    member_frequency={s["id"]:0 for s in STRATEGIES}
-    for group in COMBINATIONS:
-        for member_id in group["members"]:member_frequency[member_id]+=1
     for combo in COMBINATIONS:
         combo_weight=max(0.85,min(1.15,float(combination_weights.get(str(combo["id"]),1.0))))
         members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"]) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
@@ -252,7 +259,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
             else:cs,why=win,f"{sum(m['signal']==win for m in members)} من 5 أعضاء يؤيدون الاتجاه"
         # Average inverse-member frequency: even 1000 overlapping groups cannot
         # masquerade as 1000 independent confirmations.
-        independent_weight=combo_weight*sum(1/max(1,member_frequency[mid]) for mid in combo["members"])/5
+        independent_weight=combo_weight*_COMBO_INDEPENDENT_BASE[combo["id"]]
         cc[cs]+=1; cc_weighted[cs]+=independent_weight
         combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
