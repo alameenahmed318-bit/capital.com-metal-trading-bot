@@ -105,19 +105,19 @@ class EntryGateTests(unittest.TestCase):
 
     def test_qwen_vote_survives_same_bar_telemetry_refresh(self):
         advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
-                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+                  "model": "qwen3.5:4b", "received_at_unix": 1000}
         decision = {"bar_time": 12345}
         kept = retain_current_local_ai_advice(advice, decision, 1005)
         self.assertEqual(kept, advice)
 
     def test_qwen_vote_is_cleared_when_new_bar_arrives(self):
         advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
-                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+                  "model": "qwen3.5:4b", "received_at_unix": 1000}
         self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12346}, 1005))
 
     def test_qwen_vote_is_cleared_after_twenty_seconds(self):
         advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
-                  "model": "qwen2.5:3b", "received_at_unix": 1000}
+                  "model": "qwen3.5:4b", "received_at_unix": 1000}
         self.assertIsNone(retain_current_local_ai_advice(advice, {"bar_time": 12345}, 1021))
 
     def test_qwen_vote_with_unknown_model_is_cleared(self):
@@ -129,7 +129,7 @@ class EntryGateTests(unittest.TestCase):
 
     def test_qwen_vote_event_has_deduplicated_bar_key_and_safe_payload(self):
         advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
-                  "model": "qwen2.5:3b", "reason_ar": "اتجاه صاعد"}
+                  "model": "qwen3.5:4b", "reason_ar": "اتجاه صاعد"}
         decision = {"bar_time": 12345, "decision": "BUY", "confidence": 0.72}
         event = build_qwen_vote_event("client-123", advice, decision)
         self.assertEqual(event["event_id"], "qwen:client-123:12345")
@@ -139,7 +139,7 @@ class EntryGateTests(unittest.TestCase):
 
     def test_qwen_vote_event_rejects_wrong_bar_or_model(self):
         advice = {"bar_time": 12345, "direction": "BUY", "confidence": 0.8,
-                  "model": "qwen2.5:3b"}
+                  "model": "qwen3.5:4b"}
         self.assertIsNone(build_qwen_vote_event("client-123", advice, {"bar_time": 12346}))
         advice["model"] = "unknown"
         self.assertIsNone(build_qwen_vote_event("client-123", advice, {"bar_time": 12345}))
