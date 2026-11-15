@@ -3,7 +3,7 @@ import copy
 import math
 import unittest
 from bot_advisors import analyze_advisors, MIN_CANDLES
-from bot_signal_bus import build_bot_messages, update_history
+from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
 
 
 def candles(n=90, drift=0.14):
@@ -66,6 +66,17 @@ class BotAdvisorsTests(unittest.TestCase):
         sells=sum(x["signal"]=="SELL" for x in five)
         expected="BUY" if buys>=3 and sells==0 else "SELL" if sells>=3 and buys==0 else "WAIT"
         self.assertEqual(report["consensus"]["signal"], expected)
+
+    def test_recent_bar_detection_prevents_stale_live_badges(self):
+        now=1800010000
+        self.assertTrue(market_bar_fresh(now-80,"PERIOD_M1",now))
+        self.assertFalse(market_bar_fresh(now-400,"PERIOD_M1",now))
+        self.assertTrue(market_bar_fresh(now-400,"PERIOD_M5",now))
+        self.assertFalse(market_bar_fresh(now-1800,"PERIOD_M5",now))
+        self.assertFalse(market_bar_fresh(now-3600*24,"PERIOD_M1",now))
+        self.assertFalse(market_bar_fresh(now+1000,"PERIOD_M1",now))
+        self.assertFalse(market_bar_fresh(now-80,"BAD_TIMEFRAME",now))
+        self.assertFalse(market_bar_fresh(None,"PERIOD_M1",now))
 
     def test_insufficient_or_corrupted_bars_fail_closed(self):
         for rows in ([], candles(MIN_CANDLES-1), list(reversed(candles())),
