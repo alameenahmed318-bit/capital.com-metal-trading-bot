@@ -159,7 +159,7 @@ async function azRefreshAiCouncil(){
     badge("azCouncilState",null,"WAIT");
     badge("azRiskState",null,"WAIT");
     put("azFastVote","لا توجد بيانات MT5");put("azQwenVote","غير متاح");
-    put("azDeepVote","غير متاح");put("azRiskVote","غير متاح");
+    put("azDeepVote","غير متاح");put("azGroqVote","غير متاح");put("azRiskVote","غير متاح");
     put("azEngineSignal","WAIT");put("azCouncilBarTime","—");
     put("azCouncilReason","الطرفية غير متصلة؛ لا تُعرض موافقة دخول.");
     put("azRiskReason","لا توجد بيانات حساب حديثة للتحقق من المخاطر.");
@@ -178,6 +178,10 @@ async function azRefreshAiCouncil(){
   };
   put("azFastVote",fmtVote("Fast AI"));put("azQwenVote",fmtVote("Qwen"));
   put("azDeepVote",fmtVote("DeepSeek"));
+  const groq=c.groq_advisory||{};
+  const grStatus=String(groq.status||"NOT_CONFIGURED");
+  put("azGroqVote",grStatus+(groq.status==="READY"?" · "+String(groq.direction||"WAIT")+
+    " · "+Math.round(Number(groq.confidence||0)*100)+"%":"")+(groq.reason_ar?" · "+groq.reason_ar:""));
   const allowed=c.approved===true&&risk.approved===true;
   badge("azCouncilState",c.approved===true,c.approved===true?"APPROVED":"WAIT");
   badge("azRiskState",risk.approved===true,risk.approved===true?"PASS":"BLOCK");
@@ -216,7 +220,7 @@ function azDrawClientMiniChart(rows,currency){
 }
 
 const OLLAMA_URL="http://127.0.0.1:11434";
-const OLLAMA_MODEL="qwen2.5:3b";
+const OLLAMA_MODEL="qwen3.5:4b";
 function aiState(message,kind="muted"){const el=$("aiStatus");if(el){el.textContent=message;el.className="state "+kind;}}
 async function checkLocalOllama(){
  try{
@@ -240,7 +244,7 @@ async function runAiAnalysis(){
  $("aiResult").innerHTML="<div class='ai-placeholder'>يتم فحص Ollama وجلب آخر شموع الذهب من MT5…</div>";
  try{
   const ready=await checkLocalOllama();
-  if(!ready)throw new Error("Ollama غير جاهز أو النموذج qwen2.5:3b غير مثبت. شغّل Ollama وتأكد من تثبيت النموذج.");
+  if(!ready)throw new Error("Ollama غير جاهز أو النموذج qwen3.5:4b غير مثبت. شغّل Ollama وتأكد من تثبيت النموذج.");
   const context=await api("/api/market/context");
   if(!Array.isArray(context.candles)||context.candles.length<20)throw new Error("بيانات الشموع غير كافية. افتح شارت الذهب في MT5 وانتظر وصول 20 شمعة مغلقة على الأقل.");
   const compact={
