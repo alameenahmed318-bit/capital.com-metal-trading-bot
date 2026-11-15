@@ -1108,8 +1108,9 @@ bool SendLiveSnapshot()
    body+="]";
 
    ulong historyNow=GetTickCount64();
-   if(g_closedDealsDirty || g_lastClosedDealsBuildMs==0 ||
-      historyNow-g_lastClosedDealsBuildMs>=30000)
+   bool historyRefreshed=(g_closedDealsDirty || g_lastClosedDealsBuildMs==0 ||
+      historyNow-g_lastClosedDealsBuildMs>=30000);
+   if(historyRefreshed)
    {
    // Cache 30-day deal history; avoid re-selecting and scanning it on every live heartbeat.
    string historyJson="";
@@ -1199,7 +1200,10 @@ bool SendLiveSnapshot()
       g_lastClosedDealsBuildMs=historyNow;
       g_closedDealsDirty=false;
    }
-   body+=g_cachedClosedDealsJson;
+   // Only send the complete closed-deal archive on a change or refresh.
+   // Account balance, positions, orders, ticks and candles remain live.
+   body+=historyRefreshed ? g_cachedClosedDealsJson :
+      ",\"closed_deals\":[],\"closed_deals_unchanged\":true";
 
    MqlTick tick;
    bool have_tick=SymbolInfoTick(_Symbol,tick);
@@ -1247,6 +1251,7 @@ bool SendLiveSnapshot()
       g_status="فشل إرسال بيانات الحساب؛ HTTP="+IntegerToString(code)+
                " err="+IntegerToString(GetLastError());
       Print("AL-ZOOL telemetry error: HTTP=",code," body=",StringSubstr(response,0,500));
+      g_closedDealsDirty=true; // Resend history if the previous POST failed.
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
