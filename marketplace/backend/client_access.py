@@ -7,7 +7,7 @@ from urllib.parse import unquote
 PUBLIC_UI_ASSETS=frozenset("""
 index.html prime.html dashboard.html trade-management.html trade-history.html
 ai-analysis.html learning-lab.html backtest-lab.html opportunities.html bots-library.html
-app.js dashboard.js prime.js admin-navigation.js trade-management.js
+app.js dashboard.js prime.js admin-navigation.js trade-management.js owner-strategy-loader.js
 numbers-en.js ui-shell.js
 styles.css admin-theme.css dashboard.css dashboard-skin.css trade-management.css
 prime.css prime-embedded.css ui-shell.css ui-navigation.css alzool-studio.css
