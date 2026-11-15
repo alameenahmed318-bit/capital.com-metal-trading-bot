@@ -18,7 +18,7 @@ input string InpOwnerConnectionId = "";
 input string InpEngineId = "";
 input string InpEngineToken = "";
 input int InpHttpTimeoutMs = 8000;
-input int InpHeartbeatSeconds = 5;
+input int InpHeartbeatSeconds = 3;
 input int InpCandlesToSend = 120;
 input group "إعدادات تنفيذ الدخول المركزي"
 input bool InpEnableCentralTrading = false;
@@ -49,6 +49,9 @@ struct StrategyPositionLink
 bool g_online=false;
 bool g_serverTradingEnabled=false;
 datetime g_lastHistoryAttempt=0;
+string g_cachedClosedDealsJson=",\\\"closed_deals\\\":[]";
+ulong g_lastClosedDealsBuildMs=0;
+bool g_closedDealsDirty=true;
 string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
@@ -1104,7 +1107,12 @@ bool SendLiveSnapshot()
    }
    body+="]";
 
-   // Closed deals for the last 30 days; telemetry only.
+   ulong historyNow=GetTickCount64();
+   if(g_closedDealsDirty || g_lastClosedDealsBuildMs==0 ||
+      historyNow-g_lastClosedDealsBuildMs>=30000)
+   {
+   // Cache 30-day deal history; avoid re-selecting and scanning it on every live heartbeat.
+   string historyJson="";
    datetime history_from=TimeCurrent()-30*86400;
    if(HistorySelect(history_from,TimeCurrent()))
    {
@@ -1140,7 +1148,7 @@ bool SendLiveSnapshot()
          strategy_links[found].strategy_id=strategy_id;
          strategy_links[found].strategy_comment=entry_comment;
       }
-      body+=",\"closed_deals\":[";
+      historyJson+=",\"closed_deals\":[";
       int deals_sent=0;
       int total_deals=HistoryDealsTotal();
       for(int h=total_deals-1;h>=0 && deals_sent<200;h--)
@@ -1150,7 +1158,7 @@ bool SendLiveSnapshot()
          long entry=HistoryDealGetInteger(deal_ticket,DEAL_ENTRY);
          if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) continue;
          string deal_symbol=HistoryDealGetString(deal_ticket,DEAL_SYMBOL);
-         if(deals_sent>0) body+=",";
+         if(deals_sent>0) historyJson+=",";
          long closed_position_id=HistoryDealGetInteger(deal_ticket,DEAL_POSITION_ID);
          int linked_strategy_id=0;
          string linked_strategy_comment="";
@@ -1163,29 +1171,35 @@ bool SendLiveSnapshot()
                break;
             }
          }
-         body+="{\"ticket\":\""+(string)deal_ticket+"\"";
-         body+=",\"position_id\":\""+(string)closed_position_id+"\"";
-         body+=",\"strategy_id\":"+IntegerToString(linked_strategy_id);
-         body+=",\"strategy_comment\":\""+JsonEscape(linked_strategy_comment)+"\"";
-         body+=",\"symbol\":\""+JsonEscape(deal_symbol)+"\"";
-         body+=",\"type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
-         body+=",\"deal_type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
-         body+=",\"entry\":"+IntegerToString((int)entry);
-         body+=",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_REASON));
-         body+=",\"volume\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_VOLUME),2);
-         body+=",\"price\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PRICE),(int)SymbolInfoInteger(deal_symbol,SYMBOL_DIGITS));
-         body+=",\"profit\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PROFIT));
-         body+=",\"commission\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_COMMISSION));
-         body+=",\"swap\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_SWAP));
-         body+=",\"fee\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_FEE));
-         body+=",\"magic\":\""+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_MAGIC))+"\"";
-         body+=",\"comment\":\""+JsonEscape(HistoryDealGetString(deal_ticket,DEAL_COMMENT))+"\"";
-         body+=",\"time\":"+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_TIME))+"}";
+         historyJson+="{\"ticket\":\""+(string)deal_ticket+"\"";
+         historyJson+=",\"position_id\":\""+(string)closed_position_id+"\"";
+         historyJson+=",\"strategy_id\":"+IntegerToString(linked_strategy_id);
+         historyJson+=",\"strategy_comment\":\""+JsonEscape(linked_strategy_comment)+"\"";
+         historyJson+=",\"symbol\":\""+JsonEscape(deal_symbol)+"\"";
+         historyJson+=",\"type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
+         historyJson+=",\"deal_type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
+         historyJson+=",\"entry\":"+IntegerToString((int)entry);
+         historyJson+=",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_REASON));
+         historyJson+=",\"volume\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_VOLUME),2);
+         historyJson+=",\"price\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PRICE),(int)SymbolInfoInteger(deal_symbol,SYMBOL_DIGITS));
+         historyJson+=",\"profit\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PROFIT));
+         historyJson+=",\"commission\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_COMMISSION));
+         historyJson+=",\"swap\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_SWAP));
+         historyJson+=",\"fee\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_FEE));
+         historyJson+=",\"magic\":\""+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_MAGIC))+"\"";
+         historyJson+=",\"comment\":\""+JsonEscape(HistoryDealGetString(deal_ticket,DEAL_COMMENT))+"\"";
+         historyJson+=",\"time\":"+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_TIME))+"}";
          deals_sent++;
       }
-      body+="]";
+      historyJson+="]";
    }
-   else body+=",\"closed_deals\":[]";
+   else historyJson+=",\"closed_deals\":[]";
+
+      g_cachedClosedDealsJson=historyJson;
+      g_lastClosedDealsBuildMs=historyNow;
+      g_closedDealsDirty=false;
+   }
+   body+=g_cachedClosedDealsJson;
 
    MqlTick tick;
    bool have_tick=SymbolInfoTick(_Symbol,tick);
@@ -1241,7 +1255,7 @@ bool SendLiveSnapshot()
 
 int OnInit()
 {
-   if(InpHeartbeatSeconds<5 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
+   if(InpHeartbeatSeconds<2 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
       InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5 ||
       InpTradeLots<=0 || InpMaxCentralActionLots<=0 || InpMaxCentralTotalLots<=0 ||
       InpMaxOpenPositions<1 || InpATRPeriod<2 ||
@@ -1297,17 +1311,19 @@ void OnTimer()
       PollTradeSettings();
       g_lastSettingsPollMs=now;
    }
-   if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
-   {
-      PollCentralDecision();
-      g_lastDecisionPollMs=now;
-   }
+   // Publish fresh prices and closed-bar data BEFORE asking for a decision.
+   // Previously the decision poll ran first and often saw the previous heartbeat.
    if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
    {
       bool sent=SendLiveSnapshot();
-      g_online=sent; // A failed heartbeat must not leave the terminal showing online.
+      g_online=sent;
       if(!sent) g_serverTradingEnabled=false;
-      g_lastSnapshotMs=now;
+      g_lastSnapshotMs=GetTickCount64();
+   }
+   if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
+   {
+      PollCentralDecision();
+      g_lastDecisionPollMs=GetTickCount64();
    }
    if(InpEnableCentralPositionManagement &&
       (g_lastActionPollMs==0 || now-g_lastActionPollMs>=3000))
@@ -1327,6 +1343,11 @@ void OnTimer()
            " / group ",(g_groupCloseEnabled?"ON":"OFF"),
            "\nPositions: ",IntegerToString(PositionsTotal()),
            " | Pending: ",IntegerToString(OrdersTotal()));
+}
+void OnTrade()
+{
+   // A newly closed deal should appear immediately in the next live snapshot.
+   g_closedDealsDirty=true;
 }
 void OnTick()
 {
