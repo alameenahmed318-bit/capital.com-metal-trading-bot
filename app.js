@@ -1,13 +1,46 @@
-let sb=null,session=null,latestCredentials=null,supabaseReady=false;
+let sb=null,session=null,latestCredentials=null,supabaseReady=false,resetFlow=false;
 const $=id=>document.getElementById(id);
 async function api(path,method="GET",body=null){const headers={"Content-Type":"application/json"};if(session?.access_token)headers.Authorization="Bearer "+session.access_token;const r=await fetch(path,{method,headers,body:body?JSON.stringify(body):null});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"تعذر تنفيذ الطلب");return d}
-function show(id){["loginView","adminView","clientView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
+function show(id){["loginView","adminView","clientView","resetPasswordView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 function msg(id,value){$(id).textContent=value||""}
-async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
-async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl();await refreshAdminOverview();await refreshOwnerReadiness()}else{location.href="/dashboard.html";return}}
+async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const isRecoveryLink=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery";sb.auth.onAuthStateChange((event,newSession)=>{if(event==="PASSWORD_RECOVERY"){resetFlow=true;session=newSession;show("resetPasswordView");}});const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(resetFlow||isRecoveryLink)show("resetPasswordView");else if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
+async function route(){const a=await api("/api/access/check");if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl();await refreshAdminOverview();await refreshOwnerReadiness()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true);return}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("loginError","");if(!supabaseReady||!sb?.auth){msg("loginError","تسجيل الدخول متوقف لأن إعدادات Supabase لم تكتمل بعد. راجع رسالة إعداد الخادم أعلاه.");return;}try{const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)throw error;session=data.session;await route()}catch(x){msg("loginError",x.message||"تعذر تسجيل الدخول")}});
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
+$("resetPasswordForm").addEventListener("submit",async e=>{
+ e.preventDefault();msg("resetPasswordError","");
+ const password=$("newAccountPassword").value,confirmPassword=$("confirmAccountPassword").value;
+ if(password.length<12||password!==confirmPassword){msg("resetPasswordError","كلمة المرور يجب أن تتكون من 12 خانة على الأقل وأن تتطابق الخانتان.");return;}
+ try{
+  if(!sb?.auth)throw Error("جلسة استعادة الحساب غير متاحة");
+  const {error}=await sb.auth.updateUser({password});if(error)throw error;
+  resetFlow=false;window.history.replaceState(null,"",location.pathname+location.search);
+  $("newAccountPassword").value="";$("confirmAccountPassword").value="";
+  session=(await sb.auth.getSession()).data.session;
+  await route();
+ }catch(error){msg("resetPasswordError",error.message||"تعذّر حفظ كلمة المرور")}
+});
+function downloadClientZip(packageData){
+ if(!packageData?.package_base64||packageData.compiled_ex5_included!==false)throw Error("حزمة العميل غير صالحة");
+ const bytes=Uint8Array.from(atob(packageData.package_base64),c=>c.charCodeAt(0));
+ const blob=new Blob([bytes],{type:"application/zip"});
+ const url=URL.createObjectURL(blob),link=document.createElement("a");
+ link.href=url;link.download=packageData.filename||"AL-ZOOL-Client-MT5-Setup.zip";
+ document.body.append(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$("clientPackageDownload").addEventListener("click",async()=>{
+ if(!confirm("تنزيل حزمة جديدة سيبطل رمز الاتصال السابق. هل تريد المتابعة؟"))return;
+ const button=$("clientPackageDownload");button.disabled=true;
+ msg("clientPackageStatus","جارٍ إنشاء حزمة اتصال آمنة...");
+ try{
+  const data=await api("/api/client/onboarding-package","POST",{});
+  downloadClientZip(data.onboarding);
+  msg("clientPackageStatus","تم تنزيل ملف ZIP. مهم: أعد تحميل إعدادات MT5 الجديدة؛ الرمز السابق أصبح غير صالح.");
+ }catch(error){msg("clientPackageStatus",error.message||"تعذر إنشاء الحزمة")}
+ finally{button.disabled=false;}
+});
 async function refreshClients(){const d=await api("/api/admin/clients");azSetAdminClients(d.clients);$("clientCount").textContent=d.clients.length;$("activeCount").textContent=d.clients.filter(x=>x.active).length;const host=$("clientsList");host.replaceChildren();if(!d.clients.length){host.textContent="لا يوجد عملاء حالياً.";return}for(const c of d.clients){const card=document.createElement("article");card.className="client-row";const info=document.createElement("div");const name=document.createElement("b");name.textContent=c.name||c.email;const meta=document.createElement("small");meta.textContent=c.email+" • "+(c.licensed?"ترخيص موجود":"لا يوجد ترخيص");info.append(name,meta);const actions=document.createElement("div");actions.className="actions";const toggle=document.createElement("button");toggle.className="btn small "+(c.active?"ghost":"secondary");toggle.textContent=c.active?"إيقاف":"تفعيل";toggle.onclick=async()=>{try{await api("/api/admin/clients/"+c.id,"PATCH",{active:!c.active});await refreshClients()}catch(e){alert(e.message)}};const del=document.createElement("button");del.className="btn danger small";del.textContent="حذف";del.onclick=async()=>{if(!confirm("حذف حساب هذا العميل؟"))return;try{await api("/api/admin/clients/"+c.id,"DELETE");await refreshClients()}catch(e){alert(e.message)}};actions.append(toggle,del);card.append(info,actions);host.append(card)}}
 // Dark admin dashboard — real account/client data only; never generates fake P/L.
 let azAdminRecent=[],azAdminTrades=[],azAdminCurrency="",azAdminRange=7;
@@ -151,8 +184,8 @@ $("ownerPairDownload").addEventListener("click",()=>{
   a.download="AL-ZOOL-Owner-MT5-Pairing.json";a.click();URL.revokeObjectURL(a.href);
 });
 $("refreshBtn").addEventListener("click",async()=>{await refreshClients();await refreshConnection()});
-$("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url};$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
-$("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials)return;const blob=new Blob([JSON.stringify(latestCredentials,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="AL-ZOOL-MT5-Connection-Credentials.json";a.click();URL.revokeObjectURL(a.href)});
+$("createForm").addEventListener("submit",async e=>{e.preventDefault();msg("createError","");$("credentialBox").classList.add("hidden");try{const d=await api("/api/admin/clients","POST",{name:$("clientName").value.trim(),email:$("clientEmail").value.trim()});latestCredentials={email:d.email,password:d.password,client_id:d.engine.client_id,client_token:d.engine.client_token,server_url:d.engine_server_url,onboarding:d.onboarding};$("welcomeDeliveryStatus").textContent=d.welcome_email_status==="REQUEST_ACCEPTED"?"طلب إرسال رسالة إعداد كلمة المرور تم قبوله من Supabase. تأكد من وصول البريد وتفعيل رابط العودة.":"تعذّر إرسال رسالة إعداد كلمة المرور؛ نزّل الحزمة وأوصل معلومات الدخول إلى العميل عبر قناة آمنة أو فعّل بريد Supabase.";$("newEmail").textContent=d.email;$("newPassword").textContent=d.password;$("newClientId").textContent=d.engine.client_id;$("newClientToken").textContent=d.engine.client_token;$("newServerUrl").textContent=d.engine_server_url;$("credentialBox").classList.remove("hidden");$("createForm").reset();await refreshClients()}catch(x){msg("createError",x.message)}});
+$("downloadCredentials").addEventListener("click",()=>{if(!latestCredentials?.onboarding){alert("حزمة العميل غير متاحة");return;}try{downloadClientZip(latestCredentials.onboarding)}catch(e){alert(e.message)}});
 async function refreshResearch(){
   const target=$("researchSummary");if(!target)return;
   try{
