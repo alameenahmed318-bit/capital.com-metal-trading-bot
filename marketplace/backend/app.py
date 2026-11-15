@@ -162,6 +162,9 @@ def issue_license(user_id):
         sb("PATCH","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe=""),row,admin=True)
     else:
         sb("POST","/rest/v1/alzool_engine_clients",row,admin=True)
+    # Rotated credentials must invalidate any cached prior token immediately.
+    with CACHE_LOCK:
+        LICENSE_CACHE.pop(client_id,None)
     return {"client_id":client_id,"client_token":token,"expires_at":expires}
 
 def issue_owner_pairing(user):
