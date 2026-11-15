@@ -34,6 +34,8 @@ async function loadCloseSettings(){
  $("coolingLot").value=Number(pm.cooling_lot??0.01);
  $("coolingDistance").value=Number(pm.cooling_distance_points??100);
  $("maxTotalLots").value=Number(pm.max_total_lots??0.10);
+ $("maxPositionsPerDirection").value=Number(pm.max_positions_per_direction??2);
+ $("recoveryMaxLot").value=Number(pm.recovery_max_lot??0.05);
  $("recoveryEnabled").checked=!!pm.recovery_enabled;
  $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
  $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
@@ -96,7 +98,8 @@ async function savePositionManagement(){
   cooling_enabled:$("coolingEnabled").checked,cooling_max:Number($("coolingMax").value),
   cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:Number($("coolingMaxLot").value),
   cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value),
-  max_total_lots:Number($("maxTotalLots").value)};
+  max_total_lots:Number($("maxTotalLots").value),
+  max_positions_per_direction:Number($("maxPositionsPerDirection").value)};
  if(!Number.isInteger(cfg.entry_max_delay_bars)||cfg.entry_max_delay_bars<1||cfg.entry_max_delay_bars>10){$("pmMessage").textContent="أقصى تأخير يجب أن يكون من 1 إلى 10 شموع.";return;}
  if(!Number.isFinite(cfg.entry_max_deviation_atr)||cfg.entry_max_deviation_atr<0.05||cfg.entry_max_deviation_atr>20){$("pmMessage").textContent="مضاعف ATR يجب أن يكون بين 0.05 و20.";return;}
  for(const key of ["addon_max","cooling_max"]){
@@ -107,6 +110,9 @@ async function savePositionManagement(){
  }
  for(const key of ["addon_multiplier","cooling_multiplier"]){
   if(!Number.isFinite(cfg[key])||cfg[key]<1||cfg[key]>3){$("pmMessage").textContent="المضاعف يجب أن يكون بين 1.0 و3.0.";return;}
+ }
+ if(!Number.isInteger(cfg.max_positions_per_direction)||cfg.max_positions_per_direction<1||cfg.max_positions_per_direction>20){
+  $("pmMessage").textContent="حدد عدداً صحيحاً من 1 إلى 20 صفقة لكل اتجاه.";return;
  }
  if(!Number.isFinite(cfg.max_total_lots)||cfg.max_total_lots<=0||cfg.max_total_lots>100){
   $("pmMessage").textContent="أدخل سقفاً موجباً لإجمالي اللوتات.";return;
@@ -158,6 +164,10 @@ async function saveRecoverySettings(){
  const raw=$("recoveryLossTrigger").value.trim();
  const trigger=Number(raw.replace(/,/g,""));
  const enabled=$("recoveryEnabled").checked;
+ const recoveryMaxLot=Number($("recoveryMaxLot").value);
+ if(!Number.isFinite(recoveryMaxLot)||recoveryMaxLot<0.01||recoveryMaxLot>100){
+  $("recoveryMessage").textContent="حدد سقف لوت التعافي بين 0.01 و100.";return;
+ }
  if(enabled&&(!raw||!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
   $("recoveryMessage").textContent="أدخل مبلغ خسارة موجبًا بعملة حساب MT5 (أكبر من صفر) ثم احفظ.";
   $("recoveryLossTrigger").focus();return;
@@ -173,9 +183,10 @@ async function saveRecoverySettings(){
    single_profit_target:Number($("singleTarget").value),
    group_enabled:$("groupEnabled").checked,
    group_profit_target:Number($("groupTarget").value),
-   position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,recovery_user_configured:true}
+   position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,
+    recovery_max_lot:recoveryMaxLot,recovery_user_configured:true}
   })});
-  $("recoveryMessage").textContent=enabled?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم حفظ التعافي بوضع الإيقاف.";
+  $("recoveryMessage").textContent=enabled?"تم حفظ شروط التعافي. التنفيذ يتطلب تصريح المجلس وتفعيل إدارة المراكز المركزية وMT5 بعد اختبار Demo.":"تم حفظ التعافي بوضع الإيقاف.";
  }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveRecoverySettings").disabled=false;}
 }
