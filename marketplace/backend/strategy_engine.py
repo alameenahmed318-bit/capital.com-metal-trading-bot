@@ -210,6 +210,11 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         votes.append({"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason})
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
     byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}; cc_weighted={"BUY":0.0,"SELL":0.0,"WAIT":0.0}
+    # Repeated members are NOT independent votes. Normalize the entire combination
+    # council by the number of appearances of each underlying strategy.
+    member_frequency={s["id"]:0 for s in STRATEGIES}
+    for group in COMBINATIONS:
+        for member_id in group["members"]:member_frequency[member_id]+=1
     for combo in COMBINATIONS:
         combo_weight=max(0.85,min(1.15,float(combination_weights.get(str(combo["id"]),1.0))))
         members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"]) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
@@ -218,7 +223,11 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
             win="BUY" if directional["BUY"]>directional["SELL"] else "SELL" if directional["SELL"]>directional["BUY"] else "WAIT"; conf=max(directional.values())/total
             if win=="WAIT" or conf<.55:cs,why="WAIT","تضارب الأصوات أو توافق أقل من 55%"
             else:cs,why=win,f"{sum(m['signal']==win for m in members)} من 5 أعضاء يؤيدون الاتجاه"
-        cc[cs]+=1; cc_weighted[cs]+=combo_weight; combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"reason":why})
+        # Average inverse-member frequency: even 1000 overlapping groups cannot
+        # masquerade as 1000 independent confirmations.
+        independent_weight=combo_weight*sum(1/max(1,member_frequency[mid]) for mid in combo["members"])/5
+        cc[cs]+=1; cc_weighted[cs]+=independent_weight
+        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -254,4 +263,5 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     selected_combo_id=int(winning_combos[0]["id"]) if winning_combos else 0
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+    return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
+        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
