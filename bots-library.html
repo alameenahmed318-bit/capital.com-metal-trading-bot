@@ -26,21 +26,24 @@ a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:au
 <body>
 <main class="wrap">
 <section class="hero" aria-labelledby="pageTitle">
- <div class="hero-head"><span class="eyebrow">AL-ZOOL PRIME / GLOBAL BOT INTELLIGENCE</span><span class="capsule"><span class="flag" aria-hidden="true">🇸🇩</span> مكتبة بحثية مستقلة</span></div>
- <h1 id="pageTitle">مكتبة البوتات العالمية</h1>
- <p>مرجع منظم لدراسة بوتات الذهب الأعلى تقييماً ضمن قائمة مختارة من سوق MQL5، واستخلاص أفكار عامة لتحسين AL-ZOOL. هذه ليست بوتات مثبتة أو موصولة بمحرك التداول.</p>
+ <div class="hero-head"><span class="eyebrow">AL-ZOOL PRIME / GLOBAL BOT INTELLIGENCE</span><span class="capsule"><span class="flag" aria-hidden="true">🇸🇩</span> 5 بوتات تحليل نشطة عند اتصال MT5</span></div>
+ <h1 id="pageTitle">مركز البوتات التحليلية</h1>
+ <p>خمسة محركات تحليل أصلية تعمل على شموع الذهب المغلقة من MT5 وترسل رسائل مستقلة إلى العقل المركزي. وتحتها مكتبة خارجية للمقارنة فقط.</p>
 </section>
 <section class="stats" aria-label="ملخص المكتبة">
- <div class="stat"><strong dir="ltr">05</strong><small>بوتات مرجعية موثّقة المصدر</small></div>
- <div class="stat"><strong dir="ltr">03</strong><small>أنماط استراتيجية ندرسها</small></div>
- <div class="stat"><strong>بحث فقط</strong><small>لا أوامر تداول ولا تعديل للإعدادات</small></div>
+ <div class="stat"><strong dir="ltr">05</strong><small>بوتات تحليل مستقلة بالقواعد</small></div>
+ <div class="stat"><strong dir="ltr">03</strong><small>محاور تطوير وتحسين</small></div>
+ <div class="stat"><strong>بحث فقط</strong><small>تحليل وإرسال بيانات بدون أوامر تداول</small></div>
 </section>
 <section id="activeAdvisors" aria-labelledby="activeHeading">
- <div class="section-head"><div><span class="eyebrow">REAL MT5 CLOSED-CANDLE ANALYSIS</span><h2 id="activeHeading">المساعدون الخمسة — تحليل فعلي</h2><p>يحللون آخر شموع الذهب المغلقة من حساب MT5 الخاص بك، ولا ينفذون أي أمر تداول.</p></div>
+ <div class="section-head"><div><span class="eyebrow">REAL MT5 CLOSED-CANDLE ANALYSIS</span><h2 id="activeHeading">البوتات الخمسة — إشارات مباشرة</h2><p>كل بوت يفحص شموع MT5 بنفسه ويرسل تقرير BUY / SELL / WAIT مع السبب والمؤشرات للمحرك المركزي عند إغلاق شمعة جديدة.</p></div>
  <div class="live-toolbar"><span id="liveStatus" class="live-status" role="status">جارٍ التحقق من اتصال المحرك...</span><button type="button" id="refreshAdvisors">تحديث التحليل</button></div></div>
  <div class="live-brief" id="liveBrief">بانتظار بيانات شموع MT5 المرخّصة. لا توجد توصيات افتراضية.</div>
  <div class="live-grid" id="liveAdvisors"></div>
- <p class="live-detail">هذه خوارزميات تحليل أصلية مبنية داخل AL-ZOOL، وليست البرامج التجارية المعروضة أدناه. يُحسب رأي المساعد متعدد الاستراتيجيات من أصوات الأربعة الآخرين ولا يُعد صوتاً مستقلاً.</p>
+ <div class="live-brief" id="signalBusStatus">حالة إرسال الرسائل: بانتظار أول شمعة مغلقة من MT5.</div>
+ <div class="live-detail" style="margin:12px 0 7px;font-size:14px;font-weight:700">سجل آخر رسائل البوتات إلى المحرك</div>
+ <div class="live-grid" id="botSignalHistory" aria-live="polite"></div>
+ <p class="live-detail">هذه خمسة محركات تحليل أصلية مستقلة بالقواعد، وليست نسخاً من برامج MQL5 التجارية المعروضة أدناه. الرأي الجماعي يُحسب من الأصوات الخمسة؛ والثقة ليست احتمال ربح.</p>
 </section>
 <section aria-labelledby="botsHeading">
  <div class="section-head"><div><h2 id="botsHeading">البوتات المرجعية</h2><p>التقييمات المنشورة على MQL5 وقت المراجعة: 15 نوفمبر 2026 · قد تتغير</p></div>
@@ -95,7 +98,7 @@ a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:au
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (()=>{"use strict";
-const state=document.getElementById("liveStatus"),brief=document.getElementById("liveBrief"),grid=document.getElementById("liveAdvisors"),refresh=document.getElementById("refreshAdvisors");
+const state=document.getElementById("liveStatus"),brief=document.getElementById("liveBrief"),grid=document.getElementById("liveAdvisors"),refresh=document.getElementById("refreshAdvisors"),bus=document.getElementById("signalBusStatus"),history=document.getElementById("botSignalHistory");
 let busy=false,token=null,sessionClient=null;
 const translate={BUY:"BUY · شراء",SELL:"SELL · بيع",WAIT:"WAIT · انتظار"};
 const safeSignal=s=>s==="BUY"?"BUY":s==="SELL"?"SELL":"WAIT";
@@ -114,6 +117,20 @@ function draw(resp){
  const bar=resp.bar_time?new Date(Number(resp.bar_time)*1000).toLocaleString("en-GB",{timeZone:"Asia/Dubai",hour12:false}):"غير متاح";
  brief.textContent="قرار المحرك المركزي: "+translate[central]+" · رأي المساعدين: "+translate[consensus]+" · شمعة مغلقة: "+bar+" (الإمارات) · التصويت استشاري فقط";
  state.textContent=resp.status==="READY"?"التحليل نشط · "+(resp.timeframe||"MT5"):"بيانات الشموع غير كافية";
+ const feed=resp.signal_bus||{},journal=Array.isArray(resp.signal_journal)?resp.signal_journal:[];
+ bus.textContent="وصلت إشارات البوتات إلى المحرك المركزي · آخر دفعة مؤهلة للإرسال إلى سجل Supabase: "+Number(feed.last_bar_dispatch_count||0)+" من 5 · لا تتوفر هنا شهادة تأكيد حفظ السجل.";
+ history.replaceChildren();
+ for(const e of journal.slice(-10).reverse()){
+  const payload=e.payload||{},item=document.createElement("div");item.className="live-card";
+  item.style.minHeight="98px";
+  const title=document.createElement("strong");title.textContent=String(payload.bot_name||payload.bot_id||"بوت");
+  const pill=document.createElement("span");const signal=safeSignal(payload.direction);pill.textContent=translate[signal];pill.className="live-pill "+signal.toLowerCase();
+  const note=document.createElement("p");note.textContent=String(payload.reason_ar||"لا توجد تفاصيل");
+  const line=document.createElement("div");line.className="live-detail";
+  line.textContent="شمعة "+(payload.bar_time?new Date(Number(payload.bar_time)*1000).toLocaleString("en-GB",{timeZone:"Asia/Dubai",hour12:false}):"-")+" · "+String(payload.timeframe||"MT5");
+  item.append(title,pill,note,line);history.append(item);
+ }
+ if(!journal.length)history.textContent="لا يوجد إرسال مسجّل منذ إعادة تشغيل المحرك، أو لم تصل شمعة جديدة بعد.";
 }
 async function getSession(){
  const cfg=await fetch("/api/config",{cache:"no-store",signal:AbortSignal.timeout(8000)}).then(r=>r.json());
@@ -134,7 +151,7 @@ async function run(){
   const payload=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(payload.error||"تعذر استلام التحليل");
   draw(payload);
- }catch(error){grid.replaceChildren();brief.textContent="لا توجد توصية جديدة؛ لا نعرض إشارات عند انقطاع البيانات أو انتهاء الجلسة.";state.textContent=error.message||"تعذر الاتصال";
+ }catch(error){grid.replaceChildren();history.replaceChildren();bus.textContent="لم نستلم رسائل حديثة؛ الربط أو الجلسة بحاجة للتحقق.";brief.textContent="لا توجد توصية جديدة؛ لا نعرض إشارات عند انقطاع البيانات أو انتهاء الجلسة.";state.textContent=error.message||"تعذر الاتصال";
  }finally{busy=false;refresh.disabled=false;}
 }
 refresh.addEventListener("click",run);
