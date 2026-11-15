@@ -179,8 +179,9 @@ def verify_credentials():
         vote = _parse_response(result)
         return "READY" if vote["status"] == "READY" else "INVALID_RESPONSE"
     except urllib.error.HTTPError as exc:
-        return "AUTH_ERROR" if exc.code in (401, 403) else (
-            "RATE_LIMITED" if exc.code == 429 else "HTTP_ERROR"
-        )
+        return ("UNAUTHORIZED_401" if exc.code == 401 else
+                "FORBIDDEN_403" if exc.code == 403 else
+                "RATE_LIMITED_429" if exc.code == 429 else
+                f"HTTP_{exc.code}")
     except (ValueError, TypeError, TimeoutError, OSError, urllib.error.URLError):
         return "UNAVAILABLE"
