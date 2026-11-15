@@ -50,6 +50,16 @@
 <article class="learn-stat"><small>رابحة / خاسرة من الصفقات المتعلمة</small><strong id="liveWinLoss">—</strong></article>
 <article class="learn-stat"><small>استراتيجيات تأثرت أوزانها (آخر 30 يومًا)</small><strong id="liveUpdated">—</strong></article>
 </section>
+<section class="learn-card" id="strategyAuditPanel">
+ <h2>تدقيق تصويت 200 استراتيجية و1000 تركيبة</h2>
+ <p class="learn-note">فحص حسابات حقيقية على شموع تاريخية مغلقة؛ تقسيم زمني تدريب 60% ثم تحقق 40%. لا يعتبر قياس ربح، ولا يُفعّل التداول أو يغير أوزان الاستراتيجيات. التركيبات المتداخلة تخضع لتصحيح تكرار الأعضاء داخل المحرك المركزي.</p>
+ <div class="learn-actions"><button class="refresh" id="strategyAuditBtn" type="button">تدقيق الاستراتيجيات والتركيبات</button></div>
+ <div class="learn-note" id="strategyAuditStatus" role="status">اضغط زر التدقيق لقراءة البيانات التاريخية الفعلية للمالك.</div>
+ <h3>الاستراتيجيات حسب بيانات التحقق</h3>
+ <div class="learn-table-wrap" id="strategyAuditStrategies">لم يبدأ التدقيق</div>
+ <h3>التركيبات حسب بيانات التحقق</h3>
+ <div class="learn-table-wrap" id="strategyAuditCombinations">لم يبدأ التدقيق</div>
+</section>
 <section class="learn-card"><h2>ذاكرة التعلم من صفقات MT5 المباشرة</h2>
 <div class="learn-note" id="liveStatus">بانتظار بيانات الصفقات المغلقة من MT5.</div>
 <div class="learn-table-wrap" id="liveStrategies"><div class="learn-note">لا توجد عينات تعلم مباشرة حتى الآن.</div></div></section>
@@ -114,6 +124,29 @@ async function load(){
   $("learningStatus").textContent="تم تحميل "+runs.length+" جولة؛ تمت مقارنة "+profileData.comparableRuns+" جولة متوافقة مع آخر اختبار (نفس الرمز والفريم والعملة واللوت والتكاليف وإعدادات وقف الخسارة والهدف والتريلينج ومدة الصفقة). تُستخدم نتائج التحقق فقط لبناء سياسة التكيّف. عدد النماذج التي تستوفي شروط كبح الإشارة: "+p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length+".";
  }catch(e){$("serviceState").textContent="تعذر تحميل الذاكرة";$("learningStatus").textContent=e.message}
 }
+function renderStrategyAudit(rows){
+ const out=rows||[];
+ if(!out.length)return "<div class='learn-note'>لا تتوفر بيانات كافية للترتيب حتى الآن.</div>";
+ return "<table class='learn-table'><thead><tr><th>الرقم</th><th>الاسم</th><th>إشارات التدريب</th><th>إشارات التحقق</th><th>صحة اتجاه التحقق</th><th>الدليل</th></tr></thead><tbody>"+
+ out.map(x=>"<tr><td>"+Number(x.id)+"</td><td>"+esc(x.name)+"</td><td>"+Number(x.training_signals)+"</td><td>"+Number(x.validation_signals)+"</td><td>"+(x.validation_hit_rate===null?"—":(100*x.validation_hit_rate).toFixed(1)+"%")+"</td><td>"+(x.evidence==="DIRECTIONAL_CANDIDATE"?"مرشح للدراسة":x.evidence==="WEAK_VALIDATION"?"تحقق ضعيف":"عينة غير كافية")+"</td></tr>").join("")+"</tbody></table>";
+}
+async function runStrategyAudit(){
+ const button=$("strategyAuditBtn"),status=$("strategyAuditStatus");
+ button.disabled=true;status.textContent="جارٍ تدقيق الإشارات على الشموع المحفوظة...";
+ try{
+  if(!accessToken)throw Error("يجب تسجيل الدخول بحساب المالك");
+  const d=await api("/api/ai/strategy-audit");
+  $("strategyAuditStrategies").innerHTML=renderStrategyAudit(d.strategy_leaders);
+  $("strategyAuditCombinations").innerHTML=renderStrategyAudit(d.combination_leaders);
+  status.textContent="الحالة: "+(d.status==="DIAGNOSTIC_ONLY"?"تدقيق تشخيصي مكتمل":"بيانات غير كافية")+
+     " | الشموع: "+Number(d.candles||0)+" | تحقق: "+Number(d.validation_points||0)+
+     " | مرشحو الاستراتيجيات: "+Number(d.strategy_candidates||0)+
+     " | مرشحو التركيبات: "+Number(d.combination_candidates||0)+
+     " | تداول تلقائي: لم يتغير. صحة الاتجاه ليست نسبة ربح.";
+ }catch(e){status.textContent="تعذر التدقيق: "+(e.message||"خطأ غير معروف")}
+ finally{button.disabled=false}
+}
+$("strategyAuditBtn").addEventListener("click",runStrategyAudit);
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});load();
 </script><script src="/numbers-en.js?v=3"></script>
 <script src="/ui-shell.js?v=studio-20261114-1" defer></script>
