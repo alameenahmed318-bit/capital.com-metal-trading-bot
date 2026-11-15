@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
-from strategy_engine import STRATEGIES,COMBINATIONS,evaluate_market
+from strategy_engine import STRATEGIES,COMBINATIONS,evaluate_market,wilder_adx
 from strategy_audit import audit_strategies
 
 def candles(n):
@@ -32,6 +32,14 @@ class StrategyVotingTests(unittest.TestCase):
         self.assertLess(d["effective_combination_votes"],231)
         self.assertTrue(all("reason" in v and v["signal"] in ("BUY","SELL","WAIT") for v in d["votes"]))
         self.assertTrue(all(v["effective_weight"]>0 for v in d["combination_votes"]))
+    def test_wilder_adx_trend_and_flat_market(self):
+        rising=[{"open":2500+i,"high":2501+i,"low":2499+i,"close":2500+i}
+                for i in range(80)]
+        flat=[{"open":2500,"high":2500,"low":2500,"close":2500}
+                for i in range(80)]
+        self.assertGreater(wilder_adx(rising),80)
+        self.assertEqual(wilder_adx(flat),0.0)
+        self.assertEqual(wilder_adx(rising[:15]),0.0)
     def test_insufficient_audit_never_claims_a_profit(self):
         result=audit_strategies(candles(70))
         self.assertEqual(result["status"],"INSUFFICIENT_HISTORY")
