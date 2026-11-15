@@ -11,6 +11,7 @@ import os
 import threading
 import time
 import urllib.request
+import groq_advisor
 
 _LOCK=threading.RLock()
 _VOTES={}
@@ -175,6 +176,15 @@ def _worker(client_id,bar,decision,account):
             item.update({"qwen":qwen,"deepseek":deepseek,"status":"READY",
                          "updated_at":time.time()})
 
+def _groq_worker(client_id,bar,decision):
+    # Optional reviewer: no trading permissions and no effect on three-vote approval.
+    result=groq_advisor.review(decision)
+    with _LOCK:
+        current=_VOTES.get(client_id)
+        if current and current.get("bar_time")==bar:
+            current["groq_advisory"]=result
+            current["updated_at"]=time.time()
+
 def update_council(client_id,decision,account):
     """Schedule at most once per closed bar, without blocking MT5 telemetry."""
     bar=int(_num(decision.get("bar_time")))
@@ -187,18 +197,28 @@ def update_council(client_id,decision,account):
             _VOTES.pop(oldest,None)
         remote_qwen=bool(_QWEN_URL)
         remote_deepseek=bool(_DEEPSEEK_KEY or _DEEPSEEK_LOCAL_URL)
+        groq_ready=groq_advisor.configured()
+        groq_candidate=groq_advisor.is_candidate(decision)
         _VOTES[client_id]={"bar_time":bar,
             "status":"PENDING" if remote_qwen or remote_deepseek else "AWAITING_LOCAL_VOTES",
             "fast":fast_ai(decision,account),
             "bots":(decision.get("advisory_bots") or {}),
             "qwen":_vote("Qwen","PENDING" if remote_qwen else "NOT_CONFIGURED"),
             "deepseek":_vote("DeepSeek","PENDING" if remote_deepseek else "NOT_CONFIGURED"),
+            "groq_advisory":{"model":"GPT-OSS 120B",
+                             "status":"PENDING" if groq_ready and groq_candidate else
+                                      ("SKIPPED" if groq_ready else "NOT_CONFIGURED"),
+                             "direction":"WAIT","confidence":0,"can_execute":False,
+                             "role":"advisory_only"},
             "updated_at":time.time()}
     # On owner laptops the local relay supplies both model votes. Never
     # allocate a useless cloud worker when neither remote model is configured.
     if remote_qwen or remote_deepseek:
         threading.Thread(target=_worker,args=(client_id,bar,dict(decision),dict(account)),
                          daemon=True,name="alzool-council").start()
+    if groq_ready and groq_candidate:
+        threading.Thread(target=_groq_worker,args=(client_id,bar,dict(decision)),
+                         daemon=True,name="alzool-groq-advisor").start()
 
 def accept_local_model_vote(client_id,advice,decision):
     """Accept owner-terminal authenticated local Qwen or DeepSeek vote."""
@@ -259,6 +279,8 @@ def council_result(client_id,decision):
     return {"approved":approved,"status":signal if approved else "WAIT",
             "reason_ar":reason,
             "votes":{voter.get("model","unknown"):voter for voter in votes},
+            "groq_advisory":v.get("groq_advisory",{"status":"NOT_CONFIGURED",
+                 "direction":"WAIT","role":"advisory_only","can_execute":False}),
             "bot_inputs":v.get("bots") if isinstance(v.get("bots"),dict) else {},
             "bot_inputs_role":"read_only_evidence_to_model_council",
             "bar_time":bar}
