@@ -41,8 +41,6 @@ a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:au
  <div class="live-brief" id="liveBrief">بانتظار بيانات شموع MT5 المرخّصة. لا توجد توصيات افتراضية.</div>
  <div class="live-grid" id="liveAdvisors"></div>
  <div class="live-brief" id="signalBusStatus">حالة إرسال الرسائل: بانتظار أول شمعة مغلقة من MT5.</div>
- <div class="live-detail" style="margin:12px 0 7px;font-size:14px;font-weight:700">سجل آخر رسائل البوتات إلى المحرك</div>
- <div class="live-grid" id="botSignalHistory" aria-live="polite"></div>
  <p class="live-detail">هذه خمسة محركات تحليل أصلية مستقلة بالقواعد، وليست نسخاً من برامج MQL5 التجارية المعروضة أدناه. الرأي الجماعي يُحسب من الأصوات الخمسة؛ والثقة ليست احتمال ربح.</p>
 </section>
 <section aria-labelledby="botsHeading">
@@ -98,12 +96,14 @@ a{color:inherit}button,input{font:inherit}.wrap{width:min(1240px,100%);margin:au
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (()=>{"use strict";
-const state=document.getElementById("liveStatus"),brief=document.getElementById("liveBrief"),grid=document.getElementById("liveAdvisors"),refresh=document.getElementById("refreshAdvisors"),bus=document.getElementById("signalBusStatus"),history=document.getElementById("botSignalHistory");
+const state=document.getElementById("liveStatus"),brief=document.getElementById("liveBrief"),grid=document.getElementById("liveAdvisors"),refresh=document.getElementById("refreshAdvisors"),bus=document.getElementById("signalBusStatus");
 let busy=false,token=null,sessionClient=null;
 const translate={BUY:"BUY · شراء",SELL:"SELL · بيع",WAIT:"WAIT · انتظار"};
 const safeSignal=s=>s==="BUY"?"BUY":s==="SELL"?"SELL":"WAIT";
 function draw(resp){
  const votes=Array.isArray(resp.advisors)?resp.advisors:[];
+ const journal=Array.isArray(resp.signal_journal)?resp.signal_journal:[];
+ const activeBar=Number(resp.bar_time||0);
  grid.replaceChildren();
  for(const item of votes){
   const article=document.createElement("article");article.className="live-card";
@@ -111,26 +111,19 @@ function draw(resp){
   const signal=safeSignal(item.signal);const pill=document.createElement("span");pill.className="live-pill "+signal.toLowerCase();pill.textContent=translate[signal];
   const p=document.createElement("p");p.textContent=item.reason_ar||"لا توجد تفاصيل";
   const details=document.createElement("div");details.className="live-detail";details.textContent=signal==="WAIT"?"بدون ترجيح":"ثقة القواعد: "+(Number(item.confidence||0)*100).toFixed(1)+"% · ليست احتمالية ربح";
-  article.append(title,pill,p,details);grid.append(article);
+  const sent=journal.some(e=>e&&e.payload&&String(e.payload.bot_id)===String(item.id)&&Number(e.payload.bar_time)===activeBar);
+  const delivery=document.createElement("div");delivery.className="live-detail";
+  delivery.textContent=sent?"✓ أُرسلت نتيجة هذه الشمعة للمحرك":"لم تُرصد رسالة لهذه الشمعة في السجل";
+  article.append(title,pill,p,details,delivery);grid.append(article);
  }
  const central=safeSignal(resp.central_decision),consensus=safeSignal(resp.consensus?.signal);
  const bar=resp.bar_time?new Date(Number(resp.bar_time)*1000).toLocaleString("en-GB",{timeZone:"Asia/Dubai",hour12:false}):"غير متاح";
  brief.textContent="قرار المحرك المركزي: "+translate[central]+" · رأي المساعدين: "+translate[consensus]+" · شمعة مغلقة: "+bar+" (الإمارات) · التصويت استشاري فقط";
  state.textContent=resp.status==="READY"?"التحليل نشط · "+(resp.timeframe||"MT5"):"بيانات الشموع غير كافية";
- const feed=resp.signal_bus||{},journal=Array.isArray(resp.signal_journal)?resp.signal_journal:[];
- bus.textContent="وصلت إشارات البوتات إلى المحرك المركزي · آخر دفعة مؤهلة للإرسال إلى سجل Supabase: "+Number(feed.last_bar_dispatch_count||0)+" من 5 · لا تتوفر هنا شهادة تأكيد حفظ السجل.";
- history.replaceChildren();
- for(const e of journal.slice(-10).reverse()){
-  const payload=e.payload||{},item=document.createElement("div");item.className="live-card";
-  item.style.minHeight="98px";
-  const title=document.createElement("strong");title.textContent=String(payload.bot_name||payload.bot_id||"بوت");
-  const pill=document.createElement("span");const signal=safeSignal(payload.direction);pill.textContent=translate[signal];pill.className="live-pill "+signal.toLowerCase();
-  const note=document.createElement("p");note.textContent=String(payload.reason_ar||"لا توجد تفاصيل");
-  const line=document.createElement("div");line.className="live-detail";
-  line.textContent="شمعة "+(payload.bar_time?new Date(Number(payload.bar_time)*1000).toLocaleString("en-GB",{timeZone:"Asia/Dubai",hour12:false}):"-")+" · "+String(payload.timeframe||"MT5");
-  item.append(title,pill,note,line);history.append(item);
- }
- if(!journal.length)history.textContent="لا يوجد إرسال مسجّل منذ إعادة تشغيل المحرك، أو لم تصل شمعة جديدة بعد.";
+ const feed=resp.signal_bus||{};
+ const sentCount=votes.filter(item=>journal.some(e=>e&&e.payload&&String(e.payload.bot_id)===String(item.id)&&Number(e.payload.bar_time)===activeBar)).length;
+ bus.textContent="ملخص إرسال الشمعة الحالية: "+sentCount+" من "+votes.length+" تقارير مسجلة في المحرك · "+Number(feed.last_bar_dispatch_count||0)+" مؤهلة للإرسال إلى Supabase (الحفظ غير مؤكد).";
+
 }
 async function getSession(){
  const cfg=await fetch("/api/config",{cache:"no-store",signal:AbortSignal.timeout(8000)}).then(r=>r.json());
@@ -151,7 +144,7 @@ async function run(){
   const payload=await response.json().catch(()=>({}));
   if(!response.ok)throw Error(payload.error||"تعذر استلام التحليل");
   draw(payload);
- }catch(error){grid.replaceChildren();history.replaceChildren();bus.textContent="لم نستلم رسائل حديثة؛ الربط أو الجلسة بحاجة للتحقق.";brief.textContent="لا توجد توصية جديدة؛ لا نعرض إشارات عند انقطاع البيانات أو انتهاء الجلسة.";state.textContent=error.message||"تعذر الاتصال";
+ }catch(error){grid.replaceChildren();bus.textContent="لم نستلم رسائل حديثة؛ الربط أو الجلسة بحاجة للتحقق.";brief.textContent="لا توجد توصية جديدة؛ لا نعرض إشارات عند انقطاع البيانات أو انتهاء الجلسة.";state.textContent=error.message||"تعذر الاتصال";
  }finally{busy=false;refresh.disabled=false;}
 }
 refresh.addEventListener("click",run);
