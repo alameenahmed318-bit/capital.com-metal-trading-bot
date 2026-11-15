@@ -167,6 +167,27 @@ def review(decision):
         return {**base, "status": "UNAVAILABLE", "reason_ar": "Groq غير متاح حالياً"}
 
 
+def _safe_http_status(exc):
+    """Report only well-known Groq error codes, never response text or secrets."""
+    if exc.code == 403:
+        try:
+            data = json.loads(exc.read(2048).decode("utf-8"))
+            error = data.get("error") if isinstance(data, dict) else None
+            code = error.get("code") if isinstance(error, dict) else None
+            if code == "model_permission_blocked_org":
+                return "MODEL_BLOCKED_ORG_403"
+            if code == "model_permission_blocked_project":
+                return "MODEL_BLOCKED_PROJECT_403"
+        except (ValueError, TypeError, UnicodeDecodeError, OSError, AttributeError):
+            pass
+        return "FORBIDDEN_403_OTHER"
+    if exc.code == 401:
+        return "UNAUTHORIZED_401"
+    if exc.code == 429:
+        return "RATE_LIMITED_429"
+    return f"HTTP_{exc.code}"
+
+
 def verify_credentials():
     """One small smoke inference on deployment; never uses account/market data."""
     if not configured():
@@ -179,9 +200,6 @@ def verify_credentials():
         vote = _parse_response(result)
         return "READY" if vote["status"] == "READY" else "INVALID_RESPONSE"
     except urllib.error.HTTPError as exc:
-        return ("UNAUTHORIZED_401" if exc.code == 401 else
-                "FORBIDDEN_403" if exc.code == 403 else
-                "RATE_LIMITED_429" if exc.code == 429 else
-                f"HTTP_{exc.code}")
+        return _safe_http_status(exc)
     except (ValueError, TypeError, TimeoutError, OSError, urllib.error.URLError):
         return "UNAVAILABLE"
