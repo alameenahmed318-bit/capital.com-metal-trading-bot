@@ -544,6 +544,8 @@ class Handler(SimpleHTTPRequestHandler):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
                 return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+            if not terminal_is_owner(client_id):
+                return self.send_json(403,{"error":"واجهة النماذج المحلية للمالك فقط"})
             item=CONNECTIONS.get(client_id)
             if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                 return self.send_json(409,{"error":"بيانات MT5 غير حديثة"})
@@ -866,7 +868,7 @@ class Handler(SimpleHTTPRequestHandler):
             queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
             output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
-            return self.send_json(200,{"signal":output_signal,
+            full_decision={"signal":output_signal,
                 "confidence":confidence,"reason_ar":(decision.get("reason_ar","بانتظار اكتمال بيانات التحليل") if ready else gate.get("reason_ar","تم رفض الدخول بواسطة المجلس أو الحماية")),
                 "decision_reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
@@ -881,7 +883,9 @@ class Handler(SimpleHTTPRequestHandler):
                 "direction_limit":direction_limit,
                 "local_ai_required":LOCAL_AI_REQUIRED,
                 "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
-                "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")})
+                "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")}
+            return self.send_json(200,full_decision if terminal_is_owner(client_id)
+                                  else minimal_terminal_decision(full_decision))
         if path=="/api/market/context":
             try:
                 import time
@@ -1200,7 +1204,16 @@ class Handler(SimpleHTTPRequestHandler):
                 else:
                     item=CONNECTIONS.get((license_for_user(u["id"]) or {}).get("client_id",""))
                 
-                return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
+                connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
+                if (u.get("email") or "").lower()!=OWNER_EMAIL:
+                    a=(item or {}).get("account") or {}
+                    safe_account={key:a.get(key) for key in
+                                  ("login","server","balance","equity","profit","free_margin","currency")}
+                    status={"account":safe_account,"symbol":(item or {}).get("symbol"),
+                            "timeframe":(item or {}).get("timeframe"),
+                            "last_seen":(item or {}).get("last_seen")}
+                    return self.send_json(200,{"connected":connected,"connection":status if item else None})
+                return self.send_json(200,{"connected":connected,
                                            "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
             except Exception as e: return self.send_json(403,{"error":str(e)[:180]})
         if not public_static(path):
@@ -1236,6 +1249,8 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
                     return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not terminal_is_owner(client_id):
+                    return self.send_json(403,{"error":"تصويت النماذج المحلية للمالك فقط"})
                 item=CONNECTIONS.get(client_id)
                 if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                     return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
