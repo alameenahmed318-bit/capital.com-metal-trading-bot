@@ -100,3 +100,10 @@
  .az-owner-shortcuts>b{flex:0 0 auto}
  .az-owner-shortcuts>a{flex:0 0 auto}
 }
+
+/* Focused trading-page workspaces: show one task instead of stacked settings */
+.az-focus-page .main .az-focus-section[hidden]{display:none!important}
+.az-focus-page .main .az-old-section-nav{display:none!important}
+.az-show-all{font:700 11px Cairo,Arial,sans-serif;cursor:pointer;border:1px solid #8263ae;border-radius:9px;background:#312448;color:#f4e5ff;min-height:30px;padding:5px 11px}
+.az-show-all:hover,.az-show-all.selected{background:#65439e;color:#fff}
+.az-focus-page .az-page-shortcuts{position:relative}
