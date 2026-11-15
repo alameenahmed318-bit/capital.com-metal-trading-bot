@@ -603,12 +603,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self))
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                is_owner=(u.get("email") or "").lower()==OWNER_EMAIL
-                if is_owner:
-                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                identity=license_for_user(u["id"])
+                client_id=(identity or {}).get("client_id","") if not (identity or {}).get("revoked") else ""
                 if not client_id:
                     return self.send_json(409,{"error":"لا يوجد سجل تاريخي محفوظ لهذا الحساب بعد. حدّث عميل MT5 لإرسال التاريخ."})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -819,9 +815,6 @@ class Handler(SimpleHTTPRequestHandler):
                 history_records=0
                 history_error=""
                 try:
-                    if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                        latest=sb("GET","/rest/v1/alzool_engine_closed_deals?select=client_id&order=deal_time.desc&limit=1",admin=True)
-                        if latest: client_id=latest[0].get("client_id","")
                     if client_id:
                         cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
                         stored=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
@@ -915,9 +908,6 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 lic=license_for_user(u["id"])
                 client_id=(lic or {}).get("client_id","")
-                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                    latest=sb("GET","/rest/v1/alzool_engine_closed_deals?select=client_id&order=deal_time.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
                 if not client_id: return self.send_json(200,{"trades":[],"count":0,"currency":""})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 days=int(finite_number((params.get("days") or ["30"])[0],30))
