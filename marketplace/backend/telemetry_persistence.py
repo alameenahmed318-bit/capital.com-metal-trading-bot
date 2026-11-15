@@ -41,9 +41,9 @@ def queue_closed_deals(client_id,deals,sb):
             if len(_STATE)>=_MAX_CLIENTS:
                 # Refuse to start unbounded worker threads if many tenants arrive.
                 return False
-            state={"saved":None,"pending":None,"running":False}
+            state={"saved":None,"pending":None,"inflight":None,"running":False}
             _STATE[client_id]=state
-        if fingerprint==state["saved"]:return False
+        if fingerprint==state["saved"] or fingerprint==state["inflight"]:return False
         already_pending=bool(state["pending"] and state["pending"][0]==fingerprint)
         if not already_pending:
             state["pending"]=(fingerprint,rows)
@@ -62,6 +62,7 @@ def _worker(client_id,sb):
                 state["running"]=False
                 return
             state["pending"]=None
+            state["inflight"]=job[0]
         fingerprint,rows=job
         try:
             sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
@@ -74,9 +75,11 @@ def _worker(client_id,sb):
                 if state["pending"] is None:
                     state["pending"]=(fingerprint,rows)
                 state["running"]=False
+                state["inflight"]=None
             return
         with _LOCK:
             state=_STATE[client_id]
             state["saved"]=fingerprint
+            state["inflight"]=None
             if state["pending"] and state["pending"][0]==fingerprint:
                 state["pending"]=None
