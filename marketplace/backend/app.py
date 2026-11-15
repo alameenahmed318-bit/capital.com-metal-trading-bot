@@ -661,14 +661,10 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self))
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
-                    if not client_id:
-                        latest_run=sb("GET","/rest/v1/alzool_engine_learning_runs?select=client_id&order=created_at.desc&limit=1",admin=True)
-                        client_id=latest_run[0].get("client_id","") if latest_run else ""
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                # Never select the latest customer's candles or learning run
+                # for an owner. The authenticated identity owns exactly one ID.
+                lic=license_for_user(u["id"])
+                client_id=lic.get("client_id","") if lic and not lic.get("revoked") else ""
                 if not client_id: return self.send_json(200,{"runs":[],"count":0})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 limit=max(1,min(100,int(finite_number((params.get("limit") or ["30"])[0],30))))
@@ -1270,6 +1266,18 @@ class Handler(SimpleHTTPRequestHandler):
                 if not 0.01<=max_total_lots<=100:
                     return self.send_json(400,{"error":"سقف إجمالي اللوتات يجب أن يكون بين 0.01 و100"})
                 clean_pm["max_total_lots"]=max_total_lots
+                # Preserve security-critical settings across ordinary form saves.
+                # Never allow a frontend to silently enable sensitive actions.
+                clean_pm["central_actions_enabled"]=prior_pm.get("central_actions_enabled") is True
+                for key,default,low,high in (
+                    ("max_drawdown_pct",5.0,0.1,100.0),
+                    ("max_positions",10,1,100),
+                    ("max_positions_per_direction",2,1,20),
+                    ("recovery_max_lot",0.05,0.01,100.0)):
+                    value=finite_number(pm.get(key,prior_pm.get(key,default)),default)
+                    if not low<=value<=high:
+                        return self.send_json(400,{"error":"حد المخاطر "+key+" غير صالح"})
+                    clean_pm[key]=int(value) if key in ("max_positions","max_positions_per_direction") else value
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
                      "group_profit_target":group_target,"stop_loss_enabled":stop_loss_enabled,
@@ -1286,14 +1294,10 @@ class Handler(SimpleHTTPRequestHandler):
             if path=="/api/backtest/learning":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
-                    if not client_id:
-                        latest_run=sb("GET","/rest/v1/alzool_engine_learning_runs?select=client_id&order=created_at.desc&limit=1",admin=True)
-                        client_id=latest_run[0].get("client_id","") if latest_run else ""
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                # Never select the latest customer's candles or learning run
+                # for an owner. The authenticated identity owns exactly one ID.
+                lic=license_for_user(u["id"])
+                client_id=lic.get("client_id","") if lic and not lic.get("revoked") else ""
                 if not client_id: return self.send_json(409,{"error":"لا يوجد ترخيص مرتبط لحفظ ذاكرة التعلم"})
                 run=data.get("run") if isinstance(data.get("run"),dict) else {}
                 run_key=str(run.get("run_key") or "")[:80]
