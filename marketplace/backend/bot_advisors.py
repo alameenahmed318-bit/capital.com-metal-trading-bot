@@ -1,4 +1,4 @@
-"""Five read-only technical advisors for AL-ZOOL closed MT5 gold candles.
+"""Five independent read-only analytical bots for AL-ZOOL closed MT5 gold candles.
 
 These are ORIGINAL rule-based implementations of common public trading ideas,
 NOT the code, learned weights, or proprietary signals of commercial MQL5 EAs.
@@ -77,7 +77,7 @@ def analyze_advisors(closed_candles):
     """Pure, deterministic advisors; expects oldest-first CLOSED candles only.
 
     A malformed/insufficient series never creates a directional signal.
-    The ensemble is a fifth *derived viewpoint*, not independent corroboration.
+    Each bot has its own indicator conditions; the consensus is calculated separately.
     """
     rows = _validate(closed_candles)
     if rows is None:
@@ -153,23 +153,41 @@ def analyze_advisors(closed_candles):
     else:
         breakout = _result("breakout","WAIT",0,"لا يوجد اختراق مؤكد بالإغلاق خارج نطاق 20 شمعة سابقة.",breakout_ev)
 
-    # 5. Multi-factor view, deliberately derived from the four preceding voices.
-    first = [adaptive, selective, scalp, breakout]
-    buys = sum(x["signal"] == "BUY" for x in first)
-    sells = sum(x["signal"] == "SELL" for x in first)
-    if buys >= 2 and sells == 0:
-        ensemble = _result("ensemble","BUY",.57 + .04*buys,
-                           f"{buys} من 4 أساليب أصلية تميل للشراء دون معارضة اتجاهية.",{**evidence,"buy_votes":buys,"sell_votes":sells})
-    elif sells >= 2 and buys == 0:
-        ensemble = _result("ensemble","SELL",.57 + .04*sells,
-                           f"{sells} من 4 أساليب أصلية تميل للبيع دون معارضة اتجاهية.",{**evidence,"buy_votes":buys,"sell_votes":sells})
+    # 5. Independent multi-factor bot: independently computes momentum, trend,
+    # volatility, location and volume. It does NOT reuse the previous four votes.
+    change5 = (last["close"] - closes[-6]) / max(atr, 1e-9)
+    ma20 = sum(closes[-20:]) / 20
+    sigma20 = (sum((x - ma20)**2 for x in closes[-20:]) / 20)**0.5
+    bb_z = (last["close"] - ma20) / max(sigma20,1e-9)
+    macd_now = _ema(closes,12) - _ema(closes,26)
+    macd_prev = _ema(closes[:-1],12) - _ema(closes[:-1],26)
+    trend_vote = 1 if e21 > e55 else -1 if e21 < e55 else 0
+    momentum_vote = 1 if change5 > .75 else -1 if change5 < -.75 else 0
+    macd_vote = 1 if macd_now > macd_prev and macd_now > 0 else -1 if macd_now < macd_prev and macd_now < 0 else 0
+    location_vote = 1 if 0.4 < bb_z < 2.4 else -1 if -2.4 < bb_z < -0.4 else 0
+    score = trend_vote + momentum_vote + macd_vote + location_vote
+    multi_ev = {**evidence,"momentum5_atr":round(change5,2),
+                "bollinger_z20":round(bb_z,2),"factor_score":score,
+                "macd_delta":round(macd_now-macd_prev,6)}
+    if atr <= 0 or atr_ratio > 2.2 or volume_ratio < .65:
+        ensemble = _result("ensemble","WAIT",0,"حالة التقلب أو حجم التداول غير مناسبة لاستراتيجية العوامل المتعددة.",multi_ev)
+    elif score >= 3 and rsi < 78:
+        ensemble = _result("ensemble","BUY",.60+.05*(score-2),
+                           f"توافق {score} نقاط من مؤشرات الزخم والاتجاه وموقع السعر.",multi_ev)
+    elif score <= -3 and rsi > 22:
+        ensemble = _result("ensemble","SELL",.60+.05*(abs(score)-2),
+                           f"اتفاق {abs(score)} نقاط هبوط من مؤشرات الزخم والاتجاه وموقع السعر.",multi_ev)
     else:
-        ensemble = _result("ensemble","WAIT",0,
-                           "الأساليب غير متفقة أو التأييد غير كافٍ؛ لا ترجّح صفقة.",
-                           {**evidence,"buy_votes":buys,"sell_votes":sells})
-    advisors = [*first, ensemble]
+        ensemble = _result("ensemble","WAIT",0,"العوامل المستقلة متعارضة أو الزخم غير كافٍ.",multi_ev)
+
+    advisors = [adaptive, selective, scalp, breakout, ensemble]
+    buys = sum(x["signal"] == "BUY" for x in advisors)
+    sells = sum(x["signal"] == "SELL" for x in advisors)
+    consensus_signal = ("BUY" if buys >= 3 and sells == 0 else
+                        "SELL" if sells >= 3 and buys == 0 else "WAIT")
     return {"status":"READY","symbol_hint":"XAUUSD","bar_time":last["time"],"last_close":last["close"],
             "candle_count":len(rows),"advisors":advisors,
-            "consensus":{"signal":ensemble["signal"],"agreeing":max(buys,sells),
-                         "active":buys+sells,"method":"four_independent_rule_sets_fifth_derived_advisory_only_no_execution"},
-            "reason_ar":"هذه آراء من شموع MT5 المغلقة؛ لا تُصدر تصريح تداول ولا تتصل ببوتات MQL5 التجارية."}
+            "consensus":{"signal":consensus_signal,"agreeing":max(buys,sells),
+                         "buy":buys,"sell":sells,"active":buys+sells,
+                         "method":"five_separate_rule_based_analysis_engines_no_execution"},
+            "reason_ar":"خمسة محركات تحليل أصيلة مستقلة بالقواعد تتلقى شموع MT5 وتنتج إشارات مفسرة؛ لا تفتح صفقات."}
