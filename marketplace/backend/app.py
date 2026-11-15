@@ -496,6 +496,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "strategy_id":int(finite_number(decision.get("strategy_id"))),
                 "entry_reference_price":finite_number(decision.get("entry_reference_price")),
                 "atr":finite_number(context.get("atr")),
+                "advisory_bots_consensus":(decision.get("advisory_bots") or {}).get("consensus",{}),
+                "advisory_bots":(decision.get("advisory_bots") or {}).get("advisors",[]),
                 "family_votes":decision.get("family_votes") or {},
                 "combination_summary":decision.get("combination_summary") or {},
                 "last_seen":item.get("last_seen")})
@@ -548,7 +550,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if not str(item.get("symbol","")).upper().startswith("XAUUSD"):
                     return self.send_json(409,{"error":"مساعدو المكتبة مخصصون حالياً لشارت الذهب XAUUSD.","connected":True})
                 # A chronological list of CLOSED candles only, not the forming bar.
-                analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
+                current_decision=item.get("strategy_decision") or {}
+                analysis=current_decision.get("advisory_bots")
+                if not isinstance(analysis,dict) or int(finite_number(analysis.get("bar_time",0)))!=int(finite_number((item.get("closed_candles") or [{}])[0].get("time",0))):
+                    analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
                 central=(item.get("strategy_decision") or {}).get("decision","WAIT")
                 result={**analysis,"connected":True,
                     "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
@@ -1533,6 +1538,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
                                 "bar_time":bar_time,
+                                "advisory_bots":analyze_advisors(list(reversed(candles))),
                                 "generated_at":now.isoformat(),
                                 "execution_ready":False
                             }
