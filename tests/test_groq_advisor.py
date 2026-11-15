@@ -101,7 +101,7 @@ class GroqAdvisoryTests(unittest.TestCase):
         examples = [
             ("model_permission_blocked_org", "MODEL_BLOCKED_ORG_403"),
             ("model_permission_blocked_project", "MODEL_BLOCKED_PROJECT_403"),
-            ("unexpected_reason", "FORBIDDEN_403_OTHER"),
+            ("unexpected_reason", "GROQ_JSON_ERROR_403"),
         ]
         for code, expected in examples:
             with self.subTest(code=code):
@@ -109,6 +109,15 @@ class GroqAdvisoryTests(unittest.TestCase):
                 err = urllib.error.HTTPError("https://api.groq.com",403,"Forbidden",{},io.BytesIO(body))
                 with patch.object(g,"KEY","test-only"), patch.object(g,"_call_groq",side_effect=err):
                     self.assertEqual(g.verify_credentials(),expected)
+        for label, payload, headers in (
+            ("HTML_EDGE_BLOCK_403", b"<!doctype html><html>Forbidden</html>", {"Content-Type": "text/html"}),
+            ("GEO_RESTRICTION_403", json.dumps({"error":{"message":"Region not supported"}}).encode(), {}),
+            ("GROQ_PERMISSIONS_ERROR_403", json.dumps({"error":{"type":"permissions_error"}}).encode(), {}),
+        ):
+            with self.subTest(label=label):
+                err=urllib.error.HTTPError("https://api.groq.com",403,"Forbidden",headers,io.BytesIO(payload))
+                with patch.object(g,"KEY","test-only"), patch.object(g,"_call_groq",side_effect=err):
+                    self.assertEqual(g.verify_credentials(),label)
         err = urllib.error.HTTPError("https://api.groq.com",401,"Unauthorized",{},io.BytesIO(b"{}"))
         with patch.object(g,"KEY","test-only"), patch.object(g,"_call_groq",side_effect=err):
             self.assertEqual(g.verify_credentials(),"UNAUTHORIZED_401")
