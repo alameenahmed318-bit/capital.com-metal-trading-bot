@@ -645,6 +645,26 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,result)
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception: return self.send_json(502,{"error":"تعذر إكمال التحليل الاستشاري"})
+        if path=="/api/client/basic-settings":
+            try:
+                u=current_user(token_of(self))
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    return self.send_json(403,{"error":"إعدادات العميل فقط"})
+                if banned(admin_user(u["id"])):
+                    return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"):
+                    return self.send_json(403,{"error":"اتصال العميل غير مرخص"})
+                if datetime.fromisoformat(str(lic["expires_at"]).replace("Z","+00:00"))<=datetime.now(timezone.utc):
+                    return self.send_json(403,{"error":"انتهت صلاحية الاتصال"})
+                settings=get_trade_settings(lic["client_id"]) or {}
+                return self.send_json(200,{"settings":basic_settings(settings),
+                    "trading_enabled":bool(settings.get("trading_enabled")),
+                    "server_managed_ai":True,"advanced_settings_editable":False})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except (ValueError,KeyError,TypeError):
+                return self.send_json(403,{"error":"سجل الترخيص غير صالح"})
+            except Exception:return self.send_json(503,{"error":"تعذّر تحميل إعدادات العميل"})
         if path=="/api/auto-trading":
             try:
                 u=current_user(token_of(self))
@@ -1310,6 +1330,53 @@ class Handler(SimpleHTTPRequestHandler):
                        batch,admin=True,prefer="resolution=merge-duplicates")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
+            if path=="/api/client/basic-settings":
+                u=current_user(token)
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    return self.send_json(403,{"error":"إعدادات العميل فقط"})
+                if banned(admin_user(u["id"])):
+                    return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"):
+                    return self.send_json(403,{"error":"اتصال العميل غير مرخص"})
+                try:
+                    if datetime.fromisoformat(str(lic["expires_at"]).replace("Z","+00:00"))<=datetime.now(timezone.utc):
+                        return self.send_json(403,{"error":"انتهت صلاحية الاتصال"})
+                except (KeyError,ValueError,TypeError):
+                    return self.send_json(403,{"error":"سجل الترخيص غير صالح"})
+                allowed={"single_enabled","single_profit_target","group_enabled",
+                         "group_profit_target","stop_loss_enabled","stop_loss_mode","stop_loss_value"}
+                if not isinstance(data,dict) or not data or set(data)-allowed:
+                    return self.send_json(400,{"error":"لا يسمح بتعديل إعدادات AI أو الاستراتيجيات أو أي إعدادات متقدمة"})
+                query="/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(lic["client_id"],safe="")
+                stored=sb("GET",query+"&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
+                prior=stored[0] if stored else get_trade_settings(lic["client_id"]) or {}
+                fields=dict(basic_settings(prior))
+                fields.update(data)
+                for key in ("single_enabled","group_enabled","stop_loss_enabled"):
+                    if not isinstance(fields.get(key),bool):
+                        return self.send_json(400,{"error":"قيمة التفعيل غير صحيحة"})
+                for key in ("single_profit_target","group_profit_target","stop_loss_value"):
+                    value=fields.get(key)
+                    if isinstance(value,bool) or not isinstance(value,(int,float)):
+                        return self.send_json(400,{"error":"القيم يجب أن تكون أرقاماً إنجليزية موجبة"})
+                    value=float(value)
+                    if not math.isfinite(value) or value<=0 or value>100000:
+                        return self.send_json(400,{"error":"قيمة الهدف أو وقف الخسارة خارج الحد"})
+                    fields[key]=value
+                if fields.get("stop_loss_mode") not in ("ATR","POINTS"):
+                    return self.send_json(400,{"error":"نوع وقف الخسارة غير صحيح"})
+                # Do not copy any client-provided position-management fields.
+                # Preserve owner's strategy/AI/risk settings exactly as stored.
+                pm=stored[0].get("position_management") if stored else prior.get("position_management")
+                row={**fields,"client_id":lic["client_id"],
+                     "position_management":pm if isinstance(pm,dict) else {},
+                     "updated_at":datetime.now(timezone.utc).isoformat()}
+                sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",
+                   row,admin=True,prefer="resolution=merge-duplicates,return=representation")
+                TRADE_SETTINGS_CACHE.pop(lic["client_id"],None)
+                return self.send_json(200,{"saved":True,"settings":basic_settings(row),
+                    "advanced_settings_unchanged":True})
             if path=="/api/auto-trading":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
