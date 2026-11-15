@@ -3,6 +3,7 @@ import copy
 import math
 import unittest
 from bot_advisors import analyze_advisors, MIN_CANDLES
+from bot_signal_bus import build_bot_messages, update_history
 
 
 def candles(n=90, drift=0.14):
@@ -33,13 +34,38 @@ class BotAdvisorsTests(unittest.TestCase):
         self.assertEqual(data, before)
         self.assertEqual(result["bar_time"], data[-1]["time"])
         self.assertEqual(result["consensus"]["method"],
-                         "four_independent_rule_sets_fifth_derived_advisory_only_no_execution")
+                         "five_separate_rule_based_analysis_engines_no_execution")
         for item in result["advisors"]:
             self.assertIn(item["signal"], ("BUY","SELL","WAIT"))
             self.assertTrue(0.0 <= item["confidence"] <= .85)
             self.assertTrue(item["reason_ar"])
             self.assertNotIn("execute", item)
             self.assertNotIn("order", item)
+
+    def test_five_distinct_messages_have_per_bot_ids_and_no_orders(self):
+        report = analyze_advisors(candles())
+        messages = build_bot_messages("account-a", "XAUUSD", "PERIOD_M1", report, "WAIT")
+        self.assertEqual(len(messages), 5)
+        self.assertEqual(len({event["event_id"] for event in messages}), 5)
+        self.assertEqual(len({event["payload"]["bot_id"] for event in messages}), 5)
+        self.assertTrue(all(event["event_type"] == "BOT_ANALYSIS_SIGNAL" for event in messages))
+        self.assertTrue(all(event["payload"]["source"] == "MT5_CLOSED_CANDLE" for event in messages))
+        self.assertTrue(all(event["payload"]["can_execute"] is False for event in messages))
+        self.assertTrue(all("evidence" in event["payload"] for event in messages))
+        self.assertEqual(len(update_history(messages, messages)), 5)
+        newer = analyze_advisors(candles(n=95))
+        later = build_bot_messages("account-a", "XAUUSD", "PERIOD_M1", newer, "WAIT")
+        self.assertEqual(len(update_history(messages, later)), 10)
+        self.assertEqual(build_bot_messages("account-a", "EURUSD", "PERIOD_M1", report), [])
+
+    def test_multi_factor_bot_is_not_derived_from_four_votes(self):
+        report=analyze_advisors(candles())
+        five=report["advisors"]
+        self.assertIn("factor_score", five[-1]["evidence"])
+        buys=sum(x["signal"]=="BUY" for x in five)
+        sells=sum(x["signal"]=="SELL" for x in five)
+        expected="BUY" if buys>=3 and sells==0 else "SELL" if sells>=3 and buys==0 else "WAIT"
+        self.assertEqual(report["consensus"]["signal"], expected)
 
     def test_insufficient_or_corrupted_bars_fail_closed(self):
         for rows in ([], candles(MIN_CANDLES-1), list(reversed(candles())),
