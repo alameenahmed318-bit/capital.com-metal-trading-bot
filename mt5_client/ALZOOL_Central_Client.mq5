@@ -85,6 +85,76 @@ long g_aiBarTime=0;
 int g_aiStrategyId=0,g_aiCombinationId=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
+string g_lastClosedDealKey="";
+datetime g_lastClosedDealTime=0; // Server epoch seconds; survives EA/MT5 restart
+void RecordClosedDealTime(datetime dealTime)
+{
+   if(dealTime<=0) return;
+   datetime known=g_lastClosedDealTime;
+   if(g_lastClosedDealKey!="" && GlobalVariableCheck(g_lastClosedDealKey))
+      known=(datetime)MathMax((long)known,(long)GlobalVariableGet(g_lastClosedDealKey));
+   if(dealTime<=known) { g_lastClosedDealTime=known; return; }
+   g_lastClosedDealTime=dealTime;
+   if(g_lastClosedDealKey!="") GlobalVariableSet(g_lastClosedDealKey,(double)dealTime);
+   g_closedDealsDirty=true;
+   Print("AL-ZOOL M1 REENTRY WAIT START | last_closed_deal=",
+         TimeToString(dealTime,TIME_DATE|TIME_SECONDS),
+         " | one FULL M1 candle after close is required");
+}
+
+void SyncLatestClosedDealFromHistory()
+{
+   // Restart/OnTrade safety net if the event arrived before the history deal
+   // was selectable. One short local history query, not a network request.
+   datetime now=TimeCurrent();
+   if(now<=0 || !HistorySelect(now-7*86400,now+5)) return;
+   datetime newest=g_lastClosedDealTime;
+   for(int i=HistoryDealsTotal()-1;i>=0;i--)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0)continue;
+      long kind=HistoryDealGetInteger(deal,DEAL_TYPE);
+      if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL)continue;
+      long entry=HistoryDealGetInteger(deal,DEAL_ENTRY);
+      if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT)continue;
+      datetime closed=(datetime)HistoryDealGetInteger(deal,DEAL_TIME);
+      if(closed>newest && closed<=now+5)newest=closed;
+   }
+   if(newest>g_lastClosedDealTime)RecordClosedDealTime(newest);
+}
+
+bool FreshM1ConfirmedAfterClose(const long decisionBar)
+{
+   if(g_lastClosedDealKey!="" && GlobalVariableCheck(g_lastClosedDealKey))
+      g_lastClosedDealTime=(datetime)MathMax((long)g_lastClosedDealTime,
+                                   (long)GlobalVariableGet(g_lastClosedDealKey));
+   if(g_lastClosedDealTime<=0)return true;
+   datetime firstFull=(datetime)((((long)g_lastClosedDealTime+59)/60)*60);
+   datetime eligibleAt=firstFull+60;
+   datetime lastM1=iTime(_Symbol,PERIOD_M1,1);
+   if(TimeCurrent()<eligibleAt || lastM1<firstFull)
+   {
+      g_status="إعادة الدخول تنتظر إغلاق شمعة M1 كاملة بعد آخر صفقة";
+      static datetime lastWaitPrint=0;
+      if(TimeCurrent()-lastWaitPrint>=25)
+      {
+         Print("AL-ZOOL ENTRY WAIT POST-CLOSE M1 | close=",
+               TimeToString(g_lastClosedDealTime,TIME_DATE|TIME_SECONDS),
+               " | first_full_M1=",TimeToString(firstFull,TIME_DATE|TIME_SECONDS),
+               " | eligible_at=",TimeToString(eligibleAt,TIME_DATE|TIME_SECONDS));
+         lastWaitPrint=TimeCurrent();
+      }
+      return false;
+   }
+   // The signal itself must be recalculated from the post-close candle.
+   if(decisionBar<(long)firstFull)
+   {
+      g_status="شمعة M1 أغلقت، انتظار تحديث تحليل Hybrid بعد الإغلاق";
+      return false;
+   }
+   return true;
+}
+
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const double referencePrice,const double signalATR,const string reason);
 bool ClosePositionTicket(const ulong ticket,const string scope);
 
@@ -517,6 +587,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
                          const double signalATR,const string reason)
 {
    if(g_groupClosePending) return; // Never reopen exposure during group closure.
+   if(!FreshM1ConfirmedAfterClose(decisionBar)) return;
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       (confidence<0.0 || confidence>1.0) || strategyId<1 || strategyId>200 || decisionBar<=0) return;
    if(!IsAccountDirectionAllowed(direction))
@@ -935,6 +1006,8 @@ bool SendLiveSnapshot()
    body+=",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\"";
    body+=",\"mtf_bias\":{\"M5\":\""+MtfDirection(PERIOD_M5,g_m5Fast,g_m5Slow)+"\",\"M15\":\""+MtfDirection(PERIOD_M15,g_m15Fast,g_m15Slow)+"\",\"H1\":\""+MtfDirection(PERIOD_H1,g_h1Fast,g_h1Slow)+"\"}";
    body+=",\"terminal_build\":"+IntegerToString((int)TerminalInfoInteger(TERMINAL_BUILD));
+   body+=",\"last_closed_deal_time\":"+IntegerToString((long)g_lastClosedDealTime);
+   body+=",\"last_m1_closed_open\":"+IntegerToString((long)iTime(_Symbol,PERIOD_M1,1));
    body+=",\"mt5_position_management_enabled\":"+(InpEnableCentralPositionManagement?"true":"false");
    body+=",\"mt5_central_trading_enabled\":"+(InpEnableCentralTrading?"true":"false");
    // Match the exact account-wide recovery net used by this EA (including
@@ -1175,6 +1248,10 @@ int OnInit()
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
       return INIT_PARAMETERS_INCORRECT;
    }
+   g_lastClosedDealKey="AZ_M1_REENTRY_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   if(GlobalVariableCheck(g_lastClosedDealKey))
+      g_lastClosedDealTime=(datetime)GlobalVariableGet(g_lastClosedDealKey);
+   SyncLatestClosedDealFromHistory();
    g_groupCloseKey="AZ_GROUP_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
    g_groupClosePending=(GlobalVariableCheck(g_groupCloseKey) && GlobalVariableGet(g_groupCloseKey)>0.5);
    g_recoveryActiveKey="AZ_REC_ACTIVE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
@@ -1219,6 +1296,7 @@ void OnDeinit(const int reason)
 void OnTimer()
 {
    EvaluateAutoClose();
+   if(g_closedDealsDirty)SyncLatestClosedDealFromHistory();
    ManageEntryTrailing();
    ManagePositionAddons();
    ulong now=GetTickCount64();
@@ -1258,6 +1336,8 @@ void OnTimer()
            "\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
            " / group ",(g_groupCloseEnabled?"ON":"OFF"),
            "\nRecovery target: ",DoubleToString(g_recoveryProfitTarget,2)," ",AccountInfoString(ACCOUNT_CURRENCY),
+           "\nLast exit: ",(g_lastClosedDealTime>0?TimeToString(g_lastClosedDealTime,TIME_DATE|TIME_SECONDS):"—"),
+           "\nM1 reentry: ",(FreshM1ConfirmedAfterClose(g_aiBarTime)?"CONFIRMED":"WAIT"),
            "\nPositions: ",IntegerToString(PositionsTotal()),
            " | Pending: ",IntegerToString(OrdersTotal()));
 }
@@ -1265,6 +1345,19 @@ void OnTrade()
 {
    // A newly closed deal should appear immediately in the next live snapshot.
    g_closedDealsDirty=true;
+   SyncLatestClosedDealFromHistory();
+}
+void OnTradeTransaction(const MqlTradeTransaction &trans,
+                        const MqlTradeRequest &request,
+                        const MqlTradeResult &result)
+{
+   if(trans.type!=TRADE_TRANSACTION_DEAL_ADD || trans.deal==0)return;
+   if(!HistoryDealSelect(trans.deal)) { g_closedDealsDirty=true; return; }
+   long kind=HistoryDealGetInteger(trans.deal,DEAL_TYPE);
+   if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL)return;
+   long entry=HistoryDealGetInteger(trans.deal,DEAL_ENTRY);
+   if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT)return;
+   RecordClosedDealTime((datetime)HistoryDealGetInteger(trans.deal,DEAL_TIME));
 }
 void OnTick()
 {
