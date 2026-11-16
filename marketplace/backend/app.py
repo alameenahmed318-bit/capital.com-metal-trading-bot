@@ -300,6 +300,7 @@ def _fetch_trade_settings(client_id):
         pm["entry_council_mode"]="ADVISORY"
     pm.setdefault("recovery_enabled",False)
     pm.setdefault("recovery_loss_trigger",0.0)
+    pm.setdefault("recovery_profit_target",0.0)
     pm.setdefault("entry_guard_enabled",True)
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
@@ -731,6 +732,7 @@ class Handler(SimpleHTTPRequestHandler):
                 pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
                 pm.setdefault("recovery_enabled",False)
                 pm.setdefault("recovery_loss_trigger",0.0)
+                pm.setdefault("recovery_profit_target",0.0)
                 pm.setdefault("entry_guard_enabled",True)
                 pm.setdefault("entry_max_delay_bars",1)
                 pm.setdefault("entry_max_deviation_atr",0.5)
@@ -1629,6 +1631,14 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"حد تفعيل التعافي يجب أن يكون صفرًا أو مبلغًا موجبًا بعملة الحساب"})
                 clean_pm["recovery_enabled"]=recovery_enabled
                 clean_pm["recovery_loss_trigger"]=recovery_loss_trigger
+                raw_profit_target=pm.get("recovery_profit_target",prior_pm.get("recovery_profit_target",0.0))
+                try:
+                    recovery_profit_target=float(raw_profit_target)
+                except (TypeError,ValueError,OverflowError):
+                    return self.send_json(400,{"error":"هدف ربح التعافي يجب أن يكون مبلغًا رقميًا بعملة الحساب"})
+                if not math.isfinite(recovery_profit_target) or recovery_profit_target<0:
+                    return self.send_json(400,{"error":"هدف ربح التعافي لا يمكن أن يكون مبلغًا سالبًا"})
+                clean_pm["recovery_profit_target"]=recovery_profit_target
                 clean_pm["recovery_user_configured"]=pm.get("recovery_user_configured",prior_pm.get("recovery_user_configured",False)) is True
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
