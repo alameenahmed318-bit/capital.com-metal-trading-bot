@@ -4,6 +4,7 @@ on:
     branches:
       - fix/alzool-owner-controls-20261116
       - fix/alzool-hybrid-ai-20261116
+      - fix/alzool-recovery-profit-target-20261116
   workflow_dispatch:
 jobs:
   offline:
@@ -21,4 +22,5 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_owner_decisions.py' -v
           python -m unittest discover -s tests -p 'test_owner_recovery.py' -v
+          python -m unittest discover -s tests -p 'test_recovery_action_protocol.py' -v
           python -m unittest discover -s tests -p 'test_hybrid_decision.py' -v
