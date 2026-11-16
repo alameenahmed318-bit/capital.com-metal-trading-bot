@@ -275,6 +275,8 @@ def _fetch_trade_settings(client_id):
         "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
         "cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
     pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
+    if not pm.get("entry_council_mode_user_selected"):
+        pm["entry_council_mode"]="ADVISORY"
     pm.setdefault("recovery_enabled",False)
     pm.setdefault("recovery_loss_trigger",0.0)
     pm.setdefault("entry_guard_enabled",True)
@@ -1547,7 +1549,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if mode not in ("AI","MANUAL"):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
                 clean_pm={"mode":mode,
-                          "entry_council_mode":("STRICT" if str(pm.get("entry_council_mode",prior_pm.get("entry_council_mode","ADVISORY"))).upper()=="STRICT" else "ADVISORY")}
+                          "entry_council_mode":("STRICT" if str(pm.get("entry_council_mode",prior_pm.get("entry_council_mode","ADVISORY"))).upper()=="STRICT" else "ADVISORY"),
+                          "entry_council_mode_user_selected":prior_pm.get("entry_council_mode_user_selected") is True}
                 entry_guard_enabled=pm.get("entry_guard_enabled",prior_pm.get("entry_guard_enabled",True)) is True
                 entry_max_delay_bars=int(finite_number(pm.get("entry_max_delay_bars",prior_pm.get("entry_max_delay_bars",1)),0))
                 entry_max_deviation_atr=finite_number(pm.get("entry_max_deviation_atr",prior_pm.get("entry_max_deviation_atr",0.5)),0)
@@ -1709,6 +1712,7 @@ class Handler(SimpleHTTPRequestHandler):
                 prior=rows[0] if rows else {}
                 pm=dict(prior.get("position_management") or {})
                 pm["entry_council_mode"]=requested
+                pm["entry_council_mode_user_selected"]=True
                 if rows:
                     changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
                         {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
