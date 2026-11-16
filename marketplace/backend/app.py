@@ -1317,6 +1317,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "council":council,"local_ai":local_advice,
                     "family_votes":decision.get("family_votes") or {},
                     "combination_summary":decision.get("combination_summary") or {},
+                    "bot_evidence":decision.get("bot_evidence") or {},
                     "bot_report":bot,"actions":actions,
                     "strategy_context":decision.get("context") or {}})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
@@ -1937,7 +1938,8 @@ class Handler(SimpleHTTPRequestHandler):
                             strategy_weights=(chosen_profile or {}).get("strategy_weights") or live_learning["weights"]
                             combination_weights=(chosen_profile or {}).get("combination_weights") or live_learning.get("combination_weights")
                             evaluated=evaluate_market(list(reversed(candles)),weights=strategy_weights,
-                                combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO")
+                                combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO",
+                                bot_signals=bot_report)
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "entry_reference_price":finite_number(candles[0].get("close")),
@@ -1954,6 +1956,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "family_votes":evaluated.get("family_votes",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
+                                "bot_evidence":evaluated.get("bot_evidence",{}),
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
                                 "bar_time":bar_time,
