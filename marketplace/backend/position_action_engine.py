@@ -120,22 +120,9 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         action="HOLD";reason="حركة السعر لا تؤيد زيادة المخاطرة"
         candidate_lot=0.0
         existing_recovery=any(str(p.get("comment") or "").startswith("ALZOOL-RECOVERY") for p in group)
-        # Owner loss threshold arms recovery; an additional ATR distance
-        # must not silently override their chosen amount.
-        if (pm.get("recovery_enabled") is True
-            and num(pm.get("recovery_loss_trigger"))>0 and not existing_recovery
-            and net<=-num(pm.get("recovery_loss_trigger"))):
-            action="RECOVERY_PROPOSAL";reason="خسارة المجموعة بلغت حد المالك وتوافق اتجاه الاستراتيجيات؛ تعافٍ x3"
-            ordinary=[num(p.get("volume")) for p in group if not
-                str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
-            # Recovery applies to the SUM of same-symbol, same-side losing
-            # non-recovery positions, never the largest individual position.
-            # Do not accidentally include profitable/manual positions of other symbols.
-            ordinary=[num(p.get("volume")) for p in group
-                if num(p.get("profit"))+num(p.get("swap"))<0 and not
-                str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
-            candidate_lot=3*sum(ordinary) if ordinary else 0.0
-        elif (str(pm.get("mode","AI")).upper()=="AI" and atr>0 and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
+        # Recovery is exclusively planned above from ACCOUNT net. Never
+        # resurrect the old per-side threshold when account losses offset.
+        if (str(pm.get("mode","AI")).upper()=="AI" and atr>0 and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
               and (num(pm.get("cooling_max"))<=0 or len(group)<int(num(pm.get("cooling_max"))))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
             candidate_lot=num(pm.get("cooling_lot"))
