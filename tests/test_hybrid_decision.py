@@ -96,6 +96,13 @@ class HybridDecisionTests(unittest.TestCase):
         self.assertNotEqual(out["hybrid"]["combined_scores"]["SELL"],
                             out["hybrid"]["quantitative_scores"]["SELL"])
 
+    def test_valid_quant_strategy_survives_negative_raw_score_without_ai(self):
+        base=quant()
+        base["directional_scores"]={"BUY":-0.03,"SELL":-0.05}
+        result=fuse_live_decision(base,{"bar_time":1700000100,"votes":{}})
+        self.assertEqual(result["decision"],"BUY",result)
+        self.assertEqual(result["confidence"],0.0,result)
+
     def test_base_input_is_not_mutated(self):
         base=quant()
         out=fuse_live_decision(base,{"bar_time":1700000100,"votes":{
