@@ -6,6 +6,7 @@ from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, closed_bar_execution_fresh, entry_council_mode
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
+from hybrid_decision import fuse_live_decision
 from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
@@ -607,6 +608,8 @@ class Handler(SimpleHTTPRequestHandler):
             settings=get_trade_settings(client_id) or {}
             now=datetime.now(timezone.utc)
             advisory_mode=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+            council=council_result(client_id,decision)
+            if advisory_mode: decision=fuse_live_decision(decision,council)
             gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
                 item.get("received_at"),now,bool(settings.get("trading_enabled")),
                 local_ai_advice=(dict(item["local_ai_advice"],
@@ -614,7 +617,6 @@ class Handler(SimpleHTTPRequestHandler):
                     if isinstance(item.get("local_ai_advice"),dict) else None),
                 require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
                 strategy_first=advisory_mode)
-            council=council_result(client_id,decision)
             risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
             return self.send_json(200,propose_central_action(client_id,item,decision,
                 gate,council,risk,settings,now,council_advisory=advisory_mode))
@@ -894,6 +896,12 @@ class Handler(SimpleHTTPRequestHandler):
                 item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
             advisory_mode=(entry_council_mode(control_settings,terminal_is_owner(client_id))=="ADVISORY")
+            ai_council=council_result(client_id,decision)
+            if advisory_mode:
+                decision=fuse_live_decision(decision,ai_council)
+                confidence=finite_number(decision.get("confidence",0.0))
+                signal=str(decision.get("decision","WAIT"))
+                strategy_id=int(finite_number(decision.get("strategy_id",0)))
             gate=evaluate_entry_gate(
                 decision=decision,
                 account=item.get("account") or {},
@@ -909,7 +917,6 @@ class Handler(SimpleHTTPRequestHandler):
                 require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
                 strategy_first=advisory_mode
             )
-            ai_council=council_result(client_id,decision)
             risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
             direction_limit=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),signal,control_settings)
             # Late model votes must never turn an older closed bar into a new order.
@@ -948,7 +955,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "authorization_id":gate.get("authorization_id"),
                 "authorization_expires_at":gate.get("expires_at_unix",0),
                 "council":decision.get("council",{}),
-                "multi_model_council":ai_council,"risk_guardian":risk_report,
+                "multi_model_council":ai_council,"hybrid":decision.get("hybrid",{}),"risk_guardian":risk_report,
                 "direction_limit":direction_limit,
                 "local_ai_required":LOCAL_AI_REQUIRED,
                 "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
@@ -1199,8 +1206,10 @@ class Handler(SimpleHTTPRequestHandler):
                 decision=item.get("strategy_decision") or {}
                 council=council_result(client_id,decision)
                 settings=get_trade_settings(client_id) or {}
+                advisory=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                if advisory:decision=fuse_live_decision(decision,council)
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
-                result=plan_account_actions(item,decision,council,risk,settings)
+                result=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
                 return self.send_json(200,result)
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
@@ -1277,8 +1286,10 @@ class Handler(SimpleHTTPRequestHandler):
                 now=datetime.now(timezone.utc)
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(cid) or {}
-                signal=str(decision.get("decision","WAIT")).upper()
                 advisory=(entry_council_mode(settings,True)=="ADVISORY")
+                council=council_result(cid,decision)
+                if advisory: decision=fuse_live_decision(decision,council)
+                signal=str(decision.get("decision","WAIT")).upper()
                 local=item.get("local_ai_advice")
                 local_advice=({**local,"age_seconds":now.timestamp()-finite_number(local.get("received_at_unix",0))}
                     if isinstance(local,dict) else None)
@@ -1286,7 +1297,6 @@ class Handler(SimpleHTTPRequestHandler):
                     item.get("received_at"),now,bool(settings.get("trading_enabled")),
                     local_ai_advice=local_advice,require_local_ai=LOCAL_AI_REQUIRED and not advisory,
                     strategy_first=advisory)
-                council=council_result(cid,decision)
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],
                     risk_limits_from_settings(settings))
                 direction=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),
@@ -1314,7 +1324,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "trading_enabled":bool(settings.get("trading_enabled")),
                     "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
                     "bar_fresh":fresh,"gate":gate,"risk":risk,"direction_limit":direction,
-                    "council":council,"local_ai":local_advice,
+                    "council":council,"hybrid":decision.get("hybrid",{}),"local_ai":local_advice,
                     "family_votes":decision.get("family_votes") or {},
                     "combination_summary":decision.get("combination_summary") or {},
                     "bot_evidence":decision.get("bot_evidence") or {},
@@ -1378,6 +1388,8 @@ class Handler(SimpleHTTPRequestHandler):
                 settings=get_trade_settings(client_id) or {}
                 now=datetime.now(timezone.utc)
                 advisory_mode=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                council=council_result(client_id,decision)
+                if advisory_mode: decision=fuse_live_decision(decision,council)
                 gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
                     item.get("received_at"),now,bool(settings.get("trading_enabled")),
                     local_ai_advice=(dict(item["local_ai_advice"],
@@ -1385,7 +1397,6 @@ class Handler(SimpleHTTPRequestHandler):
                         if isinstance(item.get("local_ai_advice"),dict) else None),
                     require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
                     strategy_first=advisory_mode)
-                council=council_result(client_id,decision)
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
                 response=claim_central_action(client_id,data.get("authorization_id"),
                     item,decision,gate,council,risk,settings,sb,now,
@@ -1956,6 +1967,8 @@ class Handler(SimpleHTTPRequestHandler):
                                 "family_votes":evaluated.get("family_votes",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
+                                "directional_scores":evaluated.get("directional_scores",{}),
+                                "directional_candidates":evaluated.get("directional_candidates",{}),
                                 "bot_evidence":evaluated.get("bot_evidence",{}),
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
