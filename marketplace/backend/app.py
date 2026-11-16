@@ -2012,7 +2012,10 @@ class Handler(SimpleHTTPRequestHandler):
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
-                    "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
+                    "positions":positions,
+                    "recovery_group_net":(finite_number(data["recovery_group_net"]) if
+                        data.get("recovery_group_net") is not None else None),
+                    "orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
                     "bot_report":bot_report,"bot_signal_history":bot_history,
                     "bot_dispatch_count":bot_dispatch_count,
