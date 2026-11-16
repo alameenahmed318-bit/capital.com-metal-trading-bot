@@ -40,8 +40,6 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         side="BUY" if int(num(position.get("type"),-1))==0 else "SELL" if int(num(position.get("type"),-1))==1 else None
         if not side:continue
         sides.setdefault(side,[]).append(position)
-    if len(sides)>1:
-        result["reason_ar"]="صفقات BUY وSELL متعاكسة موجودة؛ لا تعزيز ولا تبريد";return result
     if not sides:
         result["reason_ar"]="لا توجد مراكز صالحة للتحليل";return result
     max_lots=(num(pm["max_total_lots"],-1) if pm.get("max_total_lots") is not None else None)
@@ -50,25 +48,43 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     atr_ratio=max(.5,min(2.5,num((decision.get("context") or {}).get("atr_ratio"),1)))
     addon_band=max(.35,min(1.2,.75-(confidence-.5)*.4+(atr_ratio-1)*.18))
     cooling_band=max(.5,min(1.35,.75+(atr_ratio-1)*.22))
-    recovery_band=max(1.0,min(2.4,1.4+(atr_ratio-1)*.3))
     result["adaptive_atr_bands"]={"addon":round(addon_band,3),
-        "cooling":round(cooling_band,3),"recovery":round(recovery_band,3)}
+        "cooling":round(cooling_band,3)}
+    # Available Qwen/DeepSeek opinions influence management timing without
+    # blocking the account while models are offline or slow.
+    model_votes=(council or {}).get("votes") or {}
+    advisory=[v for v in model_votes.values() if isinstance(v,dict)
+              and v.get("status")=="READY" and v.get("model") in ("Qwen","DeepSeek")]
+
     for side,group in sides.items():
         if signal!=side:
-            result["reason_ar"]="اتجاه المجلس عكس المراكز المفتوحة؛ لا إضافة تعرض";continue
+            # Keep a visible HOLD for this side. A sell signal cannot be
+            # reinterpreted as authorization to enlarge existing buys.
+            result["actions"].append({"side":side,"action":"HOLD","lot_cap":0.0,
+                "reason_ar":"اتجاه الاستراتيجيات الحالي لا يؤكد إضافة في اتجاه هذه الصفقات",
+                "execution_authorized":False})
+            continue
         price=num(tick.get("bid") if side=="BUY" else tick.get("ask"))
         volume=sum(max(0,num(p.get("volume"))) for p in group)
         if volume<=0 or price<=0:continue
         average=sum(num(p.get("open_price"))*max(0,num(p.get("volume"))) for p in group)/volume
         net=sum(num(p.get("profit"))+num(p.get("swap")) for p in group)
         progress=(price-average)/atr*(1 if side=="BUY" else -1)
+        supports=sum(num(v.get("confidence")) for v in advisory if v.get("direction")==side)
+        opposes=sum(num(v.get("confidence")) for v in advisory if v.get("direction") in ("BUY","SELL") and v.get("direction")!=side)
+        # Models are evidence, not extra vetoes. Adjust an existing ATR
+        # threshold only when a vote was actually received for this bar.
+        advisory_bias=0.15*(supports-opposes)/max(1,len(advisory))
+        advice_summary=f"Qwen/DeepSeek {len(advisory)} READY; bias={advisory_bias:.3f} ATR"
         action="HOLD";reason="حركة السعر لا تؤيد زيادة المخاطرة"
         candidate_lot=0.0
         existing_recovery=any(str(p.get("comment") or "").startswith("ALZOOL-RECOVERY") for p in group)
-        if (progress<-recovery_band and pm.get("recovery_enabled") is True
+        # Owner loss threshold arms recovery; an additional ATR distance
+        # must not silently override their chosen amount.
+        if (pm.get("recovery_enabled") is True
             and num(pm.get("recovery_loss_trigger"))>0 and not existing_recovery
             and net<=-num(pm.get("recovery_loss_trigger"))):
-            action="RECOVERY_PROPOSAL";reason="تعافٍ x3 مشروط بالمجلس وبقيود اللوت والحساب"
+            action="RECOVERY_PROPOSAL";reason="خسارة المجموعة بلغت حد المالك وتوافق اتجاه الاستراتيجيات؛ تعافٍ x3"
             ordinary=[num(p.get("volume")) for p in group if not
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
             # Recovery applies to the SUM of same-symbol, same-side losing
@@ -78,11 +94,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 if num(p.get("profit"))+num(p.get("swap"))<0 and not
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
             candidate_lot=3*sum(ordinary) if ordinary else 0.0
-        elif (str(pm.get("mode","AI")).upper()=="AI" and progress<-cooling_band and pm.get("cooling_enabled") is True
+        elif (str(pm.get("mode","AI")).upper()=="AI" and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
               and (pm.get("cooling_max") is None or len(group)<int(num(pm.get("cooling_max"))))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
             candidate_lot=num(pm.get("cooling_lot"))
-        elif (str(pm.get("mode","AI")).upper()=="AI" and progress>addon_band and pm.get("addon_enabled") is True
+        elif (str(pm.get("mode","AI")).upper()=="AI" and progress>(addon_band-advisory_bias) and pm.get("addon_enabled") is True
               and (pm.get("addon_max") is None or len(group)<int(num(pm.get("addon_max"))))):
             action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
             candidate_lot=num(pm.get("addon_lot"))
@@ -122,6 +138,6 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         result[side.lower()]=action
         result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,3),
             "atr_distance":round(progress,3),"floating_net":round(net,2),
-            "reason_ar":reason,"execution_authorized":False})
+            "reason_ar":reason,"ai_advice":advice_summary,"execution_authorized":False})
     result["reason_ar"]="اقتراحات مركزية فقط؛ التنفيذ يتطلب تصريح إجراء مستقل"
     return result
