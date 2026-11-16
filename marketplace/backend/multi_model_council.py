@@ -203,8 +203,8 @@ def update_council(client_id,decision,account):
             "status":"PENDING" if remote_qwen or remote_deepseek else "AWAITING_LOCAL_VOTES",
             "fast":fast_ai(decision,account),
             "bots":(decision.get("advisory_bots") or {}),
-            "qwen":_vote("Qwen","PENDING" if remote_qwen else "NOT_CONFIGURED"),
-            "deepseek":_vote("DeepSeek","PENDING" if remote_deepseek else "NOT_CONFIGURED"),
+            "qwen":_vote("Qwen","PENDING" if remote_qwen else "AWAITING_LOCAL_VOTE"),
+            "deepseek":_vote("DeepSeek","PENDING" if remote_deepseek else "AWAITING_LOCAL_VOTE"),
             "groq_advisory":{"model":"GPT-OSS 120B",
                              "status":"PENDING" if groq_ready and groq_candidate else
                                       ("SKIPPED" if groq_ready else "NOT_CONFIGURED"),
@@ -270,7 +270,9 @@ def council_result(client_id,decision):
         else:
             name,invalid_vote=problem
             status=invalid_vote.get("status","MISSING")
-            if status!="READY":
+            if status=="AWAITING_LOCAL_VOTE":
+                reason=f"{name}: بانتظار تصويت النموذج المحلي على الشمعة الحالية"
+            elif status!="READY":
                 reason=f"{name}: التصويت غير جاهز ({status})"
             elif invalid_vote.get("direction")!=signal:
                 reason=f"{name}: اتجاه التصويت {invalid_vote.get('direction','WAIT')} يخالف {signal}"
