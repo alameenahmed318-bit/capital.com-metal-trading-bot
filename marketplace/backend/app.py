@@ -869,7 +869,24 @@ class Handler(SimpleHTTPRequestHandler):
                     "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
                 deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
                 live=live_learning_profile(deals)
-                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0,"live":live})
+                try:
+                    selected=get_active_strategy_profile(client_id,sb)
+                    profile_error=None
+                except Exception as exc:
+                    selected=None
+                    profile_error=type(exc).__name__
+                computed=apply_live_learning(selected,live)["diagnostics"]
+                item=CONNECTIONS.get(client_id) or {}
+                recent_decision=item.get("strategy_decision") or {}
+                current_application=recent_decision.get("learning") or {}
+                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],
+                    "count":len(rows) if isinstance(rows,list) else 0,"live":live,
+                    "learning_computed":{**computed,
+                       "active_version_label":(selected or {}).get("version_label","DEFAULT"),
+                       "profile_read_error":profile_error},
+                    "learning_applied":current_application,
+                    "learning_applied_at":recent_decision.get("generated_at"),
+                    "learning_decision_bar":recent_decision.get("bar_time")})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path.startswith("/v1/local-ai/context/"):
@@ -1268,9 +1285,17 @@ class Handler(SimpleHTTPRequestHandler):
                 memory=memory_snapshot(client_id,sb)
                 current=CONNECTIONS.get(client_id) or {}
                 profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []))
+                last_decision=(current.get("strategy_decision") or {})
+                last_applied=last_decision.get("learning") or {}
                 return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
                     "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
-                    "wins":profile["wins"],"losses":profile["losses"],"top_strategies":profile["strategies"][:10]})
+                    "last_closed_at":profile["last_closed_at"],"last_attributed_at":profile["last_attributed_at"],
+                    "eligible_strategies":profile["eligible_strategies"],
+                    "eligible_combinations":profile["eligible_combinations"],
+                    "wins":profile["wins"],"losses":profile["losses"],
+                    "learning_applied":last_applied,
+                    "learning_applied_at":last_decision.get("generated_at"),
+                    "top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/monitor/details":
@@ -1347,6 +1372,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "combination_summary":decision.get("combination_summary") or {},
                     "bot_evidence":decision.get("bot_evidence") or {},
                     "bot_report":bot,"actions":actions,
+                    "learning":decision.get("learning") or {},
+                    "learning_applied_at":decision.get("generated_at"),
                     "strategy_context":decision.get("context") or {}})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
