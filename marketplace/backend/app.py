@@ -8,6 +8,7 @@ from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, 
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from hybrid_decision import fuse_live_decision
 from learning_memory import memory_snapshot, combine_deals
+from live_weight_overlay import apply_live_learning
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
 from strategy_audit import audit_strategies
@@ -403,8 +404,11 @@ def conservative_outcome_weight(wins,losses,net,range_size=0.50,min_samples=8):
 def live_learning_profile(deals):
     """Build transparent, outcome-based live weights from real closed XAUUSD positions."""
     grouped={}
-    today=datetime.now(timezone(timedelta(hours=4))).date()
+    now_utc=datetime.now(timezone.utc)
+    cutoff=int((now_utc-timedelta(days=30)).timestamp())
+    today=now_utc.astimezone(timezone(timedelta(hours=4))).date()
     today_total=set()
+    last_closed_stamp=0
     for deal in deals if isinstance(deals,list) else []:
         if not isinstance(deal,dict): continue
         symbol=str(deal.get("symbol") or "").upper()
@@ -412,6 +416,8 @@ def live_learning_profile(deals):
         entry=int(finite_number(deal.get("entry"),1))
         if entry not in (1,2,3): continue
         stamp=int(finite_number(deal.get("time")))
+        if stamp<=0 or stamp<cutoff:continue
+        last_closed_stamp=max(last_closed_stamp,stamp)
         pid=str(deal.get("position_id") or deal.get("ticket") or "")
         if not pid: continue
         if stamp>0 and datetime.fromtimestamp(stamp,timezone.utc).astimezone(timezone(timedelta(hours=4))).date()==today:
@@ -454,6 +460,7 @@ def live_learning_profile(deals):
         else: item["flat"]+=1
         if row["position_id"] in today_total: matched_today.add(row["position_id"])
     matched=sum(x["trades"] for x in stats.values())
+    last_attributed_stamp=max((row["time"] for row in rows if row["strategy_id"]),default=0)
     wins=sum(x["wins"] for x in stats.values()); losses=sum(x["losses"] for x in stats.values())
     coverage=(matched/len(rows)*100.0) if rows else 0.0
     daily_coverage=(len(matched_today)/len(today_total)*100.0) if today_total else 0.0
@@ -471,10 +478,17 @@ def live_learning_profile(deals):
         "coverage_percent":round(coverage,1),"daily_closed_positions":len(today_total),
         "daily_processed_positions":len(matched_today),"daily_coverage_percent":round(daily_coverage,1),
         "updated_strategies":sum(1 for x in stats.values() if x["weight"]!=1.0),
+        "last_closed_at":(datetime.fromtimestamp(last_closed_stamp,timezone.utc).isoformat()
+                          if last_closed_stamp else None),
+        "last_attributed_at":(datetime.fromtimestamp(last_attributed_stamp,timezone.utc).isoformat()
+                              if last_attributed_stamp else None),
         "eligible_strategies":sum(1 for x in stats.values() if x["evidence"]=="ELIGIBLE"),
         "weight_policy":">=8 NET closed trades; 12 neutral pseudo-observations; net <=0 never boosts",
         "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True),
-        "combination_weights":combo_weights,"processed_combinations":sum(x["trades"] for x in combo_stats.values()),
+        "combination_weights":combo_weights,
+        "updated_combinations":sum(1 for k,x in combo_stats.items() if combo_weights[k]!=1.0),
+        "eligible_combinations":sum(1 for x in combo_stats.values() if x["evidence"]=="ELIGIBLE"),
+        "processed_combinations":sum(x["trades"] for x in combo_stats.values()),
         "combinations":sorted([{**x,"weight":round(combo_weights[str(x["combination_id"])],4)} for x in combo_stats.values()],key=lambda x:(x["net"],x["trades"]),reverse=True)}
 
 
