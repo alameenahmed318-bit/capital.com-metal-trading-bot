@@ -33,7 +33,9 @@ class AccountRecoveryTests(unittest.TestCase):
             "recovery_profit_target":4.0,**changes}}
 
     def test_exact_net_overrides_legacy_profit_plus_swap(self):
-        d=recovery_intent(self.snapshot(net=-21),{"decision":"WAIT"},self.settings())
+        snapshot=self.snapshot(net=-21)
+        decision={"decision":"WAIT","bar_time":snapshot["closed_candles"][0]["time"]}
+        d=recovery_intent(snapshot,decision,self.settings())
         self.assertTrue(d["armed"])
         self.assertEqual(d["lot_cap"],0.09)
         self.assertEqual(d["account_net"],-21)
