@@ -1620,20 +1620,22 @@ class Handler(SimpleHTTPRequestHandler):
                     distance=finite_number(pm.get(prefix+"_distance_points",prior_pm.get(prefix+"_distance_points",0)),0)
                     if maximum<0 or maximum>100 or lot<=0 or lot>100 or distance<0 or distance>100000000:
                         return self.send_json(400,{"error":"تحقق من الحد الأقصى واللوت والمسافة في إعدادات التعزيز والتبريد"})
-                    if enabled and maximum<1:
-                        return self.send_json(400,{"error":"حدد الحد الأقصى لعدد الإضافات قبل تفعيل التعزيز أو التبريد"})
                     if mode=="MANUAL" and enabled and distance<=0:
                         return self.send_json(400,{"error":"في الوضع اليدوي يجب تحديد مسافة أكبر من صفر بالنقاط"})
                     multiplier=finite_number(pm.get(prefix+"_multiplier",prior_pm.get(prefix+"_multiplier",1.5 if prefix=="addon" else 1.2)),0)
-                    max_lot=finite_number(pm.get(prefix+"_max_lot",prior_pm.get(prefix+"_max_lot",0.05)),0)
-                    if not 1.0<=multiplier<=3.0 or not 0.01<=max_lot<=100:
-                        return self.send_json(400,{"error":"المضاعف يجب أن يكون بين 1 و3، والحد الأقصى للوت بين 0.01 و100"})
+                    raw_max_lot=(pm[prefix+"_max_lot"] if prefix+"_max_lot" in pm else
+                        prior_pm.get(prefix+"_max_lot") if prior_pm.get("optional_limits_user_selected") else None)
+                    max_lot=(finite_number(raw_max_lot,-1) if raw_max_lot is not None and
+                        str(raw_max_lot).strip()!="" else None)
+                    if not 1.0<=multiplier<=3.0 or (max_lot is not None and max_lot<=0):
+                        return self.send_json(400,{"error":"قيمة مضاعف أو سقف لوت غير صحيحة"})
                     clean_pm[prefix+"_enabled"]=enabled
                     clean_pm[prefix+"_max"]=maximum
                     clean_pm[prefix+"_lot"]=lot
                     clean_pm[prefix+"_distance_points"]=distance
                     clean_pm[prefix+"_multiplier"]=multiplier
-                    clean_pm[prefix+"_max_lot"]=max_lot
+                    if max_lot is not None:
+                        clean_pm[prefix+"_max_lot"]=max_lot
                 raw_total_lots=(pm.get("max_total_lots") if "max_total_lots" in pm else
                     prior_pm.get("max_total_lots") if prior_pm.get("optional_limits_user_selected") else None)
                 if raw_total_lots is not None and str(raw_total_lots).strip()!="":
