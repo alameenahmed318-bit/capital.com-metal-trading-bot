@@ -80,6 +80,22 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(result["actions"][0]["action"],"HOLD",result)
 
 
+    def test_side_loss_does_not_trigger_if_account_above_threshold(self):
+        p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,
+            "profit":-25,"swap":0},
+           {"symbol":"XAUUSD","type":1,"volume":0.01,"open_price":3010,
+            "profit":10,"swap":0}]
+        result=scenario(p)
+        self.assertNotIn("RECOVERY_PROPOSAL",[a["action"] for a in result["actions"]],result)
+        self.assertFalse(result["recovery"]["armed"],result)
+
+    def test_open_recovery_disables_other_management_proposals(self):
+        p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3000,
+            "profit":5,"swap":0,"comment":"ALZOOL-RECOVERY"}]
+        result=scenario(p,recovery_enabled=True,addon_enabled=True,addon_lot=0.01)
+        self.assertTrue(result["recovery"]["active_cycle"],result)
+        self.assertEqual(result["actions"],[],result)
+
     def test_unconfigured_addon_max_zero_is_unlimited(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3004,
             "profit":3,"swap":0} for _ in range(5)]
