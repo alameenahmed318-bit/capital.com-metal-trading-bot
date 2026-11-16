@@ -5,22 +5,29 @@ Run: python -m unittest discover -s tests -p 'test_owner_recovery.py' -v
 """
 import sys
 import unittest
+from datetime import datetime,timezone
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
 from position_action_engine import plan_account_actions
 
 def scenario(positions, signal="BUY", **pm):
-    snapshot={"symbol":"XAUUSD","positions":positions,
+    now=datetime.now(timezone.utc)
+    bar_time=(int(now.timestamp())//60-1)*60
+    snapshot={"symbol":"XAUUSD","timeframe":"PERIOD_M1","positions":positions,
+              "received_at":now,
+              "closed_candles":[{"time":bar_time,"open":3008.0,
+                                 "high":3011.0,"low":3007.5,"close":3010.5}],
+              "recovery_armed_at":bar_time-60,
               "tick":{"bid":3009.0,"ask":3009.2}}
     decision={"decision":signal,"confidence":0.70,"entry_atr":3.0,
-              "bar_time":1794815340,"context":{"atr_ratio":1.0}}
+              "bar_time":bar_time,"context":{"atr_ratio":1.0}}
     settings={"trading_enabled":True,"position_management":{"mode":"AI",
             "recovery_enabled":True,"recovery_loss_trigger":20.0,**pm}}
     return plan_account_actions(snapshot,decision,{"approved":False,"votes":{}},
                                 {"approved":True},settings)
 
 class RecoveryTests(unittest.TestCase):
-    def test_loss_amount_arms_recovery_without_extra_atr_gate(self):
+    def test_loss_amount_with_confirmed_new_candle_authorizes_recovery(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.02,
             "open_price":3010.0,"profit":-20.0,"swap":0.0}]
         result=scenario(p)
