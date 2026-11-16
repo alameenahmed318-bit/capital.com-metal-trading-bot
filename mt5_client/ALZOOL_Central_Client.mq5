@@ -28,10 +28,10 @@ input double InpMaxCentralTotalLots = 0.0; // 0 = no optional EA exposure cap
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
 input int InpMaxOpenPositions = 0; // 0 = no optional EA position cap
-input bool InpBlockOppositePositions = true;
+input bool InpBlockOppositePositions = false; // Optional owner choice, not an implicit restriction
 input int InpATRPeriod = 14;
 input double InpStopLossATR = 1.8;
-input bool InpUseTrailing = true;
+input bool InpUseTrailing = false; // Opt-in; never add a stop without explicit preference
 input double InpTrailStartATR = 1.0;
 input double InpTrailDistanceATR = 0.8;
 input int InpDeviationPoints = 20;
@@ -57,7 +57,7 @@ bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
 bool g_groupClosePending=false;
 string g_groupCloseKey="";
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
-bool g_serverStopLossEnabled=true;
+bool g_serverStopLossEnabled=false;
 bool g_recoveryEnabled=false;
 double g_recoveryLossTrigger=0.0;
 bool g_recoveryCycleActive=false;
@@ -264,20 +264,28 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
       Print("AL-ZOOL RECOVERY BLOCKED: broker volume step cannot represent exact x3 lot.");
       return false;
    }
-   double atr[];
-   ArraySetAsSeries(atr,true);
-   if(g_atrHandle==INVALID_HANDLE || CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0)
-      return false;
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.ask<=0.0 || tick.bid<=0.0)
       return false;
-   int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
-   double stopLevel=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
-   double stopDistance=MathMax(atr[0]*InpStopLossATR,stopLevel+_Point);
-   double sl=side=="BUY"?
-      NormalizeDouble(tick.ask-stopDistance,digits):
-      NormalizeDouble(tick.bid+stopDistance,digits);
-   if(sl<=0.0) return false;
+   double sl=0.0; // No stop loss when the owner has disabled it in the dashboard.
+   if(g_serverStopLossEnabled)
+   {
+      int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+      double stopLevel=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
+      double stopDistance=g_serverStopLossValue*_Point;
+      if(g_serverStopLossMode=="ATR")
+      {
+         double atr[];
+         ArraySetAsSeries(atr,true);
+         if(g_atrHandle==INVALID_HANDLE || CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0)
+            return false;
+         stopDistance=atr[0]*g_serverStopLossValue;
+      }
+      stopDistance=MathMax(stopDistance,stopLevel+_Point);
+      sl=side=="BUY"?NormalizeDouble(tick.ask-stopDistance,digits):
+                      NormalizeDouble(tick.bid+stopDistance,digits);
+      if(sl<=0.0) return false;
+   }
    ENUM_ORDER_TYPE orderType=(side=="BUY"?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
    double intendedPrice=(side=="BUY"?tick.ask:tick.bid);
    double requiredMargin=0.0;
@@ -581,7 +589,7 @@ void ManagePositionAddons()
 }
 void ManageEntryTrailing()
 {
-   if(!InpUseTrailing || g_atrHandle==INVALID_HANDLE) return;
+   if(!InpUseTrailing || !g_serverStopLossEnabled || g_atrHandle==INVALID_HANDLE) return;
    double atr[]; ArraySetAsSeries(atr,true);
    if(CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0) return;
    MqlTick tick; if(!SymbolInfoTick(_Symbol,tick)) return;
