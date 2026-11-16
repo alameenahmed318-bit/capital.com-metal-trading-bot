@@ -15,8 +15,8 @@ const CONFIG={
   ["analysis","التحليل المباشر","#aiResult"],["diagnostics","تشخيص القرار","#diagPanel"],
   ["monitor","مراقبة Hybrid AI","/ai-monitor.html"]]},
  monitor:{label:"المراقبة",title:"مراقبة قرارات Hybrid AI",subtitle:"أسباب BUY وSELL وWAIT وأثر Fast AI وQwen وDeepSeek والبوتات والتراكيب",source:"المراقبة الفعلية للمحرك",url:"/ai-monitor.html",tabs:[]},
- research:{label:"الاستراتيجيات",title:"الاستراتيجيات والتعلّم",subtitle:"نتائج التعلم وتدقيق الاستراتيجيات والاختبارات",source:"مركز البحث والتعلّم",url:"/learning-lab.html",tabs:[
-  ["learning","التعلم والذاكرة","/learning-lab.html"],["audit","تدقيق الاستراتيجيات","/learning-lab.html#strategyAuditPanel"],
+ research:{label:"الاستراتيجيات",title:"الاستراتيجيات والتعلّم المباشر",subtitle:"نتائج الصفقات المغلقة وأوزان التعلم المستخدمة فعلياً في قرارات الذهب",source:"مركز البحث والتعلّم",url:"/learning-lab.html",tabs:[
+  ["learning","التعلم من الصفقات المباشرة","/learning-lab.html"],["audit","تدقيق الاستراتيجيات","/learning-lab.html#strategyAuditPanel"],
   ["backtest","الاختبارات التاريخية","/backtest-lab.html"]]},
  bots:{label:"البوتات العالمية",title:"مكتبة البوتات العالمية",subtitle:"مقارنة بوتات الذهب العالمية ودراسة أفضل الأفكار لـ AL-ZOOL",source:"المكتبة المرجعية المستقلة",url:"/bots-library.html",tabs:[]},
   reports:{label:"التقارير",title:"الأداء والتقارير",subtitle:"الصفقات المغلقة وسجلات التنفيذ والنتائج",source:"سجل التداول",url:"/trade-history.html",tabs:[
