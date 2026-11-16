@@ -9,6 +9,7 @@ on:
       - fix/alzool-entry-quality-soft-evidence-20261116
       - fix/alzool-live-learning-visible-20261116
       - fix/alzool-post-close-m1-confirmation-20261116
+      - fix/alzool-smart-recovery-m1-candle-confirm-20261116
   workflow_dispatch:
 jobs:
   offline:
@@ -32,3 +33,4 @@ jobs:
           python -m unittest discover -s tests -p 'test_entry_quality.py' -v
           python -m unittest discover -s tests -p 'test_live_learning.py' -v
           python -m unittest discover -s tests -p 'test_post_close_m1.py' -v
+          python -m unittest discover -s tests -p 'test_recovery_candle_guard.py' -v
