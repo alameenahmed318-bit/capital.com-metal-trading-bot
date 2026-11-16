@@ -272,25 +272,44 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     direction="BUY" if bshare>sshare else "SELL" if sshare>bshare else "WAIT"; famagree=max(bshare,sshare); dc=cc_weighted["BUY"]+cc_weighted["SELL"]; combo_share=cc_weighted[direction]/max(1e-9,dc) if direction in ("BUY","SELL") else 0.
     agreement=.85*famagree+.15*combo_share;quality=context["buy_quality"] if direction=="BUY" else context["sell_quality"] if direction=="SELL" else 0.;trap=context["buy_trap"] if direction=="BUY" else context["sell_trap"] if direction=="SELL" else False
     aligned=sum(b==direction for b in mtf_bias.values());opposed=sum(b in ("BUY","SELL") and b!=direction for b in mtf_bias.values());breadth=fb if direction=="BUY" else fsell if direction=="SELL" else 0
-    if str(mode).startswith("HUNTER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.50,2,.42,42,.48,"HUNTER"
-    elif str(mode).startswith("SNIPER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.65,4,.58,65,.64,"SNIPER"
-    else: min_ag,min_breadth,min_combo,min_quality,min_final,policy=.42,1,.30,30,.55,"AUTO"
-    if direction=="WAIT" or active<min_breadth or famagree<min_ag:final="WAIT";reason=f"{policy}: انتظار توافق العائلات؛ شراء {fb}/20، بيع {fsell}/20، التوافق {famagree:.0%} (المطلوب {min_ag:.0%})"
-    elif breadth<min_breadth:final="WAIT";reason=f"{policy}: عدد العائلات المؤيدة {breadth}؛ المطلوب {min_breadth}"
-    elif combo_share<min_combo:final="WAIT";reason=f"{policy}: توافق التركيبات {combo_share:.0%}؛ المطلوب {min_combo:.0%}"
-    elif quality<min_quality:final="WAIT";reason=f"{policy}: جودة نقطة الدخول {quality:.0f}/100؛ المطلوب {min_quality}"
+    # Strategy-first arbitration: use observed evidence rather than stacked
+    # fixed confidence/quality/breadth thresholds that can suppress every bar.
+    # No directional strategy = WAIT; this is not a forced-trading fallback.
+    directional_candidates={"BUY":[x for x in candidates if x[2]=="BUY"],
+                            "SELL":[x for x in candidates if x[2]=="SELL"]}
+    family_strength={"BUY":fb/max(1,active),"SELL":fsell/max(1,active)}
+    combo_total=cc_weighted["BUY"]+cc_weighted["SELL"]
+    combo_strength={d:cc_weighted[d]/combo_total if combo_total>0 else 0.0
+                    for d in ("BUY","SELL")}
+    score={}
+    for d in ("BUY","SELL"):
+        quality_d=max(0,min(1,context["buy_quality" if d=="BUY" else "sell_quality"]/100))
+        trap_d=context["buy_trap" if d=="BUY" else "sell_trap"]
+        frame_agree=sum(b==d for b in mtf_bias.values())
+        frame_oppose=sum(b in ("BUY","SELL") and b!=d for b in mtf_bias.values())
+        score[d]=(0.55*family_strength[d]+0.25*combo_strength[d]+0.20*quality_d
+                  +0.03*(frame_agree-frame_oppose)/max(1,len(mtf_bias))
+                  -(0.05 if trap_d else 0))
+    usable=[d for d in ("BUY","SELL") if directional_candidates[d]
+            and (family_strength[d]>0 or combo_strength[d]>0)]
+    chosen=None
+    if not usable:
+        final="WAIT"
+        reason="لا توجد استراتيجية اتجاهية مؤيدة من العائلات أو التراكيب؛ انتظار بيانات سوق أفضل"
     else:
-        if trap:agreement-=.03
-        if mtf_bias:
-            # MTF is a confidence input, never a mandatory gate; missing frames do not block entries.
-            mtf_balance=(aligned-opposed)/max(1,len(mtf_bias))
-            agreement=max(0.0,min(1.0,agreement+0.03*mtf_balance))
-        if agreement<min_final:final="WAIT";reason=f"{policy}: الثقة بعد مراجعة ظروف السوق {agreement:.0%}؛ المطلوب {min_final:.0%}"
+        ordered=sorted(usable,key=lambda d:score[d],reverse=True)
+        if len(ordered)==2 and abs(score[ordered[0]]-score[ordered[1]])<1e-9:
+            final="WAIT"
+            reason="قوة BUY وSELL متساوية؛ لا يمكن اختيار اتجاه دون ترجيح"
         else:
-            pool=[x for x in candidates if x[2]==direction];pool.sort(key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),reverse=True)
-            if pool:_,chosen,final,why=pool[0];reason=f"{policy} | AZ MASTER BRAIN: توافق العائلات {famagree:.0%}؛ العائلات المؤيدة {breadth}/20؛ توافق التركيبات {combo_share:.0%}؛ الثقة {agreement:.0%}؛ الجودة {quality:.0f}/100؛ الفريمات {aligned}/{len(mtf_bias)}؛ السوق {context['regime']}؛ {context['reason']}؛ {why}"
-            else:final="WAIT";chosen=None;reason="لا توجد استراتيجية أصلية متوافقة"
-    if "chosen" not in locals():chosen=None
+            direction=ordered[0]
+            pool=directional_candidates[direction]
+            pool.sort(key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),reverse=True)
+            _,chosen,final,why=pool[0]
+            reason=(f"AZ MASTER BRAIN: ترجيح {direction} حسب العائلات "
+                    f"{fb} BUY / {fsell} SELL، والتركيبات {cc_weighted['BUY']:.2f} BUY / "
+                    f"{cc_weighted['SELL']:.2f} SELL؛ جودة الحركة {context['regime']}؛ {why}")
+    agreement=max(0.0,min(1.0,score.get(final,0.0)))
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
     winning_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
