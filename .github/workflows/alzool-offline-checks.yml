@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/alzool-owner-controls-20261116
+      - fix/alzool-hybrid-ai-20261116
   workflow_dispatch:
 jobs:
   offline:
