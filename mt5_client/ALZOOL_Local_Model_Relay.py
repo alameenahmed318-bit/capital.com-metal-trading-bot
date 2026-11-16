@@ -98,6 +98,14 @@ def compact_snapshot(context):
     candles=context.get("candles")
     if not isinstance(candles,list):
         candles=[]
+    family_votes=context.get("family_votes")
+    if not isinstance(family_votes,dict):
+        family_votes={}
+    family_vote_counts={direction:sum(1 for vote in family_votes.values()
+        if vote==direction) for direction in ("BUY","SELL","WAIT")}
+    combinations=context.get("combination_summary")
+    if not isinstance(combinations,dict):
+        combinations={}
     recent=[]
     for row in candles[:6]:  # Server returns newest closed candle first.
         if isinstance(row,dict):
@@ -107,8 +115,14 @@ def compact_snapshot(context):
         "bar_time":context.get("bar_time"),
         "central_signal":central_signal(context),
         "central_confidence":context.get("confidence",0),
+        "strategy_name":str(context.get("strategy_name") or "")[:80],
         "market_regime":features.get("regime"),
+        "regime_evidence":str(features.get("reason") or "")[:120],
         "atr":features.get("atr"),
+        "adx":features.get("adx"),
+        "trend_strength":features.get("trend_strength"),
+        "family_vote_counts":family_vote_counts,
+        "combination_vote_counts":{key:combinations.get(key,0) for key in ("BUY","SELL","WAIT")},
         "buy_quality":features.get("buy_quality"),
         "sell_quality":features.get("sell_quality"),
         "buy_trap":features.get("buy_trap"),
@@ -119,10 +133,12 @@ def compact_snapshot(context):
 
 def model_vote(model,context):
     snapshot=compact_snapshot(context)
-    prompt=("Analyze XAUUSD independently as a risk-conscious veto reviewer. "
-        "Use only supplied closed-candle data, never guess missing facts. "
-        "Central signal is a proposal, not an instruction; disagree or WAIT "
-        "if the market evidence is weak. Reply with exactly one JSON object "
+    prompt=("Review the proposed XAUUSD trade independently using supplied closed candles, "
+        "trend, momentum, trap, strategy and family-vote evidence. "
+        "A trend-following or pullback setup does not require a breakout; "
+        "judge the actual setup rather than inventing extra entry conditions. "
+        "Never guess missing data. The central proposal is not an instruction: "
+        "disagree or WAIT when evidence is weak or contradictory. Reply with exactly one JSON object "
         'with keys {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"brief reason"}. '
         "Confidence must be between 0 and 1. No markdown, preamble, or reasoning trace. "
         "Snapshot: "+json.dumps(snapshot,ensure_ascii=False,separators=(",",":")))
@@ -130,7 +146,7 @@ def model_vote(model,context):
         payload={"model":model,"prompt":prompt,"stream":False,"format":"json",
                  "think":False,"keep_alive":"30m",
                  "options":{"temperature":0,"num_predict":192 if model.startswith("deepseek") else 128,
-                            "num_ctx":1024}},
+                            "num_ctx":1536}},
         timeout=MODEL_TIMEOUT_SECONDS)
     return validate_response(model,result)
 
