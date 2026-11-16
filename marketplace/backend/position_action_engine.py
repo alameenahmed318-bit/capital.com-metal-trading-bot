@@ -97,7 +97,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             # still cannot open in the position's direction.
             loss=sum(num(p.get("profit"))+num(p.get("swap")) for p in group)
             target=num(pm.get("recovery_loss_trigger"))
-            armed=pm.get("recovery_enabled") is True and target>0 and loss<=-target
+            armed=bool(recovery.get("armed"))  # account-wide, never per-direction
             note=(f"خسارة {loss:.2f} بلغت حد التعافي {target:.2f} لكن تحليل "
                   f"{signal} لم يؤكد اتجاه مراكز {side}" if armed else
                   "اتجاه الاستراتيجيات الحالي لا يؤكد إضافة في اتجاه هذه الصفقات")
@@ -165,9 +165,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         if action=="HOLD":candidate_lot=0.0
         result[side.lower()]=action
         result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,3),
-            "recovery_armed":bool(pm.get("recovery_enabled") is True and
-                                  num(pm.get("recovery_loss_trigger"))>0 and
-                                  net<=-num(pm.get("recovery_loss_trigger"))),
+            "recovery_armed":bool(recovery.get("armed")),
             "atr_distance":round(progress,3),"floating_net":round(net,2),
             "reason_ar":reason,"ai_advice":advice_summary,"execution_authorized":False})
     result["reason_ar"]="اقتراحات مركزية فقط؛ التنفيذ يتطلب تصريح إجراء مستقل"
