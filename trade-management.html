@@ -52,7 +52,7 @@
   <article class="kpi"><div class="kpi-head"><span>حقوق الحساب</span><i>◈</i></div><strong id="equity">—</strong><small id="balanceMeta">الرصيد —</small></article>
  </section>
  <nav class="section-nav" aria-label="أقسام إدارة التداول">
-  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#smartRecovery">التعافي الذكي</a><a href="#pending">الأوامر المعلقة</a>
+  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#entryPolicy">قرار الدخول</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#smartRecovery">التعافي الذكي</a><a href="#pending">الأوامر المعلقة</a>
  </nav>
  <section class="card" id="autoClose">
   <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>أهداف الإغلاق التلقائي</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
@@ -121,6 +121,19 @@
   <p class="section-note">الجدول التالي يعرض وقف الخسارة وجني الأرباح الموجودين فعليًا على كل صفقة. إعداداتك أعلاه تتحكم في الوقف الأولي للصفقات الجديدة فقط؛ لا تعدّل الصفقات المفتوحة بأثر رجعي.</p>
   <div class="table-scroll"><table><thead><tr><th>التذكرة</th><th>الرمز</th><th>وقف الخسارة</th><th>جني الأرباح</th><th>حالة الحماية</th></tr></thead><tbody id="protectionBody"><tr><td colspan="5" class="empty-cell">لا توجد بيانات بعد</td></tr></tbody></table></div>
  </section>
+ <section class="card" id="entryPolicy" hidden>
+  <div class="card-title"><div><span class="eyebrow">خاص بالمالك</span><h2>سياسة تنفيذ الدخول</h2></div><span class="read-only">التداول على XAUUSD</span></div>
+  <p class="section-note">في وضع «الاستراتيجية أولاً» يقرر المحرك الكمي الدخول من الشمعة المغلقة دون انتظار موافقة Qwen وDeepSeek. يبقى تصويتهما معروضاً للاستشارة فقط. حدود اللوت والهامش ومنع التكرار والإشارات القديمة لا تتغير.</p>
+  <div class="pm-mode-row">
+   <label for="ownerEntryMode">طريقة اتخاذ القرار</label>
+   <select id="ownerEntryMode">
+    <option value="STRICT">المجلس الصارم — موافقة 3 نماذج</option>
+    <option value="ADVISORY">الاستراتيجية أولاً — AI استشاري</option>
+   </select>
+  </div>
+  <div class="close-actions"><button id="saveOwnerEntryMode" class="refresh" type="button">تطبيق سياسة الدخول</button><span id="ownerEntryModeMessage" role="status">يجري تحميل الوضع الحالي</span></div>
+  <p class="section-note">تنبيه: تغيير هذه السياسة قد يسمح بفتح صفقات جديدة مباشرة إذا كان التداول الآلي مفعلاً في MT5. راجع وقف الخسارة وحجم اللوت قبل التطبيق.</p>
+ </section>
  <section class="card" id="positionManagement">
   <div class="card-title"><div><span class="eyebrow">إدارة الإضافات</span><h2>التعزيز والتبريد</h2></div><span class="read-only">نفس اتجاه الصفقة الأصلية فقط</span></div>
   <div class="pm-mode-row">
@@ -177,7 +190,7 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=12"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=13"></script>
 <script src="/numbers-en.js?v=3"></script>
 <script src="/ui-shell.js?v=nav-20261115-2" defer></script>
 </body></html>
