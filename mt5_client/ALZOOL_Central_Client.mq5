@@ -350,7 +350,17 @@ bool PollCentralActions()
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
-   if(!JsonBool(response,"execution_ready")) return false;
+   if(!JsonBool(response,"execution_ready"))
+   {
+      static datetime lastWaitLog=0;
+      if(TimeCurrent()-lastWaitLog>=30)
+      {
+         string why=JsonField(response,"reason_ar");
+         Print("AL-ZOOL POSITION ACTION WAIT | ",why);
+         lastWaitLog=TimeCurrent();
+      }
+      return false;
+   }
    string side=JsonField(response,"side");
    string action=JsonField(response,"action");
    string nonce=JsonField(response,"authorization_id");
@@ -925,6 +935,8 @@ bool SendLiveSnapshot()
    body+=",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\"";
    body+=",\"mtf_bias\":{\"M5\":\""+MtfDirection(PERIOD_M5,g_m5Fast,g_m5Slow)+"\",\"M15\":\""+MtfDirection(PERIOD_M15,g_m15Fast,g_m15Slow)+"\",\"H1\":\""+MtfDirection(PERIOD_H1,g_h1Fast,g_h1Slow)+"\"}";
    body+=",\"terminal_build\":"+IntegerToString((int)TerminalInfoInteger(TERMINAL_BUILD));
+   body+=",\"mt5_position_management_enabled\":"+(InpEnableCentralPositionManagement?"true":"false");
+   body+=",\"mt5_central_trading_enabled\":"+(InpEnableCentralTrading?"true":"false");
    // Match the exact account-wide recovery net used by this EA (including
    // position commissions and fees from deal history) with the server planner.
    if(g_recoveryEnabled && PositionsTotal()>0)
@@ -1186,8 +1198,11 @@ int OnInit()
    EventSetTimer(1);
    g_status="تم تشغيل بيانات MT5 وحماية الأرباح المحلية";
    Print("AL-ZOOL MT5 client started: central trading=",InpEnableCentralTrading,
+         " position_management=",InpEnableCentralPositionManagement,
          " lot=",DoubleToString(InpTradeLots,2)," max positions=",InpMaxOpenPositions,
          "; account-wide profit-close logic preserved.");
+   if(!InpEnableCentralPositionManagement)
+      Print("AL-ZOOL POSITION MANAGEMENT OFF: enable InpEnableCentralPositionManagement=true in EA Inputs to execute server-approved ADD/COOL/RECOVERY actions.");
    return INIT_SUCCEEDED;
 }
 void OnDeinit(const int reason)
