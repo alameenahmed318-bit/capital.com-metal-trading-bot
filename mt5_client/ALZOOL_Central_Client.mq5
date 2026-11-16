@@ -713,12 +713,15 @@ bool EvaluateSmartRecovery()
    double groupNet=RecoveryGroupNet(totalLots,totalPositions);
    if(totalPositions<=0){g_recoveryReferencePrice=0.0;return false;}
    if(groupNet>-g_recoveryLossTrigger) return false;
-   // The legacy price-following x2 recovery path has no central council authorization.
-   // Keep protective group-close handling active, but never open an unapproved recovery order.
+   // The loss threshold has been reached. The central position-action
+   // planner decides whether a compatible x3 recovery can be authorized.
+   // This local monitor must not open another, duplicate recovery trade.
    static datetime lastRecoveryCouncilBlockLog=0;
    if(TimeCurrent()-lastRecoveryCouncilBlockLog>=60)
    {
-      Print("AL-ZOOL RECOVERY WAIT: legacy recovery entry blocked pending x3 closed-bar council authorization.");
+      Print("AL-ZOOL RECOVERY ARMED: net=",DoubleToString(groupNet,2),
+            " trigger=",DoubleToString(g_recoveryLossTrigger,2),
+            " | awaiting central position-action proposal / execution diagnostics.");
       lastRecoveryCouncilBlockLog=TimeCurrent();
    }
    return false;
