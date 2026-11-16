@@ -146,7 +146,7 @@ def closed_bar_execution_fresh(bar_time, now, timeframe="M1"):
 def entry_council_mode(settings, is_owner=False):
     """Only the owner may opt in to advisory AI while retaining trade risk gates."""
     pm=(settings or {}).get("position_management") or {}
-    selected=str(pm.get("entry_council_mode","STRICT")).upper()
+    selected=str(pm.get("entry_council_mode","ADVISORY" if is_owner else "STRICT")).upper()
     return "ADVISORY" if is_owner and selected=="ADVISORY" else "STRICT"
 
 
@@ -188,9 +188,9 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
         return reject("signal", "قرار المحرك WAIT؛ لا يوجد تصريح دخول")
     passed("signal", "اتجاه القرار صالح")
     confidence = _number(decision.get("confidence"))
-    if confidence < 0.55 or confidence > 1.0:
-        return reject("confidence", "ثقة القرار أقل من الحد المعتمد أو غير صالحة")
-    passed("confidence", "الثقة اجتازت الحد الحالي 55%")
+    if confidence < 0.0 or confidence > 1.0:
+        return reject("confidence", "قيمة ثقة القرار غير صالحة")
+    passed("confidence", "ثقة القرار صالحة؛ الاستراتيجية مسؤولة عن اختيار الفرصة")
 
     strategy_id = int(_number(decision.get("strategy_id")))
     if not 1 <= strategy_id <= 200:
