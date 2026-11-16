@@ -262,6 +262,24 @@ def terminal_is_owner(client_id):
     return is_owner
 
 
+def _owner_trade_settings_view(settings):
+    """Ignore owner-unselected legacy caps and implicit stop losses.
+
+    Older releases wrote numeric defaults into persistent settings. Those
+    defaults do not constitute an owner choice. Leave clients untouched.
+    """
+    copy=dict(settings or {})
+    pm=dict(copy.get("position_management") or {})
+    if not pm.get("optional_limits_user_selected"):
+        for key in ("max_drawdown_pct","max_positions","max_positions_per_direction",
+                    "max_total_lots","addon_max_lot","cooling_max_lot","recovery_max_lot"):
+            pm.pop(key,None)
+    if not pm.get("stop_loss_user_configured"):
+        copy["stop_loss_enabled"]=False
+    copy["position_management"]=pm
+    return copy
+
+
 def _fetch_trade_settings(client_id):
     encoded=urllib.parse.quote(client_id,safe="")
     rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+encoded+
@@ -274,6 +292,8 @@ def _fetch_trade_settings(client_id):
         "addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,
         "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
         "cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
+    if terminal_is_owner(client_id):
+        settings=_owner_trade_settings_view(settings)
     pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
     if not pm.get("entry_council_mode_user_selected"):
         pm["entry_council_mode"]="ADVISORY"
@@ -704,6 +724,8 @@ class Handler(SimpleHTTPRequestHandler):
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
                     "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    settings=_owner_trade_settings_view(settings)
                 pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
                 pm.setdefault("recovery_enabled",False)
                 pm.setdefault("recovery_loss_trigger",0.0)
@@ -1552,14 +1574,17 @@ class Handler(SimpleHTTPRequestHandler):
                 existing=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
                 prior=existing[0] if existing else {"stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8}
-                stop_loss_enabled=data.get("stop_loss_enabled",prior.get("stop_loss_enabled")) is True
+                prior_pm=prior.get("position_management") if isinstance(prior.get("position_management"),dict) else {}
+                stop_loss_user_configured=(data.get("stop_loss_user_configured") is True or
+                    prior_pm.get("stop_loss_user_configured") is True)
+                stop_loss_enabled=(data.get("stop_loss_enabled",prior.get("stop_loss_enabled")) is True
+                    if stop_loss_user_configured else False)
                 stop_loss_mode=str(data.get("stop_loss_mode",prior.get("stop_loss_mode","ATR"))).upper()
                 stop_loss_value=finite_number(data.get("stop_loss_value",prior.get("stop_loss_value",1.8)),0)
                 if stop_loss_mode not in ("POINTS","ATR"):
                     return self.send_json(400,{"error":"نوع وقف الخسارة غير صالح"})
                 if not math.isfinite(stop_loss_value) or stop_loss_value<=0 or stop_loss_value>1000000:
                     return self.send_json(400,{"error":"قيمة وقف الخسارة يجب أن تكون أكبر من صفر"})
-                prior_pm=prior.get("position_management") if isinstance(prior.get("position_management"),dict) else {}
                 pm=data.get("position_management",prior_pm)
                 if not isinstance(pm,dict):
                     return self.send_json(400,{"error":"إعدادات التعزيز والتبريد غير صالحة"})
@@ -1568,7 +1593,11 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
                 clean_pm={"mode":mode,
                           "entry_council_mode":("STRICT" if str(pm.get("entry_council_mode",prior_pm.get("entry_council_mode","ADVISORY"))).upper()=="STRICT" else "ADVISORY"),
-                          "entry_council_mode_user_selected":prior_pm.get("entry_council_mode_user_selected") is True}
+                          "entry_council_mode_user_selected":prior_pm.get("entry_council_mode_user_selected") is True,
+                          "stop_loss_user_configured":stop_loss_user_configured,
+                          "optional_limits_user_selected":(
+                             pm.get("optional_limits_user_selected") is True or
+                             prior_pm.get("optional_limits_user_selected") is True)}
                 entry_guard_enabled=pm.get("entry_guard_enabled",prior_pm.get("entry_guard_enabled",True)) is True
                 entry_max_delay_bars=int(finite_number(pm.get("entry_max_delay_bars",prior_pm.get("entry_max_delay_bars",1)),0))
                 entry_max_deviation_atr=finite_number(pm.get("entry_max_deviation_atr",prior_pm.get("entry_max_deviation_atr",0.5)),0)
@@ -1605,7 +1634,8 @@ class Handler(SimpleHTTPRequestHandler):
                     clean_pm[prefix+"_distance_points"]=distance
                     clean_pm[prefix+"_multiplier"]=multiplier
                     clean_pm[prefix+"_max_lot"]=max_lot
-                raw_total_lots=pm.get("max_total_lots",prior_pm.get("max_total_lots"))
+                raw_total_lots=(pm.get("max_total_lots") if "max_total_lots" in pm else
+                    prior_pm.get("max_total_lots") if prior_pm.get("optional_limits_user_selected") else None)
                 if raw_total_lots is not None and str(raw_total_lots).strip()!="":
                     max_total_lots=finite_number(raw_total_lots,-1)
                     if max_total_lots<0:
@@ -1616,7 +1646,8 @@ class Handler(SimpleHTTPRequestHandler):
                 clean_pm["central_actions_enabled"]=prior_pm.get("central_actions_enabled") is True
                 # Keep only owner-selected optional limits; do not manufacture caps.
                 for key in ("max_drawdown_pct","max_positions","max_positions_per_direction","recovery_max_lot"):
-                    raw=pm.get(key,prior_pm.get(key))
+                    raw=(pm[key] if key in pm else prior_pm.get(key)
+                         if prior_pm.get("optional_limits_user_selected") else None)
                     if raw is None or str(raw).strip()=="":
                         continue
                     value=finite_number(raw,-1)
