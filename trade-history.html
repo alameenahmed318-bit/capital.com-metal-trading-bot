@@ -19,6 +19,7 @@
  <div class="side-label">مركز الذكاء الاصطناعي</div>
  <div class="nav-group">
   <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a>
   <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
  </div>
  <div class="side-label">السوق والاستراتيجيات</div>
@@ -56,5 +57,5 @@ function renderEvents(){const names={TRADE_OPENED:"فتح صفقة",TRADE_CLOSED
 async function load(){try{$("historyStatus").innerHTML="<b>جاري تحديث السجل</b><span>يتم جلب الصفقات المغلقة وأحداث MT5.</span>";const d=await api("/api/trade-history?days="+$("days").value+"&limit=5000");trades=d.trades||[];currency=d.currency||"";$("tradeCount").textContent=Number(d.count||0).toLocaleString("en-US");$("winRate").textContent=d.win_rate==null?"—":fmt(d.win_rate)+"%";$("netTotal").textContent=fmt(d.net)+" "+currency;$("netTotal").className=Number(d.net||0)>0?"positive":Number(d.net||0)<0?"negative":"neutral";$("netTotal").dir="ltr";$("dealRows").textContent=Number(d.deal_rows||0).toLocaleString("en-US");try{const ev=await api("/api/opportunities/events?kind=trades&days="+$("days").value+"&limit=300");tradeEvents=ev.events||[]}catch(e){tradeEvents=[]}$("historyStatus").innerHTML="<b>تم تحميل السجل</b><span>الفترة: "+($("days").selectedOptions[0]?.textContent||"")+" · المصدر: MT5 / قاعدة البيانات.</span>";render();renderEvents()}catch(e){$("historyStatus").innerHTML="<b>تعذر تحميل السجل</b><span>"+esc(e.message)+"</span>";$("tradesTable").innerHTML="<div class='th-stat'>"+esc(e.message)+"</div>"}}
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await load()}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("historyStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",load);$("days").addEventListener("change",load);$("search").addEventListener("input",()=>{render();renderEvents()});$("resultFilter").addEventListener("change",render);boot();
-</script><script src="/numbers-en.js?v=3"></script><script src="/ui-shell.js?v=nav-20261115-2" defer></script>
+</script><script src="/numbers-en.js?v=3"></script><script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
 </body></html>
