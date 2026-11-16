@@ -95,11 +95,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
             candidate_lot=3*sum(ordinary) if ordinary else 0.0
         elif (str(pm.get("mode","AI")).upper()=="AI" and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
-              and (pm.get("cooling_max") is None or len(group)<int(num(pm.get("cooling_max"))))):
+              and (num(pm.get("cooling_max"))<=0 or len(group)<int(num(pm.get("cooling_max"))))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
             candidate_lot=num(pm.get("cooling_lot"))
         elif (str(pm.get("mode","AI")).upper()=="AI" and progress>(addon_band-advisory_bias) and pm.get("addon_enabled") is True
-              and (pm.get("addon_max") is None or len(group)<int(num(pm.get("addon_max"))))):
+              and (num(pm.get("addon_max"))<=0 or len(group)<int(num(pm.get("addon_max"))))):
             action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
             candidate_lot=num(pm.get("addon_lot"))
         # The owner-defined per-side position limit is independent from total
