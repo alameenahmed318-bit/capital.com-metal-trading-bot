@@ -327,17 +327,24 @@ def finite_number(value, default=0.0):
         return default
 
 def entry_direction_capacity(positions, symbol, signal, settings):
-    """Count all gold positions (including manual/external) before a fresh entry."""
+    """Enforce per-direction count only when the owner explicitly sets a cap."""
     pm=(settings or {}).get("position_management") or {}
-    cap=max(1,min(20,int(finite_number(pm.get("max_positions_per_direction",2),2))))
     if signal not in ("BUY","SELL"):
-        return {"approved":False,"reason_ar":"لا يوجد اتجاه دخول صالح","max_per_direction":cap}
+        return {"approved":False,"reason_ar":"لا يوجد اتجاه دخول صالح"}
     position_type=0 if signal=="BUY" else 1
     count=sum(1 for p in (positions or []) if isinstance(p,dict)
               and str(p.get("symbol") or "")==symbol
               and int(finite_number(p.get("type"),-1))==position_type)
+    raw=pm.get("max_positions_per_direction")
+    if raw is None or str(raw).strip()=="":
+        return {"approved":True,"open_same_side":count,
+                "reason_ar":"لم يحدد المالك حد عدد للاتجاه"}
+    cap=int(finite_number(raw,-1))
+    if cap<0:
+        return {"approved":False,"reason_ar":"حد صفقات الاتجاه غير صالح"}
     return {"approved":count<cap,"open_same_side":count,"max_per_direction":cap,
-            "reason_ar":"الحد الأقصى لصفقات الاتجاه مفتوح" if count>=cap else "عدد صفقات الاتجاه ضمن المسموح"}
+            "reason_ar":"الحد الذي حدده المالك لصفقات الاتجاه" if count>=cap
+                        else "عدد صفقات الاتجاه ضمن إعدادات المالك"}
 
 
 def clean_telemetry_rows(rows, allowed, limit=200):
@@ -1485,7 +1492,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if mode not in ("AI","MANUAL"):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
                 clean_pm={"mode":mode,
-                          "entry_council_mode":("ADVISORY" if prior_pm.get("entry_council_mode")=="ADVISORY" else "STRICT")}
+                          "entry_council_mode":("STRICT" if str(pm.get("entry_council_mode",prior_pm.get("entry_council_mode","ADVISORY"))).upper()=="STRICT" else "ADVISORY")}
                 entry_guard_enabled=pm.get("entry_guard_enabled",prior_pm.get("entry_guard_enabled",True)) is True
                 entry_max_delay_bars=int(finite_number(pm.get("entry_max_delay_bars",prior_pm.get("entry_max_delay_bars",1)),0))
                 entry_max_deviation_atr=finite_number(pm.get("entry_max_deviation_atr",prior_pm.get("entry_max_deviation_atr",0.5)),0)
@@ -1522,21 +1529,23 @@ class Handler(SimpleHTTPRequestHandler):
                     clean_pm[prefix+"_distance_points"]=distance
                     clean_pm[prefix+"_multiplier"]=multiplier
                     clean_pm[prefix+"_max_lot"]=max_lot
-                max_total_lots=finite_number(pm.get("max_total_lots",prior_pm.get("max_total_lots",0.10)),0)
-                if not 0.01<=max_total_lots<=100:
-                    return self.send_json(400,{"error":"سقف إجمالي اللوتات يجب أن يكون بين 0.01 و100"})
-                clean_pm["max_total_lots"]=max_total_lots
+                raw_total_lots=pm.get("max_total_lots",prior_pm.get("max_total_lots"))
+                if raw_total_lots is not None and str(raw_total_lots).strip()!="":
+                    max_total_lots=finite_number(raw_total_lots,-1)
+                    if max_total_lots<0:
+                        return self.send_json(400,{"error":"سقف إجمالي اللوتات غير صالح"})
+                    clean_pm["max_total_lots"]=max_total_lots
                 # Preserve security-critical settings across ordinary form saves.
                 # Never allow a frontend to silently enable sensitive actions.
                 clean_pm["central_actions_enabled"]=prior_pm.get("central_actions_enabled") is True
-                for key,default,low,high in (
-                    ("max_drawdown_pct",5.0,0.1,100.0),
-                    ("max_positions",10,1,100),
-                    ("max_positions_per_direction",2,1,20),
-                    ("recovery_max_lot",0.05,0.01,100.0)):
-                    value=finite_number(pm.get(key,prior_pm.get(key,default)),default)
-                    if not low<=value<=high:
-                        return self.send_json(400,{"error":"حد المخاطر "+key+" غير صالح"})
+                # Keep only owner-selected optional limits; do not manufacture caps.
+                for key in ("max_drawdown_pct","max_positions","max_positions_per_direction","recovery_max_lot"):
+                    raw=pm.get(key,prior_pm.get(key))
+                    if raw is None or str(raw).strip()=="":
+                        continue
+                    value=finite_number(raw,-1)
+                    if value<0:
+                        return self.send_json(400,{"error":"قيمة "+key+" غير صالحة"})
                     clean_pm[key]=int(value) if key in ("max_positions","max_positions_per_direction") else value
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
