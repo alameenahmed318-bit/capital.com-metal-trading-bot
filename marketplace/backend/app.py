@@ -1316,6 +1316,24 @@ class Handler(SimpleHTTPRequestHandler):
                 # Re-evaluate as soon as either late vote arrives. MT5 still
                 # independently polls /terminal-decision and must pass all gates.
                 updated_council=council_result(client_id,decision)
+                # The first terminal poll may record a temporary veto before
+                # either local vote is received. Persist the revised council
+                # reason after each real vote so the owner never sees only a
+                # stale "NOT_CONFIGURED" outcome in the opportunity history.
+                council_votes=updated_council.get("votes") or {}
+                all_voted=all((council_votes.get(name) or {}).get("status")=="READY"
+                              for name in ("Fast AI","Qwen","DeepSeek"))
+                if not updated_council.get("approved"):
+                    queue_ai_diagnostic_event({
+                        "event_id":f"council-post-vote:{client_id}:{bar_time}:{model}",
+                        "client_id":client_id,
+                        "event_type":"AI_COUNCIL_VETO" if all_voted else "AI_COUNCIL_WAIT",
+                        "payload":{"bar_time":bar_time,"outcome":"WAIT",
+                                   "central_direction":decision.get("decision","WAIT"),
+                                   "model":model,"approved":False,
+                                   "confidence":finite_number(decision.get("confidence")),
+                                   "reason_ar":updated_council.get("reason_ar",""),
+                                   "stage":"AFTER_LOCAL_VOTE"}})
                 if updated_council.get("approved"):
                     queue_ai_diagnostic_event({
                         "event_id":f"council-votes-ready:{client_id}:{bar_time}",
