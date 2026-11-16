@@ -184,8 +184,24 @@ async function runStrategyAudit(){
  }catch(e){status.textContent="تعذر التدقيق: "+(e.message||"خطأ غير معروف")}
  finally{button.disabled=false}
 }
+async function refreshLearningState(){
+ if(!accessToken)return;
+ try{
+  const live=await api("/api/ai/learning"),last=live.learning_applied||{};
+  const state=last.status||"NO_RECENT_DECISION";
+  $("learningAppliedState").textContent=state==="APPLIED"?"يؤثر على قرار الدخول":
+   state==="INSUFFICIENT_EVIDENCE"?"تجميع أدلة":"تعلم محايد أو بلا قرار جديد";
+  $("learningAppliedStrategies").textContent=String(last.applied_strategies??0)+" / 200";
+  $("learningAppliedCombinations").textContent=String(last.applied_combinations??0)+" / 1000";
+  const stamp=last.last_attributed_at||live.last_attributed_at;
+  $("learningLastAttributed").textContent=stamp?new Date(stamp).toLocaleString("en-GB"):"لا يوجد إغلاق منسوب";
+  if(!last.status)$("learningAppliedDetail").textContent="لم يثبت تطبيق أوزان التعلم على قرار شمعة بعد؛ تاريخ الصفقات محفوظ: "+
+     String(live.memory_count??0)+" صفقة، ومراكز منسوبة: "+String(live.processed_positions??0);
+ }catch(e){$("learningAppliedState").textContent="تعذر التحقق من الحالة";}
+}
 $("strategyAuditBtn").addEventListener("click",runStrategyAudit);
-$("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});load();
+$("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});
+load();setInterval(refreshLearningState,20000);
 </script><script src="/numbers-en.js?v=3"></script>
 <script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
 </body></html>
