@@ -393,12 +393,25 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         cleaned.append(row)
     return cleaned
 
-def conservative_outcome_weight(wins,losses,net,range_size=0.50,min_samples=8):
-    """Shrink small real-trade samples toward neutral; net includes trade fees."""
+def conservative_outcome_weight(wins,losses,net,range_size=0.50,min_samples=8,
+                                gross_win=None,gross_loss=None):
+    """Learn from NET payoff, not only number of winning positions.
+
+    20 small wins and 3 large losses must never count as a good strategy
+    when the total NET result is negative. Twelve neutral pseudo-observations
+    shrink small samples; no live-learning score becomes a hard trade veto.
+    """
     n=wins+losses
     if n<min_samples:return 1.0
-    evidence=(wins-losses)/(n+12.0)  # 12 neutral pseudo-observations.
-    if net<=0:evidence=min(evidence,0.0)
+    if gross_win is not None and gross_loss is not None:
+        absolute=max(0.0,finite_number(gross_win))+max(0.0,finite_number(gross_loss))
+        evidence=(finite_number(net)/absolute if absolute>1e-9 else 0.0)
+    else:
+        # Compatibility for callers without gross-payoff information.
+        evidence=(wins-losses)/max(n,1)
+        if net<0:evidence=-abs(evidence)
+        if net==0:evidence=0.0
+    evidence=max(-1.0,min(1.0,evidence))*n/(n+12.0)
     return round(max(1.0-range_size,min(1.0+range_size,1.0+range_size*evidence)),4)
 
 def live_learning_profile(deals):
@@ -445,19 +458,23 @@ def live_learning_profile(deals):
         sid=int(row["strategy_id"] or 0)
         cid=int(row.get("combination_id") or 0)
         if 1<=cid<=1000:
-            ckey=str(cid); citem=combo_stats.setdefault(ckey,{"combination_id":cid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
+            ckey=str(cid); citem=combo_stats.setdefault(ckey,{"combination_id":cid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0,
+                "gross_win":0.0,"gross_loss":0.0})
             citem["trades"]+=1; citem["net"]+=row["net"]
-            if row["net"]>0: citem["wins"]+=1
-            elif row["net"]<0: citem["losses"]+=1
-            else: citem["flat"]+=1
+            if row["net"]>0:
+                citem["wins"]+=1;citem["gross_win"]+=row["net"]
+            elif row["net"]<0:
+                citem["losses"]+=1;citem["gross_loss"]+=-row["net"]
+            else:citem["flat"]+=1
         if not 1<=sid<=200: continue
-        key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
+        key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0,
+            "gross_win":0.0,"gross_loss":0.0})
         item["trades"]+=1; item["net"]+=row["net"]
         if row["net"]>0:
-            item["wins"]+=1
+            item["wins"]+=1;item["gross_win"]+=row["net"]
         elif row["net"]<0:
-            item["losses"]+=1
-        else: item["flat"]+=1
+            item["losses"]+=1;item["gross_loss"]+=-row["net"]
+        else:item["flat"]+=1
         if row["position_id"] in today_total: matched_today.add(row["position_id"])
     matched=sum(x["trades"] for x in stats.values())
     last_attributed_stamp=max((row["time"] for row in rows if row["strategy_id"]),default=0)
@@ -466,11 +483,13 @@ def live_learning_profile(deals):
     daily_coverage=(len(matched_today)/len(today_total)*100.0) if today_total else 0.0
     # Statistical shrinkage prevents one lucky closed trade from changing votes.
     for key,item in stats.items():
-        weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"])
+        weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"],
+            gross_win=item["gross_win"],gross_loss=item["gross_loss"])
         item["weight"]=weights[key]
         item["evidence"]="ELIGIBLE" if item["wins"]+item["losses"]>=8 else "INSUFFICIENT_TRADES"
     for key,item in combo_stats.items():
-        combo_weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"],range_size=0.15)
+        combo_weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"],
+            range_size=0.15,gross_win=item["gross_win"],gross_loss=item["gross_loss"])
         item["evidence"]="ELIGIBLE" if item["wins"]+item["losses"]>=8 else "INSUFFICIENT_TRADES"
     return {"processed_positions":matched,"closed_positions":len(rows),"unmatched_positions":max(0,len(rows)-matched),
         "wins":wins,"losses":losses,"flat":sum(x["flat"] for x in stats.values()),
@@ -483,7 +502,7 @@ def live_learning_profile(deals):
         "last_attributed_at":(datetime.fromtimestamp(last_attributed_stamp,timezone.utc).isoformat()
                               if last_attributed_stamp else None),
         "eligible_strategies":sum(1 for x in stats.values() if x["evidence"]=="ELIGIBLE"),
-        "weight_policy":">=8 NET closed trades; 12 neutral pseudo-observations; net <=0 never boosts",
+        "weight_policy":">=8 attributed NET closed trades; weight is based on net payoff versus total absolute payoff; 12 neutral pseudo-observations",
         "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True),
         "combination_weights":combo_weights,
         "updated_combinations":sum(1 for k,x in combo_stats.items() if combo_weights[k]!=1.0),
