@@ -14,15 +14,17 @@ const groups=[
   ["trade-history.html","▤","السجل والأداء","الصفقات المغلقة والنتائج"]]},
  {title:"الذكاء والاستراتيجيات",icon:"✦",items:[
   ["ai-analysis.html","✧","التحليل ومجلس الذكاء","تصويت النماذج والتشخيص"],
+  ["ai-monitor.html","◎","مراقبة Hybrid AI","أسباب BUY وSELL وWAIT وتأثير Qwen وDeepSeek والتراكيب والبوتات"],
   ["learning-lab.html","◈","التعلّم والاستراتيجيات","الأوزان وذاكرة النتائج"],
   ["backtest-lab.html","⌁","الاختبارات التاريخية","الشموع والتجارب"]]},
  {title:"العملاء والإعدادات",icon:"⚙",items:[
   ["","⚙","بوابة المالك والعملاء","الربط والتراخيص والإدارة"]]}
 ];
 const sections={
- "dashboard.html":[["liveStatus","حالة MT5"],["aiCouncilLive","مجلس الذكاء"],["tradingSettingsPanel","إعدادات التداول"],["accountPerformance","أداء الحساب"],["closedHistory","آخر الصفقات"]],
- "trade-management.html":[["positions","الصفقات المفتوحة"],["protection","الحماية والوقف"],["autoClose","جني الأرباح"],["positionManagement","التعزيز والتبريد"],["smartRecovery","التعافي الذكي"],["pending","الأوامر المعلقة"],["recoveryLog","سجل التعافي"]],
+ "dashboard.html":[["liveStatus","حالة MT5"],["aiCouncilLive","مجلس الذكاء"],["aiMonitorInline","مراقبة Hybrid AI"],["tradingSettingsPanel","إعدادات التداول"],["accountPerformance","أداء الحساب"],["closedHistory","آخر الصفقات"]],
+ "trade-management.html":[["positions","الصفقات المفتوحة"],["protection","الحماية والوقف"],["entryPolicy","قرار Hybrid AI"],["autoClose","جني الأرباح"],["positionManagement","التعزيز والتبريد"],["smartRecovery","التعافي الذكي"],["pending","الأوامر المعلقة"],["recoveryLog","سجل التعافي"]],
  "ai-analysis.html":[["aiResult","نتيجة التحليل"],["diagPanel","التشخيص"]],
+ "ai-monitor.html":[["hybridEffectPanel","قرار Hybrid AI"],["gatePanel","أسباب السماح والمنع"],["modelsPanel","أصوات النماذج"],["familiesPanel","الاستراتيجيات والتراكيب"],["botsPanel","البوتات"],["actionsPanel","التعزيز والتبريد والتعافي"],["eventsPanel","سجل الأحداث"]],
  "learning-lab.html":[["strategyAuditPanel","تدقيق الاستراتيجيات"],["liveStatus","التعلّم المباشر"],["runsTable","جولات الاختبار"],["learningStatus","نتائج التعلّم"]],
  "opportunities.html":[["marketStatus","السوق الآن"],["topStrategies","أقوى الاستراتيجيات"],["topCombinations","أفضل التركيبات"],["eventTable","سجل الإشارات"]],
  "backtest-lab.html":[["methodNote","إعدادات الاختبار"],["strategyResults","نتائج الاستراتيجيات"],["comboResults","نتائج التركيبات"]],
