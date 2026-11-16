@@ -37,6 +37,7 @@ table{width:100%;border-collapse:collapse;min-width:670px}td,th{padding:9px;bord
 <div class="panel" id="familiesPanel"><h2>عائلات الاستراتيجيات والتراكيب</h2><div id="families">—</div></div>
 <div class="panel" id="botsPanel"><h2>البوتات والإشارات</h2><div id="bots">—</div></div>
 <div class="panel" id="actionsPanel"><h2>التعزيز والتبريد والتعافي</h2><div id="actions">—</div></div>
+<div class="panel" id="learningPanel"><h2>التعلم المباشر من صفقات MT5</h2><div id="learningStatus">بانتظار بيانات صفقات MT5</div></div>
 </section>
 <div class="panel"><h2>تفاصيل كل الاستراتيجيات والتراكيب</h2><button id="detailsButton">تحميل تفاصيل 200 استراتيجية و1000 تركيبة</button><div class="scroll" id="details">تُحمّل التفاصيل عند الطلب لتجنّب إبطاء مراقبة القرارات.</div></div>
 <div class="panel" id="eventsPanel"><h2>سجل القرارات والمنع والأوامر</h2><div class="scroll" id="events">جارٍ تحميل السجل</div></div>
@@ -61,6 +62,18 @@ el('hybridEffect').innerHTML=row('قبل دمج AI',hy.base_direction)+row('بع
 const v=d.council?.votes||{};el('models').innerHTML=row(d.mode==='ADVISORY'?'دور مجلس النماذج':'موافقة المجلس',d.mode==='ADVISORY'?'يؤثر على ترجيح BUY/SELL دون اشتراط إجماع جميع النماذج':(d.council?.approved?'موافق':'غير موافق'))+row('حالة تصويت النماذج',d.council?.reason_ar)+Object.entries(v).map(([k,a])=>'<div class="reason"><b>'+esc(k)+'</b>'+row('الحالة',a.status)+row('الاتجاه',a.direction)+row('الثقة',a.confidence)+row('التفسير',a.reason_ar)+'</div>').join('')+row('النموذج المحلي الأخير',d.local_ai?.model?d.local_ai.model+' · '+d.local_ai.direction:'غير متاح');
 el('families').innerHTML='<b>العائلات</b>'+json(d.family_votes)+'<b>التراكيب</b>'+json(d.combination_summary);
 const b=d.bot_report||{};el('bots').innerHTML=row('حالة التحليل',b.status)+row('شمعة البوتات',b.bar_time)+'<b>توافق البوتات</b>'+json(b.consensus||{})+(b.advisors||[]).map(a=>row(a.name||a.id,(a.signal||'WAIT')+' · '+val(a.reason_ar||a.reason))).join('');
+const learn=d.learning||{};
+el('learningStatus').innerHTML=row('حالة تطبيق أوزان التعلم في القرار',learn.status||'لا توجد قراءة بعد')+
+ row('آخر إغلاق مرتبط باستراتيجية',learn.last_attributed_at||'لم يصل بعد')+
+ row('آخر قرار استخدم الأوزان',d.learning_applied_at||'—')+
+ row('عدد الصفقات المغلقة المنسوبة',learn.processed_positions??0)+
+ row('التغطية',String(learn.coverage_percent??0)+'%')+
+ row('استراتيجيات تغيرت فعلياً',learn.applied_strategies??0)+
+ row('تراكيب تغيرت فعلياً',learn.applied_combinations??0)+
+ row('الإصدار الأساسي',learn.active_version_label||'DEFAULT')+
+ row('ذاكرة الصفقات',learn.memory_status||'غير معروف')+
+ '<div class="reason">'+esc(learn.reason_ar||'تعلم إحصائي بحدود محسوبة ولا يفتح الصفقات بمفرده')+'</div>'+
+ '<a href="/prime.html#research/learning">فتح سجل التعلم المباشر بالتفاصيل</a>';
 const p=d.actions||{};el('actions').innerHTML=row('تفعيل الأوامر المركزية',d.central_actions_enabled?'مفعّل':'متوقف من لوحة التحكم')+row('مفتاح إدارة الصفقات داخل MT5',d.mt5_position_management_enabled===null||d.mt5_position_management_enabled===undefined?'غير معروف — حدّث EA':d.mt5_position_management_enabled?'مفعّل':'مقفول في EA Inputs')+row('مفتاح التداول المحلي داخل MT5',d.mt5_central_trading_enabled===null||d.mt5_central_trading_enabled===undefined?'غير معروف — حدّث EA':d.mt5_central_trading_enabled?'مفعّل':'مقفول في EA Inputs')+row('تفسير الإدارة',p.reason_ar)+row('وضع الإدارة',p.mode)+(p.actions||[]).map(a=>'<div class="reason">'+row('الإجراء',a.action)+row('الاتجاه',a.side)+row('ترتيب الإضافة',a.addition_index)+row('إضافات التعزيز المفتوحة',a.existing_addons)+row('إضافات التبريد المفتوحة',a.existing_coolings)+row('اللوت الأساسي',a.base_lot)+row('المضاعف المحفوظ',a.multiplier)+row('اللوت النظري',a.raw_lot)+row('خطوة لوت الوسيط',a.broker_volume_step)+row('لوت التنفيذ المقترح',a.lot_cap)+row('التعافي بلغ حد الخسارة',a.recovery_armed?'نعم':'لا')+row('تأثير AI الفعلي',a.ai_advice||'لا يوجد تصويت نموذج جاهز')+row('السبب',a.reason_ar)+'</div>').join('');
 }
 async function refresh(){try{const d=await get('/api/ai/monitor');update(d);const e=await get('/api/opportunities/events?kind=all&days=7&limit=250');const events=e.events||[];el('events').innerHTML=events.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>الاتجاه</th><th>السبب والتفاصيل</th></tr></thead><tbody>'+events.map(v=>'<tr><td>'+esc(v.created_at)+'</td><td>'+esc(v.event_type)+'</td><td>'+esc(v.payload?.outcome||v.payload?.direction||v.payload?.central_direction)+'</td><td>'+esc(v.payload?.reason_ar||JSON.stringify(v.payload||{}).slice(0,700))+'</td></tr>').join('')+'</tbody></table>':'لا توجد أحداث محفوظة خلال آخر 7 أيام'}catch(e){el('status').textContent='تعذر التحديث: '+e.message}}
