@@ -31,14 +31,13 @@ def fuse_live_decision(base,council):
     bar=int(_num(original.get("bar_time")))
     quant=str(original.get("decision","WAIT")).upper()
     raw_scores=original.get("directional_scores") or {}
-    scores={side:max(0.0,_num(raw_scores.get(side))) for side in DIRECTIONS}
+    scores={side:_num(raw_scores.get(side)) for side in DIRECTIONS}
     choices=original.get("directional_candidates") or {}
     eligible={}
     for side in DIRECTIONS:
         candidate=choices.get(side)
         if (isinstance(candidate,dict) and
-            1<=int(_num(candidate.get("strategy_id")))<=200 and
-            scores[side]>0):
+            1<=int(_num(candidate.get("strategy_id")))<=200):
             eligible[side]=candidate
     # Older cached decisions may not contain the new evidence fields.
     if not eligible and quant in DIRECTIONS and 1<=int(_num(original.get("strategy_id")))<=200:
@@ -84,7 +83,7 @@ def fuse_live_decision(base,council):
         result["strategy_id"]=chosen["strategy_id"]
         result["strategy_name"]=chosen.get("strategy_name","")
         result["combination_id"]=chosen.get("combination_id",0)
-        result["confidence"]=round(min(1.0,combined[winner]/(1.0+active_weight)),6)
+        result["confidence"]=round(max(0.0,min(1.0,combined[winner]/(1.0+active_weight))),6)
         result["reason_ar"]=(f"HYBRID {winner} | {why} | BUY={combined['BUY']:.3f}, "
                              f"SELL={combined['SELL']:.3f} | "
                              f"{chosen.get('reason_ar','')[:150]}")
