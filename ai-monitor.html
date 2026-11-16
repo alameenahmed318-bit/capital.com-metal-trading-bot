@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AL-ZOOL | مراقبة القرارات</title><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;font-family:Cairo,system-ui,sans-serif;background:#080d19;color:#ebf3ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% 0%,#162f3c,transparent 40%),#080d19}
+header{padding:20px clamp(16px,4vw,55px);display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #263746;flex-wrap:wrap}
+a{color:#78d7db;text-decoration:none}h1{font-size:24px;margin:3px 0}h2{font-size:17px;margin:0 0 12px}small,.muted{color:#9baebf}
+main{max-width:1500px;margin:auto;padding:20px clamp(14px,3vw,32px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin-bottom:16px}
+.panel{background:#101b2a;border:1px solid #263b4b;border-radius:16px;padding:18px;min-width:0}
+.hero{display:flex;gap:15px;align-items:center;flex-wrap:wrap}.signal{font-size:30px;font-weight:800;color:#f0c16c}.buy{color:#4ae2af}.sell{color:#fa848d}.wait{color:#f0c16c}
+.pill{display:inline-block;padding:3px 9px;border:1px solid #365069;border-radius:30px;font-size:12px;margin:3px}
+.line{display:flex;gap:8px;justify-content:space-between;border-bottom:1px solid #253646;padding:9px 0;align-items:flex-start}
+.line:last-child{border:0}.line span:last-child{text-align:left;overflow-wrap:anywhere;max-width:65%}
+.reason{padding:12px;border-radius:10px;background:#182938;border-right:3px solid #e7af62;overflow-wrap:anywhere}
+button{border:1px solid #4a717c;border-radius:9px;background:#153947;color:#fff;padding:9px 15px;cursor:pointer;font:inherit}
+table{width:100%;border-collapse:collapse;min-width:670px}td,th{padding:9px;border-bottom:1px solid #284052;text-align:right;font-size:13px;vertical-align:top}
+.scroll{overflow:auto;max-height:410px}.status{font-size:12px;color:#b1c4cf}pre{white-space:pre-wrap;word-break:break-word}
+</style></head>
+<body><header><div><small>🇸🇩 AL-ZOOL · مركز التشخيص</small><h1>مراقبة قرار التداول</h1><small>قراءة فقط · لا تُرسل أوامر تداول</small></div><div><a href="/dashboard.html">لوحة القيادة</a>　<a href="/trade-management.html">إعدادات التداول</a>　<button id="reload">تحديث الآن</button></div></header>
+<main><div class="panel" style="margin-bottom:16px"><div class="hero"><div id="signal" class="signal wait">WAIT</div><div><b id="topReason">جارٍ التحقق من الحساب</b><div class="status" id="meta">—</div></div></div><div id="status" class="status"></div></div>
+<section class="grid">
+<div class="panel"><h2>حالة التنفيذ وأسباب المنع</h2><div id="gate">—</div></div>
+<div class="panel"><h2>الاستراتيجية والتحليل</h2><div id="strategy">—</div></div>
+<div class="panel"><h2>الذكاء الصناعي: Fast AI / Qwen / DeepSeek</h2><div id="models">—</div></div>
+<div class="panel"><h2>عائلات الاستراتيجيات والتراكيب</h2><div id="families">—</div></div>
+<div class="panel"><h2>البوتات والإشارات</h2><div id="bots">—</div></div>
+<div class="panel"><h2>التعزيز والتبريد والتعافي</h2><div id="actions">—</div></div>
+</section>
+<div class="panel"><h2>سجل القرارات والمنع والأوامر</h2><div class="scroll" id="events">جارٍ تحميل السجل</div></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(()=>{'use strict';
+const el=id=>document.getElementById(id),esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const val=v=>v===null||v===undefined||v===''?'—':String(v);
+const row=(a,b)=>'<div class="line"><span>'+esc(a)+'</span><span>'+esc(val(b))+'</span></div>';
+const json=v=>'<pre>'+esc(JSON.stringify(v??{},null,2))+'</pre>';
+let client,token;
+async function get(path){const r=await fetch(path,{headers:{Authorization:'Bearer '+token}}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d}
+function update(d){
+let signal=String(d.signal||'WAIT').toUpperCase(),x=el('signal');x.textContent=signal;x.className='signal '+(signal==='BUY'?'buy':signal==='SELL'?'sell':'wait');
+el('topReason').textContent=d.reason_ar||'لا توجد بيانات قرار';el('meta').textContent=[d.symbol||'—',d.timeframe||'—','شمعة: '+val(d.bar_time),'آخر اتصال: '+val(d.last_seen)].join(' · ');
+el('status').textContent='MT5: '+(d.connected?'متصل':'غير متصل')+' | وضع المجلس: '+val(d.mode)+' | التداول: '+(d.trading_enabled?'مفعّل':'متوقف')+' | التنفيذ: '+(d.entry_ready?'جاهز بالقرار المركزي':'غير جاهز');
+el('gate').innerHTML=row('قرار تنفيذ قابل للإرسال',d.entry_ready?'نعم':'لا')+row('بيانات الشمعة صالحة',d.bar_fresh?'نعم':'لا')+row('بوابة الدخول',d.gate?.reason_ar)+row('حارس الحساب',d.risk?.reason_ar)+row('حد الاتجاه',d.direction_limit?.reason_ar)+'<div class="reason">'+esc(d.reason_ar||'—')+'</div>'+((d.gate?.checks||[]).map(v=>row(v.passed?'✓ '+v.check:'✕ '+v.check,v.reason_ar)).join(''));
+el('strategy').innerHTML=row('رقم الاستراتيجية',d.strategy_id)+row('اسم الاستراتيجية',d.strategy_name)+row('الثقة',d.confidence)+row('السبب التحليلي',d.decision_reason_ar)+row('سياق السوق',json(d.strategy_context));
+const v=d.council?.votes||{};el('models').innerHTML=row('موافقة المجلس',d.council?.approved?'نعم':'لا')+row('سبب المجلس',d.council?.reason_ar)+Object.entries(v).map(([k,a])=>'<div class="reason"><b>'+esc(k)+'</b>'+row('الحالة',a.status)+row('الاتجاه',a.direction)+row('الثقة',a.confidence)+row('التفسير',a.reason_ar)+'</div>').join('')+row('النموذج المحلي الأخير',d.local_ai?.model?d.local_ai.model+' · '+d.local_ai.direction:'غير متاح');
+el('families').innerHTML='<b>العائلات</b>'+json(d.family_votes)+'<b>التراكيب</b>'+json(d.combination_summary);
+const b=d.bot_report||{};el('bots').innerHTML=row('حالة التحليل',b.status)+row('شمعة البوتات',b.bar_time)+row('توافق البوتات',json(b.consensus||{}))+(b.advisors||[]).map(a=>row(a.name||a.id,(a.signal||'WAIT')+' · '+val(a.reason_ar||a.reason))).join('');
+const p=d.actions||{};el('actions').innerHTML=row('تفسير الإدارة',p.reason_ar)+row('وضع الإدارة',p.mode)+(p.actions||[]).map(a=>'<div class="reason">'+row('الإجراء',a.action)+row('الاتجاه',a.side)+row('الحجم المقترح',a.lot_cap)+row('السبب',a.reason_ar)+'</div>').join('');
+}
+async function refresh(){try{const d=await get('/api/ai/monitor');update(d);const e=await get('/api/opportunities/events?kind=all&days=7&limit=250');const events=e.events||[];el('events').innerHTML=events.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>الاتجاه</th><th>السبب والتفاصيل</th></tr></thead><tbody>'+events.map(v=>'<tr><td>'+esc(v.created_at)+'</td><td>'+esc(v.event_type)+'</td><td>'+esc(v.payload?.outcome||v.payload?.direction||v.payload?.central_direction)+'</td><td>'+esc(v.payload?.reason_ar||JSON.stringify(v.payload||{}).slice(0,700))+'</td></tr>').join('')+'</tbody></table>':'لا توجد أحداث محفوظة خلال آخر 7 أيام';el('status').textContent+=' | آخر تحديث: '+new Date().toLocaleTimeString('en-GB')}catch(e){el('status').textContent='تعذر التحديث: '+e.message}}
+async function boot(){try{let r=await fetch('/api/config'),c=await r.json();if(!c.ready)throw Error('إعدادات الدخول غير مكتملة');client=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);let s=await client.auth.getSession();if(!s.data.session){location.href='/';return}token=s.data.session.access_token;await get('/api/access/check');await refresh();setInterval(refresh,5000)}catch(e){el('topReason').textContent='تعذر الدخول: '+e.message}}
+el('reload').addEventListener('click',refresh);boot();
+})();
+</script></body></html>
