@@ -2,14 +2,15 @@
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AL-ZOOL | مراقبة القرارات</title><link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ui-shell.css?v=1"><link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1"><link rel="stylesheet" href="/alzool-dark-ai.css?v=dark-ai-pro-20261114-1"><link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
 <style>
 :root{color-scheme:dark;font-family:Cairo,system-ui,sans-serif;background:#080d19;color:#ebf3ff}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% 0%,#162f3c,transparent 40%),#080d19}
-header{padding:20px clamp(16px,4vw,55px);display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #263746;flex-wrap:wrap}
+.monitor-header{padding:20px clamp(16px,3vw,34px);display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #263746;flex-wrap:wrap}.monitor-header h1{font-size:24px;margin:3px 0}.monitor-header button{margin-inline-start:10px}
 a{color:#78d7db;text-decoration:none}h1{font-size:24px;margin:3px 0}h2{font-size:17px;margin:0 0 12px}small,.muted{color:#9baebf}
-main{max-width:1500px;margin:auto;padding:20px clamp(14px,3vw,32px)}
+.monitor-main{width:100%;min-width:0;max-width:none;margin:0;padding:20px clamp(14px,3vw,32px)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;margin-bottom:16px}
-.panel{background:#101b2a;border:1px solid #263b4b;border-radius:16px;padding:18px;min-width:0}
+.monitor-main .panel{background:#101b2a;border:1px solid #263b4b;border-radius:16px;padding:18px;min-width:0}
 .hero{display:flex;gap:15px;align-items:center;flex-wrap:wrap}.signal{font-size:30px;font-weight:800;color:#f0c16c}.buy{color:#4ae2af}.sell{color:#fa848d}.wait{color:#f0c16c}
 .pill{display:inline-block;padding:3px 9px;border:1px solid #365069;border-radius:30px;font-size:12px;margin:3px}
 .line{display:flex;gap:8px;justify-content:space-between;border-bottom:1px solid #253646;padding:9px 0;align-items:flex-start}
@@ -19,20 +20,27 @@ button{border:1px solid #4a717c;border-radius:9px;background:#153947;color:#fff;
 table{width:100%;border-collapse:collapse;min-width:670px}td,th{padding:9px;border-bottom:1px solid #284052;text-align:right;font-size:13px;vertical-align:top}
 .scroll{overflow:auto;max-height:410px}.status{font-size:12px;color:#b1c4cf}pre{white-space:pre-wrap;word-break:break-word}
 </style></head>
-<body><header><div><small>🇸🇩 AL-ZOOL · مركز التشخيص</small><h1>مراقبة قرار التداول</h1><small>قراءة فقط · لا تُرسل أوامر تداول</small></div><div><a href="/dashboard.html">لوحة القيادة</a>　<a href="/trade-management.html">إعدادات التداول</a>　<button id="reload">تحديث الآن</button></div></header>
-<main><div class="panel" style="margin-bottom:16px"><div class="hero"><div id="signal" class="signal wait">WAIT</div><div><b id="topReason">جارٍ التحقق من الحساب</b><div class="status" id="meta">—</div></div></div><div id="status" class="status"></div></div>
+<body><div class="shell">
+<aside class="sidebar"><a class="brand" href="/dashboard.html"><span class="brand-mark">🇸🇩</span><span><b>AL-ZOOL</b><small>GOLD CONTROL CENTER</small></span></a>
+<div class="side-label">الرئيسية</div><div class="nav-group"><a class="nav" href="/dashboard.html"><span>⌂</span><span class="nav-label">لوحة القيادة</span></a>
+<a class="nav" href="/trade-management.html"><span>⇄</span><span class="nav-label">التداول والحماية</span></a>
+<a class="nav active" href="/ai-monitor.html" aria-current="page"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a></div>
+<div class="side-bottom"><span class="live-dot"></span><span>AL-ZOOL</span><small id="serviceState">جارٍ التحقق</small></div></aside>
+<main class="main monitor-main"><header class="topbar monitor-header"><div><small>🇸🇩 AL-ZOOL · مركز القرارات</small><h1>مراقبة Hybrid AI</h1><small>جزء من لوحة تحكم AL-ZOOL · قراءة فقط، بدون إرسال أوامر تداول</small></div>
+<div><a href="/dashboard.html">لوحة القيادة</a>　<a href="/trade-management.html">إعدادات التداول</a>　<button id="reload" type="button">تحديث الآن</button></div></header>
+<div class="panel" style="margin-bottom:16px"><div class="hero"><div id="signal" class="signal wait">WAIT</div><div><b id="topReason">جارٍ التحقق من الحساب</b><div class="status" id="meta">—</div></div></div><div id="status" class="status"></div></div>
 <section class="grid">
-<div class="panel"><h2>حالة التنفيذ وأسباب المنع</h2><div id="gate">—</div></div>
+<div class="panel" id="gatePanel"><h2>حالة التنفيذ وأسباب المنع</h2><div id="gate">—</div></div>
 <div class="panel"><h2>الاستراتيجية والتحليل</h2><div id="strategy">—</div></div>
-<div class="panel"><h2>القرار الهجين — أثر أصوات AI الفعلي</h2><div id="hybridEffect">—</div></div>
-<div class="panel"><h2>الذكاء الصناعي: Fast AI / Qwen / DeepSeek</h2><div id="models">—</div></div>
-<div class="panel"><h2>عائلات الاستراتيجيات والتراكيب</h2><div id="families">—</div></div>
-<div class="panel"><h2>البوتات والإشارات</h2><div id="bots">—</div></div>
-<div class="panel"><h2>التعزيز والتبريد والتعافي</h2><div id="actions">—</div></div>
+<div class="panel" id="hybridEffectPanel"><h2>القرار الهجين — أثر أصوات AI الفعلي</h2><div id="hybridEffect">—</div></div>
+<div class="panel" id="modelsPanel"><h2>الذكاء الصناعي: Fast AI / Qwen / DeepSeek</h2><div id="models">—</div></div>
+<div class="panel" id="familiesPanel"><h2>عائلات الاستراتيجيات والتراكيب</h2><div id="families">—</div></div>
+<div class="panel" id="botsPanel"><h2>البوتات والإشارات</h2><div id="bots">—</div></div>
+<div class="panel" id="actionsPanel"><h2>التعزيز والتبريد والتعافي</h2><div id="actions">—</div></div>
 </section>
 <div class="panel"><h2>تفاصيل كل الاستراتيجيات والتراكيب</h2><button id="detailsButton">تحميل تفاصيل 200 استراتيجية و1000 تركيبة</button><div class="scroll" id="details">تُحمّل التفاصيل عند الطلب لتجنّب إبطاء مراقبة القرارات.</div></div>
-<div class="panel"><h2>سجل القرارات والمنع والأوامر</h2><div class="scroll" id="events">جارٍ تحميل السجل</div></div>
-</main>
+<div class="panel" id="eventsPanel"><h2>سجل القرارات والمنع والأوامر</h2><div class="scroll" id="events">جارٍ تحميل السجل</div></div>
+</main></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (()=>{'use strict';
@@ -56,7 +64,7 @@ const b=d.bot_report||{};el('bots').innerHTML=row('حالة التحليل',b.st
 const p=d.actions||{};el('actions').innerHTML=row('تفعيل الأوامر المركزية',d.central_actions_enabled?'مفعّل':'متوقف من لوحة التحكم')+row('تفسير الإدارة',p.reason_ar)+row('وضع الإدارة',p.mode)+(p.actions||[]).map(a=>'<div class="reason">'+row('الإجراء',a.action)+row('الاتجاه',a.side)+row('الحجم المقترح',a.lot_cap)+row('التعافي بلغ حد الخسارة',a.recovery_armed?'نعم':'لا')+row('تأثير AI الفعلي',a.ai_advice||'لا يوجد تصويت نموذج جاهز')+row('السبب',a.reason_ar)+'</div>').join('');
 }
 async function refresh(){try{const d=await get('/api/ai/monitor');update(d);const e=await get('/api/opportunities/events?kind=all&days=7&limit=250');const events=e.events||[];el('events').innerHTML=events.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>الاتجاه</th><th>السبب والتفاصيل</th></tr></thead><tbody>'+events.map(v=>'<tr><td>'+esc(v.created_at)+'</td><td>'+esc(v.event_type)+'</td><td>'+esc(v.payload?.outcome||v.payload?.direction||v.payload?.central_direction)+'</td><td>'+esc(v.payload?.reason_ar||JSON.stringify(v.payload||{}).slice(0,700))+'</td></tr>').join('')+'</tbody></table>':'لا توجد أحداث محفوظة خلال آخر 7 أيام'}catch(e){el('status').textContent='تعذر التحديث: '+e.message}}
-async function boot(){try{let r=await fetch('/api/config'),c=await r.json();if(!c.ready)throw Error('إعدادات الدخول غير مكتملة');client=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);let s=await client.auth.getSession();if(!s.data.session){location.href='/';return}token=s.data.session.access_token;await get('/api/access/check');await refresh();setInterval(refresh,5000)}catch(e){el('topReason').textContent='تعذر الدخول: '+e.message}}
+async function boot(){try{let r=await fetch('/api/config'),c=await r.json();if(!c.ready)throw Error('إعدادات الدخول غير مكتملة');client=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);let s=await client.auth.getSession();if(!s.data.session){location.href='/';return}token=s.data.session.access_token;await get('/api/access/check');el('serviceState').textContent='متصل';await refresh();setInterval(refresh,5000)}catch(e){el('topReason').textContent='تعذر الدخول: '+e.message}}
 el('detailsButton').addEventListener('click',async()=>{
 const button=el('detailsButton');button.disabled=true;el('details').textContent='جارٍ قراءة قرارات الاستراتيجيات والتركيبات…';
 try{
@@ -68,4 +76,6 @@ finally{button.disabled=false}
 });
 el('reload').addEventListener('click',refresh);boot();
 })();
-</script></body></html>
+</script>
+<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
+</body></html>
