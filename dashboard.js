@@ -52,9 +52,11 @@ async function boot(){
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
   if($("azCurrentUser"))$("azCurrentUser").textContent=data.session.user?.user_metadata?.name||data.session.user?.email||"حساب التداول";
-  await api("/api/access/check");
+  const access=await api("/api/access/check");
+  if(access?.role==="owner"&&$("aiMonitorInline"))$("aiMonitorInline").hidden=false;
   $("serviceState").textContent="تم التحقق من الحساب";
   await refresh();
+  if(access?.role==="owner")await refreshInlineMonitor();
  }catch(e){
   $("serviceState").textContent="يتطلب تسجيل الدخول";
   $("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+escapeHtml(e.message)+" — ارجع إلى صفحة الدخول.</span>";
@@ -276,6 +278,26 @@ async function runAiAnalysis(){
 const aiAnalyzeButton=$("aiAnalyzeBtn");if(aiAnalyzeButton)aiAnalyzeButton.addEventListener("click",runAiAnalysis);
 const autoTradingToggle=$("autoTradingEnabled");if(autoTradingToggle)autoTradingToggle.addEventListener("change",changeAutoTrading);
 
+async function refreshInlineMonitor(){
+ const card=$("aiMonitorInline");
+ if(!card||card.hidden||!accessToken)return;
+ try{
+  const d=await api("/api/ai/monitor");
+  const h=d.hybrid||{};
+  const put=(id,v)=>{const node=$(id);if(node)node.textContent=String(v??"—");};
+  put("azMonitorBase",h.base_direction||d.signal||"WAIT");
+  put("azMonitorEffective",h.effective_direction||d.signal||"WAIT");
+  put("azMonitorUsed",h.model_votes_used??0);
+  put("azMonitorAiReason",h.reason_ar||"لا توجد مساهمة AI جديدة لهذه الشمعة");
+  put("azMonitorReady",d.entry_ready?"جاهز للإرسال إلى MT5":"غير جاهز");
+  put("azMonitorReason",d.reason_ar||"بانتظار بيانات القرار");
+  put("azMonitorMode",d.mode==="ADVISORY"?"Hybrid AI الفعّال":d.mode||"—");
+ }catch(e){
+  const node=$("azMonitorReason");if(node)node.textContent="تعذر تحميل التشخيص: "+(e.message||"خطأ اتصال");
+ }
+}
+$("azInlineMonitorRefresh")?.addEventListener("click",refreshInlineMonitor);
 $("refreshBtn").addEventListener("click",refresh);
 boot();
 setInterval(()=>{if(accessToken)refresh();},10000);
+setInterval(refreshInlineMonitor,15000);
