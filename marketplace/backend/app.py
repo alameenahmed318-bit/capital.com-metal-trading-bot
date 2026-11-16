@@ -949,7 +949,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
                 "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
-                "minimum_confidence":0.55,
+                "minimum_confidence":None,
                 "entry_council_mode":"ADVISORY" if advisory_mode else "STRICT",
                 "authorization":gate,
                 "authorization_id":gate.get("authorization_id"),
@@ -1340,11 +1340,16 @@ class Handler(SimpleHTTPRequestHandler):
                 item=CONNECTIONS.get(client_id) if client_id else None
                 if not item: return self.send_json(200,{"connected":False,"status":"WAIT","reason_ar":"MT5 غير متصل"})
                 decision=item.get("strategy_decision") or {}
+                settings=get_trade_settings(client_id) or {}
+                is_hybrid=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                council=council_result(client_id,decision)
+                if is_hybrid:decision=fuse_live_decision(decision,council)
                 return self.send_json(200,{"connected":True,"client_id":client_id,
                     "bar_time":decision.get("bar_time"),"signal":decision.get("decision","WAIT"),
-                    "council":council_result(client_id,decision),
+                    "mode":"HYBRID" if is_hybrid else "STRICT",
+                    "hybrid":decision.get("hybrid",{}),"council":council,
                     "risk_guardian":risk_guardian(item.get("account") or {},item.get("positions") or [],
-                        risk_limits_from_settings(get_trade_settings(client_id) or {}))})
+                        risk_limits_from_settings(settings))})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/connection/status":
