@@ -1224,6 +1224,61 @@ class Handler(SimpleHTTPRequestHandler):
                     "wins":profile["wins"],"losses":profile["losses"],"top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/monitor":
+            # Owner-only, read-only mirror of the actual decision gates.
+            try:
+                u=owner(token_of(self))
+                lic=license_for_user(u["id"])
+                cid=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(cid) if cid else None
+                if not item:
+                    return self.send_json(200,{"connected":False,"reason_ar":"MT5 غير متصل","signal":"WAIT"})
+                now=datetime.now(timezone.utc)
+                decision=item.get("strategy_decision") or {}
+                settings=get_trade_settings(cid) or {}
+                signal=str(decision.get("decision","WAIT")).upper()
+                advisory=(entry_council_mode(settings,True)=="ADVISORY")
+                local=item.get("local_ai_advice")
+                local_advice=({**local,"age_seconds":now.timestamp()-finite_number(local.get("received_at_unix",0))}
+                    if isinstance(local,dict) else None)
+                gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
+                    item.get("received_at"),now,bool(settings.get("trading_enabled")),
+                    local_ai_advice=local_advice,require_local_ai=LOCAL_AI_REQUIRED and not advisory,
+                    strategy_first=advisory)
+                council=council_result(cid,decision)
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [],
+                    risk_limits_from_settings(settings))
+                direction=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),
+                    signal,settings)
+                fresh=closed_bar_execution_fresh(decision.get("bar_time"),now,item.get("timeframe","M1"))
+                ready=bool(fresh and gate.get("approved") and (advisory or council.get("approved"))
+                    and risk.get("approved") and direction.get("approved"))
+                if not gate.get("approved"):reason=gate.get("reason_ar","رفض بوابة الدخول")
+                elif not fresh:reason="انتهت نافذة تنفيذ شمعة التأكيد"
+                elif not advisory and not council.get("approved"):reason=council.get("reason_ar","المجلس ينتظر")
+                elif not risk.get("approved"):reason=risk.get("reason_ar","حارس الحساب منع الدخول")
+                elif not direction.get("approved"):reason=direction.get("reason_ar","حد صفقات الاتجاه")
+                else:reason="إشارة جاهزة للعرض على MT5؛ التنفيذ النهائي يتحقق منه EA"
+                bot=item.get("bot_report") or {}
+                actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
+                return self.send_json(200,{
+                    "connected":0<=(now-item.get("received_at",now-timedelta(days=1))).total_seconds()<=30,
+                    "last_seen":item.get("last_seen"),"symbol":item.get("symbol"),
+                    "timeframe":item.get("timeframe"),"signal":signal,
+                    "confidence":decision.get("confidence"),"strategy_id":decision.get("strategy_id"),
+                    "strategy_name":decision.get("strategy_name"),
+                    "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
+                    "bar_time":decision.get("bar_time"),"entry_ready":ready,
+                    "mode":"ADVISORY" if advisory else "STRICT",
+                    "trading_enabled":bool(settings.get("trading_enabled")),
+                    "bar_fresh":fresh,"gate":gate,"risk":risk,"direction_limit":direction,
+                    "council":council,"local_ai":local_advice,
+                    "family_votes":decision.get("family_votes") or {},
+                    "combination_summary":decision.get("combination_summary") or {},
+                    "bot_report":bot,"actions":actions,
+                    "strategy_context":decision.get("context") or {}})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/council":
             try:
                 u=current_user(token_of(self))
