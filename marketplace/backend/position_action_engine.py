@@ -58,11 +58,17 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
 
     for side,group in sides.items():
         if signal!=side:
-            # Keep a visible HOLD for this side. A sell signal cannot be
-            # reinterpreted as authorization to enlarge existing buys.
+            # Show precisely why recovery armed at the owner loss threshold
+            # still cannot open in the position's direction.
+            loss=sum(num(p.get("profit"))+num(p.get("swap")) for p in group)
+            target=num(pm.get("recovery_loss_trigger"))
+            armed=pm.get("recovery_enabled") is True and target>0 and loss<=-target
+            note=(f"خسارة {loss:.2f} بلغت حد التعافي {target:.2f} لكن تحليل "
+                  f"{signal} لم يؤكد اتجاه مراكز {side}" if armed else
+                  "اتجاه الاستراتيجيات الحالي لا يؤكد إضافة في اتجاه هذه الصفقات")
             result["actions"].append({"side":side,"action":"HOLD","lot_cap":0.0,
-                "reason_ar":"اتجاه الاستراتيجيات الحالي لا يؤكد إضافة في اتجاه هذه الصفقات",
-                "execution_authorized":False})
+                "floating_net":round(loss,2),"recovery_armed":armed,
+                "reason_ar":note,"execution_authorized":False})
             continue
         price=num(tick.get("bid") if side=="BUY" else tick.get("ask"))
         volume=sum(max(0,num(p.get("volume"))) for p in group)
@@ -137,6 +143,9 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         if action=="HOLD":candidate_lot=0.0
         result[side.lower()]=action
         result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,3),
+            "recovery_armed":bool(pm.get("recovery_enabled") is True and
+                                  num(pm.get("recovery_loss_trigger"))>0 and
+                                  net<=-num(pm.get("recovery_loss_trigger"))),
             "atr_distance":round(progress,3),"floating_net":round(net,2),
             "reason_ar":reason,"ai_advice":advice_summary,"execution_authorized":False})
     result["reason_ar"]="اقتراحات مركزية فقط؛ التنفيذ يتطلب تصريح إجراء مستقل"
