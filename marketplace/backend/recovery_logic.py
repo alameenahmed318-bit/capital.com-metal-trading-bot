@@ -5,6 +5,7 @@ Owner threshold is account-wide; direction is chosen independently from new-entr
 permission, among existing *losing* gold sides. Model vote is a tie-break, not a veto.
 """
 import math
+from recovery_candle_guard import recovery_m1_confirmation
 
 
 def _num(value, default=0.0):
@@ -59,17 +60,24 @@ def recovery_intent(snapshot, decision, settings):
     if not eligible:
         result["reason_ar"]="حد خسارة الحساب تحقق، لكن لا توجد صفقات ذهب خاسرة لتحديد اتجاه تعافٍ مطابق"
         return result
-    strategy=str((decision or {}).get("decision","WAIT")).upper()
-    # Largest losing side is primary; strategy vote breaks equal-loss cases.
-    selected=sorted(eligible,key=lambda side:(-abs(sides[side]["loss"]),
-                    0 if side==strategy else 1,side))[0]
     size=round(3.0*lots,3)
     if size<=0:
         result["reason_ar"]="لا توجد لوتات صالحة لحساب مضاعف التعافي"
         return result
+    # Reaching a currency loss limit ARMS a recovery, never OPENS it.
+    # A full NEW M1 candle after arming must confirm a losing side.
+    confirmation=recovery_m1_confirmation(snapshot,decision,eligible)
+    result["candle_confirmation"]=confirmation
+    result["candidate_lot"]=size
+    result["eligible_sides"]=eligible
+    if not confirmation["approved"]:
+        result["reason_ar"]=(f"التعافي مسلح عند صافي {net:.2f} / حد {trigger:.2f}؛ "
+                             +confirmation["reason_ar"])
+        return result
+    selected=confirmation["side"]
     result.update({"action":"RECOVERY_PROPOSAL","side":selected,"lot_cap":size,
-        "reason_ar":(f"صافي الحساب {net:.2f} وصل إلى حد الخسارة {trigger:.2f}؛ "
-                     f"اتجاه التعافي {selected} هو اتجاه مجموعة الذهب الأكثر خسارة؛ "
-                     f"حجم التعافي 3 × مجموع لوتات الحساب {lots:.3f} = {size:.3f}؛ "
-                     f"إشارة الدخول الحالية {strategy} للاستئناس وليست شرطاً مانعاً")})
+        "reason_ar":(f"صافي الحساب {net:.2f} وصل لحد الخسارة {trigger:.2f}؛ "
+                     f"تأكيد شمعة M1 الجديدة: {confirmation['reason_ar']}؛ "
+                     f"صفقة التعافي {selected} بلوت 3 × مجموع لوتات الحساب "
+                     f"{lots:.3f} = {size:.3f}")})
     return result
