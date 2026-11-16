@@ -131,37 +131,39 @@ def fast_ai(decision,account):
     return _vote("Fast AI","READY",signal,confidence,"توافق السعر وATR والعائلات وسلامة الحساب")
 
 def risk_limits_from_settings(settings):
-    """Read owner-configured caps; never infer permissions from AI votes."""
+    """Only enforce optional caps explicitly configured by the owner."""
     pm=(settings or {}).get("position_management") or {}
     return {
-        "max_drawdown_pct":_num(pm.get("max_drawdown_pct",5),5),
-        "max_positions":_num(pm.get("max_positions",10),10),
-        "max_total_lots":_num(pm.get("max_total_lots",0.10),.10),
+        key: pm.get(key)
+        for key in ("max_drawdown_pct", "max_positions", "max_total_lots")
+        if pm.get(key) is not None and str(pm.get(key)).strip() != ""
     }
 
 def risk_guardian(account,positions=None,limits=None):
+    """Account validity is mandatory; optional owner limits are not invented."""
     limits=limits or {}
-    balance=_num(account.get("balance"));equity=_num(account.get("equity"))
+    balance=_num(account.get("balance"))
+    equity=_num(account.get("equity"))
     free=_num(account.get("free_margin"))
     if balance<=0 or equity<=0 or free<=0:
         return {"approved":False,"reason_ar":"الرصيد أو الهامش غير آمن"}
-    max_drawdown=max(0,min(100,_num(limits.get("max_drawdown_pct",5),5)))
     drawdown=max(0,(balance-equity)/balance*100)
-    if drawdown>max_drawdown:
-        return {"approved":False,"reason_ar":"تجاوز حد تراجع حقوق الملكية",
-                "drawdown_pct":round(drawdown,2)}
-    max_positions=max(0,int(_num(limits.get("max_positions",10),10)))
-    if len(positions or [])>=max_positions:
-        return {"approved":False,"reason_ar":"تجاوز عدد الصفقات المسموح",
-                "open_positions":len(positions or []),"max_positions":max_positions}
     total_lots=sum(max(0,_num(p.get("volume"))) for p in positions or [] if isinstance(p,dict))
-    max_total_lots=_num(limits.get("max_total_lots",.10),.10)
-    if max_total_lots<=0 or total_lots+1e-8>=max_total_lots:
-        return {"approved":False,"reason_ar":"سقف اللوت الإجمالي يمنع فتح صفقات جديدة",
-                "total_lots":round(total_lots,4),"max_total_lots":max_total_lots}
-    return {"approved":True,"reason_ar":"حارس المخاطر موافق",
-            "drawdown_pct":round(drawdown,2),
-            "total_lots":round(total_lots,4),"max_total_lots":max_total_lots}
+    report={"approved":True,"reason_ar":"حالة الحساب سليمة",
+            "drawdown_pct":round(drawdown,2),"total_lots":round(total_lots,4)}
+    if "max_drawdown_pct" in limits:
+        cap=_num(limits["max_drawdown_pct"],-1)
+        if cap>=0 and drawdown>cap:
+            return {**report,"approved":False,"reason_ar":"تجاوز حد التراجع المحدد من المالك"}
+    if "max_positions" in limits:
+        cap=_num(limits["max_positions"],-1)
+        if cap>=0 and len(positions or [])>=int(cap):
+            return {**report,"approved":False,"reason_ar":"تجاوز حد عدد الصفقات المحدد من المالك"}
+    if "max_total_lots" in limits:
+        cap=_num(limits["max_total_lots"],-1)
+        if cap>=0 and total_lots+1e-8>=cap:
+            return {**report,"approved":False,"reason_ar":"تجاوز حد اللوت المحدد من المالك"}
+    return report
 
 def _worker(client_id,bar,decision,account):
     # Run both remote/local model calls concurrently; never block MT5 telemetry.
