@@ -23,5 +23,6 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_owner_decisions.py' -v
           python -m unittest discover -s tests -p 'test_owner_recovery.py' -v
+          python -m unittest discover -s tests -p 'test_position_sizing.py' -v
           python -m unittest discover -s tests -p 'test_recovery_action_protocol.py' -v
           python -m unittest discover -s tests -p 'test_hybrid_decision.py' -v
