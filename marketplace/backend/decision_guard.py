@@ -118,6 +118,31 @@ def build_council_event(client_id, decision, gate, trading_enabled):
         },
     }
 
+
+def closed_bar_execution_fresh(bar_time, now, timeframe="M1"):
+    """Only the candle immediately after the confirmed closed candle may execute.
+
+    MT5 reports the OPEN timestamp of the latest CLOSED candle, so its valid
+    execution interval is [bar_open + period, bar_open + 2 * period). The
+    live terminal remains responsible for its own tick and price checks.
+    Never extend this window when model responses arrive late.
+    """
+    frame = str(timeframe or "").upper().replace("PERIOD_", "")
+    seconds = {"M1": 60, "M5": 300, "M15": 900,
+               "M30": 1800, "H1": 3600, "H4": 14400}.get(frame)
+    if seconds is None:
+        return False
+    try:
+        epoch = float(now.timestamp()) if isinstance(now, datetime) else float(now)
+        bar = int(bar_time)
+    except (ValueError, TypeError, OverflowError):
+        return False
+    if bar <= 0 or not math.isfinite(epoch):
+        return False
+    age = epoch - bar
+    return seconds <= age < 2 * seconds
+
+
 def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled, local_ai_advice=None, require_local_ai=False):
     """Return a structured authorization record; any uncertainty means WAIT."""
     checks = []
