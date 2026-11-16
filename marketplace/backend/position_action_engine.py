@@ -28,8 +28,10 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         result["reason_ar"]="وضع إدارة الصفقات غير صالح";return result
-    if not ((council_advisory or council.get("approved")) and risk.get("approved") and settings.get("trading_enabled")):
-        result["reason_ar"]="الاستراتيجية أو حارس المخاطر أو مفتاح التداول منع إجراءات جديدة";return result
+    # Open-position management uses its own live trend decision; it must not
+    # inherit the entry council's three-model veto.
+    if not risk.get("approved") or not settings.get("trading_enabled"):
+        result["reason_ar"]="حالة الحساب أو مفتاح التداول يمنع إجراء إدارة جديد";return result
     if atr<=0 or signal not in ("BUY","SELL"):
         result["reason_ar"]="انتظار ATR واتجاه صالح من المحرك المركزي";return result
     sides={}
