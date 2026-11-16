@@ -1799,8 +1799,8 @@ class Handler(SimpleHTTPRequestHandler):
                 warning=(" | تنبيه: وقف الخسارة معطّل في إعداداتك الحالية"
                          if prior.get("stop_loss_enabled") is False else "")
                 return self.send_json(200,{"mode":requested,
-                    "message":("تم تفعيل الاستراتيجية أولاً — نماذج AI استشارية"
-                               if requested=="ADVISORY" else "تم تفعيل المجلس الصارم")+warning})
+                    "message":("تم تفعيل Hybrid AI — أصوات Fast AI وQwen وDeepSeek الحديثة تشارك في ترجيح BUY وSELL دون اشتراط الإجماع"
+                               if requested=="ADVISORY" else "تم تفعيل المجلس الصارم — إجماع 3 نماذج")+warning})
             if path=="/api/ai/versions/test":
                 u=owner(token)
                 identity=license_for_user(u["id"])
