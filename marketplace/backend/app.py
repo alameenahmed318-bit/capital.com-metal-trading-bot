@@ -1325,6 +1325,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "mode":"ADVISORY" if advisory else "STRICT",
                     "trading_enabled":bool(settings.get("trading_enabled")),
                     "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
+                    "mt5_position_management_enabled":item.get("mt5_position_management_enabled"),
+                    "mt5_central_trading_enabled":item.get("mt5_central_trading_enabled"),
                     "bar_fresh":fresh,"gate":gate,"risk":risk,"direction_limit":direction,
                     "council":council,"hybrid":decision.get("hybrid",{}),"local_ai":local_advice,
                     "family_votes":decision.get("family_votes") or {},
@@ -2015,6 +2017,10 @@ class Handler(SimpleHTTPRequestHandler):
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
+                    "mt5_position_management_enabled":(data.get("mt5_position_management_enabled")
+                        if isinstance(data.get("mt5_position_management_enabled"),bool) else None),
+                    "mt5_central_trading_enabled":(data.get("mt5_central_trading_enabled")
+                        if isinstance(data.get("mt5_central_trading_enabled"),bool) else None),
                     "positions":positions,
                     "recovery_group_net":(finite_number(data["recovery_group_net"]) if
                         data.get("recovery_group_net") is not None else None),
