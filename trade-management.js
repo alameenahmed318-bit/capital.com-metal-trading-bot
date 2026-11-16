@@ -9,7 +9,7 @@ async function loadCloseSettings(){
  $("groupEnabled").checked=!!s.group_enabled;
  $("singleTarget").value=Number(s.single_profit_target??1).toFixed(2);
  $("groupTarget").value=Number(s.group_profit_target??5).toFixed(2);
- $("stopLossEnabled").checked=s.stop_loss_enabled!==false;
+ $("stopLossEnabled").checked=s.stop_loss_enabled===true;
  $("stopLossMode").value=(s.stop_loss_mode==="POINTS"?"POINTS":"ATR");
  $("stopLossValue").value=Number(s.stop_loss_value??1.8).toString();
  $("closeEngineState").textContent="الإعدادات محفوظة · "+(d.client_id?"مرتبطة بعميل MT5":"غير مرتبطة");
@@ -28,18 +28,18 @@ async function loadCloseSettings(){
  $("addonEnabled").checked=!!pm.addon_enabled;
  $("addonMax").value=Number(pm.addon_max??0);
  $("addonMultiplier").value=Number(pm.addon_multiplier??1.5);
- $("addonMaxLot").value=Number(pm.addon_max_lot??0.05);
+ $("addonMaxLot").value=pm.addon_max_lot??"";
  $("addonLot").value=Number(pm.addon_lot??0.01);
  $("addonDistance").value=Number(pm.addon_distance_points??100);
  $("coolingEnabled").checked=!!pm.cooling_enabled;
  $("coolingMax").value=Number(pm.cooling_max??0);
  $("coolingMultiplier").value=Number(pm.cooling_multiplier??1.2);
- $("coolingMaxLot").value=Number(pm.cooling_max_lot??0.05);
+ $("coolingMaxLot").value=pm.cooling_max_lot??"";
  $("coolingLot").value=Number(pm.cooling_lot??0.01);
  $("coolingDistance").value=Number(pm.cooling_distance_points??100);
- $("maxTotalLots").value=Number(pm.max_total_lots??0.10);
- $("maxPositionsPerDirection").value=Number(pm.max_positions_per_direction??2);
- $("recoveryMaxLot").value=Number(pm.recovery_max_lot??0.05);
+ $("maxTotalLots").value=pm.max_total_lots??"";
+ $("maxPositionsPerDirection").value=pm.max_positions_per_direction??"";
+ $("recoveryMaxLot").value=pm.recovery_max_lot??"";
  $("recoveryEnabled").checked=!!pm.recovery_enabled;
  $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
  $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
@@ -75,7 +75,8 @@ async function saveProtectionSettings(){
   await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
    single_enabled:$("singleEnabled").checked,single_profit_target:Number($("singleTarget").value),
    group_enabled:$("groupEnabled").checked,group_profit_target:Number($("groupTarget").value),
-   stop_loss_enabled:$("stopLossEnabled").checked,stop_loss_mode:mode,stop_loss_value:value
+   stop_loss_enabled:$("stopLossEnabled").checked,stop_loss_mode:mode,stop_loss_value:value,
+   stop_loss_user_configured:true
   })});
   $("protectionSettingsMessage").textContent="تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.";
   $("closeEngineState").textContent="الإعدادات محفوظة على الخادم";
@@ -110,37 +111,40 @@ async function savePositionManagement(){
   entry_max_delay_bars:Number($("entryMaxDelayBars").value),
   entry_max_deviation_atr:Number($("entryMaxDeviationAtr").value),
   addon_enabled:$("addonEnabled").checked,addon_max:Number($("addonMax").value),
-  addon_multiplier:Number($("addonMultiplier").value),addon_max_lot:Number($("addonMaxLot").value),
+  addon_multiplier:Number($("addonMultiplier").value),addon_max_lot:$("addonMaxLot").value.trim()?Number($("addonMaxLot").value):null,
   addon_lot:Number($("addonLot").value),addon_distance_points:Number($("addonDistance").value),
   cooling_enabled:$("coolingEnabled").checked,cooling_max:Number($("coolingMax").value),
-  cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:Number($("coolingMaxLot").value),
+  cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:$("coolingMaxLot").value.trim()?Number($("coolingMaxLot").value):null,
   cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value),
-  max_total_lots:Number($("maxTotalLots").value),
-  max_positions_per_direction:Number($("maxPositionsPerDirection").value)};
+  max_total_lots:$("maxTotalLots").value.trim()?Number($("maxTotalLots").value):null,
+  max_positions_per_direction:$("maxPositionsPerDirection").value.trim()?Number($("maxPositionsPerDirection").value):null,
+  optional_limits_user_selected:true};
  if(!Number.isInteger(cfg.entry_max_delay_bars)||cfg.entry_max_delay_bars<1||cfg.entry_max_delay_bars>10){$("pmMessage").textContent="أقصى تأخير يجب أن يكون من 1 إلى 10 شموع.";return;}
  if(!Number.isFinite(cfg.entry_max_deviation_atr)||cfg.entry_max_deviation_atr<0.05||cfg.entry_max_deviation_atr>20){$("pmMessage").textContent="مضاعف ATR يجب أن يكون بين 0.05 و20.";return;}
  for(const key of ["addon_max","cooling_max"]){
   if(!Number.isInteger(cfg[key])||cfg[key]<0||cfg[key]>100){$("pmMessage").textContent="الحد الأقصى يجب أن يكون عدداً صحيحاً من 0 إلى 100.";return;}
  }
- for(const key of ["addon_lot","cooling_lot","addon_max_lot","cooling_max_lot"]){
+ for(const key of ["addon_lot","cooling_lot"]){
   if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100){$("pmMessage").textContent="تحقق من قيم اللوت والحد الأقصى لكل صفقة.";return;}
  }
  for(const key of ["addon_multiplier","cooling_multiplier"]){
   if(!Number.isFinite(cfg[key])||cfg[key]<1||cfg[key]>3){$("pmMessage").textContent="المضاعف يجب أن يكون بين 1.0 و3.0.";return;}
  }
- if(!Number.isInteger(cfg.max_positions_per_direction)||cfg.max_positions_per_direction<1||cfg.max_positions_per_direction>20){
-  $("pmMessage").textContent="حدد عدداً صحيحاً من 1 إلى 20 صفقة لكل اتجاه.";return;
+ if(cfg.max_positions_per_direction!==null&&(!Number.isInteger(cfg.max_positions_per_direction)||cfg.max_positions_per_direction<1)){
+  $("pmMessage").textContent="الحد الاختياري لعدد الصفقات يجب أن يكون عدداً موجباً أو يُترك فارغاً.";return;
  }
- if(!Number.isFinite(cfg.max_total_lots)||cfg.max_total_lots<=0||cfg.max_total_lots>100){
-  $("pmMessage").textContent="أدخل سقفاً موجباً لإجمالي اللوتات.";return;
+ if(cfg.max_total_lots!==null&&(!Number.isFinite(cfg.max_total_lots)||cfg.max_total_lots<=0)){
+  $("pmMessage").textContent="سقف اللوت الاختياري يجب أن يكون موجباً أو يُترك فارغاً.";return;
+ }
+ for(const key of ["addon_max_lot","cooling_max_lot"]){
+  if(cfg[key]!==null&&(!Number.isFinite(cfg[key])||cfg[key]<=0)){
+   $("pmMessage").textContent="سقف اللوت الاختياري غير صالح.";return;
+  }
  }
  if(mode==="MANUAL"){
   for(const key of ["addon_distance_points","cooling_distance_points"]){
    if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100000000){$("pmMessage").textContent="في الوضع اليدوي أدخل مسافة موجبة بالنقاط.";return;}
   }
- }
- if((cfg.addon_enabled&&cfg.addon_max<1)||(cfg.cooling_enabled&&cfg.cooling_max<1)){
-  $("pmMessage").textContent="حدد الحد الأقصى لكل قسم قبل تفعيله.";return;
  }
  $("savePositionManagement").disabled=true;$("pmMessage").textContent="جارٍ حفظ إعدادات التعزيز والتبريد…";
  try{
@@ -181,8 +185,8 @@ async function saveRecoverySettings(){
  const raw=$("recoveryLossTrigger").value.trim();
  const trigger=Number(raw.replace(/,/g,""));
  const enabled=$("recoveryEnabled").checked;
- const recoveryMaxLot=Number($("recoveryMaxLot").value);
- if(!Number.isFinite(recoveryMaxLot)||recoveryMaxLot<0.01||recoveryMaxLot>100){
+ const recoveryMaxLot=$("recoveryMaxLot").value.trim()?Number($("recoveryMaxLot").value):null;
+ if(recoveryMaxLot!==null&&(!Number.isFinite(recoveryMaxLot)||recoveryMaxLot<=0)){
   $("recoveryMessage").textContent="حدد سقف لوت التعافي بين 0.01 و100.";return;
  }
  if(enabled&&(!raw||!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
