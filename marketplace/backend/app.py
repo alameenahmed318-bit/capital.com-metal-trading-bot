@@ -8,6 +8,7 @@ from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, 
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from hybrid_decision import fuse_live_decision
 from learning_memory import memory_snapshot, combine_deals
+from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
@@ -954,9 +955,13 @@ class Handler(SimpleHTTPRequestHandler):
             bar_time=int(finite_number(decision.get("bar_time",0)))
             bar_fresh=closed_bar_execution_fresh(bar_time,datetime.now(timezone.utc),
                                                    item.get("timeframe","M1"))
+            confirmation=post_close_m1_confirmation(
+                item.get("last_closed_deal_time"),item.get("last_m1_closed_open"),
+                decision.get("bar_time"),datetime.now(timezone.utc))
             ready=bool(bar_fresh and gate.get("approved") and
                        (advisory_mode or ai_council["approved"]) and
-                       risk_report["approved"] and direction_limit["approved"])
+                       risk_report["approved"] and direction_limit["approved"] and
+                       confirmation["approved"])
             if not bar_fresh and signal in ("BUY","SELL"):
                 gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
                       "expires_at_unix":0,"reason_ar":"انتهت نافذة تنفيذ الشمعة المؤكدة؛ انتظار شمعة جديدة"}
@@ -969,6 +974,9 @@ class Handler(SimpleHTTPRequestHandler):
             if not direction_limit["approved"] and signal in ("BUY","SELL"):
                 gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
                       "expires_at_unix":0,"reason_ar":direction_limit["reason_ar"]}
+            if not confirmation["approved"]:
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":confirmation["reason_ar"]}
             council_event=build_council_event(client_id,decision,gate,trading_enabled)
             queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
@@ -988,6 +996,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "council":decision.get("council",{}),
                 "multi_model_council":ai_council,"hybrid":decision.get("hybrid",{}),"risk_guardian":risk_report,
                 "direction_limit":direction_limit,
+                "post_close_m1_confirmation":confirmation,
                 "local_ai_required":LOCAL_AI_REQUIRED,
                 "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
                 "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")}
@@ -1341,9 +1350,14 @@ class Handler(SimpleHTTPRequestHandler):
                 direction=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),
                     signal,settings)
                 fresh=closed_bar_execution_fresh(decision.get("bar_time"),now,item.get("timeframe","M1"))
+                confirmation=post_close_m1_confirmation(
+                    item.get("last_closed_deal_time"),item.get("last_m1_closed_open"),
+                    decision.get("bar_time"),now)
                 ready=bool(fresh and gate.get("approved") and (advisory or council.get("approved"))
-                    and risk.get("approved") and direction.get("approved"))
-                if not gate.get("approved"):reason=gate.get("reason_ar","رفض بوابة الدخول")
+                    and risk.get("approved") and direction.get("approved") and
+                    confirmation["approved"])
+                if not confirmation["approved"]:reason=confirmation["reason_ar"]
+                elif not gate.get("approved"):reason=gate.get("reason_ar","رفض بوابة الدخول")
                 elif not fresh:reason="انتهت نافذة تنفيذ شمعة التأكيد"
                 elif not advisory and not council.get("approved"):reason=council.get("reason_ar","المجلس ينتظر")
                 elif not risk.get("approved"):reason=risk.get("reason_ar","حارس الحساب منع الدخول")
@@ -1365,6 +1379,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "mt5_position_management_enabled":item.get("mt5_position_management_enabled"),
                     "mt5_central_trading_enabled":item.get("mt5_central_trading_enabled"),
                     "bar_fresh":fresh,"gate":gate,"risk":risk,"direction_limit":direction,
+                    "post_close_m1_confirmation":confirmation,
                     "council":council,"hybrid":decision.get("hybrid",{}),"local_ai":local_advice,
                     "family_votes":decision.get("family_votes") or {},
                     "combination_summary":decision.get("combination_summary") or {},
@@ -1963,6 +1978,16 @@ class Handler(SimpleHTTPRequestHandler):
                     # Historical persistence must never block real-time ticks.
                     queue_closed_deals(client_id,closed_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
+                # Two independent ways to learn about *actual* exit fills:
+                # the updated EA's persisted close timestamp, and the deal
+                # archive sent by older terminals. Preserve monotonicity.
+                recent_exit=last_exit_from_deals(closed_deals,int(time.time()))
+                recorded_exit=max(0,int(finite_number(data.get("last_closed_deal_time"))),
+                                  int(finite_number(previous.get("last_closed_deal_time"))),
+                                  recent_exit)
+                m1_closed_open=int(finite_number(data.get("last_m1_closed_open")))
+                if m1_closed_open<=0 and str(data.get("timeframe","")).upper() in ("M1","PERIOD_M1") and candles:
+                    m1_closed_open=int(finite_number(candles[0].get("time")))
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
                     forming=clean_telemetry_rows([forming],("time","open","high","low","close","tick_volume"),1)
@@ -2106,6 +2131,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "recovery_group_net":(finite_number(data["recovery_group_net"]) if
                         data.get("recovery_group_net") is not None else None),
                     "orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
+                    "last_closed_deal_time":recorded_exit,
+                    "last_m1_closed_open":m1_closed_open,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
                     "bot_report":bot_report,"bot_signal_history":bot_history,
                     "bot_dispatch_count":bot_dispatch_count,
