@@ -337,6 +337,25 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
       Print("AL-ZOOL RECOVERY BLOCKED: broker volume step cannot represent exact x3 lot.");
       return false;
    }
+   if(action=="RECOVERY_PROPOSAL")
+   {
+      // Second, local check on the broker's actual closed M1 candle. The
+      // server already verified threshold arming, candle strength and timing.
+      datetime candleOpen=iTime(_Symbol,PERIOD_M1,1);
+      double candleStart=iOpen(_Symbol,PERIOD_M1,1);
+      double candleFinish=iClose(_Symbol,PERIOD_M1,1);
+      if(candleOpen<=0 || candleOpen!=(datetime)barTime ||
+         candleStart<=0.0 || candleFinish<=0.0 ||
+         (side=="BUY" && candleFinish<=candleStart) ||
+         (side=="SELL" && candleFinish>=candleStart))
+      {
+         Print("AL-ZOOL RECOVERY WAIT CANDLE: central M1 vote no longer matches "
+               "broker's last closed M1 direction | bar=",barTime,
+               " actual=",TimeToString(candleOpen,TIME_DATE|TIME_SECONDS),
+               " side=",side);
+         return false;
+      }
+   }
    MqlTick tick;
    if(!SymbolInfoTick(_Symbol,tick) || tick.ask<=0.0 || tick.bid<=0.0)
       return false;
