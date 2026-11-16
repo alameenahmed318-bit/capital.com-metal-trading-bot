@@ -5,6 +5,7 @@ on:
       - fix/alzool-owner-controls-20261116
       - fix/alzool-hybrid-ai-20261116
       - fix/alzool-recovery-profit-target-20261116
+      - fix/alzool-addon-cooling-correct-multipliers-20261116
   workflow_dispatch:
 jobs:
   offline:
