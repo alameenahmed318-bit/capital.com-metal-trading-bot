@@ -9,6 +9,8 @@ from decision_guard import closed_bar_execution_fresh
 from multi_model_council import (
     _VOTES, _vote, accept_local_model_vote, council_result,
 )
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mt5_client"))
+from ALZOOL_Local_Model_Relay import compact_snapshot
 
 DECISION = {"decision":"SELL", "bar_time":1700000040}
 
@@ -74,6 +76,29 @@ class ClosedBarCouncilSyncTests(unittest.TestCase):
         deep["direction"]="BUY"
         self.assertTrue(accept_local_model_vote("owner",deep,DECISION))
         self.assertFalse(council_result("owner",DECISION)["approved"])
+
+    def test_pending_local_model_is_not_misreported_as_missing_configuration(self):
+        _VOTES["owner"]["qwen"]=_vote("Qwen","AWAITING_LOCAL_VOTE")
+        _VOTES["owner"]["deepseek"]=_vote("DeepSeek","AWAITING_LOCAL_VOTE")
+        pending=council_result("owner",DECISION)
+        self.assertFalse(pending["approved"])
+        self.assertIn("بانتظار تصويت النموذج المحلي",pending["reason_ar"])
+        self.assertNotIn("NOT_CONFIGURED",pending["reason_ar"])
+
+    def test_relay_snapshot_supplies_strategy_evidence_without_inventing_voters(self):
+        snapshot=compact_snapshot({
+            "decision":"BUY","confidence":0.8,"strategy_name":"EMA Pullback",
+            "family_votes":{"EMA Trend":"BUY","Momentum":"BUY","Range":"SELL"},
+            "combination_summary":{"BUY":30,"SELL":12,"WAIT":5},
+            "context":{"regime":"اتجاه صاعد","adx":28.0,"trend_strength":0.6,
+                       "reason":"ATR ratio=1.2; RSI=57"},
+            "candles":[{"time":100,"open":2900,"high":2905,"low":2898,"close":2903}],
+        })
+        self.assertEqual(snapshot["family_vote_counts"],{"BUY":2,"SELL":1,"WAIT":0})
+        self.assertEqual(snapshot["combination_vote_counts"]["BUY"],30)
+        self.assertEqual(snapshot["strategy_name"],"EMA Pullback")
+        self.assertEqual(snapshot["adx"],28.0)
+        self.assertEqual(len(snapshot["recent_closed_candles"]),1)
 
     def test_local_relay_and_server_have_matching_signal_contract(self):
         root=Path(__file__).resolve().parents[3]
