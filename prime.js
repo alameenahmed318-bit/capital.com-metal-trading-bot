@@ -12,7 +12,9 @@ const CONFIG={
   ["recovery","التعافي الذكي","#smartRecovery"],["pending","الأوامر المعلقة","#pending"]]},
  market:{label:"السوق",title:"السوق والفرص",subtitle:"إشارات الذهب وفرصه ومعلومات الاستراتيجيات",source:"مختبر فرص الذهب",url:"/opportunities.html",tabs:[]},
  ai:{label:"الذكاء",title:"الذكاء ومجلس التصويت",subtitle:"Fast AI، Qwen، DeepSeek وتشخيص أسباب القرار",source:"التحليل ومجلس الذكاء",url:"/ai-analysis.html",tabs:[
-  ["analysis","التحليل المباشر","#aiResult"],["diagnostics","تشخيص القرار","#diagPanel"]]},
+  ["analysis","التحليل المباشر","#aiResult"],["diagnostics","تشخيص القرار","#diagPanel"],
+  ["monitor","مراقبة Hybrid AI","/ai-monitor.html"]]},
+ monitor:{label:"المراقبة",title:"مراقبة قرارات Hybrid AI",subtitle:"أسباب BUY وSELL وWAIT وأثر Fast AI وQwen وDeepSeek والبوتات والتراكيب",source:"المراقبة الفعلية للمحرك",url:"/ai-monitor.html",tabs:[]},
  research:{label:"الاستراتيجيات",title:"الاستراتيجيات والتعلّم",subtitle:"نتائج التعلم وتدقيق الاستراتيجيات والاختبارات",source:"مركز البحث والتعلّم",url:"/learning-lab.html",tabs:[
   ["learning","التعلم والذاكرة","/learning-lab.html"],["audit","تدقيق الاستراتيجيات","/learning-lab.html#strategyAuditPanel"],
   ["backtest","الاختبارات التاريخية","/backtest-lab.html"]]},
@@ -24,7 +26,7 @@ const CONFIG={
   ["license","ربط MT5","#ownerPairPanel"],["engine","محرك التداول","#actionPanel"]]},
  settings:{label:"الإعدادات",title:"الإعدادات والحماية",subtitle:"تكوين التداول وإدارة المخاطر والربط",source:"إعدادات المحرك",url:"/trade-management.html",tabs:[
   ["trading","إعدادات التداول","#positionManagement"],["risk","الحماية والوقف","#protection"],
-  ["recovery","إعدادات التعافي","#smartRecovery"],["connections","الربط والتراخيص","/#ownerPairPanel"]]}
+  ["recovery","إعدادات التعافي","#smartRecovery"],["policy","قرار Hybrid AI","#entryPolicy"],["connections","الربط والتراخيص","/#ownerPairPanel"]]}
 };
 const $=id=>document.getElementById(id);
 const frame=$("primeFrame"),tabs=$("primeTabs"),loading=$("primeLoading"),
@@ -34,7 +36,7 @@ const normalizeUrl=(raw)=>{
  try{
   const url=new URL(raw,location.origin);
   if(url.origin!==location.origin)return null;
-  if(!["/","/index.html","/dashboard.html","/trade-management.html","/opportunities.html","/ai-analysis.html","/learning-lab.html","/backtest-lab.html","/trade-history.html","/bots-library.html"].includes(url.pathname))return null;
+  if(!["/","/index.html","/dashboard.html","/trade-management.html","/opportunities.html","/ai-analysis.html","/ai-monitor.html","/learning-lab.html","/backtest-lab.html","/trade-history.html","/bots-library.html"].includes(url.pathname))return null;
   return url.pathname+url.hash;
  }catch{return null;}
 };
@@ -54,11 +56,13 @@ function matchRoute(url){
  if(path==="/trade-management.html"){
   const lookup={"#positions":["trading","positions"],"#autoClose":["trading","profits"],
    "#protection":["trading","protection"],"#positionManagement":["trading","addon"],
-   "#smartRecovery":["trading","recovery"],"#pending":["trading","pending"]};
+   "#smartRecovery":["trading","recovery"],"#pending":["trading","pending"],
+   "#entryPolicy":["settings","policy"]};
   return lookup[hash]||["trading","positions"];
  }
  if(path==="/opportunities.html")return ["market",""];
  if(path==="/ai-analysis.html")return ["ai",hash==="#diagPanel"?"diagnostics":"analysis"];
+ if(path==="/ai-monitor.html")return ["monitor",""];
  if(path==="/learning-lab.html")return ["research",hash==="#strategyAuditPanel"?"audit":"learning"];
  if(path==="/backtest-lab.html")return ["research","backtest"];
  if(path==="/bots-library.html")return ["bots",""];
