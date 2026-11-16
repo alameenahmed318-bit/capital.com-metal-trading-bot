@@ -6,6 +6,7 @@ This prevents legacy local strategies from bypassing the model council.
 """
 import math
 from recovery_logic import recovery_intent
+from recovery_candle_guard import observe_recovery_arm
 from position_sizing import count_action, next_action_lot
 
 def num(value,default=0.0):
@@ -39,6 +40,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     # Account-wide recovery takes priority over entry/add-on signals.
     # The recovery direction comes from existing losing gold positions;
     # a Qwen/strategy WAIT does not become a second veto.
+    observe_recovery_arm(snapshot,settings)
     recovery=recovery_intent(snapshot,decision,settings)
     result["recovery"]=recovery
     if recovery.get("active_cycle"):
@@ -66,8 +68,17 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 action="HOLD";reason="حجم التعافي تجاوز سقف اللوت الإجمالي الذي حدده المالك"
         if action!="RECOVERY_PROPOSAL":lot=0.0
         result[side.lower() if side in ("BUY","SELL") else "buy"]=action
+        confirmation=recovery.get("candle_confirmation") or {}
         result["actions"]=[{"side":side,"action":action,"lot_cap":round(lot,3),
             "floating_net":recovery.get("account_net"),"recovery_armed":True,
+            "candidate_lot":recovery.get("candidate_lot"),
+            "candle_confirmed":confirmation.get("approved",False),
+            "candle_state":confirmation.get("state","WAIT_ARM"),
+            "candle_score":confirmation.get("candle_score",0.0),
+            "recovery_armed_at":confirmation.get("armed_at"),
+            "confirmation_candle_open":confirmation.get("confirmed_candle_time"),
+            "confirmation_eligible_at":confirmation.get("eligible_at"),
+            "candle_reason_ar":confirmation.get("reason_ar",reason),
             "reason_ar":reason,"execution_authorized":False}]
         result["reason_ar"]=reason
         return result
