@@ -2089,6 +2089,20 @@ def _read_stored_m1_for_smoke():
 
 
 if __name__=="__main__":
+    # Validate pure trading policy without connecting to MT5 or sending trades.
+    # Fail a deployment rather than activating an untested account recovery change.
+    import unittest
+    from pathlib import Path
+    test_dir=str(Path(__file__).resolve().parents[2]/"tests")
+    recovery_suite=unittest.TestSuite()
+    for pattern in ("test_owner_decisions.py","test_owner_recovery.py",
+                    "test_recovery_action_protocol.py","test_hybrid_decision.py"):
+        recovery_suite.addTests(unittest.defaultTestLoader.discover(
+            start_dir=test_dir,pattern=pattern))
+    recovery_result=unittest.TextTestRunner(verbosity=1).run(recovery_suite)
+    if not recovery_result.wasSuccessful():
+        raise RuntimeError("ALZOOL_OFFLINE_RECOVERY_CHECKS_FAILED")
+    print("ALZOOL_OFFLINE_RECOVERY_CHECKS_PASS",flush=True)
     # Server-side smoke test, read-only, never exposes the API key.
     if os.getenv("GROQ_VERIFY_ON_STARTUP","false").lower() in ("true","1","yes"):
         threading.Thread(target=lambda: print("GROQ_SMOKE_STATUS:",verify_groq_credentials(),flush=True),
