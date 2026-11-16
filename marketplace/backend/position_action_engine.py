@@ -5,6 +5,7 @@ action-specific authorization before placing add-on, cooling or recovery orders.
 This prevents legacy local strategies from bypassing the model council.
 """
 import math
+from recovery_logic import recovery_intent
 
 def num(value,default=0.0):
     try:
@@ -24,16 +25,50 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     result={"mode":"DIAGNOSTIC_ONLY","execution_authorized":False,
             "bar_time":int(num(decision.get("bar_time"))),"buy":"HOLD","sell":"HOLD",
             "actions":[],"reason_ar":"لا يوجد قرار إدارة صالح"}
-    if not positions:
+    if not all_positions:
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
+    if not positions:
+        result["reason_ar"]="لا توجد مراكز XAUUSD يمكن تنفيذ التعافي في اتجاهها";return result
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         result["reason_ar"]="وضع إدارة الصفقات غير صالح";return result
     # Open-position management uses its own live trend decision; it must not
     # inherit the entry council's three-model veto.
     if not risk.get("approved") or not settings.get("trading_enabled"):
         result["reason_ar"]="حالة الحساب أو مفتاح التداول يمنع إجراء إدارة جديد";return result
+    # Account-wide recovery takes priority over entry/add-on signals.
+    # The recovery direction comes from existing losing gold positions;
+    # a Qwen/strategy WAIT does not become a second veto.
+    recovery=recovery_intent(snapshot,decision,settings)
+    result["recovery"]=recovery
+    if recovery["armed"]:
+        action=recovery.get("action")
+        side=recovery.get("side")
+        lot=num(recovery.get("lot_cap"))
+        reason=recovery.get("reason_ar","")
+        if action=="RECOVERY_PROPOSAL":
+            same_side=sum(1 for p in positions if
+                (int(num(p.get("type"),-1))==0 if side=="BUY"
+                 else int(num(p.get("type"),-1))==1))
+            raw_side_cap=pm.get("max_positions_per_direction")
+            raw_action_cap=pm.get("recovery_max_lot")
+            raw_total_cap=pm.get("max_total_lots")
+            total_open=sum(max(0,num(p.get("volume"))) for p in all_positions
+                           if isinstance(p,dict))
+            if raw_side_cap is not None and same_side>=int(num(raw_side_cap)):
+                action="HOLD";reason="عدد مراكز الاتجاه بلغ الحد الذي حدده المالك"
+            elif raw_action_cap is not None and lot>num(raw_action_cap)+1e-8:
+                action="HOLD";reason="حجم التعافي ×3 تجاوز حد لوت التعافي الذي حدده المالك"
+            elif raw_total_cap is not None and total_open+lot>num(raw_total_cap)+1e-8:
+                action="HOLD";reason="حجم التعافي تجاوز سقف اللوت الإجمالي الذي حدده المالك"
+        if action!="RECOVERY_PROPOSAL":lot=0.0
+        result[side.lower() if side in ("BUY","SELL") else "buy"]=action
+        result["actions"]=[{"side":side,"action":action,"lot_cap":round(lot,3),
+            "floating_net":recovery.get("account_net"),"recovery_armed":True,
+            "reason_ar":reason,"execution_authorized":False}]
+        result["reason_ar"]=reason
+        return result
     if signal not in ("BUY","SELL"):
-        result["reason_ar"]="بانتظار اتجاه تحليلي صالح؛ التعافي عند حد الخسارة مسلح لكن لا يفتح دون تأكيد اتجاه";return result
+        result["reason_ar"]="لا توجد إشارة دخول اتجاهية للتعزيز أو التبريد";return result
     sides={}
     for position in positions:
         if not isinstance(position,dict):continue
