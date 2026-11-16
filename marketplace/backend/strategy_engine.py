@@ -233,7 +233,7 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None):
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None):
     weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
@@ -281,6 +281,16 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     combo_total=cc_weighted["BUY"]+cc_weighted["SELL"]
     combo_strength={d:cc_weighted[d]/combo_total if combo_total>0 else 0.0
                     for d in ("BUY","SELL")}
+    # Five bot advisors contribute evidence when they have evaluated the
+    # same confirmed candle. They never create another mandatory veto.
+    bot_report=bot_signals if isinstance(bot_signals,dict) else {}
+    bot_items=(bot_report.get("advisors") or []) if (
+        bot_report.get("status")=="READY" and
+        int(bot_report.get("bar_time") or 0)==int(rates[-1].get("time") or 0)
+    ) else []
+    bot_counts={d:sum(1 for v in bot_items if isinstance(v,dict)
+                      and v.get("signal")==d) for d in ("BUY","SELL")}
+    bot_active=bot_counts["BUY"]+bot_counts["SELL"]
     score={}
     for d in ("BUY","SELL"):
         quality_d=max(0,min(1,context["buy_quality" if d=="BUY" else "sell_quality"]/100))
@@ -289,7 +299,9 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         frame_oppose=sum(b in ("BUY","SELL") and b!=d for b in mtf_bias.values())
         score[d]=(0.55*family_strength[d]+0.25*combo_strength[d]+0.20*quality_d
                   +0.03*(frame_agree-frame_oppose)/max(1,len(mtf_bias))
-                  -(0.05 if trap_d else 0))
+                  -(0.05 if trap_d else 0)
+                  +(0.10*(bot_counts[d]-bot_counts["SELL" if d=="BUY" else "BUY"])/bot_active
+                    if bot_active else 0))
     usable=[d for d in ("BUY","SELL") if directional_candidates[d]
             and (family_strength[d]>0 or combo_strength[d]>0)]
     chosen=None
@@ -308,7 +320,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
             _,chosen,final,why=pool[0]
             reason=(f"AZ MASTER BRAIN: ترجيح {direction} حسب العائلات "
                     f"{fb} BUY / {fsell} SELL، والتركيبات {cc_weighted['BUY']:.2f} BUY / "
-                    f"{cc_weighted['SELL']:.2f} SELL؛ جودة الحركة {context['regime']}؛ {why}")
+                    f"{cc_weighted['SELL']:.2f} SELL؛ البوتات {bot_counts['BUY']} BUY / "
+                    f"{bot_counts['SELL']} SELL؛ حالة السوق {context['regime']}؛ {why}")
     agreement=max(0.0,min(1.0,score.get(final,0.0)))
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
@@ -317,4 +330,5 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
     return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
-        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
+           "role":"advisory_evidence_no_veto"},"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
