@@ -4,6 +4,7 @@ This module only returns decisions. It never places broker orders or changes
 owner controls. Unavailable/late model votes are omitted, not treated as vetoes.
 """
 import math
+from entry_evidence import model_market_fit
 
 DIRECTIONS=("BUY","SELL")
 # Relative influence on the directional ranking, not trade limits or approvals.
@@ -47,6 +48,10 @@ def fuse_live_decision(base,council):
                          "reason_ar":original.get("reason_ar","")}}
         scores[quant]=max(scores[quant],max(0.0,_num(original.get("confidence"))))
     combined=dict(scores)
+    market_context=original.get("context") or {}
+    # Good supporting candle structure reinforces a fresh vote. A trap or
+    # weak market quality reduces its influence rather than imposing a veto.
+    market_factors={side:model_market_fit(market_context,side) for side in DIRECTIONS}
     same_bar=isinstance(council,dict) and int(_num(council.get("bar_time"))) == bar and bar>0
     raw_votes=(council.get("votes") or {}) if same_bar else {}
     contributions=[]
@@ -58,13 +63,17 @@ def fuse_live_decision(base,council):
         confidence=_num(v.get("confidence"),-1)
         used=(same_bar and status=="READY" and side in DIRECTIONS and
               0<=confidence<=1 and confidence>0)
-        points=round(weight*confidence,6) if used else 0.0
+        effective_weight=weight*market_factors[side] if used else 0.0
+        points=round(effective_weight*confidence,6) if used else 0.0
         if used:
             combined[side]+=points
-            active_weight+=weight
+            active_weight+=effective_weight
         contributions.append({"model":model,"status":status,"direction":side,
                               "confidence":confidence if 0<=confidence<=1 else None,
-                              "relative_weight":weight,"points":points,"used":bool(used),
+                              "relative_weight":weight,
+                              "market_quality_factor":market_factors.get(side) if side in DIRECTIONS else None,
+                              "effective_weight":round(effective_weight,6),
+                              "points":points,"used":bool(used),
                               "reason_ar":str(v.get("reason_ar",""))[:180]})
     ranking=sorted(eligible,key=lambda side:combined[side],reverse=True)
     if not ranking:
@@ -100,6 +109,10 @@ def fuse_live_decision(base,council):
         "direction_changed":winner!=quant,
         "quantitative_scores":{side:round(scores[side],6) for side in DIRECTIONS},
         "combined_scores":{side:round(combined[side],6) for side in DIRECTIONS},
+        "quality_factors":market_factors,
+        "closed_candle_pressure":market_context.get("last_closed_candle_pressure",0.0),
+        "score_margin":round(abs(combined["BUY"]-combined["SELL"]),6),
+        "reversal_guard":"SOFT_SCORE_NO_EXTRA_WAIT",
         "model_contributions":contributions,
         "model_votes_used":sum(x["used"] for x in contributions),
         "model_votes_missing":sum(not x["used"] for x in contributions),
