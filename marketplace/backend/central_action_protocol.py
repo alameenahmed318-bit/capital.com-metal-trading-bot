@@ -70,8 +70,13 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_
     if len(proposals)>1:return blocked("قرارات إدارة متضاربة")
     action=proposals[0]
     side=action.get("side")
-    if side not in ("BUY","SELL") or side!=str(decision.get("decision","WAIT")):
-        return blocked("اتجاه إدارة الصفقات مخالف للمجلس")
+    if side not in ("BUY","SELL"):
+        return blocked("اتجاه الإجراء غير صالح")
+    if (action.get("action")!="RECOVERY_PROPOSAL"
+        and side!=str(decision.get("decision","WAIT"))):
+        return blocked("اتجاه التعزيز أو التبريد مخالف لقرار الاستراتيجيات")
+    # Recovery is an independent existing-position action; requiring its side
+    # to match a new-entry signal is the old permanent-rejection bug.
     return {"execution_ready":True,"mode":"PROPOSAL",
         "side":side,"action":action["action"],
         "lot_cap":round(_num(action["lot_cap"]),3),
