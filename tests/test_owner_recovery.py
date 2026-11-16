@@ -62,8 +62,8 @@ class RecoveryTests(unittest.TestCase):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3010,
             "profit":-25,"swap":0,"comment":"ALZOOL-RECOVERY"}]
         result=scenario(p)
-        self.assertEqual(result["actions"][0]["action"],"HOLD",result)
-        self.assertTrue(result["actions"][0]["recovery_armed"])
+        self.assertEqual(result["actions"],[],result)
+        self.assertTrue(result["recovery"]["active_cycle"],result)
 
     def test_account_other_symbol_lots_count_toward_exact_x3(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,
