@@ -8,7 +8,7 @@ from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, 
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from hybrid_decision import fuse_live_decision
 from learning_memory import memory_snapshot, combine_deals
-from live_weight_overlay import apply_live_learning
+from live_weight_overlay import apply_live_learning, conservative_outcome_weight
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
 from strategy_audit import audit_strategies
@@ -392,27 +392,6 @@ def clean_telemetry_rows(rows, allowed, limit=200):
             else: row[key]=finite_number(value)
         cleaned.append(row)
     return cleaned
-
-def conservative_outcome_weight(wins,losses,net,range_size=0.50,min_samples=8,
-                                gross_win=None,gross_loss=None):
-    """Learn from NET payoff, not only number of winning positions.
-
-    20 small wins and 3 large losses must never count as a good strategy
-    when the total NET result is negative. Twelve neutral pseudo-observations
-    shrink small samples; no live-learning score becomes a hard trade veto.
-    """
-    n=wins+losses
-    if n<min_samples:return 1.0
-    if gross_win is not None and gross_loss is not None:
-        absolute=max(0.0,finite_number(gross_win))+max(0.0,finite_number(gross_loss))
-        evidence=(finite_number(net)/absolute if absolute>1e-9 else 0.0)
-    else:
-        # Compatibility for callers without gross-payoff information.
-        evidence=(wins-losses)/max(n,1)
-        if net<0:evidence=-abs(evidence)
-        if net==0:evidence=0.0
-    evidence=max(-1.0,min(1.0,evidence))*n/(n+12.0)
-    return round(max(1.0-range_size,min(1.0+range_size,1.0+range_size*evidence)),4)
 
 def live_learning_profile(deals):
     """Build transparent, outcome-based live weights from real closed XAUUSD positions."""
