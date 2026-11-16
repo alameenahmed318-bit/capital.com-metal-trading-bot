@@ -60,6 +60,7 @@ double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
 bool g_serverStopLossEnabled=false;
 bool g_recoveryEnabled=false;
 double g_recoveryLossTrigger=0.0;
+double g_recoveryProfitTarget=0.0; // Account-currency net group profit selected by owner; 0 = break-even
 bool g_recoveryCycleActive=false;
 double g_recoveryReferencePrice=0.0;
 string g_recoveryActiveKey="",g_recoveryPriceKey="";
@@ -213,6 +214,8 @@ bool PollTradeSettings()
    if(slValue>0.0) g_serverStopLossValue=slValue;
    g_recoveryEnabled=JsonBool(response,"recovery_enabled");
    g_recoveryLossTrigger=JsonDouble(response,"recovery_loss_trigger",0.0);
+   g_recoveryProfitTarget=JsonDouble(response,"recovery_profit_target",0.0);
+   if(!MathIsValidNumber(g_recoveryProfitTarget) || g_recoveryProfitTarget<0.0) g_recoveryProfitTarget=0.0;
    if(g_recoveryLossTrigger<=0.0) g_recoveryEnabled=false;
    string pmMode=JsonField(response,"mode");
    StringReplace(pmMode,CharToString(34),"");
@@ -314,6 +317,17 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
       GlobalVariableSet(key,(double)barTime);
       Print("AL-ZOOL CENTRAL ACTION ",action," side=",side," lot=",DoubleToString(lots,3),
             " bar=",barTime," retcode=",code);
+      if(action=="RECOVERY_PROPOSAL")
+      {
+         // Persist the recovery cycle so restarts and missing broker comments
+         // cannot silently reset the group-profit close condition.
+         g_recoveryCycleActive=true;
+         if(StringLen(g_recoveryActiveKey)>0) GlobalVariableSet(g_recoveryActiveKey,1.0);
+         Print("AL-ZOOL RECOVERY OPENED: side=",side,
+               " lot=",DoubleToString(lots,3),
+               " profit target=",DoubleToString(g_recoveryProfitTarget,2),
+               " ",AccountInfoString(ACCOUNT_CURRENCY));
+      }
    }
    else Print("AL-ZOOL CENTRAL ACTION REJECTED ",action," ",g_trade.ResultRetcodeDescription());
    return accepted;
@@ -705,7 +719,18 @@ bool EvaluateSmartRecovery()
       double lots=0.0;int count=0;
       double net=RecoveryGroupNet(lots,count);
       if(count==0){ResetRecoveryCycle();return false;}
-      if(net>=0.0) RecoveryCloseAll();
+      if(net>=g_recoveryProfitTarget)
+      {
+         // Latch the requested group close across partial fills. Otherwise a
+         // price retracement after closing one leg would stop the remaining closes.
+         g_groupClosePending=true;
+         if(StringLen(g_groupCloseKey)>0) GlobalVariableSet(g_groupCloseKey,1.0);
+         Print("AL-ZOOL RECOVERY TARGET REACHED: group net=",
+               DoubleToString(net,2)," target=",DoubleToString(g_recoveryProfitTarget,2),
+               " ",AccountInfoString(ACCOUNT_CURRENCY),
+               " | closing ALL account positions.");
+         RecoveryCloseAll();
+      }
       return true;
    }
    if(!g_recoveryEnabled || g_recoveryLossTrigger<=0.0) return false;
@@ -1206,6 +1231,7 @@ void OnTimer()
            "\n",g_aiReason,
            "\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
            " / group ",(g_groupCloseEnabled?"ON":"OFF"),
+           "\nRecovery target: ",DoubleToString(g_recoveryProfitTarget,2)," ",AccountInfoString(ACCOUNT_CURRENCY),
            "\nPositions: ",IntegerToString(PositionsTotal()),
            " | Pending: ",IntegerToString(OrdersTotal()));
 }
