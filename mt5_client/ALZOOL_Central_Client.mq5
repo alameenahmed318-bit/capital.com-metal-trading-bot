@@ -925,6 +925,14 @@ bool SendLiveSnapshot()
    body+=",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\"";
    body+=",\"mtf_bias\":{\"M5\":\""+MtfDirection(PERIOD_M5,g_m5Fast,g_m5Slow)+"\",\"M15\":\""+MtfDirection(PERIOD_M15,g_m15Fast,g_m15Slow)+"\",\"H1\":\""+MtfDirection(PERIOD_H1,g_h1Fast,g_h1Slow)+"\"}";
    body+=",\"terminal_build\":"+IntegerToString((int)TerminalInfoInteger(TERMINAL_BUILD));
+   // Match the exact account-wide recovery net used by this EA (including
+   // position commissions and fees from deal history) with the server planner.
+   if(g_recoveryEnabled && PositionsTotal()>0)
+   {
+      double recoveryLots=0.0;int recoveryCount=0;
+      double recoveryNet=RecoveryGroupNet(recoveryLots,recoveryCount);
+      body+=",\"recovery_group_net\":"+JNum(recoveryNet);
+   }
 
    body+=",\"positions\":[";
    int count=0;
