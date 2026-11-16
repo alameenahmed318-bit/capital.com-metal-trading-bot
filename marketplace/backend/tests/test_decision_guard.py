@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timezone, timedelta
-from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, entry_council_mode
 
 
 class EntryGateTests(unittest.TestCase):
@@ -21,6 +21,29 @@ class EntryGateTests(unittest.TestCase):
                     received_at=self.now, now=self.now, trading_enabled=True)
         args.update(overrides)
         return evaluate_entry_gate(**args)
+
+    def test_owner_strategy_first_policy_is_never_inherited_by_clients(self):
+        settings={"position_management":{"entry_council_mode":"ADVISORY"}}
+        self.assertEqual(entry_council_mode(settings,is_owner=True),"ADVISORY")
+        self.assertEqual(entry_council_mode(settings,is_owner=False),"STRICT")
+        self.assertEqual(entry_council_mode({},is_owner=True),"STRICT")
+
+    def test_strategy_first_uses_quantitative_signal_not_duplicate_council(self):
+        self.decision.pop("family_votes")
+        self.decision.pop("combination_summary")
+        approved=self.gate(strategy_first=True)
+        self.assertTrue(approved["approved"])
+        self.assertIn("النماذج استشارية",approved["reason_ar"])
+
+    def test_strategy_first_still_enforces_margin_signal_and_confidence(self):
+        self.account["free_margin"]=0
+        self.assertFalse(self.gate(strategy_first=True)["approved"])
+        self.account["free_margin"]=800
+        self.decision["decision"]="WAIT"
+        self.assertFalse(self.gate(strategy_first=True)["approved"])
+        self.decision["decision"]="BUY"
+        self.decision["confidence"]=0.49
+        self.assertFalse(self.gate(strategy_first=True)["approved"])
 
     def test_valid_council_and_risk_pass(self):
         result = self.gate()
