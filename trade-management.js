@@ -17,6 +17,10 @@ async function loadCloseSettings(){
  $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
  updateStopLossHelp();
  const pm=s.position_management||{};
+ if($("ownerEntryMode")){
+  $("ownerEntryMode").value=pm.entry_council_mode==="ADVISORY"?"ADVISORY":"STRICT";
+  $("ownerEntryModeMessage").textContent="الوضع الحالي: "+(pm.entry_council_mode==="ADVISORY"?"الاستراتيجية أولاً — AI استشاري":"المجلس الصارم");
+ }
  $("entryGuardEnabled").checked=pm.entry_guard_enabled!==false;
  $("entryMaxDelayBars").value=Number(pm.entry_max_delay_bars??1);
  $("entryMaxDeviationAtr").value=Number(pm.entry_max_deviation_atr??0.5);
@@ -41,6 +45,19 @@ async function loadCloseSettings(){
  $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
  window.recoverySettings=pm;updateRecoveryMonitor(null,pm,s.currency||"");await loadRecoveryLog();
  updatePmModeUI();
+}
+async function saveOwnerEntryMode(){
+ const mode=$("ownerEntryMode").value;
+ if(mode!=="STRICT"&&mode!=="ADVISORY")return;
+ if(mode==="ADVISORY"&&!window.confirm("هذا الوضع يسمح للمحرك بفتح صفقات حقيقية دون انتظار موافقة Qwen وDeepSeek. سيظل وقف الخسارة حسب إعدادك الحالي. هل تريد التفعيل؟"))return;
+ const button=$("saveOwnerEntryMode"),label=$("ownerEntryModeMessage");
+ button.disabled=true;label.textContent="جارٍ حفظ سياسة الدخول…";
+ try{
+  const response=await api("/api/owner/entry-policy",{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({mode,confirmed_risk:mode==="ADVISORY"})});
+  label.textContent=response.message||"تم حفظ سياسة الدخول";
+ }catch(e){label.textContent="تعذّر تطبيق السياسة: "+e.message;}
+ finally{button.disabled=false;}
 }
 function updateStopLossHelp(){
  const mode=$("stopLossMode").value;
@@ -261,7 +278,8 @@ async function boot(){
   const {data}=await supabaseClient.auth.getSession();
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
-  await api("/api/access/check");
+  const access=await api("/api/access/check");
+  $("entryPolicy").hidden=(access.role!=="owner");
   try{await loadCloseSettings();}catch(settingsError){$("closeSettingsMessage").textContent=settingsError.message;}
   await refresh();
  }catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+esc(e.message)+" — ارجع إلى صفحة الدخول.</span>";}
@@ -270,6 +288,7 @@ $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
+$("saveOwnerEntryMode").addEventListener("click",saveOwnerEntryMode);
 $("saveRecoverySettings").addEventListener("click",saveRecoverySettings);
 $("refreshRecoveryLog").addEventListener("click",loadRecoveryLog);
 setInterval(()=>{if(accessToken)loadRecoveryLog();},5000);
