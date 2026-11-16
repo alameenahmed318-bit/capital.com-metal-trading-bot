@@ -51,8 +51,10 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_
         return blocked("زر التداول المركزي متوقف")
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         return blocked("وضع الإدارة غير معروف")
-    if not gate.get("approved") or (not council_advisory and not council.get("approved")) or not risk.get("approved"):
-        return blocked("قرار الاستراتيجية أو حدود الحساب لا يسمحان بإجراء جديد")
+    # Position management is not a fresh-entry decision: a missing Qwen/DeepSeek
+    # entry vote must not veto analysis of an existing position.
+    if not risk.get("approved"):
+        return blocked("حالة الحساب لا تسمح بإجراء إدارة جديد")
     if not str(snapshot.get("symbol","")).upper().startswith("XAUUSD"):
         return blocked("المركز المدعوم حالياً هو الذهب فقط")
     if not 0<=_age_seconds(snapshot,now)<=15:
