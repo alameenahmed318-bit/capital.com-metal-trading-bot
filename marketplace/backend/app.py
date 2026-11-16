@@ -1976,12 +1976,32 @@ class Handler(SimpleHTTPRequestHandler):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
-                            live_learning=live_learning_profile(combine_deals(memory_snapshot(client_id,sb)["deals"],closed_deals))
+                            # A live version can be deliberately selected by the owner,
+                            # but must not freeze all subsequent real-trade feedback.
+                            # Never stop analysis while historical memory is loading.
+                            memory=memory_snapshot(client_id,sb)
+                            live_learning=live_learning_profile(combine_deals(
+                                memory.get("deals") or [],closed_deals))
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
-                            chosen_profile=get_active_strategy_profile(client_id,sb)
-                            strategy_weights=(chosen_profile or {}).get("strategy_weights") or live_learning["weights"]
-                            combination_weights=(chosen_profile or {}).get("combination_weights") or live_learning.get("combination_weights")
+                            try:
+                                chosen_profile=get_active_strategy_profile(client_id,sb)
+                                active_profile_error=None
+                            except Exception as profile_error:
+                                # Learning/version storage being unavailable never
+                                # becomes a fresh-trade WAIT gate.
+                                chosen_profile=None
+                                active_profile_error=type(profile_error).__name__
+                                print("ACTIVE_PROFILE_FALLBACK:",active_profile_error,flush=True)
+                            effective=apply_live_learning(chosen_profile,live_learning)
+                            learning_diagnostic={**effective["diagnostics"],
+                                "memory_status":memory.get("status","LOADING"),
+                                "memory_deals":int(memory.get("count",0)),
+                                "active_version_label":(chosen_profile or {}).get("version_label","DEFAULT"),
+                                "active_version_id":(chosen_profile or {}).get("version_id"),
+                                "profile_read_error":active_profile_error}
+                            strategy_weights=effective["strategy_weights"]
+                            combination_weights=effective["combination_weights"]
                             evaluated=evaluate_market(list(reversed(candles)),weights=strategy_weights,
                                 combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO",
                                 bot_signals=bot_report)
@@ -2006,6 +2026,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 "bot_evidence":evaluated.get("bot_evidence",{}),
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
+                                "learning":learning_diagnostic,
                                 "bar_time":bar_time,
                                 "advisory_bots":(bot_report if isinstance(bot_report,dict)
                                                  and int(finite_number(bot_report.get("bar_time",0)))==bar_time
@@ -2014,6 +2035,27 @@ class Handler(SimpleHTTPRequestHandler):
                                 "execution_ready":False
                             }
                             strategy_last_bar=bar_time
+                            if learning_diagnostic.get("status")=="APPLIED":
+                                # Persistent, idempotent proof that adjusted live
+                                # weights actually entered a closed-candle decision.
+                                digest=hashlib.sha256(json.dumps({
+                                    "s":learning_diagnostic["changed_strategies"],
+                                    "c":learning_diagnostic["changed_combinations"],
+                                    "at":learning_diagnostic.get("last_attributed_at")},
+                                    ensure_ascii=False,sort_keys=True).encode("utf-8")).hexdigest()[:16]
+                                event_id=("live-learning:"+client_id+":"+digest)
+                                queue_ai_diagnostic_event({
+                                    "event_id":event_id,
+                                    "client_id":client_id,
+                                    "event_type":"LIVE_LEARNING_APPLIED",
+                                    "payload":{"bar_time":bar_time,
+                                        "last_attributed_at":learning_diagnostic.get("last_attributed_at"),
+                                        "processed_positions":learning_diagnostic["processed_positions"],
+                                        "applied_strategies":learning_diagnostic["applied_strategies"],
+                                        "applied_combinations":learning_diagnostic["applied_combinations"],
+                                        "active_version_label":learning_diagnostic["active_version_label"],
+                                        "reason_ar":"تم تطبيق تعلم الصفقات المغلقة فعلياً على أوزان قرار الشمعة"}}
+                                )
                         except Exception as engine_error:
                             print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
                 if bot_new:
