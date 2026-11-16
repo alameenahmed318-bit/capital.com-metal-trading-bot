@@ -24,7 +24,7 @@
   <a class="nav" href="/opportunities.html"><span>◉</span><span class="nav-label">سجل الإشارات</span></a>
   <a class="nav" href="#accountPerformance"><span>🏆</span><span class="nav-label">الأداء اليومي</span></a>
   <a class="nav" href="/ai-analysis.html"><span>✧</span><span class="nav-label">التحليل الذكي</span></a>
-  <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة قرارات الذكاء</span></a>
+  <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a>
   <a class="nav" href="/learning-lab.html"><span>❖</span><span class="nav-label">التعلم والذاكرة</span></a>
   <a class="nav" href="/backtest-lab.html"><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
   <a class="nav" href="/"><span>⚙</span><span class="nav-label">الإدارة والإعدادات</span></a>
@@ -62,6 +62,13 @@
    <p class="muted" id="azRiskReason">تصويت النماذج وموافقة المخاطر منفصلان عن تشغيل التداول الحقيقي.</p>
    <button class="refresh" type="button" id="azRefreshCouncilBtn">⟳ تحديث المجلس</button>
   </article>
+ </section>
+ <section class="card" id="aiMonitorInline" hidden aria-labelledby="aiMonitorInlineTitle" style="margin-bottom:16px">
+  <div class="card-title"><div><span class="eyebrow">متصل بمحرك التداول الحقيقي</span><h2 id="aiMonitorInlineTitle">◎ مراقبة قرار Hybrid AI</h2><p class="muted">من نفس لوحة القيادة: لماذا BUY أو SELL أو WAIT؟ وكيف أثرت Qwen وDeepSeek؟</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="refresh" id="azInlineMonitorRefresh">⟳ تحديث المراقبة</button><a class="az-settings-link" href="/ai-monitor.html">كل تفاصيل القرار</a></div></div>
+  <div class="az-ai-council-details" style="margin:0">
+   <article class="az-ai-votes"><div class="az-model-row"><b>قرار الاستراتيجية</b><strong id="azMonitorBase">—</strong></div><div class="az-model-row"><b>بعد دمج AI</b><strong id="azMonitorEffective">—</strong></div><div class="az-model-row"><b>أصوات AI المستخدمة فعلياً</b><strong id="azMonitorUsed">—</strong></div><p class="muted" id="azMonitorAiReason">بانتظار قرارات المحرك</p></article>
+   <article class="az-ai-guard"><div class="az-model-row"><b>حالة التنفيذ</b><strong id="azMonitorReady">—</strong></div><div class="az-model-row"><b>السبب المحدد</b><span id="azMonitorReason">—</span></div><div class="az-model-row"><b>وضع قرار الدخول</b><span id="azMonitorMode">—</span></div></article>
+  </div>
  </section>
  <section class="card az-client-settings" id="tradingSettingsPanel">
   <div class="card-title"><div><h2>⚙ إعدادات التداول الخاصة بك</h2><p class="muted">الإعدادات قابلة للتعديل من شاشة إدارة التداول</p></div><span class="shield">⚙</span></div>
@@ -119,6 +126,6 @@
 </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/dashboard.js?v=11"></script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=nav-20261115-2" defer></script>
+<script src="/dashboard.js?v=hybrid-monitor-20261116-1"></script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
 </body></html>
