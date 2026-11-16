@@ -42,6 +42,7 @@ async function loadCloseSettings(){
  $("recoveryMaxLot").value=pm.recovery_max_lot??"";
  $("recoveryEnabled").checked=!!pm.recovery_enabled;
  $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
+ $("recoveryProfitTarget").value=Number(pm.recovery_profit_target??0).toString();
  $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
  window.recoverySettings=pm;updateRecoveryMonitor(null,pm,s.currency||"");await loadRecoveryLog();
  updatePmModeUI();
@@ -163,6 +164,7 @@ function updateRecoveryMonitor(summary,pm=window.recoverySettings||{},currency="
  $("recoveryNet").textContent=summary?.connected?fmt(net,2)+" "+currency:"—";$("recoveryNet").className=net<0?"recovery-loss":net>0?"recovery-profit":"";
  $("recoveryLots").textContent=summary?.connected?fmt(lots,3):"—";$("recoveryPositions").textContent=summary?.connected?fmt(positions.length,0):"—";
  $("recoveryTriggerView").textContent=Number(pm.recovery_loss_trigger||0)>0?fmt(pm.recovery_loss_trigger,2)+" "+currency:"غير محدد";
+ $("recoveryProfitTargetView").textContent=fmt(Number(pm.recovery_profit_target??0),2)+" "+currency;
  const last=window.lastRecoveryEvent||null;let state="بانتظار اتصال MT5",message="بانتظار بيانات MT5.";
  if(!summary?.connected){state="MT5 غير متصل";message="لا تصل بيانات حديثة من MT5؛ لا يمكن تأكيد حالة التنفيذ.";}
  else if(pm.recovery_enabled!==true){state="متوقف";message="التعافي متوقف حسب الإعدادات المحفوظة.";}
@@ -186,6 +188,12 @@ async function saveRecoverySettings(){
  const trigger=Number(raw.replace(/,/g,""));
  const enabled=$("recoveryEnabled").checked;
  const recoveryMaxLot=$("recoveryMaxLot").value.trim()?Number($("recoveryMaxLot").value):null;
+ const rawProfitTarget=$("recoveryProfitTarget").value.trim();
+ const recoveryProfitTarget=rawProfitTarget===""?0:Number(rawProfitTarget.replace(/,/g,""));
+ if(!Number.isFinite(recoveryProfitTarget)||recoveryProfitTarget<0){
+  $("recoveryMessage").textContent="هدف الربح يجب أن يكون 0 أو مبلغاً موجباً بعملة حسابك (مثلاً 1 أو 2 أو 3 أو 4).";
+  $("recoveryProfitTarget").focus();return;
+ }
  if(recoveryMaxLot!==null&&(!Number.isFinite(recoveryMaxLot)||recoveryMaxLot<=0)){
   $("recoveryMessage").textContent="حدد سقف لوت التعافي بين 0.01 و100.";return;
  }
@@ -205,9 +213,10 @@ async function saveRecoverySettings(){
    group_enabled:$("groupEnabled").checked,
    group_profit_target:Number($("groupTarget").value),
    position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,
-    recovery_max_lot:recoveryMaxLot,recovery_user_configured:true}
+    recovery_max_lot:recoveryMaxLot,recovery_profit_target:recoveryProfitTarget,
+    recovery_user_configured:true}
   })});
-  $("recoveryMessage").textContent=enabled?"تم حفظ شروط التعافي. التنفيذ متاح للحساب التجريبي أو الحقيقي المتصل، بحسب مفاتيح التداول والمجلس وإعداداتك؛ لا يوجد شرط لنوع الحساب.":"تم حفظ التعافي بوضع الإيقاف.";
+  $("recoveryMessage").textContent=enabled?"تم حفظ التعافي وهدف صافي الربح "+recoveryProfitTarget.toFixed(2)+" بعملة الحساب. سيغلق MT5 المجموعة عند الوصول إلى الهدف بعد فتح صفقة التعافي، بشرط استخدام EA المحدّث.":"تم حفظ التعافي بوضع الإيقاف.";
  }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveRecoverySettings").disabled=false;}
 }
