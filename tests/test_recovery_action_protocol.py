@@ -55,7 +55,8 @@ class AccountRecoveryTests(unittest.TestCase):
                     "profit":-30,"comment":"ALZOOL-RECOVERY"}]
         result=recovery_intent(self.snapshot(positions,net=-30),
                                {"decision":"BUY"},self.settings())
-        self.assertTrue(result["armed"])
+        self.assertTrue(result["active_cycle"])
+        self.assertFalse(result["armed"])  # No second recovery may be armed
         self.assertEqual(result["action"],"HOLD")
 
     def test_nonready_or_disabled_recovery_not_proposed(self):
