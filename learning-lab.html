@@ -52,6 +52,17 @@
 <article class="learn-stat"><small>رابحة / خاسرة من الصفقات المتعلمة</small><strong id="liveWinLoss">—</strong></article>
 <article class="learn-stat"><small>استراتيجيات تأثرت أوزانها (آخر 30 يومًا)</small><strong id="liveUpdated">—</strong></article>
 </section>
+<section class="learn-grid" id="liveLearningHealth">
+<article class="learn-stat"><small>هل أوزان الصفقات الحقيقية مستخدمة في الدخول؟</small><strong id="learningAppliedState">جارٍ التحقق</strong></article>
+<article class="learn-stat"><small>استراتيجيات تغير وزنها فعلياً</small><strong id="learningAppliedStrategies">—</strong></article>
+<article class="learn-stat"><small>تراكيب تغير وزنها فعلياً</small><strong id="learningAppliedCombinations">—</strong></article>
+<article class="learn-stat"><small>آخر إغلاق منسوب لاستراتيجية</small><strong id="learningLastAttributed">—</strong></article>
+</section>
+<section class="learn-card" id="liveLearningEvidence"><h2>دليل تطبيق التعلم في قرار التداول</h2>
+<div class="learn-note" id="learningAppliedDetail">جارٍ التحقق من القرار الذي استخدمه المحرك فعلياً.</div>
+<div class="learn-table-wrap" id="learningAppliedChanges">لم تُعرض أوزان مستخدمة بعد.</div>
+<p class="learn-note">يتعلم AL-ZOOL إحصائياً من الصفقات المغلقة المنسوبة لاستراتيجية أو تركيبة. هذه أوزان متغيرة تُستخدم في ترتيب الإشارات، وليست تدريباً جديداً لأوزان Qwen أو DeepSeek. الأوزان التي لا تملك أدلة كافية تبقى محايدة، والتعلم لا يغير إعدادات اللوت أو وقف الخسارة ولا يضيف شرط منع للدخول.</p>
+</section>
 <section class="learn-card" id="strategyAuditPanel">
  <h2>تدقيق تصويت 200 استراتيجية و1000 تركيبة</h2>
  <p class="learn-note">فحص حسابات حقيقية على شموع تاريخية مغلقة؛ تقسيم زمني تدريب 60% ثم تحقق 40%. لا يعتبر قياس ربح، ولا يُفعّل التداول أو يغير أوزان الاستراتيجيات. التركيبات المتداخلة تخضع لتصحيح تكرار الأعضاء داخل المحرك المركزي.</p>
@@ -66,7 +77,7 @@
 <div class="learn-note" id="liveStatus">بانتظار بيانات الصفقات المغلقة من MT5.</div>
 <div class="learn-table-wrap" id="liveStrategies"><div class="learn-note">لا توجد عينات تعلم مباشرة حتى الآن.</div></div></section>
 <section class="learn-card"><h2>كيف يتعلم النظام؟</h2>
-<div class="learn-note">كل جولة تُحفظ في قاعدة البيانات. يراجع النظام آخر 100 جولة محفوظة، لكنه يجمع فقط الاختبارات المتوافقة مع آخر اختبار: نفس الرمز والفريم والعملة واللوت والعمولة والانزلاق. ويستخدم نتائج قسم التحقق فقط. إذا سجل النموذج 30 صفقة تحقق على الأقل، وصافيًا سلبيًا ومعامل ربح صافٍ أقل من 0.90، يتم تحويل إشارته إلى انتظار في جولة الاختبار التالية، ثم تُعاد حساب أصوات التركيبات. هذا القسم خاص بالاختبار التاريخي. أما التعلم المباشر أعلاه فيستخدم نتائج صفقات MT5 المغلقة لتحديث الأوزان بعد بلوغ حد أدنى من الأدلة، مع إرجاع العينات الصغيرة للوزن المحايد؛ ولا يغير إعدادات المخاطرة أو يرسل أوامر تداول.</div>
+<div class="learn-note">الاختبارات التاريخية والتعلم المباشر مساران مختلفان. التعلم المباشر يراجع نتائج الصفقات المغلقة المنسوبة للاستراتيجيات، ويضيف تعديلاً محدوداً إلى أوزان إصدار المالك النشط في قرار الشمعة التالية. لا يقوم بتدريب نموذج لغوي جديد. أما الاختبارات التاريخية: كل جولة تُحفظ في قاعدة البيانات. يراجع النظام آخر 100 جولة محفوظة، لكنه يجمع فقط الاختبارات المتوافقة مع آخر اختبار: نفس الرمز والفريم والعملة واللوت والعمولة والانزلاق. ويستخدم نتائج قسم التحقق فقط. إذا سجل النموذج 30 صفقة تحقق على الأقل، وصافيًا سلبيًا ومعامل ربح صافٍ أقل من 0.90، يتم تحويل إشارته إلى انتظار في جولة الاختبار التالية، ثم تُعاد حساب أصوات التركيبات. هذا القسم خاص بالاختبار التاريخي. أما التعلم المباشر أعلاه فيستخدم نتائج صفقات MT5 المغلقة لتحديث الأوزان بعد بلوغ حد أدنى من الأدلة، مع إرجاع العينات الصغيرة للوزن المحايد؛ ولا يغير إعدادات المخاطرة أو يرسل أوامر تداول.</div>
 <div class="learn-actions"><a href="/backtest-lab.html">الذهاب إلى مختبر الاختبار</a><a href="/dashboard.html">العودة للوحة القيادة</a><a href="#" id="reloadBtn">تحديث السجل</a></div></section>
 <section class="learn-card"><h2>آخر جولات التعلم</h2><div class="learn-table-wrap" id="runsTable"><div class="learn-note">جارٍ تحميل سجل التعلم…</div></div></section>
 <section class="learn-card"><h2>أفضل النماذج في آخر جولة تحقق</h2><div class="learn-table-wrap" id="bestTable"><div class="learn-note">بانتظار نتائج الاختبار.</div></div></section>
@@ -106,7 +117,32 @@ async function load(){
   const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الاتصال غير مكتملة");
   const client=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await client.auth.getSession();
   if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");
-  const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models,live=d.live||{};
+  const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models,live=d.live||{},
+   calculated=d.learning_computed||{},applied=d.learning_applied||{};
+  const appliedNow=applied.status==="APPLIED";
+  $("learningAppliedState").textContent=appliedNow?"مفعّل ويؤثر على الدخول":
+      applied.status==="INSUFFICIENT_EVIDENCE"?"بانتظار أدلة كافية":
+      applied.status==="NEUTRAL_NO_CHANGE"?"محايد حالياً":
+      calculated.status==="APPLIED"?"أوزان محسوبة — بانتظار قرار جديد":"لا يوجد إثبات تطبيق بعد";
+  $("learningAppliedStrategies").textContent=String(applied.applied_strategies??0)+" / 200";
+  $("learningAppliedCombinations").textContent=String(applied.applied_combinations??0)+" / 1000";
+  const latest=applied.last_attributed_at||calculated.last_attributed_at||live.last_attributed_at;
+  $("learningLastAttributed").textContent=latest?new Date(latest).toLocaleString("en-GB"):"لا توجد صفقة منسوبة";
+  const updatedAt=d.learning_applied_at?new Date(d.learning_applied_at).toLocaleString("en-GB"):"لا يوجد";
+  $("learningAppliedDetail").textContent="القرار الفعلي: "+String(applied.status||"لا توجد قراءة بعد")+
+     " | آخر حساب قرار: "+updatedAt+
+     " | آخر شمعة: "+String(d.learning_decision_bar||"—")+
+     " | نسخة الاستراتيجيات الأساسية: "+String(applied.active_version_label||calculated.active_version_label||"DEFAULT")+
+     " | ذاكرة الصفقات: "+String(applied.memory_status||"لم تبدأ")+
+     " | الصفقات المغلقة المنسوبة: "+String(applied.processed_positions??live.processed_positions??0)+
+     " | تغطية النسب: "+String(applied.coverage_percent??live.coverage_percent??0)+"%"+
+     (applied.profile_read_error?" | قراءة الإصدار: "+applied.profile_read_error:"");
+  const changes=[...(applied.changed_strategies||[]).map(x=>({...x,kind:"استراتيجية"})),
+                 ...(applied.changed_combinations||[]).map(x=>({...x,kind:"تركيبة"}))];
+  $("learningAppliedChanges").innerHTML=changes.length?
+    "<table class='learn-table'><thead><tr><th>النوع</th><th>الرقم</th><th>صفقات مغلقة</th><th>وزن الإصدار</th><th>وزن التعلم المحسوب</th><th>الوزن المستخدم في القرار</th></tr></thead><tbody>"+
+    changes.map(x=>"<tr><td>"+esc(x.kind)+"</td><td>#"+Number(x.id)+"</td><td>"+Number(x.closed_trades||0)+"</td><td>"+Number(x.base||1).toFixed(4)+"</td><td>"+Number(x.learned||1).toFixed(4)+"</td><td>"+Number(x.effective||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>":
+    "<div class='learn-note'>لا توجد أوزان مختلفة استُخدمت في قرار الدخول الأخير حتى الآن. هذا لا يعني توقف حفظ الصفقات؛ راجع عدد الصفقات والحالة أعلاه.</div>";
   $("serviceState").textContent="تم التحقق من الحساب";$("runCount").textContent=String(d.count||0);
    $("liveProcessed").textContent=String(live.processed_positions||0)+" / "+String(live.closed_positions||0);
    $("dailyCoverage").textContent=live.daily_closed_positions?Number(live.daily_coverage_percent||0).toFixed(1)+"%":"لا توجد صفقات مغلقة";
@@ -117,7 +153,7 @@ async function load(){
     : "لا توجد صفقات XAUUSD مغلقة تحمل معرّف استراتيجية قابلًا للتحقق بعد. سيظهر التعلم بعد وصول صفقات مغلقة من MT5.";
    const liveRows=live.strategies||[];
    $("liveStrategies").innerHTML=liveRows.length
-    ? "<table class='learn-table'><thead><tr><th>الاستراتيجية</th><th>الصفقات</th><th>رابحة</th><th>خاسرة</th><th>الصافي</th><th>الوزن الحالي</th></tr></thead><tbody>"+liveRows.slice(0,20).map(x=>"<tr><td>#"+Number(x.strategy_id)+"</td><td>"+Number(x.trades)+"</td><td class='positive'>"+Number(x.wins)+"</td><td class='negative'>"+Number(x.losses)+"</td><td class='"+(Number(x.net)>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+Number(x.weight||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>"
+    ? "<table class='learn-table'><thead><tr><th>الاستراتيجية</th><th>الصفقات</th><th>رابحة</th><th>خاسرة</th><th>الصافي</th><th>وزن التعلم المحسوب</th></tr></thead><tbody>"+liveRows.slice(0,20).map(x=>"<tr><td>#"+Number(x.strategy_id)+"</td><td>"+Number(x.trades)+"</td><td class='positive'>"+Number(x.wins)+"</td><td class='negative'>"+Number(x.losses)+"</td><td class='"+(Number(x.net)>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+Number(x.weight||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>"
     : "<div class='learn-note'>لا توجد صفقات مباشرة مرتبطة باستراتيجيات بعد. تأكد أن تعليق دخول الصفقة يبدأ بـ ALZOOL-S ورقم الاستراتيجية.</div>";
   $("suppressedCount").textContent=String(p.filter(x=>x.n>=30&&x.net<0&&x.pf<.9).length);
   $("runsTable").innerHTML=runs.length?"<table class='learn-table'><thead><tr><th>التاريخ</th><th>الرمز / الفريم</th><th>الشموع</th><th>نقاط التحقق</th><th>صافي الاستراتيجيات</th><th>إشارات تم كبحها</th></tr></thead><tbody>"+runs.map(r=>"<tr><td>"+new Date(r.created_at).toLocaleString("ar-AE-u-nu-latn")+"</td><td>"+esc(r.symbol)+" / "+esc(r.timeframe)+"</td><td>"+Number(r.candle_count||0)+"</td><td>"+Number(r.validation_points||0)+"</td><td class='"+(Number(r.summary?.validation_strategy_net_sum||0)>=0?"positive":"negative")+"'>"+money(r.summary?.validation_strategy_net_sum)+" "+esc(r.account_currency)+"</td><td>"+Number(r.summary?.suppressed_signals||0)+"</td></tr>").join("")+"</tbody></table>":"<div class='learn-note'>لا توجد جولات محفوظة بعد. ابدأ أول اختبار من مختبر الاختبار التاريخي.</div>";
