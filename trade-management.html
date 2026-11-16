@@ -143,26 +143,26 @@
   <div class="pm-mode-row">
    <label for="pmMode">طريقة التحكم</label>
    <select id="pmMode"><option value="AI">AI تلقائي</option><option value="MANUAL">يدوي</option></select>
-   <p class="section-note" id="pmModeHelp">في وضع AI يختار المحرك توقيت الإضافة واللوت والمسافة. في الوضع اليدوي تحدد الشروط واللوت والمسافة، والتنفيذ تلقائي عند تحققها.</p>
+   <p class="section-note" id="pmModeHelp">في وضع AI يحدد المحرك توقيت الإضافة من السعر وATR وأصوات Hybrid المتاحة، ويحسب اللوت من الأساس × المضاعف المحفوظ لكل نوع واتجاه. في الوضع اليدوي يستخدم اللوت والمسافة المحددين دون مضاعفة.</p>
   </div>
   <div class="close-grid pm-grid">
    <article class="close-option pm-option">
-    <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
-    <label for="addonMax">حد عدد صفقات التعزيز الاختياري (0 = بدون حد)</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <div class="close-option-head"><div><b>التعزيز</b><small>إضافة عند حركة السعر لصالح مراكز الاتجاه نفسه</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
+    <label for="addonMax">عدد إضافات التعزيز فقط لكل اتجاه (0 = بدون حد)</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="addonMultiplier">مضاعف لوت التعزيز AI</label><input id="addonMultiplier" type="text" value="1.5" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="addonMaxLot">حد لوت التعزيز الاختياري (فارغ = بدون حد)</label><input id="addonMaxLot" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
-     <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+     <label for="addonLot">اللوت الأساسي (AI / يدوي)</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التبريد</b><small>إضافات مستقلة لتبريد متوسط الدخول</small></div><label class="switch"><input type="checkbox" id="coolingEnabled"><span></span></label></div>
-    <label for="coolingMax">حد عدد صفقات التبريد الاختياري (0 = بدون حد)</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMax">عدد إضافات التبريد فقط لكل اتجاه (0 = بدون حد)</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="coolingMultiplier">مضاعف لوت التبريد AI</label><input id="coolingMultiplier" type="text" value="1.2" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="coolingMaxLot">حد لوت التبريد الاختياري (فارغ = بدون حد)</label><input id="coolingMaxLot" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
-     <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+     <label for="coolingLot">اللوت الأساسي (AI / يدوي)</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
