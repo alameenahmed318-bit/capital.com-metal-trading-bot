@@ -182,13 +182,15 @@ async function azRefreshAiCouncil(){
   const grStatus=String(groq.status||"NOT_CONFIGURED");
   put("azGroqVote",grStatus+(groq.status==="READY"?" · "+String(groq.direction||"WAIT")+
     " · "+Math.round(Number(groq.confidence||0)*100)+"%":"")+(groq.reason_ar?" · "+groq.reason_ar:""));
-  const allowed=c.approved===true&&risk.approved===true;
-  badge("azCouncilState",c.approved===true,c.approved===true?"APPROVED":"WAIT");
+  const hybrid=d.mode==="HYBRID";
+  const councilReady=hybrid?(signal==="BUY"||signal==="SELL"):c.approved===true;
+  const allowed=councilReady&&risk.approved===true;
+  badge("azCouncilState",councilReady,hybrid?"HYBRID":(c.approved===true?"APPROVED":"WAIT"));
   badge("azRiskState",risk.approved===true,risk.approved===true?"PASS":"BLOCK");
-  put("azAiCouncilStatus",allowed?"APPROVED":"WAIT");
+  put("azAiCouncilStatus",hybrid?(allowed?"HYBRID · "+signal:"HYBRID · WAIT"):(allowed?"APPROVED":"WAIT"));
   put("azEngineSignal",signal);
   put("azRiskVote",risk.approved===true?"PASS":"BLOCK");
-  put("azCouncilReason",String(c.reason_ar||"المجلس ينتظر بيانات تصويت حديثة"));
+  put("azCouncilReason",String(hybrid?(d.hybrid?.reason_ar||"نتائج AI تؤثر في الترجيح دون إجماع إلزامي"):(c.reason_ar||"المجلس ينتظر بيانات تصويت حديثة")));
   put("azRiskReason",String(risk.reason_ar||"لا يوجد تقرير مخاطر مكتمل"));
   const bar=Number(d.bar_time);
   put("azCouncilBarTime",Number.isFinite(bar)&&bar>0?
