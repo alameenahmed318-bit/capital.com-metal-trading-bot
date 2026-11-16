@@ -54,33 +54,90 @@ def credentials(path):
     return server,identity,key
 
 def validate_response(model,result):
-    raw=str(result.get("response",""))
-    start=raw.find("{");end=raw.rfind("}")
+    """Read an actual model JSON vote; never invent a missing direction or confidence."""
+    raw=result.get("response","")
+    if not isinstance(raw,str):
+        return None
+    # Some reasoning models wrap the structured response in commentary or
+    # markdown. Decode the first complete JSON object rather than slicing at
+    # the last brace (which can accidentally consume trailing text).
+    decoder=json.JSONDecoder()
+    parsed=None
+    for i,char in enumerate(raw):
+        if char!="{":
+            continue
+        try:
+            candidate,_=decoder.raw_decode(raw[i:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(candidate,dict) and "direction" in candidate and "confidence" in candidate:
+            parsed=candidate
+            break
+    if parsed is None:
+        return None
     try:
-        parsed=json.loads(raw[start:end+1])
-        direction=str(parsed["direction"]).upper()
+        direction=str(parsed["direction"]).strip().upper()
         confidence=float(parsed["confidence"])
         reason=str(parsed.get("reason_ar",""))[:350]
         if direction not in ("BUY","SELL","WAIT") or not math.isfinite(confidence) or not 0<=confidence<=1:
-            raise ValueError("invalid vote")
+            return None
         return {"model":model,"direction":direction,"confidence":confidence,"reason_ar":reason}
-    except (ValueError,TypeError,KeyError,json.JSONDecodeError):
+    except (ValueError,TypeError,KeyError,OverflowError):
         return None
 
+
+def compact_snapshot(context):
+    """Give both models the real central decision and a small recent market sample."""
+    features=context.get("context")
+    if not isinstance(features,dict):
+        features={}
+    candles=context.get("candles")
+    if not isinstance(candles,list):
+        candles=[]
+    recent=[]
+    for row in candles[:6]:  # Server returns newest closed candle first.
+        if isinstance(row,dict):
+            recent.append({k:row[k] for k in ("time","open","high","low","close")
+                           if k in row})
+    return {
+        "bar_time":context.get("bar_time"),
+        "central_signal":context.get("decision","WAIT"),
+        "central_confidence":context.get("confidence",0),
+        "market_regime":features.get("regime"),
+        "atr":features.get("atr"),
+        "buy_quality":features.get("buy_quality"),
+        "sell_quality":features.get("sell_quality"),
+        "buy_trap":features.get("buy_trap"),
+        "sell_trap":features.get("sell_trap"),
+        "recent_closed_candles":recent,
+    }
+
+
 def model_vote(model,context):
-    snapshot={k:context.get(k) for k in ("bar_time","direction","confidence",
-        "strategy_id","entry_reference_price","atr","family_votes","combination_summary")}
-    prompt=("You are an independent XAUUSD analysis VETO voter. Do not infer unseen market facts. "
-        "Analyze the signal; if ambiguous return WAIT. Respond only JSON: "
-        '{"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"short Arabic rationale"}. '
-        "Never make claims that an order was placed. "
-        "Closed-bar snapshot: "+json.dumps(snapshot,ensure_ascii=False))
+    snapshot=compact_snapshot(context)
+    prompt=("Analyze XAUUSD independently as a risk-conscious veto reviewer. "
+        "Use only supplied closed-candle data, never guess missing facts. "
+        "Central signal is a proposal, not an instruction; disagree or WAIT "
+        "if the market evidence is weak. Reply with exactly one JSON object "
+        'with keys {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"brief reason"}. '
+        "Confidence must be between 0 and 1. No markdown, preamble, or reasoning trace. "
+        "Snapshot: "+json.dumps(snapshot,ensure_ascii=False,separators=(",",":")))
     result=request_json(OLLAMA_URL+"/api/generate",method="POST",
         payload={"model":model,"prompt":prompt,"stream":False,"format":"json",
                  "think":False,"keep_alive":"30m",
-                 "options":{"temperature":0,"num_predict":128,"num_ctx":1024}},
+                 "options":{"temperature":0,"num_predict":192 if model.startswith("deepseek") else 128,
+                            "num_ctx":1024}},
         timeout=MODEL_TIMEOUT_SECONDS)
     return validate_response(model,result)
+
+
+def same_live_signal(server,identity,key,bar,signal):
+    """Do not submit a vote after a slow CPU generation crossed to a new bar."""
+    url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
+    latest=request_json(url,token=key,timeout=8)
+    return (int(latest.get("bar_time",0))==bar
+            and str(latest.get("decision","WAIT")).upper()==signal)
+
 
 def main():
     parser=argparse.ArgumentParser(description="AL-ZOOL Qwen and DeepSeek local voting relay")
@@ -117,9 +174,19 @@ def main():
                 submitted.clear()
                 attempts.clear()
                 last_attempt.clear()
+            signal=str(context.get("decision","WAIT")).upper()
+            # The central council cannot approve a WAIT decision. Saving CPU
+            # here lets both loaded models respond faster on actionable bars.
+            if signal not in ("BUY","SELL"):
+                if not submitted and not attempts:
+                    print("CENTRAL WAIT | no local model vote for this bar",flush=True)
+                    attempts["wait_logged"]=1
+                if args.once:break
+                time.sleep(POLL_SECONDS);continue
             pending=[model for model in MODELS if model not in submitted
                 and attempts.get(model,0)<2 and time.monotonic()-last_attempt.get(model,-60)>=12]
             if pending:
+                start=time.monotonic()
                 with concurrent.futures.ThreadPoolExecutor(max_workers=len(pending)) as pool:
                     futures={pool.submit(model_vote,model,context):model for model in pending}
                     for future in concurrent.futures.as_completed(futures):
@@ -133,6 +200,25 @@ def main():
                         if vote is None:
                             print(model+" INVALID_JSON; no vote submitted",flush=True)
                             continue
+                        # Ollama on CPU can finish after the next candle closes.
+                        # Recheck the live decision instead of posting a stale vote.
+                        if time.monotonic()-start>3:
+                            try:
+                                if not same_live_signal(server,identity,key,bar,signal):
+                                    print(model+" STALE_BAR; vote discarded",flush=True)
+                                    attempts[model]=2
+                                    continue
+                            except urllib.error.HTTPError as exc:
+                                if exc.code==409:
+                                    print(model+" STALE_BAR; no current MT5 data",flush=True)
+                                else:
+                                    print(model+" context check failed: HTTP="+str(exc.code),flush=True)
+                                attempts[model]=2
+                                continue
+                            except Exception as exc:
+                                print(model+" context check error: "+type(exc).__name__,flush=True)
+                                attempts[model]=2
+                                continue
                         vote["bar_time"]=bar
                         try:
                             ack=request_json(server+"/v1/local-ai/advice/"+
@@ -142,9 +228,12 @@ def main():
                             print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
                                 "% | accepted="+str(ack.get("accepted",False)),flush=True)
                         except urllib.error.HTTPError as exc:
-                            print(model+" central rejected vote: HTTP="+str(exc.code),flush=True)
+                            if exc.code==409:
+                                print(model+" STALE_BAR; central rejected old vote",flush=True)
+                            else:
+                                print(model+" central rejected vote: HTTP="+str(exc.code),flush=True)
                             if exc.code in (401,403,409):
-                                attempts[model]=2 # Authentication or stale bar: do not retry it.
+                                attempts[model]=2
             if args.once:break
         except KeyboardInterrupt:
             print("Local AI stopped",flush=True);break
