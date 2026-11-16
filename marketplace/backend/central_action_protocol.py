@@ -72,14 +72,12 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_
     side=action.get("side")
     if side not in ("BUY","SELL"):
         return blocked("اتجاه الإجراء غير صالح")
-    if (action.get("action")!="RECOVERY_PROPOSAL"
-        and side!=str(decision.get("decision","WAIT"))):
-        return blocked("اتجاه التعزيز أو التبريد مخالف لقرار الاستراتيجيات")
-    # Recovery is an independent existing-position action; requiring its side
-    # to match a new-entry signal is the old permanent-rejection bug.
+    # Existing-position add-on/cooling decisions use the position's price,
+    # ATR, available Hybrid votes and owner settings. New-entry direction
+    # must not veto independent position management after those checks.
     return {"execution_ready":True,"mode":"PROPOSAL",
         "side":side,"action":action["action"],
-        "lot_cap":round(_num(action["lot_cap"]),3),
+        "lot_cap":round(_num(action["lot_cap"]),8),
         "bar_time":bar,"fingerprint":_fingerprint(snapshot),
         "reason_ar":action.get("reason_ar","")}
 
