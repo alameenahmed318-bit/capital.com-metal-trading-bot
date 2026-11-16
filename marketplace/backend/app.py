@@ -1226,6 +1226,23 @@ class Handler(SimpleHTTPRequestHandler):
                     "wins":profile["wins"],"losses":profile["losses"],"top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/monitor/details":
+            # Large strategy/combination evidence is loaded only on demand.
+            try:
+                u=owner(token_of(self))
+                lic=license_for_user(u["id"])
+                cid=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(cid) if cid else None
+                if not item:
+                    return self.send_json(200,{"connected":False,"strategies":[],"combinations":[]})
+                decision=item.get("strategy_decision") or {}
+                return self.send_json(200,{"connected":True,"bar_time":decision.get("bar_time"),
+                    "strategies":decision.get("votes") or [],
+                    "combinations":decision.get("combination_votes") or [],
+                    "vote_summary":decision.get("vote_summary") or {},
+                    "combination_summary":decision.get("combination_summary") or {}})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/ai/monitor":
             # Owner-only, read-only mirror of the actual decision gates.
             try:
