@@ -20,8 +20,11 @@ def recovery_intent(snapshot, decision, settings):
     pm=(settings or {}).get("position_management") or {}
     enabled=pm.get("recovery_enabled") is True
     trigger=_num(pm.get("recovery_loss_trigger"))
-    net=sum(_num(p.get("profit"))+_num(p.get("swap"))+_num(p.get("commission"))
-            for p in positions)
+    position_net=sum(_num(p.get("profit"))+_num(p.get("swap"))+_num(p.get("commission"))
+                     for p in positions)
+    # New EA sends the same account net it uses to close groups, including
+    # entry commissions/deal fees. Legacy terminals safely fall back to P/L.
+    net=_num(snapshot.get("recovery_group_net"),position_net)
     lots=sum(max(0,_num(p.get("volume"))) for p in positions)
     result={"armed":False,"action":"HOLD","side":None,"lot_cap":0.0,
             "account_net":round(net,2),"account_lots":round(lots,3),
