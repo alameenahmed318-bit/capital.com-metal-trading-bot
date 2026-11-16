@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
-from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, closed_bar_execution_fresh
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from learning_memory import memory_snapshot, combine_deals
 from position_action_engine import plan_account_actions
@@ -554,7 +554,11 @@ class Handler(SimpleHTTPRequestHandler):
             context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
             return self.send_json(200,{"client_id":client_id,
                 "bar_time":int(finite_number(decision.get("bar_time"))),
+                # The local relay consumes 'decision'. Keep 'direction' for legacy relays.
+                "decision":decision.get("decision","WAIT"),
                 "direction":decision.get("decision","WAIT"),
+                "context":context,
+                "candles":(item.get("closed_candles") or [])[:6],
                 "confidence":finite_number(decision.get("confidence")),
                 "strategy_id":int(finite_number(decision.get("strategy_id"))),
                 "entry_reference_price":finite_number(decision.get("entry_reference_price")),
@@ -873,9 +877,16 @@ class Handler(SimpleHTTPRequestHandler):
             ai_council=council_result(client_id,decision)
             risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
             direction_limit=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),signal,control_settings)
-            ready=bool(gate.get("approved") and ai_council["approved"] and risk_report["approved"]
-                       and direction_limit["approved"])
-            if not ai_council["approved"]:
+            # Late model votes must never turn an older closed bar into a new order.
+            bar_time=int(finite_number(decision.get("bar_time",0)))
+            bar_fresh=closed_bar_execution_fresh(bar_time,datetime.now(timezone.utc),
+                                                   item.get("timeframe","M1"))
+            ready=bool(bar_fresh and gate.get("approved") and ai_council["approved"]
+                       and risk_report["approved"] and direction_limit["approved"])
+            if not bar_fresh and signal in ("BUY","SELL"):
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":"انتهت نافذة تنفيذ الشمعة المؤكدة؛ انتظار شمعة جديدة"}
+            if not ai_council["approved"] and bar_fresh:
                 gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
                       "expires_at_unix":0,"reason_ar":ai_council["reason_ar"]}
             if not risk_report["approved"]:
@@ -1283,6 +1294,9 @@ class Handler(SimpleHTTPRequestHandler):
                 current_bar=int(finite_number(decision.get("bar_time",0)))
                 if bar_time<=0 or bar_time!=current_bar:
                     return self.send_json(409,{"error":"تصويت النموذج لا يخص الشمعة الحالية"})
+                if not closed_bar_execution_fresh(current_bar,datetime.now(timezone.utc),
+                                                   item.get("timeframe","M1")):
+                    return self.send_json(409,{"error":"انتهت صلاحية الشمعة الحالية للتنفيذ"})
                 if direction not in ("BUY","SELL","WAIT") or confidence<0 or confidence>1:
                     return self.send_json(400,{"error":"صيغة تصويت النموذج غير صالحة"})
                 if model not in ("qwen3.5:4b","deepseek-r1:1.5b"):
@@ -1299,8 +1313,23 @@ class Handler(SimpleHTTPRequestHandler):
                     event={"event_id":f"deepseek:{client_id}:{bar_time}","client_id":client_id,
                         "event_type":"AI_DEEPSEEK_VOTE","payload":advice}
                 diagnostic_queued=queue_ai_diagnostic_event(event) if event else False
+                # Re-evaluate as soon as either late vote arrives. MT5 still
+                # independently polls /terminal-decision and must pass all gates.
+                updated_council=council_result(client_id,decision)
+                if updated_council.get("approved"):
+                    queue_ai_diagnostic_event({
+                        "event_id":f"council-votes-ready:{client_id}:{bar_time}",
+                        "client_id":client_id,
+                        "event_type":"AI_COUNCIL_VOTES_READY",
+                        "payload":{"bar_time":bar_time,"direction":direction,
+                                   "central_direction":decision.get("decision","WAIT"),
+                                   "reason_ar":updated_council.get("reason_ar",""),
+                                   "execution_authorized":False}})
                 return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
-                    "bar_time":bar_time,"direction":direction,"model":model})
+                    "bar_time":bar_time,"direction":direction,"model":model,
+                    "council_approved":bool(updated_council.get("approved")),
+                    "council_reason_ar":updated_council.get("reason_ar",""),
+                    "execution_authorized":False})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
