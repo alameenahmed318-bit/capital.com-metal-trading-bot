@@ -29,6 +29,7 @@ table{width:100%;border-collapse:collapse;min-width:670px}td,th{padding:9px;bord
 <div class="panel"><h2>البوتات والإشارات</h2><div id="bots">—</div></div>
 <div class="panel"><h2>التعزيز والتبريد والتعافي</h2><div id="actions">—</div></div>
 </section>
+<div class="panel"><h2>تفاصيل كل الاستراتيجيات والتراكيب</h2><button id="detailsButton">تحميل تفاصيل 200 استراتيجية و1000 تركيبة</button><div class="scroll" id="details">تُحمّل التفاصيل عند الطلب لتجنّب إبطاء مراقبة القرارات.</div></div>
 <div class="panel"><h2>سجل القرارات والمنع والأوامر</h2><div class="scroll" id="events">جارٍ تحميل السجل</div></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -53,6 +54,15 @@ const p=d.actions||{};el('actions').innerHTML=row('تفسير الإدارة',p.
 }
 async function refresh(){try{const d=await get('/api/ai/monitor');update(d);const e=await get('/api/opportunities/events?kind=all&days=7&limit=250');const events=e.events||[];el('events').innerHTML=events.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>الاتجاه</th><th>السبب والتفاصيل</th></tr></thead><tbody>'+events.map(v=>'<tr><td>'+esc(v.created_at)+'</td><td>'+esc(v.event_type)+'</td><td>'+esc(v.payload?.outcome||v.payload?.direction||v.payload?.central_direction)+'</td><td>'+esc(v.payload?.reason_ar||JSON.stringify(v.payload||{}).slice(0,700))+'</td></tr>').join('')+'</tbody></table>':'لا توجد أحداث محفوظة خلال آخر 7 أيام';el('status').textContent+=' | آخر تحديث: '+new Date().toLocaleTimeString('en-GB')}catch(e){el('status').textContent='تعذر التحديث: '+e.message}}
 async function boot(){try{let r=await fetch('/api/config'),c=await r.json();if(!c.ready)throw Error('إعدادات الدخول غير مكتملة');client=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);let s=await client.auth.getSession();if(!s.data.session){location.href='/';return}token=s.data.session.access_token;await get('/api/access/check');await refresh();setInterval(refresh,5000)}catch(e){el('topReason').textContent='تعذر الدخول: '+e.message}}
+el('detailsButton').addEventListener('click',async()=>{
+const button=el('detailsButton');button.disabled=true;el('details').textContent='جارٍ قراءة قرارات الاستراتيجيات والتركيبات…';
+try{
+ const d=await get('/api/ai/monitor/details');
+ const groups=[['الاستراتيجيات',d.strategies||[]],['التراكيب',d.combinations||[]]];
+ el('details').innerHTML=groups.map(([title,items])=>'<h2>'+esc(title)+' ('+items.length+')</h2><table><thead><tr><th>الرقم</th><th>الاسم</th><th>الاتجاه</th><th>التقييم</th><th>السبب</th></tr></thead><tbody>'+items.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.signal)+'</td><td>'+esc(x.confidence??x.adjusted_score)+'</td><td>'+esc(x.reason)+'</td></tr>').join('')+'</tbody></table>').join('');
+}catch(e){el('details').textContent='تعذّر تحميل التفاصيل: '+e.message}
+finally{button.disabled=false}
+});
 el('reload').addEventListener('click',refresh);boot();
 })();
 </script></body></html>
