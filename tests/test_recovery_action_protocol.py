@@ -16,8 +16,13 @@ class AccountRecoveryTests(unittest.TestCase):
              "profit":-18,"swap":0,"open_price":3000},
             {"ticket":"2","symbol":"XAUUSD","type":1,"volume":0.02,
              "profit":-5,"swap":0,"open_price":3000}]
-        data={"symbol":"XAUUSD","positions":p,
-              "tick":{"bid":2990,"ask":2990.2},"received_at":datetime.now(timezone.utc)}
+        now=datetime.now(timezone.utc)
+        closed_bar=(int(now.timestamp())//60-1)*60
+        data={"symbol":"XAUUSD","timeframe":"M1","positions":p,
+              "recovery_armed_at":closed_bar-60,
+              "closed_candles":[{"time":closed_bar,"open":2990,
+                  "high":3001,"low":2989,"close":3000}],
+              "tick":{"bid":2990,"ask":2990.2},"received_at":now}
         if net is not None:data["recovery_group_net"]=net
         return data
 
