@@ -23,11 +23,11 @@ input int InpCandlesToSend = 120;
 input group "إعدادات تنفيذ الدخول المركزي"
 input bool InpEnableCentralTrading = false;
 input bool InpEnableCentralPositionManagement = false;
-input double InpMaxCentralActionLots = 0.01;
-input double InpMaxCentralTotalLots = 0.10;
+input double InpMaxCentralActionLots = 0.0; // 0 = no optional EA lot cap
+input double InpMaxCentralTotalLots = 0.0; // 0 = no optional EA exposure cap
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
-input int InpMaxOpenPositions = 10;
+input int InpMaxOpenPositions = 0; // 0 = no optional EA position cap
 input bool InpBlockOppositePositions = true;
 input int InpATRPeriod = 14;
 input double InpStopLossATR = 1.8;
@@ -244,9 +244,9 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
    if(action!="ADDON_PROPOSAL" && action!="COOLING_PROPOSAL" && action!="RECOVERY_PROPOSAL")
       return false;
    if(StringFind(_Symbol,"XAUUSD")!=0 || barTime<=0) return false;
-   if(PositionsTotal()>=InpMaxOpenPositions || !IsAccountDirectionAllowed(side))
+   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side))
       return false;
-   if(requestedLots<=0.0 || requestedLots>InpMaxCentralActionLots+1e-8)
+   if(requestedLots<=0.0 || (InpMaxCentralActionLots>0 && requestedLots>InpMaxCentralActionLots+1e-8))
       return false;
    double totalLots=0.0;
    for(int i=PositionsTotal()-1;i>=0;i--)
@@ -255,9 +255,9 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       totalLots+=PositionGetDouble(POSITION_VOLUME);
    }
-   if(totalLots+requestedLots>InpMaxCentralTotalLots+1e-8) return false;
+   if(InpMaxCentralTotalLots>0 && totalLots+requestedLots>InpMaxCentralTotalLots+1e-8) return false;
    double lots=NormalizeTradeLots(requestedLots);
-   if(lots<=0.0 || lots>requestedLots+1e-8 || lots>InpMaxCentralActionLots+1e-8)
+   if(lots<=0.0 || lots>requestedLots+1e-8 || (InpMaxCentralActionLots>0 && lots>InpMaxCentralActionLots+1e-8))
       return false; // Never round up beyond either central or local risk cap.
    if(action=="RECOVERY_PROPOSAL" && MathAbs(lots-requestedLots)>1e-8)
    {
@@ -342,8 +342,8 @@ bool PollCentralActions()
    if(StringLen(nonce)<20 || bar<=0 || expires<=now || expires-now>30) return false;
    string key="AZ_CENTRAL_PM_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
    if(GlobalVariableCheck(key) && (long)GlobalVariableGet(key)==bar) return false;
-   if(PositionsTotal()>=InpMaxOpenPositions || !IsAccountDirectionAllowed(side) ||
-      lots<=0.0 || lots>InpMaxCentralActionLots+1e-8) return false;
+   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side) ||
+      lots<=0.0 || (InpMaxCentralActionLots>0 && lots>InpMaxCentralActionLots+1e-8)) return false;
    // Claim the unique central authorization before submitting any broker order.
    string body="{\"authorization_id\":\""+JsonEscape(nonce)+"\"}";
    char data[],claimResult[];
@@ -486,7 +486,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
 {
    if(g_groupClosePending) return; // Never reopen exposure during group closure.
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
-      confidence<0.55 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
+      (confidence<0.0 || confidence>1.0) || strategyId<1 || strategyId>200 || decisionBar<=0) return;
    if(!IsAccountDirectionAllowed(direction))
    { g_status="قفل الاتجاه الواحد: توجد صفقات في الاتجاه المعاكس"; return; }
    datetime currentBar=iTime(_Symbol,(ENUM_TIMEFRAMES)_Period,0);
@@ -502,7 +502,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
             " max_seconds=",periodSeconds*g_entryMaxDelayBars," bar=",decisionBar);
       return;
    }
-   if(CountAlzoolPositions()>=InpMaxOpenPositions) { g_status="الحد الأقصى للصفقات مفتوح"; return; }
+   if(InpMaxOpenPositions>0 && CountAlzoolPositions()>=InpMaxOpenPositions) { g_status="الحد الأقصى للصفقات مفتوح"; return; }
    double lots=NormalizeTradeLots(InpTradeLots);
    if(lots<=0.0) { g_status="حجم اللوت غير صالح"; return; }
    double atr[];
@@ -1109,8 +1109,8 @@ int OnInit()
 {
    if(InpHeartbeatSeconds<2 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
       InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5 ||
-      InpTradeLots<=0 || InpMaxCentralActionLots<=0 || InpMaxCentralTotalLots<=0 ||
-      InpMaxOpenPositions<1 || InpATRPeriod<2 ||
+      InpTradeLots<=0 || InpMaxCentralActionLots<0 || InpMaxCentralTotalLots<0 ||
+      InpMaxOpenPositions<0 || InpATRPeriod<2 ||
       InpStopLossATR<=0 || InpTrailStartATR<=0 || InpTrailDistanceATR<=0)
    {
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
