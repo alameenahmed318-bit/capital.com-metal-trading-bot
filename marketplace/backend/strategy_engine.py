@@ -233,8 +233,14 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
+from entry_evidence import closed_candle_pressure
+
 def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None):
     weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
+    # The last bar is already closed. Its body and close location are soft
+    # evidence, never an additional entry veto or a waiting condition.
+    pressure=closed_candle_pressure(rates)
+    context["last_closed_candle_pressure"]=pressure
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
@@ -301,7 +307,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
                   +0.03*(frame_agree-frame_oppose)/max(1,len(mtf_bias))
                   -(0.05 if trap_d else 0)
                   +(0.10*(bot_counts[d]-bot_counts["SELL" if d=="BUY" else "BUY"])/bot_active
-                    if bot_active else 0))
+                    if bot_active else 0)
+                  +0.07*(pressure if d=="BUY" else -pressure))
     usable=[d for d in ("BUY","SELL") if directional_candidates[d]
             and (family_strength[d]>0 or combo_strength[d]>0)]
     chosen=None
@@ -321,7 +328,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
             reason=(f"AZ MASTER BRAIN: ترجيح {direction} حسب العائلات "
                     f"{fb} BUY / {fsell} SELL، والتركيبات {cc_weighted['BUY']:.2f} BUY / "
                     f"{cc_weighted['SELL']:.2f} SELL؛ البوتات {bot_counts['BUY']} BUY / "
-                    f"{bot_counts['SELL']} SELL؛ حالة السوق {context['regime']}؛ {why}")
+                    f"{bot_counts['SELL']} SELL؛ حالة السوق {context['regime']}؛ "
+                    f"ضغط الشمعة المغلقة {pressure:+.2f} (ترجيح لا شرط منع)؛ {why}")
     agreement=max(0.0,min(1.0,score.get(final,0.0)))
     # Compact strategy-backed alternatives allow same-bar AI votes to genuinely
     # change a close BUY/SELL ranking without inventing trades from model text.
@@ -345,7 +353,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
     return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
-        "directional_scores":{d:round(max(0.0,score[d]),6) for d in ("BUY","SELL")},
+        "directional_scores":{d:round(score[d],6) for d in ("BUY","SELL")},
         "directional_candidates":directional_details,
         "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
            "role":"advisory_evidence_no_veto"},"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
