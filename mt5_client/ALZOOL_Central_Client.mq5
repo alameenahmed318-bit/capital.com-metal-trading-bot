@@ -1087,6 +1087,9 @@ bool SendLiveSnapshot()
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
    body+=",\"tick\":{\"bid\":"+JNum(have_tick?tick.bid:0.0,digits);
    body+=",\"point_size\":"+JNum(_Point,10);
+   body+=",\"volume_min\":"+JNum(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),8);
+   body+=",\"volume_max\":"+JNum(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX),8);
+   body+=",\"volume_step\":"+JNum(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP),8);
    body+=",\"ask\":"+JNum(have_tick?tick.ask:0.0,digits);
    body+=",\"spread\":"+JNum(have_tick?(tick.ask-tick.bid)/_Point:0.0,1)+"}";
 
