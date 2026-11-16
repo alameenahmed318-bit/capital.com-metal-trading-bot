@@ -26,10 +26,15 @@ def recovery_intent(snapshot, decision, settings):
     # entry commissions/deal fees. Legacy terminals safely fall back to P/L.
     net=_num(snapshot.get("recovery_group_net"),position_net)
     lots=sum(max(0,_num(p.get("volume"))) for p in positions)
-    result={"armed":False,"action":"HOLD","side":None,"lot_cap":0.0,
+    result={"armed":False,"active_cycle":False,"action":"HOLD","side":None,"lot_cap":0.0,
             "account_net":round(net,2),"account_lots":round(lots,3),
             "profit_target":_num(pm.get("recovery_profit_target")),
             "reason_ar":"التعافي غير مفعّل أو حد الخسارة غير محدد"}
+    existing_recovery=any(str(p.get("comment") or "").startswith("ALZOOL-RECOVERY") for p in positions)
+    if existing_recovery:
+        result["active_cycle"]=True
+        result["reason_ar"]="صفقة التعافي مفتوحة؛ يمنع تكرار إجراءات إدارة حتى اكتمال إغلاق المجموعة"
+        return result
     if not enabled or trigger<=0:return result
     if not positions:
         result["reason_ar"]="لا توجد صفقات مفتوحة في الحساب";return result
@@ -37,9 +42,6 @@ def recovery_intent(snapshot, decision, settings):
         result["reason_ar"]=f"صافي الحساب {net:.2f} لم يبلغ خسارة {trigger:.2f}"
         return result
     result["armed"]=True
-    if any(str(p.get("comment") or "").startswith("ALZOOL-RECOVERY") for p in positions):
-        result["reason_ar"]="صفقة تعافٍ مفتوحة بالفعل؛ لا نكرر صفقة ×3"
-        return result
     sides={}
     symbol=str(snapshot.get("symbol") or "")
     for p in positions:
