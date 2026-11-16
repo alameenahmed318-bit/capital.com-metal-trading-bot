@@ -323,6 +323,21 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
                     f"{cc_weighted['SELL']:.2f} SELL؛ البوتات {bot_counts['BUY']} BUY / "
                     f"{bot_counts['SELL']} SELL؛ حالة السوق {context['regime']}؛ {why}")
     agreement=max(0.0,min(1.0,score.get(final,0.0)))
+    # Compact strategy-backed alternatives allow same-bar AI votes to genuinely
+    # change a close BUY/SELL ranking without inventing trades from model text.
+    directional_details={}
+    for side in usable:
+        pool=sorted(directional_candidates[side],
+                    key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),
+                    reverse=True)
+        if not pool:continue
+        _,best,_,trigger_reason=pool[0]
+        supported_combos=[c for c in combo_votes if c["signal"]==side]
+        supported_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
+        directional_details[side]={
+            "strategy_id":int(best["id"]),"strategy_name":best["name"],
+            "combination_id":int(supported_combos[0]["id"]) if supported_combos else 0,
+            "reason_ar":trigger_reason}
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
     winning_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
@@ -330,5 +345,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
     return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
+        "directional_scores":{d:round(max(0.0,score[d]),6) for d in ("BUY","SELL")},
+        "directional_candidates":directional_details,
         "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
            "role":"advisory_evidence_no_veto"},"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
