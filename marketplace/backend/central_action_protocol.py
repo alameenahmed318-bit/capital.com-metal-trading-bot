@@ -42,7 +42,7 @@ def _fingerprint(snapshot):
     material=[str(account.get("login","")),sorted(relevant)]
     return hashlib.sha256(json.dumps(material,sort_keys=True).encode()).hexdigest()[:20]
 
-def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now):
+def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_advisory=False):
     def blocked(reason):return {"execution_ready":False,"reason_ar":reason,"mode":"WAIT"}
     pm=(settings or {}).get("position_management") or {}
     if not pm.get("central_actions_enabled") is True:
@@ -51,8 +51,8 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now):
         return blocked("زر التداول المركزي متوقف")
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         return blocked("وضع الإدارة غير معروف")
-    if not gate.get("approved") or not council.get("approved") or not risk.get("approved"):
-        return blocked("لا توجد موافقة كاملة من مجلس الدخول وحارس المخاطر")
+    if not gate.get("approved") or (not council_advisory and not council.get("approved")) or not risk.get("approved"):
+        return blocked("قرار الاستراتيجية أو حدود الحساب لا يسمحان بإجراء جديد")
     if not str(snapshot.get("symbol","")).upper().startswith("XAUUSD"):
         return blocked("المركز المدعوم حالياً هو الذهب فقط")
     if not 0<=_age_seconds(snapshot,now)<=15:
@@ -60,7 +60,7 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now):
     bar=int(_num(decision.get("bar_time")))
     if bar<=0 or now.timestamp()-bar>125 or bar>now.timestamp()+15:
         return blocked("قرار الشمعة غير حديث")
-    planned=plan_account_actions(snapshot,decision,council,risk,settings)
+    planned=plan_account_actions(snapshot,decision,council,risk,settings,council_advisory=council_advisory)
     proposals=[x for x in planned.get("actions",[]) if
         x.get("action") in ("ADDON_PROPOSAL","COOLING_PROPOSAL","RECOVERY_PROPOSAL")
         and _num(x.get("lot_cap"))>0]
@@ -76,8 +76,8 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now):
         "bar_time":bar,"fingerprint":_fingerprint(snapshot),
         "reason_ar":action.get("reason_ar","")}
 
-def propose(client_id,snapshot,decision,gate,council,risk,settings,now):
-    report=_allowed(client_id,snapshot,decision,gate,council,risk,settings,now)
+def propose(client_id,snapshot,decision,gate,council,risk,settings,now,council_advisory=False):
+    report=_allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_advisory=council_advisory)
     if not report["execution_ready"]:return report
     with _LOCK:
         old=_PENDING.get(client_id)
@@ -94,9 +94,9 @@ def propose(client_id,snapshot,decision,gate,council,risk,settings,now):
             "claimed":False,"claiming":False}
         return {**report,"authorization_id":nonce,"expires_at_unix":int(expires)}
 
-def claim(client_id,nonce,snapshot,decision,gate,council,risk,settings,db,now):
+def claim(client_id,nonce,snapshot,decision,gate,council,risk,settings,db,now,council_advisory=False):
     nonce=str(nonce or "")
-    verified=_allowed(client_id,snapshot,decision,gate,council,risk,settings,now)
+    verified=_allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_advisory=council_advisory)
     if not verified.get("execution_ready"):
         return {"execution_authorized":False,"reason_ar":verified["reason_ar"]}
     with _LOCK:
