@@ -11,14 +11,23 @@ _MEMORY={}
 _LOADING=set()
 _LOCK=threading.RLock()
 _TTL=180
-_LIMIT=1000
+_LIMIT=5000
+_PAGE=1000
 
 def _refresh(client_id,request):
     try:
         q=urllib.parse.quote(client_id,safe="")
-        rows=request("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+q+
-                     "&select=payload&order=deal_time.desc&limit="+str(_LIMIT),admin=True)
-        deals=[r.get("payload") for r in rows if isinstance(r,dict) and isinstance(r.get("payload"),dict)]
+        # Paginate. A single PostgREST query can silently stop at the
+        # server's max_rows (commonly 1000), hiding earlier real trades.
+        deals=[]
+        for offset in range(0,_LIMIT,_PAGE):
+            rows=request("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+q+
+                         "&select=payload&order=deal_time.desc,deal_id.desc"+
+                         "&limit="+str(_PAGE)+"&offset="+str(offset),admin=True)
+            if not isinstance(rows,list):raise ValueError("Closed-deal page is invalid")
+            deals.extend(r["payload"] for r in rows if isinstance(r,dict)
+                         and isinstance(r.get("payload"),dict))
+            if len(rows)<_PAGE:break
         with _LOCK:
             _MEMORY[client_id]={"deals":deals,"loaded_at":time.monotonic(),
                                 "status":"READY","count":len(deals)}
@@ -48,5 +57,18 @@ def combine_deals(persisted,live):
         if not isinstance(source,dict):continue
         key=str(source.get("ticket") or "").strip()
         if not key:continue
-        combined[key]=source
+        # Keep a real strategy link from persisted history if a newer,
+        # incomplete EA snapshot carries only strategy_id=0 or an empty tag.
+        previous=combined.get(key)
+        if previous:
+            merged={**previous,**source}
+            for field in ("strategy_id","strategy_comment","comment"):
+                old=previous.get(field)
+                new=source.get(field)
+                if (new is None or new=="" or
+                    (field=="strategy_id" and str(new) in ("0","0.0"))) and old not in (None,"",0,"0"):
+                    merged[field]=old
+            combined[key]=merged
+        else:
+            combined[key]=dict(source)
     return list(combined.values())
