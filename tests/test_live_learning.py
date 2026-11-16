@@ -3,7 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
-from live_weight_overlay import apply_live_learning
+from live_weight_overlay import apply_live_learning,conservative_outcome_weight
 from learning_memory import combine_deals,_refresh,_MEMORY,_LOCK
 
 
@@ -73,6 +73,22 @@ class LearningTests(unittest.TestCase):
         self.assertNotIn("trading_enabled",out)
         self.assertNotIn("position_management",out)
         self.assertFalse(out["diagnostics"]["risk_settings_changed"])
+
+    def test_high_win_rate_but_net_loss_reduces_weight(self):
+        result=conservative_outcome_weight(18,2,-90.0,gross_win=10.0,gross_loss=100.0)
+        self.assertLess(result,1.0)
+
+    def test_net_positive_result_increases_weight_after_enough_trades(self):
+        result=conservative_outcome_weight(7,3,20.0,gross_win=50.0,gross_loss=30.0)
+        self.assertGreater(result,1.0)
+
+    def test_less_than_eight_results_remain_neutral(self):
+        result=conservative_outcome_weight(6,1,-90.0,gross_win=10.0,gross_loss=100.0)
+        self.assertEqual(result,1.0)
+
+    def test_very_large_net_win_cannot_push_weight_beyond_profile_bounds(self):
+        result=conservative_outcome_weight(800,0,999999.0,gross_win=999999.0,gross_loss=0.0)
+        self.assertLessEqual(result,1.5)
 
     def test_conservatively_merge_strategy_id_from_persisted_record(self):
         persisted=[{"ticket":"a1","strategy_id":12,"strategy_comment":"ALZOOL-S12-C34",
