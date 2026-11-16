@@ -42,7 +42,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         result["reason_ar"]="صفقات BUY وSELL متعاكسة موجودة؛ لا تعزيز ولا تبريد";return result
     if not sides:
         result["reason_ar"]="لا توجد مراكز صالحة للتحليل";return result
-    max_lots=max(0,num(pm.get("max_total_lots",0)))
+    max_lots=(num(pm["max_total_lots"],-1) if pm.get("max_total_lots") is not None else None)
     total_lots=sum(max(0,num(p.get("volume"))) for p in all_positions if isinstance(p,dict))
     confidence=max(0,min(1,num(decision.get("confidence"),.5)))
     atr_ratio=max(.5,min(2.5,num((decision.get("context") or {}).get("atr_ratio"),1)))
@@ -77,21 +77,21 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
             candidate_lot=3*sum(ordinary) if ordinary else 0.0
         elif (str(pm.get("mode","AI")).upper()=="AI" and progress<-cooling_band and pm.get("cooling_enabled") is True
-              and len(group)<int(num(pm.get("cooling_max",0)))):
+              and (pm.get("cooling_max") is None or len(group)<int(num(pm.get("cooling_max"))))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
             candidate_lot=num(pm.get("cooling_lot"))
         elif (str(pm.get("mode","AI")).upper()=="AI" and progress>addon_band and pm.get("addon_enabled") is True
-              and len(group)<int(num(pm.get("addon_max",0)))):
+              and (pm.get("addon_max") is None or len(group)<int(num(pm.get("addon_max"))))):
             action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
             candidate_lot=num(pm.get("addon_lot"))
         # The owner-defined per-side position limit is independent from total
         # account exposure. Existing manual positions count toward both.
-        side_cap=max(1,min(50,int(num(pm.get("max_positions_per_direction",2),2))))
-        if action!="HOLD" and len(group)>=side_cap:
+        side_cap=(int(num(pm["max_positions_per_direction"])) if pm.get("max_positions_per_direction") is not None else None)
+        if action!="HOLD" and side_cap is not None and len(group)>=side_cap:
             action="HOLD";reason="عدد المراكز في الاتجاه بلغ الحد المحدد"
         # Manual mode uses fixed distances/lots while all actions still require
         # the same fresh council and risk authorization.
-        if action=="HOLD" and str(pm.get("mode","AI")).upper()=="MANUAL" and len(group)<side_cap:
+        if action=="HOLD" and str(pm.get("mode","AI")).upper()=="MANUAL" and (side_cap is None or len(group)<side_cap):
             adverse=max(0,-progress)*atr
             favorable=max(0,progress)*atr
             point=max(0,num((snapshot.get("metadata") or {}).get("point_size")))
@@ -108,9 +108,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             candidate_lot=base*max(1,len(group))
         cap_field=("recovery_max_lot" if action=="RECOVERY_PROPOSAL" else
                    "addon_max_lot" if action=="ADDON_PROPOSAL" else "cooling_max_lot")
-        cap=max(0,num(pm.get(cap_field,0)))
-        room=max(0,max_lots-total_lots)
-        if action!="HOLD" and (candidate_lot<=0 or candidate_lot>cap+1e-8 or candidate_lot>room+1e-8):
+        cap=(num(pm[cap_field],-1) if pm.get(cap_field) is not None else None)
+        room=(max_lots-total_lots if max_lots is not None else None)
+        if action!="HOLD" and (candidate_lot<=0 or
+            (cap is not None and candidate_lot>cap+1e-8) or
+            (room is not None and candidate_lot>room+1e-8)):
             # Do not convert an exact x3 recovery into a smaller, falsely
             # labeled x3 order. Block and explain insufficient risk budget.
             action="HOLD";reason="حجم الإجراء المطلوب يتجاوز سقف اللوت أو التعرض"
