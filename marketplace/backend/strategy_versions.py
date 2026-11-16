@@ -24,9 +24,12 @@ def get_active(client_id,sb):
         item=_ACTIVE.get(client_id)
         if item and time.monotonic()-item["at"]<_TTL:return item["profile"]
     rows=sb("GET","/rest/v1/alzool_engine_strategy_versions?client_id=eq."+
-        _query(client_id)+"&status=eq.ACTIVE&select=profile&limit=1",admin=True)
+        _query(client_id)+"&status=eq.ACTIVE&select=id,version_label,profile&limit=1",admin=True)
     profile=sanitize_profile((rows[0]["profile"] or {}).get("strategy_weights",{}),
         (rows[0]["profile"] or {}).get("combination_weights",{})) if rows else None
+    if profile:
+        profile["version_id"]=rows[0].get("id")
+        profile["version_label"]=str(rows[0].get("version_label") or "ACTIVE")[:100]
     with _LOCK:_ACTIVE[client_id]={"at":time.monotonic(),"profile":profile}
     return profile
 
