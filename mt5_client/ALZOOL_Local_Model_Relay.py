@@ -86,6 +86,10 @@ def validate_response(model,result):
         return None
 
 
+def central_signal(context):
+    """Accept new and legacy central signal fields without guessing a trade."""
+    return str(context.get("decision") or context.get("direction") or "WAIT").upper()
+
 def compact_snapshot(context):
     """Give both models the real central decision and a small recent market sample."""
     features=context.get("context")
@@ -101,7 +105,7 @@ def compact_snapshot(context):
                            if k in row})
     return {
         "bar_time":context.get("bar_time"),
-        "central_signal":context.get("decision","WAIT"),
+        "central_signal":central_signal(context),
         "central_confidence":context.get("confidence",0),
         "market_regime":features.get("regime"),
         "atr":features.get("atr"),
@@ -136,7 +140,7 @@ def same_live_signal(server,identity,key,bar,signal):
     url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
     latest=request_json(url,token=key,timeout=8)
     return (int(latest.get("bar_time",0))==bar
-            and str(latest.get("decision","WAIT")).upper()==signal)
+            and central_signal(latest)==signal)
 
 
 def main():
@@ -174,7 +178,7 @@ def main():
                 submitted.clear()
                 attempts.clear()
                 last_attempt.clear()
-            signal=str(context.get("decision","WAIT")).upper()
+            signal=central_signal(context)
             # The central council cannot approve a WAIT decision. Saving CPU
             # here lets both loaded models respond faster on actionable bars.
             if signal not in ("BUY","SELL"):
@@ -226,7 +230,9 @@ def main():
                             if ack.get("accepted") is True:
                                 submitted.add(model)
                             print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
-                                "% | accepted="+str(ack.get("accepted",False)),flush=True)
+                                "% | accepted="+str(ack.get("accepted",False))+
+                                " | council="+("APPROVED" if ack.get("council_approved") is True
+                                               else "WAIT"),flush=True)
                         except urllib.error.HTTPError as exc:
                             if exc.code==409:
                                 print(model+" STALE_BAR; central rejected old vote",flush=True)
