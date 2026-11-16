@@ -32,8 +32,8 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     # inherit the entry council's three-model veto.
     if not risk.get("approved") or not settings.get("trading_enabled"):
         result["reason_ar"]="حالة الحساب أو مفتاح التداول يمنع إجراء إدارة جديد";return result
-    if atr<=0 or signal not in ("BUY","SELL"):
-        result["reason_ar"]="انتظار ATR واتجاه صالح من المحرك المركزي";return result
+    if signal not in ("BUY","SELL"):
+        result["reason_ar"]="بانتظار اتجاه تحليلي صالح؛ التعافي عند حد الخسارة مسلح لكن لا يفتح دون تأكيد اتجاه";return result
     sides={}
     for position in positions:
         if not isinstance(position,dict):continue
@@ -75,7 +75,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         if volume<=0 or price<=0:continue
         average=sum(num(p.get("open_price"))*max(0,num(p.get("volume"))) for p in group)/volume
         net=sum(num(p.get("profit"))+num(p.get("swap")) for p in group)
-        progress=(price-average)/atr*(1 if side=="BUY" else -1)
+        progress=((price-average)/atr*(1 if side=="BUY" else -1)) if atr>0 else 0.0
         supports=sum(num(v.get("confidence")) for v in advisory if v.get("direction")==side)
         opposes=sum(num(v.get("confidence")) for v in advisory if v.get("direction") in ("BUY","SELL") and v.get("direction")!=side)
         # Models are evidence, not extra vetoes. Adjust an existing ATR
@@ -100,11 +100,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 if num(p.get("profit"))+num(p.get("swap"))<0 and not
                 str(p.get("comment") or "").startswith("ALZOOL-RECOVERY")]
             candidate_lot=3*sum(ordinary) if ordinary else 0.0
-        elif (str(pm.get("mode","AI")).upper()=="AI" and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
+        elif (str(pm.get("mode","AI")).upper()=="AI" and atr>0 and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
               and (num(pm.get("cooling_max"))<=0 or len(group)<int(num(pm.get("cooling_max"))))):
             action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
             candidate_lot=num(pm.get("cooling_lot"))
-        elif (str(pm.get("mode","AI")).upper()=="AI" and progress>(addon_band-advisory_bias) and pm.get("addon_enabled") is True
+        elif (str(pm.get("mode","AI")).upper()=="AI" and atr>0 and progress>(addon_band-advisory_bias) and pm.get("addon_enabled") is True
               and (num(pm.get("addon_max"))<=0 or len(group)<int(num(pm.get("addon_max"))))):
             action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
             candidate_lot=num(pm.get("addon_lot"))
