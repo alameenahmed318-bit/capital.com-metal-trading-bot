@@ -2189,7 +2189,8 @@ if __name__=="__main__":
     recovery_suite=unittest.TestSuite()
     for pattern in ("test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
-                    "test_position_sizing.py","test_entry_quality.py"):
+                    "test_position_sizing.py","test_entry_quality.py",
+                    "test_live_learning.py"):
         recovery_suite.addTests(unittest.defaultTestLoader.discover(
             start_dir=test_dir,pattern=pattern))
     recovery_result=unittest.TextTestRunner(verbosity=1).run(recovery_suite)
