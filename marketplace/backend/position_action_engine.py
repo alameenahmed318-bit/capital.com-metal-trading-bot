@@ -6,6 +6,7 @@ This prevents legacy local strategies from bypassing the model council.
 """
 import math
 from recovery_logic import recovery_intent
+from position_sizing import count_action, next_action_lot
 
 def num(value,default=0.0):
     try:
@@ -70,8 +71,6 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             "reason_ar":reason,"execution_authorized":False}]
         result["reason_ar"]=reason
         return result
-    if signal not in ("BUY","SELL"):
-        result["reason_ar"]="لا توجد إشارة دخول اتجاهية للتعزيز أو التبريد";return result
     sides={}
     for position in positions:
         if not isinstance(position,dict):continue
@@ -95,19 +94,8 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
               and v.get("status")=="READY" and v.get("model") in ("Qwen","DeepSeek")]
 
     for side,group in sides.items():
-        if signal!=side:
-            # Show precisely why recovery armed at the owner loss threshold
-            # still cannot open in the position's direction.
-            loss=sum(num(p.get("profit"))+num(p.get("swap")) for p in group)
-            target=num(pm.get("recovery_loss_trigger"))
-            armed=bool(recovery.get("armed"))  # account-wide, never per-direction
-            note=(f"خسارة {loss:.2f} بلغت حد التعافي {target:.2f} لكن تحليل "
-                  f"{signal} لم يؤكد اتجاه مراكز {side}" if armed else
-                  "اتجاه الاستراتيجيات الحالي لا يؤكد إضافة في اتجاه هذه الصفقات")
-            result["actions"].append({"side":side,"action":"HOLD","lot_cap":0.0,
-                "floating_net":round(loss,2),"recovery_armed":armed,
-                "reason_ar":note,"execution_authorized":False})
-            continue
+        # Existing-position management has its own price and model evidence;
+        # a new-entry BUY/SELL/WAIT is a timing bias, not a hard veto.
         price=num(tick.get("bid") if side=="BUY" else tick.get("ask"))
         volume=sum(max(0,num(p.get("volume"))) for p in group)
         if volume<=0 or price<=0:continue
@@ -119,20 +107,29 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         # Models are evidence, not extra vetoes. Adjust an existing ATR
         # threshold only when a vote was actually received for this bar.
         advisory_bias=0.15*(supports-opposes)/max(1,len(advisory))
-        advice_summary=f"Qwen/DeepSeek {len(advisory)} READY; bias={advisory_bias:.3f} ATR"
+        strategy_bias=(0.12 if signal==side else -0.12 if signal in ("BUY","SELL") else 0.0)
+        advice_summary=(f"Qwen/DeepSeek {len(advisory)} READY; model_bias={advisory_bias:.3f} ATR; "
+                        f"entry_signal={signal}; strategy_bias={strategy_bias:+.2f} ATR")
         action="HOLD";reason="حركة السعر لا تؤيد زيادة المخاطرة"
         candidate_lot=0.0
-        existing_recovery=any(str(p.get("comment") or "").startswith("ALZOOL-RECOVERY") for p in group)
-        # Recovery is exclusively planned above from ACCOUNT net. Never
-        # resurrect the old per-side threshold when account losses offset.
-        if (str(pm.get("mode","AI")).upper()=="AI" and atr>0 and progress<-(cooling_band+advisory_bias) and pm.get("cooling_enabled") is True
-              and (num(pm.get("cooling_max"))<=0 or len(group)<int(num(pm.get("cooling_max"))))):
-            action="COOLING_PROPOSAL";reason="تراجع سعري محسوب بالنسبة إلى ATR"
-            candidate_lot=num(pm.get("cooling_lot"))
-        elif (str(pm.get("mode","AI")).upper()=="AI" and atr>0 and progress>(addon_band-advisory_bias) and pm.get("addon_enabled") is True
-              and (num(pm.get("addon_max"))<=0 or len(group)<int(num(pm.get("addon_max"))))):
-            action="ADDON_PROPOSAL";reason="استمرار حركة مدعوم بمجلس المحرك"
-            candidate_lot=num(pm.get("addon_lot"))
+        addons=count_action(group,"ADDON_PROPOSAL")
+        coolings=count_action(group,"COOLING_PROPOSAL")
+        addon_limit=int(num(pm.get("addon_max")))
+        cooling_limit=int(num(pm.get("cooling_max")))
+        addon_available=addon_limit<=0 or addons<addon_limit
+        cooling_available=cooling_limit<=0 or coolings<cooling_limit
+        mode=str(pm.get("mode","AI")).upper()
+        # Recovery is exclusively planned above from ACCOUNT net.
+        if (mode=="AI" and atr>0 and
+            progress<-(cooling_band+advisory_bias+strategy_bias) and
+            pm.get("cooling_enabled") is True and cooling_available):
+            action="COOLING_PROPOSAL"
+            reason="السعر تراجع عن متوسط مراكز الاتجاه؛ تم ترجيح التوقيت بتحليل ATR وHybrid AI"
+        elif (mode=="AI" and atr>0 and
+              progress>(addon_band-advisory_bias-strategy_bias) and
+              pm.get("addon_enabled") is True and addon_available):
+            action="ADDON_PROPOSAL"
+            reason="السعر يتحرك لصالح المركز؛ تم ترجيح التوقيت بتحليل ATR وHybrid AI"
         # The owner-defined per-side position limit is independent from total
         # account exposure. Existing manual positions count toward both.
         side_cap=(int(num(pm["max_positions_per_direction"])) if pm.get("max_positions_per_direction") is not None else None)
@@ -140,21 +137,29 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             action="HOLD";reason="عدد المراكز في الاتجاه بلغ الحد المحدد"
         # Manual mode uses fixed distances/lots while all actions still require
         # the same fresh council and risk authorization.
-        if action=="HOLD" and str(pm.get("mode","AI")).upper()=="MANUAL" and (side_cap is None or len(group)<side_cap):
-            adverse=max(0,-progress)*atr
-            favorable=max(0,progress)*atr
+        if action=="HOLD" and mode=="MANUAL" and (side_cap is None or len(group)<side_cap):
+            # Manual mode depends on points, not on ATR being available.
+            movement=(price-average)*(1 if side=="BUY" else -1)
+            adverse=max(0.0,-movement)
+            favorable=max(0.0,movement)
             point=max(0,num((snapshot.get("metadata") or {}).get("point_size")))
             if point<=0:point=max(0,num(tick.get("point_size")))
-            if point>0 and pm.get("cooling_enabled") is True and adverse/point>=num(pm.get("cooling_distance_points"),1)>0:
-                action="COOLING_PROPOSAL";candidate_lot=num(pm.get("cooling_lot"))
-                reason="مسافة التبريد اليدوية تحققت مع الموافقة المركزية"
-            elif point>0 and pm.get("addon_enabled") is True and favorable/point>=num(pm.get("addon_distance_points"),1)>0:
-                action="ADDON_PROPOSAL";candidate_lot=num(pm.get("addon_lot"))
-                reason="مسافة التعزيز اليدوية تحققت مع الموافقة المركزية"
-        if action=="ADDON_PROPOSAL" and str(pm.get("mode","AI")).upper()=="AI":
-            # Incremental lots; never silently multiply a risk setting.
-            base=max(0,num(pm.get("addon_lot",0.01)))
-            candidate_lot=base*max(1,len(group))
+            if (point>0 and pm.get("cooling_enabled") is True and cooling_available and
+                adverse/point>=num(pm.get("cooling_distance_points"),1)>0):
+                action="COOLING_PROPOSAL";reason="تحققت مسافة التبريد اليدوي المختارة"
+            elif (point>0 and pm.get("addon_enabled") is True and addon_available and
+                  favorable/point>=num(pm.get("addon_distance_points"),1)>0):
+                action="ADDON_PROPOSAL";reason="تحققت مسافة التعزيز اليدوي المختارة"
+        sizing={}
+        if action in ("ADDON_PROPOSAL","COOLING_PROPOSAL"):
+            sizing=next_action_lot(group,action,pm,tick)
+            candidate_lot=sizing["lot"]
+            if candidate_lot<=0:
+                action="HOLD";reason=sizing.get("reason_ar","اللوت غير صالح لدى الوسيط")
+            else:
+                reason+=(f" | الإضافة #{sizing['index']} | الأساس {sizing['base_lot']:.4f}"
+                         f" × {sizing['multiplier']:.4f}^{sizing['count']} (AI فقط)"
+                         f" = {sizing['raw_lot']:.5f} | لوت التنفيذ {candidate_lot:.5f}")
         cap_field=("recovery_max_lot" if action=="RECOVERY_PROPOSAL" else
                    "addon_max_lot" if action=="ADDON_PROPOSAL" else "cooling_max_lot")
         cap=(num(pm[cap_field],-1) if pm.get(cap_field) is not None else None)
@@ -167,9 +172,26 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             action="HOLD";reason="حجم الإجراء المطلوب يتجاوز سقف اللوت أو التعرض"
         if action=="HOLD":candidate_lot=0.0
         result[side.lower()]=action
-        result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,3),
+        result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,8),
+            "base_lot":sizing.get("base_lot"),"multiplier":sizing.get("multiplier"),
+            "addition_index":sizing.get("index"),"existing_addons":addons,
+            "existing_coolings":coolings,"raw_lot":sizing.get("raw_lot"),
+            "broker_volume_step":sizing.get("volume_step"),
             "recovery_armed":bool(recovery.get("armed")),
             "atr_distance":round(progress,3),"floating_net":round(net,2),
             "reason_ar":reason,"ai_advice":advice_summary,"execution_authorized":False})
-    result["reason_ar"]="اقتراحات مركزية فقط؛ التنفيذ يتطلب تصريح إجراء مستقل"
+    # One-use central claim authorizes one action per bar. Prioritize the
+    # largest ATR movement when both sides qualify rather than vetoing both.
+    proposals=[a for a in result["actions"] if a["action"]!="HOLD" and a["lot_cap"]>0]
+    if len(proposals)>1:
+        proposals.sort(key=lambda a:(abs(num(a.get("atr_distance"))),abs(num(a.get("floating_net")))),
+                       reverse=True)
+        for a in proposals[1:]:
+            a["action"]="HOLD"
+            a["lot_cap"]=0.0
+            a["reason_ar"]="تأجيل الإجراء: يوجد إجراء أكثر إلحاحاً على الجانب الآخر في هذه الشمعة"
+            result[a["side"].lower()]="HOLD"
+    active=[a for a in result["actions"] if a["action"]!="HOLD"]
+    result["reason_ar"]=(active[0]["reason_ar"] if active else
+        " | ".join(f"{a['side']}: {a['reason_ar']}" for a in result["actions"]))
     return result
