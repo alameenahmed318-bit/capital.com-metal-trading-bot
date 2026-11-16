@@ -1290,6 +1290,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "bar_time":decision.get("bar_time"),"entry_ready":ready,
                     "mode":"ADVISORY" if advisory else "STRICT",
                     "trading_enabled":bool(settings.get("trading_enabled")),
+                    "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
                     "bar_fresh":fresh,"gate":gate,"risk":risk,"direction_limit":direction,
                     "council":council,"local_ai":local_advice,
                     "family_votes":decision.get("family_votes") or {},
