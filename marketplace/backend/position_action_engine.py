@@ -12,7 +12,7 @@ def num(value,default=0.0):
         return n if math.isfinite(n) else default
     except (ValueError,TypeError,OverflowError):return default
 
-def plan_account_actions(snapshot,decision,council,risk,settings):
+def plan_account_actions(snapshot,decision,council,risk,settings,council_advisory=False):
     all_positions=snapshot.get("positions") or []
     symbol=str(snapshot.get("symbol") or "")
     positions=[p for p in all_positions if isinstance(p,dict) and
@@ -28,8 +28,8 @@ def plan_account_actions(snapshot,decision,council,risk,settings):
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         result["reason_ar"]="وضع إدارة الصفقات غير صالح";return result
-    if not (council.get("approved") and risk.get("approved") and settings.get("trading_enabled")):
-        result["reason_ar"]="المجلس أو حارس المخاطر أو مفتاح التداول منع إجراءات جديدة";return result
+    if not ((council_advisory or council.get("approved")) and risk.get("approved") and settings.get("trading_enabled")):
+        result["reason_ar"]="الاستراتيجية أو حارس المخاطر أو مفتاح التداول منع إجراءات جديدة";return result
     if atr<=0 or signal not in ("BUY","SELL"):
         result["reason_ar"]="انتظار ATR واتجاه صالح من المحرك المركزي";return result
     sides={}
