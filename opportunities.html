@@ -29,6 +29,7 @@
  <div class="side-label">مركز الذكاء الاصطناعي</div>
  <div class="nav-group">
   <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a>
   <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
  </div>
  <div class="side-label">السوق والاستراتيجيات</div>
@@ -82,5 +83,5 @@ async function loadEvents(){try{const d=await api("/api/opportunities/events?kin
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await analyze();await loadEvents();setInterval(analyze,5000);setInterval(loadEvents,15000)}catch(e){$("serviceState").textContent="تعذر التحقق";$("marketStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",analyze);$("reloadHistory").addEventListener("click",loadEvents);$("historyDays").addEventListener("change",loadEvents);boot();
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=nav-20261115-2" defer></script>
+<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
 </body></html>
