@@ -40,6 +40,9 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     # a Qwen/strategy WAIT does not become a second veto.
     recovery=recovery_intent(snapshot,decision,settings)
     result["recovery"]=recovery
+    if recovery.get("active_cycle"):
+        result["reason_ar"]=recovery["reason_ar"]
+        return result
     if recovery["armed"]:
         action=recovery.get("action")
         side=recovery.get("side")
