@@ -130,7 +130,7 @@ if(main&&links.length){
 // Trade management has many independent control panels. Present one area at
 // a time by default; preserve every form element, event handler and API call.
 if(current==="trade-management.html"&&main){
- const focusIds=["positions","protection","autoClose","positionManagement","smartRecovery","pending"];
+ const focusIds=["positions","protection","entryPolicy","autoClose","positionManagement","smartRecovery","pending"];
  const cards=focusIds.map(id=>document.getElementById(id)).filter(Boolean);
  const sectionNav=main.querySelector(".section-nav");
  const shortcutSection=main.querySelector(".az-page-shortcuts");
