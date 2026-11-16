@@ -79,8 +79,8 @@
     <label for="recoveryLossTrigger">حد تفعيل التعافي — بعملة حساب MT5
      <input id="recoveryLossTrigger" type="number" min="0.01" step="any" inputmode="decimal" lang="en-US" dir="ltr" placeholder="أدخل مبلغًا موجبًا بعملة الحساب">
     </label>
-    <label for="recoveryMaxLot">أقصى لوت مسموح لصفقة التعافي ×3
-     <input id="recoveryMaxLot" type="number" min="0.01" step="0.01" value="0.05" inputmode="decimal" lang="en-US" dir="ltr">
+    <label for="recoveryMaxLot">حد لوت التعافي الاختياري ×3 (اتركه فارغاً دون حد)
+     <input id="recoveryMaxLot" type="number" min="0.01" step="any" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr">
     </label>
    </div>
    <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">متوقف حتى تفعّله صراحةً وتحدد حد الخسارة وتكتمل تصاريح التنفيذ وحفظه.</span></div>
@@ -144,9 +144,9 @@
   <div class="close-grid pm-grid">
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
-    <label for="addonMax">الحد الأقصى لعدد صفقات التعزيز</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="addonMax">حد عدد صفقات التعزيز الاختياري (0 = بدون حد)</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="addonMultiplier">مضاعف لوت التعزيز AI</label><input id="addonMultiplier" type="text" value="1.5" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
-    <label for="addonMaxLot">أقصى لوت لصفقة التعزيز</label><input id="addonMaxLot" type="text" value="0.05" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="addonMaxLot">حد لوت التعزيز الاختياري (فارغ = بدون حد)</label><input id="addonMaxLot" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
      <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
@@ -154,19 +154,19 @@
    </article>
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التبريد</b><small>إضافات مستقلة لتبريد متوسط الدخول</small></div><label class="switch"><input type="checkbox" id="coolingEnabled"><span></span></label></div>
-    <label for="coolingMax">الحد الأقصى لعدد صفقات التبريد</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMax">حد عدد صفقات التبريد الاختياري (0 = بدون حد)</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="coolingMultiplier">مضاعف لوت التبريد AI</label><input id="coolingMultiplier" type="text" value="1.2" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
-    <label for="coolingMaxLot">أقصى لوت لصفقة التبريد</label><input id="coolingMaxLot" type="text" value="0.05" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMaxLot">حد لوت التبريد الاختياري (فارغ = بدون حد)</label><input id="coolingMaxLot" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
      <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
   </div>
-  <label for="maxPositionsPerDirection">أقصى عدد صفقات لكل اتجاه (بما فيها اليدوية لنفس الذهب)</label>
-  <input id="maxPositionsPerDirection" type="number" min="1" max="20" step="1" value="2" inputmode="numeric" lang="en-US" dir="ltr">
-    <label for="maxTotalLots">أقصى إجمالي لوتات المراكز المفتوحة في الحساب</label>
-  <input id="maxTotalLots" type="text" value="0.10" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+  <label for="maxPositionsPerDirection">حد صفقات الاتجاه اختياري (اتركه فارغاً دون حد)</label>
+  <input id="maxPositionsPerDirection" type="number" min="1" step="1" value="" placeholder="بدون حد" inputmode="numeric" lang="en-US" dir="ltr">
+    <label for="maxTotalLots">حد إجمالي لوتات الحساب اختياري (اتركه فارغاً دون حد)</label>
+  <input id="maxTotalLots" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
   <div class="entry-guard-panel">
    <div class="sl-settings-head"><div><b>حماية توقيت وسعر الدخول</b><small>منع تنفيذ الإشارات القديمة أو الدخول بعد ابتعاد السعر عن نقطة الإشارة</small></div><label class="switch"><input type="checkbox" id="entryGuardEnabled" checked><span></span></label></div>
    <div class="entry-guard-grid">
