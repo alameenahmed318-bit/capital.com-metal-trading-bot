@@ -6,6 +6,30 @@ risk setting change, model re-training claim or unreviewed version activation.
 """
 import math
 
+def conservative_outcome_weight(wins,losses,net,range_size=0.50,min_samples=8,
+                                gross_win=None,gross_loss=None):
+    """Shrink by sample size and learn from NET payoff, not win count alone."""
+    n=wins+losses
+    if n<min_samples:return 1.0
+    if gross_win is not None and gross_loss is not None:
+        absolute=max(0.0,_finite(gross_win))+max(0.0,_finite(gross_loss))
+        evidence=(_finite(net)/absolute if absolute>1e-9 else 0.0)
+    else:
+        evidence=(wins-losses)/max(n,1)
+        if net<0:evidence=-abs(evidence)
+        if net==0:evidence=0.0
+    evidence=max(-1.0,min(1.0,evidence))*n/(n+12.0)
+    return round(max(1.0-range_size,min(1.0+range_size,1.0+range_size*evidence)),4)
+
+
+def _finite(value,default=0.0):
+    try:
+        result=float(value)
+        return result if math.isfinite(result) else default
+    except (ValueError,TypeError,OverflowError):
+        return default
+
+
 STRATEGY_IDS=200
 COMBINATION_IDS=1000
 STRATEGY_OVERLAY=0.40  # Live weights 0.5..1.5 => at most 20% adjustment
