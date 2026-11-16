@@ -1,8 +1,8 @@
 """AL-ZOOL central multi-model voting engine.
 
 Fast AI is deterministic and immediate. Deep AI uses opt-in Qwen and DeepSeek
-connections. No remote model is marked approved when unavailable. The trading
-gate must require both matching fresh votes; this module NEVER places orders.
+connections. Missing or stale model votes must never block strategy-first owner
+trading. Votes are fused by hybrid_decision, not executed by this module.
 """
 import json
 import concurrent.futures
@@ -57,11 +57,16 @@ def _parse(model,message):
         return _vote(model,"INVALID",reason="رد النموذج ليس تصويت JSON صالحاً")
 
 def _prompt(decision):
+    context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
     summary={"direction":str(decision.get("decision","WAIT")),
              "confidence":_num(decision.get("confidence")),
              "strategy_id":int(_num(decision.get("strategy_id"))),
              "bar_time":int(_num(decision.get("bar_time"))),
-             "atr":_num((decision.get("context") or {}).get("atr")),
+             "atr":_num(context.get("atr")),
+             "market_context":{k:context.get(k) for k in (
+                 "regime","atr_ratio","adx","trend_strength","buy_quality",
+                 "sell_quality","buy_trap","sell_trap","support","resistance")},
+             "reference_price":_num(decision.get("entry_reference_price")),
              "families":decision.get("family_votes") or {},
              "combinations":decision.get("combination_summary") or {}}
     # Five original quantitative bot messages are real same-bar inputs;
@@ -77,10 +82,12 @@ def _prompt(decision):
         ]
         summary["trading_bot_consensus"]=bot_feed.get("consensus",{})
 
-    return ("You are a cautious XAUUSD trade veto agent, not an order executor. "
+    return ("You are an independent XAUUSD market-direction analyst, not an order executor. "
+            "Assess BUY and SELL using only this same-closed-bar market snapshot. "
             "Return ONLY JSON with keys direction (BUY, SELL or WAIT), confidence (0..1), "
-            "reason_ar (short Arabic). Disagree or WAIT when data are insufficient. "
-            "Never invent market data. Snapshot: "+json.dumps(summary,ensure_ascii=False))
+            "reason_ar (short Arabic). WAIT if evidence is insufficient. "
+            "Never invent market data or assume another model agreed. Snapshot: "
+            +json.dumps(summary,ensure_ascii=False))
 
 def _qwen(decision):
     if not _QWEN_URL:return _vote("Qwen","NOT_CONFIGURED",reason="QWEN_API_URL غير مضبوط")
@@ -124,7 +131,7 @@ def fast_ai(decision,account):
     families=decision.get("family_votes") or {}
     supports=sum(1 for v in families.values() if v==signal)
     oppose=sum(1 for v in families.values() if v in ("BUY","SELL") and v!=signal)
-    if signal not in ("BUY","SELL") or confidence<.55 or atr<=0 or price<=0 or supports<=oppose:
+    if signal not in ("BUY","SELL") or atr<=0 or price<=0 or supports<=oppose:
         return _vote("Fast AI","READY",reason="التحليل الكمي لا يجيز الدخول")
     if _num(account.get("equity"))<=0 or _num(account.get("free_margin"))<=0:
         return _vote("Fast AI","READY",reason="حارس المخاطر: الحساب غير آمن")
