@@ -121,7 +121,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         mode=str(pm.get("mode","AI")).upper()
         # Recovery is exclusively planned above from ACCOUNT net.
         if (mode=="AI" and atr>0 and
-            progress<-(cooling_band+advisory_bias+strategy_bias) and
+            progress<-(cooling_band-advisory_bias-strategy_bias) and
             pm.get("cooling_enabled") is True and cooling_available):
             action="COOLING_PROPOSAL"
             reason="السعر تراجع عن متوسط مراكز الاتجاه؛ تم ترجيح التوقيت بتحليل ATR وHybrid AI"
@@ -130,6 +130,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
               pm.get("addon_enabled") is True and addon_available):
             action="ADDON_PROPOSAL"
             reason="السعر يتحرك لصالح المركز؛ تم ترجيح التوقيت بتحليل ATR وHybrid AI"
+        if action=="HOLD" and mode=="AI":
+            if pm.get("cooling_enabled") is True and not cooling_available and progress<0:
+                reason=f"تم بلوغ عدد التبريد الذي حدده المالك ({cooling_limit}) لهذا الاتجاه"
+            elif pm.get("addon_enabled") is True and not addon_available and progress>0:
+                reason=f"تم بلوغ عدد التعزيز الذي حدده المالك ({addon_limit}) لهذا الاتجاه"
         # The owner-defined per-side position limit is independent from total
         # account exposure. Existing manual positions count toward both.
         side_cap=(int(num(pm["max_positions_per_direction"])) if pm.get("max_positions_per_direction") is not None else None)
