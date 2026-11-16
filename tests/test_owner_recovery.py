@@ -28,22 +28,57 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(result["actions"][0]["lot_cap"],0.06,result)
         self.assertTrue(result["actions"][0]["recovery_armed"])
 
-    def test_opposite_position_does_not_globally_disable_buy_recovery(self):
+    def test_account_wide_loss_and_x3_total_lots_with_hedged_positions(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,
-            "profit":-20,"swap":0},
+            "profit":-22,"swap":0},
            {"symbol":"XAUUSD","type":1,"volume":0.01,"open_price":3010,
             "profit":1,"swap":0}]
         result=scenario(p)
         self.assertEqual(result["buy"],"RECOVERY_PROPOSAL",result)
+        self.assertEqual(result["actions"][0]["lot_cap"],0.09,result)
 
-    def test_recovery_wait_reason_shows_loss_and_mismatched_ai_direction(self):
+    def test_opposite_entry_signal_no_longer_blocks_account_recovery(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3010,
             "profit":-25,"swap":0}]
         result=scenario(p,signal="SELL")
-        hold=[a for a in result["actions"] if a["side"]=="BUY"][0]
-        self.assertTrue(hold["recovery_armed"])
-        self.assertIn("25",hold["reason_ar"])
-        self.assertEqual(hold["action"],"HOLD")
+        intent=result["actions"][0]
+        self.assertTrue(intent["recovery_armed"])
+        self.assertIn("25",intent["reason_ar"])
+        self.assertEqual(intent["action"],"RECOVERY_PROPOSAL")
+        self.assertEqual(intent["side"],"BUY")
+
+    def test_account_wide_threshold_not_per_side(self):
+        p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3010,
+            "profit":-12,"swap":0},
+           {"symbol":"XAUUSD","type":1,"volume":0.02,"open_price":3010,
+            "profit":-11,"swap":0}]
+        result=scenario(p,signal="WAIT")
+        actions=[a for a in result["actions"] if a["action"]=="RECOVERY_PROPOSAL"]
+        self.assertEqual(len(actions),1,result)
+        self.assertEqual(actions[0]["side"],"BUY",result)
+        self.assertEqual(actions[0]["lot_cap"],0.09,result)
+
+    def test_existing_recovery_does_not_repeat(self):
+        p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3010,
+            "profit":-25,"swap":0,"comment":"ALZOOL-RECOVERY"}]
+        result=scenario(p)
+        self.assertEqual(result["actions"][0]["action"],"HOLD",result)
+        self.assertTrue(result["actions"][0]["recovery_armed"])
+
+    def test_account_other_symbol_lots_count_toward_exact_x3(self):
+        p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,
+            "profit":-30,"swap":0},
+           {"symbol":"EURUSD","type":0,"volume":0.01,"open_price":1.10,
+            "profit":-2,"swap":0}]
+        result=scenario(p)
+        self.assertEqual(result["actions"][0]["lot_cap"],0.09,result)
+
+    def test_explicit_owner_cap_remains_effective(self):
+        p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,
+            "profit":-30,"swap":0}]
+        result=scenario(p,recovery_max_lot=0.05)
+        self.assertEqual(result["actions"][0]["action"],"HOLD",result)
+
 
     def test_unconfigured_addon_max_zero_is_unlimited(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.01,"open_price":3004,
