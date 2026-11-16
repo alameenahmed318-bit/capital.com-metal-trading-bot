@@ -48,7 +48,7 @@ def fuse_live_decision(base,council):
                          "reason_ar":original.get("reason_ar","")}}
         scores[quant]=max(scores[quant],max(0.0,_num(original.get("confidence"))))
     combined=dict(scores)
-    market_context=original.get("context") or {}
+    market_context=original.get("context") if isinstance(original.get("context"),dict) else {}
     # Good supporting candle structure reinforces a fresh vote. A trap or
     # weak market quality reduces its influence rather than imposing a veto.
     market_factors={side:model_market_fit(market_context,side) for side in DIRECTIONS}
