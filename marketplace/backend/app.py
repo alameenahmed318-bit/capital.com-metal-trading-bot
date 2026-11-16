@@ -1630,6 +1630,41 @@ class Handler(SimpleHTTPRequestHandler):
                 TRADE_SETTINGS_CACHE.pop(identity["client_id"],None)
                 return self.send_json(200,{"enabled":enabled,
                     "message":"تم حفظ مفتاح الإدارة؛ لا يعمل دون تفعيل منفصل في MT5 وموافقة المجلس"})
+            if path=="/api/owner/entry-policy":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بمحرك MT5"})
+                requested=str(data.get("mode","")).upper()
+                if requested not in ("STRICT","ADVISORY"):
+                    return self.send_json(400,{"error":"وضع الدخول غير معروف"})
+                if requested=="ADVISORY" and data.get("confirmed_risk") is not True:
+                    return self.send_json(400,{"error":"يجب تأكيد مخاطر التنفيذ التلقائي أولاً"})
+                cid=urllib.parse.quote(identity["client_id"],safe="")
+                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid+
+                    "&select=position_management,stop_loss_enabled&limit=1",admin=True)
+                prior=rows[0] if rows else {}
+                pm=dict(prior.get("position_management") or {})
+                pm["entry_council_mode"]=requested
+                if rows:
+                    changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
+                        {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
+                        admin=True,prefer="return=representation")
+                else:
+                    changed=sb("POST","/rest/v1/alzool_engine_trade_settings",
+                        {"client_id":identity["client_id"],"position_management":pm},
+                        admin=True,prefer="return=representation")
+                if not changed:return self.send_json(502,{"error":"تعذر حفظ سياسة الدخول"})
+                with CACHE_LOCK:TRADE_SETTINGS_CACHE.pop(identity["client_id"],None)
+                queue_ai_diagnostic_event({
+                    "event_id":f"entry-policy:{identity['client_id']}:{time.time_ns()}",
+                    "client_id":identity["client_id"],
+                    "event_type":"ENTRY_POLICY_CHANGED",
+                    "payload":{"mode":requested,"actor":"owner","executed_orders":False}})
+                warning=(" | تنبيه: وقف الخسارة معطّل في إعداداتك الحالية"
+                         if prior.get("stop_loss_enabled") is False else "")
+                return self.send_json(200,{"mode":requested,
+                    "message":("تم تفعيل الاستراتيجية أولاً — نماذج AI استشارية"
+                               if requested=="ADVISORY" else "تم تفعيل المجلس الصارم")+warning})
             if path=="/api/ai/versions/test":
                 u=owner(token)
                 identity=license_for_user(u["id"])
