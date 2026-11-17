@@ -209,7 +209,7 @@ def main():
                 deadline=bar+120-4
                 for model in pending:
                     remaining=deadline-time.time()
-                    min_budget=8 if model.startswith("deepseek") else 12
+                    min_budget=8 if model.startswith("deepseek") else 25
                     if remaining<min_budget:
                         print(model+" SKIP_BAR_BUDGET; next M1 candle",flush=True)
                         attempts[model]=1
