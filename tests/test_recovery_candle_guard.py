@@ -63,11 +63,11 @@ class RecoveryCandleChecks(unittest.TestCase):
         self.assertEqual(r["recovery"]["candle_confirmation"]["state"],"WAIT_DIRECTION")
         self.assertIn("شمعة",r["reason_ar"])
 
-    def test_hedged_loss_chooses_losing_side_matching_candle(self):
+    def test_hedged_loss_does_not_expand_either_direction(self):
         x=snap(positions=[pos("BUY",-13),pos("SELL",-10)],net=-23,candle_side="SELL")
         r=plan(x,signal="BUY")
-        self.assertEqual(r["sell"],"RECOVERY_PROPOSAL",r)
-        self.assertEqual(r["actions"][0]["lot_cap"],.12)
+        self.assertEqual(r["actions"],[],r)
+        self.assertIn("حماية الاتجاه",r["reason_ar"])
 
     def test_doji_does_not_authorize_recovery(self):
         x=snap()
