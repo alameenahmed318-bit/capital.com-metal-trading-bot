@@ -11,7 +11,6 @@ Environment variables are also supported:
   ALZOOL_ENGINE_URL, ALZOOL_OWNER_CONNECTION_ID, ALZOOL_OWNER_PAIRING_KEY
 """
 import argparse
-import concurrent.futures
 import json
 import math
 import os
@@ -26,7 +25,7 @@ from datetime import datetime, timezone
 MODELS=("qwen3.5:4b","deepseek-r1:1.5b")
 OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
 POLL_SECONDS=3
-MODEL_TIMEOUT_SECONDS=90
+MODEL_TIMEOUT_SECONDS=50
 
 def request_json(url,method="GET",payload=None,token=None,timeout=12):
     headers={"Accept":"application/json"}
@@ -131,7 +130,7 @@ def compact_snapshot(context):
     }
 
 
-def model_vote(model,context):
+def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     snapshot=compact_snapshot(context)
     prompt=("Review the proposed XAUUSD trade independently using supplied closed candles, "
         "trend, momentum, trap, strategy and family-vote evidence. "
@@ -143,11 +142,11 @@ def model_vote(model,context):
         "Confidence must be between 0 and 1. No markdown, preamble, or reasoning trace. "
         "Snapshot: "+json.dumps(snapshot,ensure_ascii=False,separators=(",",":")))
     result=request_json(OLLAMA_URL+"/api/generate",method="POST",
-        payload={"model":model,"prompt":prompt,"stream":False,"format":"json",
+        payload={"model":model,"prompt":prompt,"stream":False,"format":{"type":"object","properties":{"direction":{"type":"string","enum":["BUY","SELL","WAIT"]},"confidence":{"type":"number","minimum":0,"maximum":1},"reason_ar":{"type":"string"}},"required":["direction","confidence","reason_ar"]},
                  "think":False,"keep_alive":"30m",
-                 "options":{"temperature":0,"num_predict":192 if model.startswith("deepseek") else 128,
-                            "num_ctx":1536}},
-        timeout=MODEL_TIMEOUT_SECONDS)
+                 "options":{"temperature":0,"num_predict":96 if model.startswith("deepseek") else 64,
+                            "num_ctx":1280,"num_thread":4}},
+        timeout=timeout_seconds)
     return validate_response(model,result)
 
 
@@ -176,7 +175,6 @@ def main():
     last_bar=0
     submitted=set()
     attempts={}
-    last_attempt={}
     while True:
         try:
             url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
@@ -193,7 +191,6 @@ def main():
                 last_bar=bar
                 submitted.clear()
                 attempts.clear()
-                last_attempt.clear()
             signal=central_signal(context)
             # The central council cannot approve a WAIT decision. Saving CPU
             # here lets both loaded models respond faster on actionable bars.
@@ -203,59 +200,65 @@ def main():
                     attempts["wait_logged"]=1
                 if args.once:break
                 time.sleep(POLL_SECONDS);continue
-            pending=[model for model in MODELS if model not in submitted
-                and attempts.get(model,0)<2 and time.monotonic()-last_attempt.get(model,-60)>=12]
+            # Never run Qwen and DeepSeek concurrently on a CPU-only laptop.
+            # For a closed M1 bar, the next closed bar is available at bar+120s.
+            # Leave 4s for server round-trips so old votes cannot be submitted.
+            pending=[model for model in ("deepseek-r1:1.5b","qwen3.5:4b")
+                if model not in submitted and attempts.get(model,0)<1]
             if pending:
-                start=time.monotonic()
-                with concurrent.futures.ThreadPoolExecutor(max_workers=len(pending)) as pool:
-                    futures={pool.submit(model_vote,model,context):model for model in pending}
-                    for future in concurrent.futures.as_completed(futures):
-                        model=futures[future]
-                        attempts[model]=attempts.get(model,0)+1
-                        last_attempt[model]=time.monotonic()
-                        try:vote=future.result()
-                        except Exception as exc:
-                            print(model+" ERROR "+type(exc).__name__,flush=True)
-                            continue
-                        if vote is None:
-                            print(model+" INVALID_JSON; no vote submitted",flush=True)
-                            continue
-                        # Ollama on CPU can finish after the next candle closes.
-                        # Recheck the live decision instead of posting a stale vote.
-                        if time.monotonic()-start>3:
-                            try:
-                                if not same_live_signal(server,identity,key,bar,signal):
-                                    print(model+" STALE_BAR; vote discarded",flush=True)
-                                    attempts[model]=2
-                                    continue
-                            except urllib.error.HTTPError as exc:
-                                if exc.code==409:
-                                    print(model+" STALE_BAR; no current MT5 data",flush=True)
-                                else:
-                                    print(model+" context check failed: HTTP="+str(exc.code),flush=True)
-                                attempts[model]=2
-                                continue
-                            except Exception as exc:
-                                print(model+" context check error: "+type(exc).__name__,flush=True)
-                                attempts[model]=2
-                                continue
-                        vote["bar_time"]=bar
+                deadline=bar+120-4
+                for model in pending:
+                    remaining=deadline-time.time()
+                    min_budget=8 if model.startswith("deepseek") else 12
+                    if remaining<min_budget:
+                        print(model+" SKIP_BAR_BUDGET; next M1 candle",flush=True)
+                        attempts[model]=1
+                        continue
+                    # Fast DeepSeek first, Qwen only while the SAME M1 bar is fresh.
+                    limit=20 if model.startswith("deepseek") else 36
+                    timeout=max(1,min(limit,int(remaining)-1))
+                    attempts[model]=1  # No CPU-expensive same-bar retry.
+                    started=time.monotonic()
+                    try:
+                        vote=model_vote(model,context,timeout_seconds=timeout)
+                    except Exception as exc:
+                        print(model+" ERROR "+type(exc).__name__,flush=True)
+                        continue
+                    if vote is None:
+                        print(model+" INVALID_JSON; no vote submitted",flush=True)
+                        continue
+                    if time.time()>=deadline:
+                        print(model+" STALE_BAR; vote discarded",flush=True)
+                        continue
+                    if time.monotonic()-started>3:
                         try:
-                            ack=request_json(server+"/v1/local-ai/advice/"+
-                                urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
-                            if ack.get("accepted") is True:
-                                submitted.add(model)
-                            print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
-                                "% | accepted="+str(ack.get("accepted",False))+
-                                " | council="+("APPROVED" if ack.get("council_approved") is True
-                                               else "WAIT"),flush=True)
+                            if not same_live_signal(server,identity,key,bar,signal):
+                                print(model+" STALE_BAR; vote discarded",flush=True)
+                                continue
                         except urllib.error.HTTPError as exc:
                             if exc.code==409:
-                                print(model+" STALE_BAR; central rejected old vote",flush=True)
+                                print(model+" STALE_BAR; no current MT5 data",flush=True)
                             else:
-                                print(model+" central rejected vote: HTTP="+str(exc.code),flush=True)
-                            if exc.code in (401,403,409):
-                                attempts[model]=2
+                                print(model+" context check failed: HTTP="+str(exc.code),flush=True)
+                            continue
+                        except Exception as exc:
+                            print(model+" context check error: "+type(exc).__name__,flush=True)
+                            continue
+                    vote["bar_time"]=bar
+                    try:
+                        ack=request_json(server+"/v1/local-ai/advice/"+
+                            urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
+                        if ack.get("accepted") is True:
+                            submitted.add(model)
+                        print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
+                            "% | accepted="+str(ack.get("accepted",False))+
+                            " | council="+("APPROVED" if ack.get("council_approved") is True
+                                           else "WAIT"),flush=True)
+                    except urllib.error.HTTPError as exc:
+                        if exc.code==409:
+                            print(model+" STALE_BAR; central rejected old vote",flush=True)
+                        else:
+                            print(model+" central rejected vote: HTTP="+str(exc.code),flush=True)
             if args.once:break
         except KeyboardInterrupt:
             print("Local AI stopped",flush=True);break
