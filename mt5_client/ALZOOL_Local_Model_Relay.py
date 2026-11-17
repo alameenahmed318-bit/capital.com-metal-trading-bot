@@ -231,14 +231,15 @@ def main():
                 attempts.clear()
             signal=central_signal(context)
             # The central council cannot approve a WAIT decision. Saving CPU
-            # here lets both loaded models respond faster on actionable bars.
+            # here avoids wasting CPU on non-actionable bars.
             if signal not in ("BUY","SELL"):
                 if not submitted and not attempts:
                     print("CENTRAL WAIT | no local model vote for this bar",flush=True)
                     attempts["wait_logged"]=1
                 if args.once:break
                 time.sleep(POLL_SECONDS);continue
-            # Fast CPU-friendly Qwen is the only M1 voting model.\n            # Large reasoning models are kept installed for offline research.
+            # Fast CPU-friendly Qwen is the only M1 voting model.
+            # Large reasoning models are kept installed for offline research.
             # For a closed M1 bar, the next closed bar is available at bar+120s.
             # Leave 4s for server round-trips so old votes cannot be submitted.
             pending=[model for model in MODELS
