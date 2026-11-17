@@ -82,11 +82,36 @@ class FastQwenRelayChecks(unittest.TestCase):
         self.assertEqual(posted,[])
         self.assertIn("ERROR TimeoutError",output)
 
-    def test_reject_non_arabic_reason_in_fast_model(self):
+    def test_preserve_genuine_vote_with_non_arabic_reason(self):
         chinese={"message":{"content":'{"direction":"BUY","confidence":0.9,"reason_ar":"价格上涨"}'}}
         arabic={"message":{"content":'{"direction":"BUY","confidence":0.7,"reason_ar":"الشمعة صاعدة"}'}}
-        self.assertIsNone(relay.validate_response(MODEL,chinese))
-        self.assertEqual(relay.validate_response(MODEL,arabic)["direction"],"BUY")
+        foreign=relay.validate_response(MODEL,chinese)
+        self.assertEqual(foreign["direction"],"BUY")
+        self.assertEqual(foreign["confidence"],0.9)
+        self.assertEqual(foreign["reason_original"],"价格上涨")
+        self.assertEqual(foreign["reason_ar"],"سبب النموذج بلغة أخرى، ولم تتم ترجمته")
+        local=relay.validate_response(MODEL,arabic)
+        self.assertEqual(local["direction"],"BUY")
+        self.assertEqual(local["reason_ar"],"الشمعة صاعدة")
+        self.assertNotIn("reason_original",local)
+
+    def test_invalid_or_missing_vote_still_fails(self):
+        examples=[
+            '{"direction":"HOLD","confidence":0.8,"reason_ar":"价格上涨"}',
+            '{"direction":"BUY","confidence":3,"reason_ar":"价格上涨"}',
+            '{"direction":"BUY","confidence":0.7,"reason_ar":""}',
+            "not json"
+        ]
+        for raw in examples:
+            self.assertIsNone(relay.validate_response(MODEL,{"message":{"content":raw}}))
+
+    def test_foreign_reason_is_saved_in_diagnostic_event(self):
+        advice={"model":MODEL,"bar_time":BAR,"direction":"BUY","confidence":0.9,
+            "reason_ar":"سبب النموذج بلغة أخرى، ولم تتم ترجمته",
+            "reason_original":"价格上涨"}
+        event=build_qwen_vote_event("test-client",advice,{"bar_time":BAR,"decision":"BUY"})
+        self.assertEqual(event["payload"]["reason_original"],"价格上涨")
+        self.assertEqual(event["payload"]["reason_ar"],advice["reason_ar"])
 
     def test_model_request_uses_real_json_and_cpu_budget(self):
         captured={}
