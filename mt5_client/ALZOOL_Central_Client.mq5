@@ -28,7 +28,7 @@ input double InpMaxCentralTotalLots = 0.0; // 0 = no optional EA exposure cap
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
 input int InpMaxOpenPositions = 0; // 0 = no optional EA position cap
-input bool InpBlockOppositePositions = false; // Optional owner choice, not an implicit restriction
+input bool InpBlockOppositePositions = true; // Legacy input; opposite gold positions are always prohibited
 input int InpATRPeriod = 14;
 input double InpStopLossATR = 1.8;
 input bool InpUseTrailing = false; // Opt-in; never add a stop without explicit preference
@@ -577,7 +577,7 @@ int CountAlzoolPositions()
    }
    return count;
 }
-// Returns account-wide open BUY/SELL counts, regardless of symbol or magic number.
+// Returns open BUY/SELL counts on this gold symbol, regardless of magic number.
 void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 {
    buyPositions=0; sellPositions=0;
@@ -585,6 +585,7 @@ void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol) continue;
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
       if(type==POSITION_TYPE_BUY) buyPositions++;
       else if(type==POSITION_TYPE_SELL) sellPositions++;
@@ -592,7 +593,8 @@ void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 }
 bool IsAccountDirectionAllowed(const string direction)
 {
-   if(!InpBlockOppositePositions) return true;
+   // Never add an opposite XAUUSD position, even with older Inputs=false.
+   // This applies to entry, add-on, cooling, and smart recovery.
    int buys=0,sells=0;
    GetAccountDirectionCounts(buys,sells);
    // If both sides already exist, fail closed: do not add any new exposure.
