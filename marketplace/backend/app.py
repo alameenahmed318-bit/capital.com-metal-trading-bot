@@ -1480,6 +1480,7 @@ class Handler(SimpleHTTPRequestHandler):
                 confidence=finite_number(data.get("confidence",-1),-1)
                 model=str(data.get("model",""))[:80]
                 reason=str(data.get("reason_ar",""))[:500]
+                original_reason=str(data.get("reason_original",""))[:350]
                 current_bar=int(finite_number(decision.get("bar_time",0)))
                 if bar_time<=0 or bar_time!=current_bar:
                     return self.send_json(409,{"error":"تصويت النموذج لا يخص الشمعة الحالية"})
@@ -1493,6 +1494,8 @@ class Handler(SimpleHTTPRequestHandler):
                 advice={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
+                if original_reason and model=="qwen2.5:1.5b":
+                    advice["reason_original"]=original_reason
                 if not accept_local_model_vote(client_id,advice,decision):
                     return self.send_json(409,{"error":"مجلس النماذج غير جاهز لهذه الشمعة"})
                 if model in ("qwen3.5:4b","qwen2.5:1.5b"):
