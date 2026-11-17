@@ -31,6 +31,12 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
     if not positions:
         result["reason_ar"]="لا توجد مراكز XAUUSD يمكن تنفيذ التعافي في اتجاهها";return result
+    # Pre-existing mixed-side gold exposure: don't add either side, including
+    # x3 smart recovery. Existing positions are never automatically closed.
+    open_directions={int(num(p.get("type"),-1)) for p in positions}
+    if 0 in open_directions and 1 in open_directions:
+        result["reason_ar"]="حماية الاتجاه: توجد مراكز ذهب BUY وSELL معاً؛ إيقاف التعزيز والتبريد والتعافي الجديد"
+        return result
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         result["reason_ar"]="وضع إدارة الصفقات غير صالح";return result
     # Open-position management uses its own live trend decision; it must not
