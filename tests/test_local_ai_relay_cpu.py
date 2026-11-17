@@ -60,6 +60,12 @@ class CpuLocalRelayChecks(unittest.TestCase):
         self.assertIn("STALE_BAR",log)
         self.assertIn("SKIP_BAR_BUDGET",log)
 
+    def test_qwen_skips_short_remaining_bar_budget(self):
+        calls,votes,log=self.cycle(deepseek_delay=32)
+        self.assertEqual([m for m,_ in calls],["deepseek-r1:1.5b"])
+        self.assertEqual([v["model"] for v in votes],["deepseek-r1:1.5b"])
+        self.assertIn("SKIP_BAR_BUDGET",log)
+
     def test_deepseek_timeout_does_not_block_qwen(self):
         calls,votes,log=self.cycle(deepseek_delay=13,deepseek_error=True)
         self.assertEqual([m for m,_ in calls],["deepseek-r1:1.5b","qwen3.5:4b"])
