@@ -15,7 +15,7 @@ spec.loader.exec_module(relay)
 BAR=1794839940
 
 class CpuLocalRelayChecks(unittest.TestCase):
-    def cycle(self,signal="SELL",deepseek_delay=0,deepseek_error=False,start_offset=61):
+    def cycle(self,signal="SELL",deepseek_delay=0,deepseek_error=False,start_offset=61,qwen_delay=0):
         clock=[BAR+start_offset]
         calls=[]
         votes=[]
@@ -30,6 +30,8 @@ class CpuLocalRelayChecks(unittest.TestCase):
             raise AssertionError(url)
         def fake_vote(model,context,timeout_seconds=50):
             calls.append((model,timeout_seconds))
+            if model.startswith("qwen"):
+                clock[0]+=qwen_delay
             if model.startswith("deepseek"):
                 clock[0]+=deepseek_delay
                 if deepseek_error:
@@ -45,30 +47,29 @@ class CpuLocalRelayChecks(unittest.TestCase):
                                 relay.main()
         return calls,votes,out.getvalue()
 
-    def test_models_run_serially_deepseek_then_qwen(self):
+    def test_models_run_serially_qwen_then_deepseek(self):
         calls,votes,_=self.cycle()
-        self.assertEqual([c[0] for c in calls],["deepseek-r1:1.5b","qwen3.5:4b"])
-        self.assertEqual([v["model"] for v in votes],["deepseek-r1:1.5b","qwen3.5:4b"])
+        self.assertEqual([c[0] for c in calls],["qwen3.5:4b","deepseek-r1:1.5b"])
+        self.assertEqual([v["model"] for v in votes],["qwen3.5:4b","deepseek-r1:1.5b"])
         self.assertEqual([v["bar_time"] for v in votes],[BAR,BAR])
-        self.assertLessEqual(calls[0][1],20)
-        self.assertLessEqual(calls[1][1],36)
+        self.assertLessEqual(calls[0][1],25)
+        self.assertLessEqual(calls[1][1],28)
 
     def test_slow_deepseek_never_submits_stale_votes(self):
         calls,votes,log=self.cycle(deepseek_delay=60)
-        self.assertEqual([m for m,_ in calls],["deepseek-r1:1.5b"])
-        self.assertEqual(votes,[])
+        self.assertEqual([m for m,_ in calls],["qwen3.5:4b","deepseek-r1:1.5b"])
+        self.assertEqual([v["model"] for v in votes],["qwen3.5:4b"])
         self.assertIn("STALE_BAR",log)
-        self.assertIn("SKIP_BAR_BUDGET",log)
 
-    def test_qwen_skips_short_remaining_bar_budget(self):
-        calls,votes,log=self.cycle(deepseek_delay=32)
-        self.assertEqual([m for m,_ in calls],["deepseek-r1:1.5b"])
-        self.assertEqual([v["model"] for v in votes],["deepseek-r1:1.5b"])
+    def test_deepseek_skips_short_remaining_bar_budget(self):
+        calls,votes,log=self.cycle(qwen_delay=32)
+        self.assertEqual([m for m,_ in calls],["qwen3.5:4b"])
+        self.assertEqual([v["model"] for v in votes],["qwen3.5:4b"])
         self.assertIn("SKIP_BAR_BUDGET",log)
 
     def test_deepseek_timeout_does_not_block_qwen(self):
         calls,votes,log=self.cycle(deepseek_delay=13,deepseek_error=True)
-        self.assertEqual([m for m,_ in calls],["deepseek-r1:1.5b","qwen3.5:4b"])
+        self.assertEqual([m for m,_ in calls],["qwen3.5:4b","deepseek-r1:1.5b"])
         self.assertEqual([v["model"] for v in votes],["qwen3.5:4b"])
         self.assertIn("ERROR TimeoutError",log)
 
@@ -89,6 +90,22 @@ class CpuLocalRelayChecks(unittest.TestCase):
         self.assertEqual(vote["direction"],"SELL")
         self.assertEqual(observed["payload"]["options"]["num_predict"],352)
         self.assertEqual(observed["timeout"],33)
+
+    def test_failed_models_backoff_without_fake_votes(self):
+        failures={}
+        pauses={}
+        output=io.StringIO()
+        with patch.object(relay.time,"monotonic",return_value=100):
+            with contextlib.redirect_stdout(output):
+                relay.record_model_failure("deepseek-r1:1.5b",failures,pauses)
+                self.assertNotIn("deepseek-r1:1.5b",pauses)
+                relay.record_model_failure("deepseek-r1:1.5b",failures,pauses)
+                relay.record_model_failure("qwen3.5:4b",failures,pauses)
+                relay.record_model_failure("qwen3.5:4b",failures,pauses)
+        self.assertEqual(pauses["deepseek-r1:1.5b"],700)
+        self.assertEqual(pauses["qwen3.5:4b"],400)
+        self.assertIn("CPU_COOLDOWN",output.getvalue())
+        self.assertEqual(failures["deepseek-r1:1.5b"],0)
 
     def test_central_wait_saves_cpu(self):
         calls,votes,log=self.cycle(signal="WAIT")
@@ -139,6 +156,7 @@ class CpuLocalRelayChecks(unittest.TestCase):
         self.assertEqual(out["direction"],"SELL")
         self.assertEqual(observed["timeout"],23)
         self.assertEqual(observed["payload"]["options"]["num_thread"],4)
+        self.assertEqual(observed["payload"]["options"]["num_predict"],100)
         self.assertEqual(observed["payload"]["format"]["required"],["direction","confidence","reason_ar"])
 
 if __name__=="__main__":
