@@ -1488,14 +1488,14 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(409,{"error":"انتهت صلاحية الشمعة الحالية للتنفيذ"})
                 if direction not in ("BUY","SELL","WAIT") or confidence<0 or confidence>1:
                     return self.send_json(400,{"error":"صيغة تصويت النموذج غير صالحة"})
-                if model not in ("qwen3.5:4b","deepseek-r1:1.5b"):
+                if model not in ("qwen3.5:4b","qwen2.5:1.5b","deepseek-r1:1.5b"):
                     return self.send_json(400,{"error":"موديل AI غير معتمد لهذا الربط"})
                 advice={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
                 if not accept_local_model_vote(client_id,advice,decision):
                     return self.send_json(409,{"error":"مجلس النماذج غير جاهز لهذه الشمعة"})
-                if model=="qwen3.5:4b":
+                if model in ("qwen3.5:4b","qwen2.5:1.5b"):
                     item["local_ai_advice"]=advice
                     event=build_qwen_vote_event(client_id,advice,decision)
                 else:
