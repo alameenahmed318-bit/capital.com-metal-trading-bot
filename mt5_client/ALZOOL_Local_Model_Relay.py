@@ -107,7 +107,7 @@ def compact_snapshot(context):
     if not isinstance(combinations,dict):
         combinations={}
     recent=[]
-    for row in candles[:4]:  # Server returns newest closed candle first.
+    for row in candles[:3]:  # Server returns newest closed candle first.
         if isinstance(row,dict):
             recent.append({k:row[k] for k in ("time","open","high","low","close")
                            if k in row})
@@ -134,11 +134,11 @@ def compact_snapshot(context):
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
     snapshot=compact_snapshot(context)
-    instruction=("Independently review a proposed XAUUSD M1 trade using real closed-candle, "
-        "trend, momentum, trap and strategy evidence. Do not blindly follow central_signal. "
-        "A pullback need not be a breakout. Disagree or WAIT when evidence is weak. "
-        'Output only JSON: {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"brief reason"}. '
-        "Confidence between 0 and 1. Keep reason_ar under 12 words. No thoughts or markdown.")
+    instruction=("Assess XAUUSD M1 using the supplied closed candles, trend, trap, "
+        "strategy and family evidence. Central signal is a proposal, not a command. "
+        "Choose BUY, SELL or WAIT independently. If unclear, WAIT. "
+        'Return ONLY JSON {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"short reason"}. '
+        "Confidence 0..1, reason_ar maximum 8 words. No explanation.")
     schema={"type":"object","properties":{
         "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
         "confidence":{"type":"number","minimum":0,"maximum":1},
@@ -152,7 +152,7 @@ def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
                     {"role":"user","content":json.dumps(snapshot,ensure_ascii=False,separators=(",",":"))}],
                  "stream":False,"format":"json" if model.startswith("deepseek") else schema,
                  "think":False,"keep_alive":"30m",
-                 "options":{"temperature":0,"num_predict":352 if model.startswith("deepseek") else 72,
+                 "options":{"temperature":0,"num_predict":352 if model.startswith("deepseek") else 100,
                             "num_ctx":1024,"num_thread":4}},
         timeout=timeout_seconds)
     vote=validate_response(model,result)
@@ -175,6 +175,16 @@ def same_live_signal(server,identity,key,bar,signal):
             and central_signal(latest)==signal)
 
 
+def record_model_failure(model,failures,pause_until):
+    """A slow/empty model may not consume every future M1 candle."""
+    failures[model]=failures.get(model,0)+1
+    if failures[model]>=2:
+        seconds=600 if model.startswith("deepseek") else 300
+        pause_until[model]=time.monotonic()+seconds
+        failures[model]=0
+        print(model+" CPU_COOLDOWN "+str(seconds)+"s; Fast AI remains active",flush=True)
+
+
 def main():
     parser=argparse.ArgumentParser(description="AL-ZOOL Qwen and DeepSeek local voting relay")
     parser.add_argument("--credentials",help="Downloaded owner pairing JSON file")
@@ -192,8 +202,8 @@ def main():
     last_bar=0
     submitted=set()
     attempts={}
-    qwen_timeout_streak=0
-    qwen_pause_until=0.0
+    model_failures={}
+    model_pause_until={}
     while True:
         try:
             url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
@@ -219,23 +229,24 @@ def main():
                     attempts["wait_logged"]=1
                 if args.once:break
                 time.sleep(POLL_SECONDS);continue
+            # Prioritize Qwen fast final answers; DeepSeek reasoning may take too long.
             # Never run Qwen and DeepSeek concurrently on a CPU-only laptop.
             # For a closed M1 bar, the next closed bar is available at bar+120s.
             # Leave 4s for server round-trips so old votes cannot be submitted.
-            pending=[model for model in ("deepseek-r1:1.5b","qwen3.5:4b")
+            pending=[model for model in ("qwen3.5:4b","deepseek-r1:1.5b")
                 if model not in submitted and attempts.get(model,0)<1
-                and (not model.startswith("qwen") or time.monotonic()>=qwen_pause_until)]
+                and time.monotonic()>=model_pause_until.get(model,0.0)]
             if pending:
                 deadline=bar+120-4
                 for model in pending:
                     remaining=deadline-time.time()
-                    min_budget=28 if model.startswith("deepseek") else 30
+                    min_budget=30 if model.startswith("deepseek") else 25
                     if remaining<min_budget:
                         print(model+" SKIP_BAR_BUDGET; next M1 candle",flush=True)
                         attempts[model]=1
                         continue
-                    # Fast DeepSeek first, Qwen only while the SAME M1 bar is fresh.
-                    limit=38 if model.startswith("deepseek") else 36
+                    # Qwen gets first chance. DeepSeek runs only with remaining M1 time.
+                    limit=28 if model.startswith("deepseek") else 25
                     timeout=max(1,min(limit,int(remaining)-2))
                     attempts[model]=1  # No CPU-expensive same-bar retry.
                     started=time.monotonic()
@@ -243,21 +254,17 @@ def main():
                         vote=model_vote(model,context,timeout_seconds=timeout)
                     except TimeoutError:
                         print(model+" ERROR TimeoutError",flush=True)
-                        if model.startswith("qwen"):
-                            qwen_timeout_streak+=1
-                            if qwen_timeout_streak>=2:
-                                qwen_pause_until=time.monotonic()+300
-                                qwen_timeout_streak=0
-                                print("qwen3.5:4b CPU_COOLDOWN 300s; Fast AI remains active",flush=True)
+                        record_model_failure(model,model_failures,model_pause_until)
                         continue
                     except Exception as exc:
                         print(model+" ERROR "+type(exc).__name__,flush=True)
+                        record_model_failure(model,model_failures,model_pause_until)
                         continue
                     if vote is None:
                         print(model+" INVALID_JSON; no vote submitted",flush=True)
+                        record_model_failure(model,model_failures,model_pause_until)
                         continue
-                    if model.startswith("qwen"):
-                        qwen_timeout_streak=0
+                    model_failures[model]=0
                     if time.time()>=deadline:
                         print(model+" STALE_BAR; vote discarded",flush=True)
                         continue
