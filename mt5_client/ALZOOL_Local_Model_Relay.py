@@ -152,7 +152,7 @@ def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
                     {"role":"user","content":json.dumps(snapshot,ensure_ascii=False,separators=(",",":"))}],
                  "stream":False,"format":"json" if model.startswith("deepseek") else schema,
                  "think":False,"keep_alive":"30m",
-                 "options":{"temperature":0,"num_predict":128 if model.startswith("deepseek") else 72,
+                 "options":{"temperature":0,"num_predict":352 if model.startswith("deepseek") else 72,
                             "num_ctx":1024,"num_thread":4}},
         timeout=timeout_seconds)
     vote=validate_response(model,result)
@@ -229,14 +229,14 @@ def main():
                 deadline=bar+120-4
                 for model in pending:
                     remaining=deadline-time.time()
-                    min_budget=8 if model.startswith("deepseek") else 25
+                    min_budget=28 if model.startswith("deepseek") else 30
                     if remaining<min_budget:
                         print(model+" SKIP_BAR_BUDGET; next M1 candle",flush=True)
                         attempts[model]=1
                         continue
                     # Fast DeepSeek first, Qwen only while the SAME M1 bar is fresh.
-                    limit=20 if model.startswith("deepseek") else 36
-                    timeout=max(1,min(limit,int(remaining)-1))
+                    limit=38 if model.startswith("deepseek") else 36
+                    timeout=max(1,min(limit,int(remaining)-2))
                     attempts[model]=1  # No CPU-expensive same-bar retry.
                     started=time.monotonic()
                     try:
