@@ -237,6 +237,7 @@ def accept_local_model_vote(client_id,advice,decision):
     confidence=_num(advice.get("confidence"),-1)
     model_id=str(advice.get("model",""))
     identity={"qwen3.5:4b":("Qwen","local_qwen"),
+              "qwen2.5:1.5b":("Qwen","local_qwen"),
               "deepseek-r1:1.5b":("DeepSeek","local_deepseek")}.get(model_id)
     if not identity or direction not in ("BUY","SELL","WAIT") or not 0<=confidence<=1:return False
     name,key=identity
