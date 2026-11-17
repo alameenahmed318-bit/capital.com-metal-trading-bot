@@ -82,11 +82,17 @@ def validate_response(model,result):
         reason=str(parsed.get("reason_ar",""))[:350]
         if direction not in ("BUY","SELL","WAIT") or not math.isfinite(confidence) or not 0<=confidence<=1:
             return None
-        # Reject non-Arabic explanations from the compact multilingual model.
-        # Its raw vote/confidence must never be fabricated or translated.
-        if model=="qwen2.5:1.5b" and not re.search(r"[\u0600-\u06FF]",reason):
+        if not reason.strip():
             return None
-        return {"model":model,"direction":direction,"confidence":confidence,"reason_ar":reason}
+        vote={"model":model,"direction":direction,"confidence":confidence,"reason_ar":reason}
+        # Compact multilingual Qwen sometimes answers in Chinese. A foreign
+        # explanation is NOT evidence of an invalid direction/confidence.
+        # Keep the actual model rationale separately, and explicitly label the
+        # unavailable Arabic translation rather than fabricating a reason.
+        if model=="qwen2.5:1.5b" and not re.search(r"[\u0600-\u06FF]",reason):
+            vote["reason_original"]=reason
+            vote["reason_ar"]="سبب النموذج بلغة أخرى، ولم تتم ترجمته"
+        return vote
     except (ValueError,TypeError,KeyError,OverflowError):
         return None
 
@@ -270,10 +276,12 @@ def main():
                         record_model_failure(model,model_failures,model_pause_until)
                         continue
                     if vote is None:
-                        print(model+" INVALID_OUTPUT (JSON, direction or Arabic reason); no vote submitted",flush=True)
+                        print(model+" INVALID_OUTPUT (JSON, direction, confidence or empty reason); no vote submitted",flush=True)
                         record_model_failure(model,model_failures,model_pause_until)
                         continue
                     model_failures[model]=0
+                    if vote.get("reason_original"):
+                        print(model+" NON_ARABIC_REASON; original preserved, vote validated",flush=True)
                     if time.time()>=deadline:
                         print(model+" STALE_BAR; vote discarded",flush=True)
                         continue
