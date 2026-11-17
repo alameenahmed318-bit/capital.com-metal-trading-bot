@@ -45,17 +45,15 @@ class AccountRecoveryTests(unittest.TestCase):
         d=recovery_intent(self.snapshot(net=-19),{"decision":"WAIT"},self.settings())
         self.assertFalse(d["armed"])
 
-    def test_recovery_claim_ready_even_when_new_entry_side_opposes(self):
+    def test_mixed_gold_positions_block_recovery_claim(self):
         snap=self.snapshot(net=-23)
         now=datetime.now(timezone.utc)
         decision={"decision":"SELL","bar_time":int((now-timedelta(seconds=60)).timestamp()),
                   "confidence":0.1,"entry_atr":3}
         report=_allowed("owner",snap,decision,{},{"approved":False,"votes":{}},
                         {"approved":True},self.settings(),now,council_advisory=True)
-        self.assertTrue(report["execution_ready"],report)
-        self.assertEqual(report["action"],"RECOVERY_PROPOSAL",report)
-        self.assertEqual(report["side"],"BUY",report)
-        self.assertEqual(report["lot_cap"],0.09,report)
+        self.assertFalse(report["execution_ready"],report)
+        self.assertIn("حماية الاتجاه",report["reason_ar"])
 
     def test_existing_recovery_is_not_reopened(self):
         positions=[{"ticket":"1","symbol":"XAUUSD","type":0,"volume":0.01,
