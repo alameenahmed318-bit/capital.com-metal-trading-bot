@@ -68,6 +68,7 @@ def build_qwen_vote_event(client_id, advice, decision):
             "direction": direction,
             "confidence": confidence,
             "reason_ar": str(advice.get("reason_ar", ""))[:500],
+            "reason_original": str(advice.get("reason_original", ""))[:350],
             "central_direction": str(decision.get("decision", "WAIT")).upper(),
             "central_confidence": _number(decision.get("confidence")),
         },
