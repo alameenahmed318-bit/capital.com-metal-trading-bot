@@ -105,10 +105,11 @@ class ProgressiveSizingTests(unittest.TestCase):
                mode="MANUAL",cooling_enabled=False,addon_distance_points=100)
         self.assertEqual(d["buy"],"ADDON_PROPOSAL",d)
 
-    def test_both_sides_qualify_select_one_instead_of_council_deadlock(self):
+    def test_both_gold_sides_preexisting_block_all_new_exposure(self):
         a=[p(opened=3000),p(side="SELL",opened=3018)]
         d=plan(a,side="WAIT",price=3005)
-        self.assertEqual(len([x for x in d["actions"] if x["action"]!="HOLD"]),1,d)
+        self.assertEqual(d["actions"],[],d)
+        self.assertIn("حماية الاتجاه",d["reason_ar"])
 
     def test_one_time_claim_allows_position_management_side_without_new_entry_match(self):
         now=datetime.now(timezone.utc)
