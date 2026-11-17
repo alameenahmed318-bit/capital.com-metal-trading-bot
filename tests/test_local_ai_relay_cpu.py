@@ -78,6 +78,38 @@ class CpuLocalRelayChecks(unittest.TestCase):
         self.assertEqual(votes,[])
         self.assertIn("CENTRAL WAIT",log)
 
+    def test_chat_final_content_is_parsed(self):
+        observed={}
+        def fake_request(url,method="GET",payload=None,token=None,timeout=12):
+            observed["url"]=url
+            observed["payload"]=payload
+            return {"message":{"content":'{"direction":"SELL","confidence":0.64,"reason_ar":"test"}',
+                               "thinking":"a private scratchpad"},"done_reason":"stop"}
+        with patch.object(relay,"request_json",side_effect=fake_request):
+            vote=relay.model_vote("deepseek-r1:1.5b",{"bar_time":BAR,"decision":"BUY"},timeout_seconds=12)
+        self.assertEqual(vote["direction"],"SELL")
+        self.assertEqual(observed["url"],relay.OLLAMA_URL+"/api/chat")
+        self.assertEqual(observed["payload"]["format"],"json")
+        self.assertEqual(observed["payload"]["think"],False)
+        self.assertEqual(len(observed["payload"]["messages"]),2)
+
+    def test_reasoning_without_final_content_is_not_a_vote(self):
+        def fake_request(url,method="GET",payload=None,token=None,timeout=12):
+            return {"message":{"content":"","thinking":'{"direction":"SELL","confidence":0.99}'},
+                    "done_reason":"length","eval_count":128}
+        output=io.StringIO()
+        with patch.object(relay,"request_json",side_effect=fake_request):
+            with contextlib.redirect_stdout(output):
+                vote=relay.model_vote("deepseek-r1:1.5b",{"bar_time":BAR,"decision":"SELL"})
+        self.assertIsNone(vote)
+        self.assertIn("RESPONSE_DIAG content_chars=0",output.getvalue())
+        self.assertNotIn("0.99",output.getvalue())
+
+    def test_chat_no_thinking_reason_used_as_signal(self):
+        vote=relay.validate_response("qwen3.5:4b",
+            {"message":{"content":"none","thinking":'{"direction":"BUY","confidence":1.0}'}})
+        self.assertIsNone(vote)
+
     def test_json_schema_and_threads(self):
         observed={}
         def fake_request(url,method="GET",payload=None,token=None,timeout=12):
