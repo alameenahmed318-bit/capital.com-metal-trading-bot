@@ -2216,7 +2216,7 @@ if __name__=="__main__":
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_post_close_m1.py",
-                    "test_recovery_candle_guard.py"):
+                    "test_recovery_candle_guard.py","test_local_ai_relay_cpu.py"):
         recovery_suite.addTests(unittest.defaultTestLoader.discover(
             start_dir=test_dir,pattern=pattern))
     recovery_result=unittest.TextTestRunner(verbosity=1).run(recovery_suite)
