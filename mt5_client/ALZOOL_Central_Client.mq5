@@ -7,30 +7,36 @@
 #include <Trade/Trade.mqh>
 
 CTrade g_trade;
-#property version "2.32"
-#property description "AL-ZOOL MT5 telemetry and local profit protection"
+#property version "2.40"
+#property description "AL-ZOOL central AI voting and single-use action authorization"
 
 input group "بيانات الاتصال بالخادم"
-input string InpServerUrl = "https://al-zool-gold-sniper.onrender.com";
+input string InpServerUrl = "https://al-zool-central-engine.onrender.com";
+input bool InpOwnerMode = true;
+input string InpOwnerPairingKey = "";
+input string InpOwnerConnectionId = "";
 input string InpEngineId = "";
 input string InpEngineToken = "";
 input int InpHttpTimeoutMs = 8000;
-input int InpHeartbeatSeconds = 5;
+input int InpHeartbeatSeconds = 2;
 input int InpCandlesToSend = 120;
 input group "إعدادات تنفيذ الدخول المركزي"
-input bool InpEnableCentralTrading = true;
+input bool InpEnableCentralTrading = false;
+input bool InpEnableCentralPositionManagement = false;
+input double InpMaxCentralActionLots = 0.0; // 0 = no optional EA lot cap
+input double InpMaxCentralTotalLots = 0.0; // 0 = no optional EA exposure cap
 input double InpTradeLots = 0.01;
 input ulong InpTradeMagic = 26110801;
-input int InpMaxOpenPositions = 10;
-input bool InpBlockOppositePositions = true;
+input int InpMaxOpenPositions = 0; // 0 = no optional EA position cap
+input bool InpBlockOppositePositions = true; // Legacy input; opposite gold positions are always prohibited
 input int InpATRPeriod = 14;
 input double InpStopLossATR = 1.8;
-input bool InpUseTrailing = true;
+input bool InpUseTrailing = false; // Opt-in; never add a stop without explicit preference
 input double InpTrailStartATR = 1.0;
 input double InpTrailDistanceATR = 0.8;
 input int InpDeviationPoints = 20;
 input group "الأرشيف التاريخي للاختبار"
-input int InpHistoricalCandlesToSend = 5000;
+input int InpHistoricalCandlesToSend = 500;
 input int InpHistoryUploadMinutes = 15;
 
 struct StrategyPositionLink
@@ -43,12 +49,18 @@ struct StrategyPositionLink
 bool g_online=false;
 bool g_serverTradingEnabled=false;
 datetime g_lastHistoryAttempt=0;
+string g_cachedClosedDealsJson=",\"closed_deals\":[]";
+ulong g_lastClosedDealsBuildMs=0;
+bool g_closedDealsDirty=true;
 string g_status="بدء الاتصال";
 bool g_singleCloseEnabled=false,g_groupCloseEnabled=false;
+bool g_groupClosePending=false;
+string g_groupCloseKey="";
 double g_singleProfitTarget=1.0,g_groupProfitTarget=5.0;
-bool g_serverStopLossEnabled=true;
+bool g_serverStopLossEnabled=false;
 bool g_recoveryEnabled=false;
 double g_recoveryLossTrigger=0.0;
+double g_recoveryProfitTarget=0.0; // Account-currency net group profit selected by owner; 0 = break-even
 bool g_recoveryCycleActive=false;
 double g_recoveryReferencePrice=0.0;
 string g_recoveryActiveKey="",g_recoveryPriceKey="";
@@ -66,13 +78,83 @@ int g_entryMaxDelayBars=1;
 double g_entryMaxDeviationATR=0.5;
 int g_emaFastHandle=INVALID_HANDLE,g_emaSlowHandle=INVALID_HANDLE;
 int g_m5Fast=INVALID_HANDLE,g_m5Slow=INVALID_HANDLE,g_m15Fast=INVALID_HANDLE,g_m15Slow=INVALID_HANDLE,g_h1Fast=INVALID_HANDLE,g_h1Slow=INVALID_HANDLE;
-ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0;
+ulong g_lastSnapshotMs=0,g_lastSettingsPollMs=0,g_lastDecisionPollMs=0,g_lastActionPollMs=0;
 string g_aiSignal="WAIT",g_aiReason="بانتظار إشارة المحرك المركزي";
 double g_aiConfidence=0.0;
 long g_aiBarTime=0;
 int g_aiStrategyId=0,g_aiCombinationId=0;
 int g_atrHandle=INVALID_HANDLE;
 string g_executionBarKey="";
+string g_lastClosedDealKey="";
+datetime g_lastClosedDealTime=0; // Server epoch seconds; survives EA/MT5 restart
+void RecordClosedDealTime(datetime dealTime)
+{
+   if(dealTime<=0) return;
+   datetime known=g_lastClosedDealTime;
+   if(g_lastClosedDealKey!="" && GlobalVariableCheck(g_lastClosedDealKey))
+      known=(datetime)MathMax((long)known,(long)GlobalVariableGet(g_lastClosedDealKey));
+   if(dealTime<=known) { g_lastClosedDealTime=known; return; }
+   g_lastClosedDealTime=dealTime;
+   if(g_lastClosedDealKey!="") GlobalVariableSet(g_lastClosedDealKey,(double)dealTime);
+   g_closedDealsDirty=true;
+   Print("AL-ZOOL M1 REENTRY WAIT START | last_closed_deal=",
+         TimeToString(dealTime,TIME_DATE|TIME_SECONDS),
+         " | one FULL M1 candle after close is required");
+}
+
+void SyncLatestClosedDealFromHistory()
+{
+   // Restart/OnTrade safety net if the event arrived before the history deal
+   // was selectable. One short local history query, not a network request.
+   datetime now=TimeCurrent();
+   if(now<=0 || !HistorySelect(now-7*86400,now+5)) return;
+   datetime newest=g_lastClosedDealTime;
+   for(int i=HistoryDealsTotal()-1;i>=0;i--)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0)continue;
+      long kind=HistoryDealGetInteger(deal,DEAL_TYPE);
+      if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL)continue;
+      long entry=HistoryDealGetInteger(deal,DEAL_ENTRY);
+      if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT)continue;
+      datetime closed=(datetime)HistoryDealGetInteger(deal,DEAL_TIME);
+      if(closed>newest && closed<=now+5)newest=closed;
+   }
+   if(newest>g_lastClosedDealTime)RecordClosedDealTime(newest);
+}
+
+bool FreshM1ConfirmedAfterClose(const long decisionBar)
+{
+   if(g_lastClosedDealKey!="" && GlobalVariableCheck(g_lastClosedDealKey))
+      g_lastClosedDealTime=(datetime)MathMax((long)g_lastClosedDealTime,
+                                   (long)GlobalVariableGet(g_lastClosedDealKey));
+   if(g_lastClosedDealTime<=0)return true;
+   datetime firstFull=(datetime)((((long)g_lastClosedDealTime+59)/60)*60);
+   datetime eligibleAt=firstFull+60;
+   datetime lastM1=iTime(_Symbol,PERIOD_M1,1);
+   if(TimeCurrent()<eligibleAt || lastM1<firstFull)
+   {
+      g_status="إعادة الدخول تنتظر إغلاق شمعة M1 كاملة بعد آخر صفقة";
+      static datetime lastWaitPrint=0;
+      if(TimeCurrent()-lastWaitPrint>=25)
+      {
+         Print("AL-ZOOL ENTRY WAIT POST-CLOSE M1 | close=",
+               TimeToString(g_lastClosedDealTime,TIME_DATE|TIME_SECONDS),
+               " | first_full_M1=",TimeToString(firstFull,TIME_DATE|TIME_SECONDS),
+               " | eligible_at=",TimeToString(eligibleAt,TIME_DATE|TIME_SECONDS));
+         lastWaitPrint=TimeCurrent();
+      }
+      return false;
+   }
+   // The signal itself must be recalculated from the post-close candle.
+   if(decisionBar<(long)firstFull)
+   {
+      g_status="شمعة M1 أغلقت، انتظار تحديث تحليل Hybrid بعد الإغلاق";
+      return false;
+   }
+   return true;
+}
+
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,const int strategyId,const int combinationId,const double referencePrice,const double signalATR,const string reason);
 bool ClosePositionTicket(const ulong ticket,const string scope);
 
@@ -88,6 +170,19 @@ string MtfDirection(const ENUM_TIMEFRAMES tf,const int fastHandle,const int slow
    return "WAIT";
 }
 
+string ConnectionId()
+{
+   return InpOwnerMode ? InpOwnerConnectionId : InpEngineId;
+}
+string ConnectionKey()
+{
+   return InpOwnerMode ? InpOwnerPairingKey : InpEngineToken;
+}
+bool ConnectionReady()
+{
+   return InpOwnerMode ? (StringLen(InpOwnerPairingKey)>=32 && StringLen(InpOwnerConnectionId)>=8) :
+      (StringLen(InpEngineId)>=8 && StringLen(InpEngineToken)>=20);
+}
 string BaseUrl()
 {
    string u=InpServerUrl;
@@ -159,13 +254,13 @@ double JsonDouble(const string json,const string key,double fallback)
 bool PollTradeSettings()
 {
    g_serverTradingEnabled=false;
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   if(!ConnectionReady()) return false;
    char data[],result[];
    ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+InpEngineId,
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-control/settings/"+ConnectionId(),
                        headers,1500,data,result,response_headers);
    if(code!=200)
    {
@@ -189,6 +284,8 @@ bool PollTradeSettings()
    if(slValue>0.0) g_serverStopLossValue=slValue;
    g_recoveryEnabled=JsonBool(response,"recovery_enabled");
    g_recoveryLossTrigger=JsonDouble(response,"recovery_loss_trigger",0.0);
+   g_recoveryProfitTarget=JsonDouble(response,"recovery_profit_target",0.0);
+   if(!MathIsValidNumber(g_recoveryProfitTarget) || g_recoveryProfitTarget<0.0) g_recoveryProfitTarget=0.0;
    if(g_recoveryLossTrigger<=0.0) g_recoveryEnabled=false;
    string pmMode=JsonField(response,"mode");
    StringReplace(pmMode,CharToString(34),"");
@@ -211,20 +308,213 @@ bool PollTradeSettings()
    g_entryMaxDeviationATR=MathMax(0.05,MathMin(20.0,JsonDouble(response,"entry_max_deviation_atr",0.5)));
    return true;
 }
-bool PollCentralDecision()
+bool ExecuteOneCentralAction(const string side,const string action,const double requestedLots,const long barTime)
 {
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
-   char data[],result[];
-   ArrayResize(data,0);
-   string headers="Authorization: Bearer "+InpEngineToken+"\r\n";
+   if(g_groupClosePending) return false;
+   if(!InpEnableCentralTrading || !InpEnableCentralPositionManagement || !g_serverTradingEnabled)
+      return false;
+   if(side!="BUY" && side!="SELL") return false;
+   if(action!="ADDON_PROPOSAL" && action!="COOLING_PROPOSAL" && action!="RECOVERY_PROPOSAL")
+      return false;
+   if(StringFind(_Symbol,"XAUUSD")!=0 || barTime<=0) return false;
+   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side))
+      return false;
+   if(requestedLots<=0.0 || (InpMaxCentralActionLots>0 && requestedLots>InpMaxCentralActionLots+1e-8))
+      return false;
+   double totalLots=0.0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      totalLots+=PositionGetDouble(POSITION_VOLUME);
+   }
+   if(InpMaxCentralTotalLots>0 && totalLots+requestedLots>InpMaxCentralTotalLots+1e-8) return false;
+   double lots=NormalizeTradeLots(requestedLots);
+   if(lots<=0.0 || lots>requestedLots+1e-8 || (InpMaxCentralActionLots>0 && lots>InpMaxCentralActionLots+1e-8))
+      return false; // Never round up beyond either central or local risk cap.
+   if(action=="RECOVERY_PROPOSAL" && MathAbs(lots-requestedLots)>1e-8)
+   {
+      Print("AL-ZOOL RECOVERY BLOCKED: broker volume step cannot represent exact x3 lot.");
+      return false;
+   }
+   if(action=="RECOVERY_PROPOSAL")
+   {
+      // Second, local check on the broker's actual closed M1 candle. The
+      // server already verified threshold arming, candle strength and timing.
+      datetime candleOpen=iTime(_Symbol,PERIOD_M1,1);
+      double candleStart=iOpen(_Symbol,PERIOD_M1,1);
+      double candleFinish=iClose(_Symbol,PERIOD_M1,1);
+      if(candleOpen<=0 || candleOpen!=(datetime)barTime ||
+         candleStart<=0.0 || candleFinish<=0.0 ||
+         (side=="BUY" && candleFinish<=candleStart) ||
+         (side=="SELL" && candleFinish>=candleStart))
+      {
+         Print("AL-ZOOL RECOVERY WAIT CANDLE: central M1 vote no longer matches "
+               "broker's last closed M1 direction | bar=",barTime,
+               " actual=",TimeToString(candleOpen,TIME_DATE|TIME_SECONDS),
+               " side=",side);
+         return false;
+      }
+   }
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick) || tick.ask<=0.0 || tick.bid<=0.0)
+      return false;
+   double sl=0.0; // No stop loss when the owner has disabled it in the dashboard.
+   if(g_serverStopLossEnabled)
+   {
+      int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
+      double stopLevel=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
+      double stopDistance=g_serverStopLossValue*_Point;
+      if(g_serverStopLossMode=="ATR")
+      {
+         double atr[];
+         ArraySetAsSeries(atr,true);
+         if(g_atrHandle==INVALID_HANDLE || CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0)
+            return false;
+         stopDistance=atr[0]*g_serverStopLossValue;
+      }
+      stopDistance=MathMax(stopDistance,stopLevel+_Point);
+      sl=side=="BUY"?NormalizeDouble(tick.ask-stopDistance,digits):
+                      NormalizeDouble(tick.bid+stopDistance,digits);
+      if(sl<=0.0) return false;
+   }
+   ENUM_ORDER_TYPE orderType=(side=="BUY"?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
+   double intendedPrice=(side=="BUY"?tick.ask:tick.bid);
+   double requiredMargin=0.0;
+   if(!OrderCalcMargin(orderType,_Symbol,lots,intendedPrice,requiredMargin) ||
+      !MathIsValidNumber(requiredMargin) || requiredMargin<0.0 ||
+      requiredMargin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
+   {
+      Print("AL-ZOOL CENTRAL ACTION BLOCKED: insufficient or unknown free margin.");
+      return false;
+   }
+   string tag=action=="ADDON_PROPOSAL"?"ALZOOL-ADD":
+              (action=="COOLING_PROPOSAL"?"ALZOOL-COOL":"ALZOOL-RECOVERY");
+   g_trade.SetExpertMagicNumber(InpTradeMagic);
+   g_trade.SetDeviationInPoints(InpDeviationPoints);
+   g_trade.SetTypeFillingBySymbol(_Symbol);
+   bool sent=side=="BUY"?
+      g_trade.Buy(lots,_Symbol,0.0,sl,0.0,tag):
+      g_trade.Sell(lots,_Symbol,0.0,sl,0.0,tag);
+   uint code=g_trade.ResultRetcode();
+   bool accepted=sent && (code==TRADE_RETCODE_DONE ||
+                            code==TRADE_RETCODE_DONE_PARTIAL ||
+                            code==TRADE_RETCODE_PLACED);
+   if(accepted)
+   {
+      string key="AZ_CENTRAL_PM_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
+      GlobalVariableSet(key,(double)barTime);
+      Print("AL-ZOOL CENTRAL ACTION ",action," side=",side," lot=",DoubleToString(lots,3),
+            " bar=",barTime," retcode=",code);
+      if(action=="RECOVERY_PROPOSAL")
+      {
+         // Persist the recovery cycle so restarts and missing broker comments
+         // cannot silently reset the group-profit close condition.
+         g_recoveryCycleActive=true;
+         if(StringLen(g_recoveryActiveKey)>0) GlobalVariableSet(g_recoveryActiveKey,1.0);
+         Print("AL-ZOOL RECOVERY OPENED: side=",side,
+               " lot=",DoubleToString(lots,3),
+               " profit target=",DoubleToString(g_recoveryProfitTarget,2),
+               " ",AccountInfoString(ACCOUNT_CURRENCY));
+      }
+   }
+   else Print("AL-ZOOL CENTRAL ACTION REJECTED ",action," ",g_trade.ResultRetcodeDescription());
+   return accepted;
+}
+bool PollCentralActions()
+{
+   if(!InpEnableCentralTrading || !InpEnableCentralPositionManagement ||
+      !g_serverTradingEnabled || !ConnectionReady()) return false;
+   if(StringFind(_Symbol,"XAUUSD")!=0) return false;
+   string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
+   char empty[],result[];
+   ArrayResize(empty,0);
    string response_headers;
    ResetLastError();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+InpEngineId,
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-actions/"+ConnectionId(),
+                       headers,3000,empty,result,response_headers);
+   if(code!=200)
+   {
+      Print("AL-ZOOL central action poll failed: HTTP=",code," err=",GetLastError());
+      return false;
+   }
+   string response=CharArrayToString(result,0,-1,CP_UTF8);
+   if(!JsonBool(response,"execution_ready"))
+   {
+      static datetime lastWaitLog=0;
+      if(TimeCurrent()-lastWaitLog>=30)
+      {
+         string why=JsonField(response,"reason_ar");
+         Print("AL-ZOOL POSITION ACTION WAIT | ",why);
+         lastWaitLog=TimeCurrent();
+      }
+      return false;
+   }
+   string side=JsonField(response,"side");
+   string action=JsonField(response,"action");
+   string nonce=JsonField(response,"authorization_id");
+   StringReplace(side,"\"","");
+   StringReplace(action,"\"","");
+   StringReplace(nonce,"\"","");
+   long bar=(long)StringToInteger(JsonField(response,"bar_time"));
+   long expires=(long)StringToInteger(JsonField(response,"expires_at_unix"));
+   double lots=JsonDouble(response,"lot_cap",0.0);
+   long now=(long)TimeGMT();
+   if(StringLen(nonce)<20 || bar<=0 || expires<=now || expires-now>30) return false;
+   string key="AZ_CENTRAL_PM_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
+   if(GlobalVariableCheck(key) && (long)GlobalVariableGet(key)==bar) return false;
+   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side) ||
+      lots<=0.0 || (InpMaxCentralActionLots>0 && lots>InpMaxCentralActionLots+1e-8)) return false;
+   // Claim the unique central authorization before submitting any broker order.
+   string body="{\"authorization_id\":\""+JsonEscape(nonce)+"\"}";
+   char data[],claimResult[];
+   StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
+   if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
+   string claimHeaders="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
+   ResetLastError();
+   code=WebRequest("POST",BaseUrl()+"/v1/terminal-action-claim/"+ConnectionId(),
+                   claimHeaders,5000,data,claimResult,response_headers);
+   string confirmed=CharArrayToString(claimResult,0,-1,CP_UTF8);
+   if(code!=200 || !JsonBool(confirmed,"execution_authorized"))
+   {
+      Print("AL-ZOOL central action not authorized: HTTP=",code," err=",GetLastError());
+      return false;
+   }
+   string claimSide=JsonField(confirmed,"side");
+   string claimAction=JsonField(confirmed,"action");
+   StringReplace(claimSide,"\"","");
+   StringReplace(claimAction,"\"","");
+   double confirmedLots=JsonDouble(confirmed,"lot_cap",0.0);
+   long claimExpires=(long)StringToInteger(JsonField(confirmed,"expires_at_unix"));
+   if(claimSide!=side || claimAction!=action || MathAbs(confirmedLots-lots)>1e-6 ||
+      claimExpires<=(long)TimeGMT()) return false;
+   return ExecuteOneCentralAction(side,action,lots,bar);
+}
+
+bool PollCentralDecision()
+{
+   if(!ConnectionReady()) return false;
+   char data[],result[];
+   ArrayResize(data,0);
+   string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
+   string response_headers;
+   ResetLastError();
+   ulong startedMs=GetTickCount64();
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId(),
                        headers,1500,data,result,response_headers);
+   ulong elapsedMs=GetTickCount64()-startedMs;
    if(code!=200)
    {
       if(code!=409) Print("AL-ZOOL central decision poll failed: HTTP=",code," err=",GetLastError());
       return false;
+   }
+   static ulong lastDecisionLatencyLog=0;
+   ulong metricAt=GetTickCount64();
+   if(elapsedMs>1200 || lastDecisionLatencyLog==0 ||
+      metricAt-lastDecisionLatencyLog>=30000)
+   {
+      Print("AL-ZOOL LATENCY decision_http_ms=",elapsedMs);
+      lastDecisionLatencyLog=metricAt;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    string signal=JsonField(response,"signal");
@@ -233,6 +523,8 @@ bool PollCentralDecision()
    string bar_time=JsonField(response,"bar_time");
    string strategy_id=JsonField(response,"strategy_id");
    string execution_ready=JsonField(response,"execution_ready");
+   string authorization_id=JsonField(response,"authorization_id");
+   string authorization_expires=JsonField(response,"authorization_expires_at");
    string combination_id=JsonField(response,"combination_id");
    double entry_reference_price=JsonDouble(response,"entry_reference_price",0.0);
    double entry_atr=JsonDouble(response,"entry_atr",0.0);
@@ -243,7 +535,14 @@ bool PollCentralDecision()
    long parsed_bar=(long)StringToInteger(bar_time);
    int parsed_strategy=(int)StringToInteger(strategy_id);
    int parsed_combination=(int)StringToInteger(combination_id);
-   bool ready=(StringFind(execution_ready,"true")==0);
+   long authorization_expiry=(long)StringToInteger(authorization_expires);
+   long authorization_now=(long)TimeGMT();
+   bool authorization_valid=(StringLen(authorization_id)>=8 &&
+      authorization_expiry>authorization_now &&
+      authorization_expiry-authorization_now<=20);
+   bool ready=(StringFind(execution_ready,"true")==0 && authorization_valid);
+   if(StringFind(execution_ready,"true")==0 && !authorization_valid)
+      Print("AL-ZOOL ENTRY BLOCKED: council authorization missing or expired.");
    if(parsed_bar!=g_aiBarTime || signal!=g_aiSignal)
       Print("AL-ZOOL CENTRAL AI: ",signal," | confidence=",DoubleToString(parsed_confidence*100.0,1),
             "% | ",reason);
@@ -278,7 +577,7 @@ int CountAlzoolPositions()
    }
    return count;
 }
-// Returns account-wide open BUY/SELL counts, regardless of symbol or magic number.
+// Returns open BUY/SELL counts on this gold symbol, regardless of magic number.
 void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 {
    buyPositions=0; sellPositions=0;
@@ -286,6 +585,7 @@ void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
    {
       ulong ticket=PositionGetTicket(i);
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol) continue;
       ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
       if(type==POSITION_TYPE_BUY) buyPositions++;
       else if(type==POSITION_TYPE_SELL) sellPositions++;
@@ -293,7 +593,8 @@ void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 }
 bool IsAccountDirectionAllowed(const string direction)
 {
-   if(!InpBlockOppositePositions) return true;
+   // Never add an opposite XAUUSD position, even with older Inputs=false.
+   // This applies to entry, add-on, cooling, and smart recovery.
    int buys=0,sells=0;
    GetAccountDirectionCounts(buys,sells);
    // If both sides already exist, fail closed: do not add any new exposure.
@@ -306,8 +607,10 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
                          const int strategyId,const int combinationId,const double referencePrice,
                          const double signalATR,const string reason)
 {
+   if(g_groupClosePending) return; // Never reopen exposure during group closure.
+   if(!FreshM1ConfirmedAfterClose(decisionBar)) return;
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
-      confidence<0.45 || strategyId<1 || strategyId>200 || decisionBar<=0) return;
+      (confidence<0.0 || confidence>1.0) || strategyId<1 || strategyId>200 || decisionBar<=0) return;
    if(!IsAccountDirectionAllowed(direction))
    { g_status="قفل الاتجاه الواحد: توجد صفقات في الاتجاه المعاكس"; return; }
    datetime currentBar=iTime(_Symbol,(ENUM_TIMEFRAMES)_Period,0);
@@ -323,7 +626,7 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
             " max_seconds=",periodSeconds*g_entryMaxDelayBars," bar=",decisionBar);
       return;
    }
-   if(CountAlzoolPositions()>=InpMaxOpenPositions) { g_status="الحد الأقصى للصفقات مفتوح"; return; }
+   if(InpMaxOpenPositions>0 && CountAlzoolPositions()>=InpMaxOpenPositions) { g_status="الحد الأقصى للصفقات مفتوح"; return; }
    double lots=NormalizeTradeLots(InpTradeLots);
    if(lots<=0.0) { g_status="حجم اللوت غير صالح"; return; }
    double atr[];
@@ -396,164 +699,13 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
 }
 void ManagePositionAddons()
 {
-   if(!g_serverTradingEnabled || !InpEnableCentralTrading ||
-      (!g_addonEnabled && !g_coolingEnabled) || g_atrHandle==INVALID_HANDLE) return;
-   double atr[]; ArraySetAsSeries(atr,true);
-   if(CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0) return;
-   MqlTick tick; if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0 || tick.ask<tick.bid) return;
-
-   int buyCount=0,sellCount=0,addonCount=0,coolingCount=0;
-   int buyAddonCount=0,sellAddonCount=0;
-   double buyNet=0.0,sellNet=0.0,lastBuyPrice=0.0,lastSellPrice=0.0;
-   datetime lastBuyTime=0,lastSellTime=0;
-   double baseBuyLot=0.0,baseSellLot=0.0;
-   for(int i=PositionsTotal()-1;i>=0;i--)
-   {
-      ulong ticket=PositionGetTicket(i);
-      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)!=_Symbol ||
-         (ulong)PositionGetInteger(POSITION_MAGIC)!=InpTradeMagic) continue;
-      ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-      string comment=PositionGetString(POSITION_COMMENT);
-      double volume=PositionGetDouble(POSITION_VOLUME);
-      datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
-      if(StringFind(comment,"ALZOOL-ADD")==0)
-      {
-         addonCount++;
-         if(type==POSITION_TYPE_BUY) buyAddonCount++;
-         else if(type==POSITION_TYPE_SELL) sellAddonCount++;
-      }
-      if(StringFind(comment,"ALZOOL-COOL")==0) coolingCount++;
-      if(type==POSITION_TYPE_BUY)
-      {
-         buyCount++; buyNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
-         if(opened>=lastBuyTime){lastBuyTime=opened;lastBuyPrice=PositionGetDouble(POSITION_PRICE_OPEN);}
-         if(baseBuyLot==0.0 && StringFind(comment,"ALZOOL-ADD")<0 && StringFind(comment,"ALZOOL-COOL")<0) baseBuyLot=volume;
-      }
-      else if(type==POSITION_TYPE_SELL)
-      {
-         sellCount++; sellNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
-         if(opened>=lastSellTime){lastSellTime=opened;lastSellPrice=PositionGetDouble(POSITION_PRICE_OPEN);}
-         if(baseSellLot==0.0 && StringFind(comment,"ALZOOL-ADD")<0 && StringFind(comment,"ALZOOL-COOL")<0) baseSellLot=volume;
-      }
-   }
-   if(PositionsTotal()>=InpMaxOpenPositions) return;
-   // Add-ons/cooling must follow the one-way direction lock too.
-   int accountBuys=0,accountSells=0;
-   GetAccountDirectionCounts(accountBuys,accountSells);
-   if(InpBlockOppositePositions && accountBuys>0 && accountSells>0) return;
-   double emaFast[],emaSlow[]; ArraySetAsSeries(emaFast,true); ArraySetAsSeries(emaSlow,true);
-   bool haveTrend=(g_emaFastHandle!=INVALID_HANDLE && g_emaSlowHandle!=INVALID_HANDLE &&
-                   CopyBuffer(g_emaFastHandle,0,1,1,emaFast)==1 &&
-                   CopyBuffer(g_emaSlowHandle,0,1,1,emaSlow)==1);
-   string chosen=""; ENUM_POSITION_TYPE side=POSITION_TYPE_BUY;
-   double lots=0.0,distancePoints=0.0,lastPrice=0.0,baseLot=0.0;
-   int sideCount=0;
-   if(g_pmMode=="AI")
-   {
-      if(!haveTrend) return;
-      bool trendUp=emaFast[0]>emaSlow[0];
-      // AI classifies continuation pullbacks as add-ons and counter-trend drawdown as cooling.
-      if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice && trendUp && g_addonEnabled && addonCount<g_addonMax)
-      { chosen="ADD";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;distancePoints=(atr[0]*0.8)/_Point; }
-      else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice && !trendUp && g_addonEnabled && addonCount<g_addonMax)
-      { chosen="ADD";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;distancePoints=(atr[0]*0.8)/_Point; }
-      else if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice && !trendUp && g_coolingEnabled && coolingCount<g_coolingMax)
-      { chosen="COOL";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;baseLot=baseBuyLot;sideCount=buyCount;distancePoints=(atr[0]*1.2)/_Point; }
-      else if(sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice && trendUp && g_coolingEnabled && coolingCount<g_coolingMax)
-      { chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;baseLot=baseSellLot;sideCount=sellCount;distancePoints=(atr[0]*1.2)/_Point; }
-      if(chosen!="")
-      {
-         if(chosen=="ADD")
-         {
-            int nextAddon=(side==POSITION_TYPE_BUY?buyAddonCount:sellAddonCount)+1;
-            lots=NormalizeTradeLots(MathMin(g_addonMaxLot,baseLot*MathPow(g_addonMultiplier,nextAddon)));
-         }
-         else
-         {
-            int nextCooling=(side==POSITION_TYPE_BUY?buyCount-buyAddonCount:sellCount-sellAddonCount);
-            nextCooling=(int)MathMax(1,nextCooling);
-            lots=NormalizeTradeLots(MathMin(g_coolingMaxLot,baseLot*MathPow(g_coolingMultiplier,nextCooling)));
-         }
-      }
-   }
-   else
-   {
-      if(buyCount>0 && buyNet<0.0 && tick.ask<lastBuyPrice)
-      {
-         double adverseBuy=(lastBuyPrice-tick.ask)/_Point;
-         if(g_addonEnabled && addonCount<g_addonMax && adverseBuy>=g_addonManualDistance)
-         {chosen="ADD";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;lots=NormalizeTradeLots(g_addonManualLot);distancePoints=g_addonManualDistance;}
-         else if(g_coolingEnabled && coolingCount<g_coolingMax && adverseBuy>=g_coolingManualDistance)
-         {chosen="COOL";side=POSITION_TYPE_BUY;lastPrice=lastBuyPrice;lots=NormalizeTradeLots(g_coolingManualLot);distancePoints=g_coolingManualDistance;}
-      }
-      if(chosen=="" && sellCount>0 && sellNet<0.0 && tick.bid>lastSellPrice)
-      {
-         double adverseSell=(tick.bid-lastSellPrice)/_Point;
-         if(g_addonEnabled && addonCount<g_addonMax && adverseSell>=g_addonManualDistance)
-         {chosen="ADD";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;lots=NormalizeTradeLots(g_addonManualLot);distancePoints=g_addonManualDistance;}
-         else if(g_coolingEnabled && coolingCount<g_coolingMax && adverseSell>=g_coolingManualDistance)
-         {chosen="COOL";side=POSITION_TYPE_SELL;lastPrice=lastSellPrice;lots=NormalizeTradeLots(g_coolingManualLot);distancePoints=g_coolingManualDistance;}
-      }
-   }
-   if(chosen=="" || lots<=0.0 || distancePoints<=0.0 || lastPrice<=0.0) return;
-   // Apply the configured per-order cap in both AI and manual modes.
-   double orderCap=(chosen=="ADD"?g_addonMaxLot:g_coolingMaxLot);
-   lots=NormalizeTradeLots(MathMin(lots,orderCap));
-   if(lots<=0.0 || lots>orderCap+1e-8) return;
-   double currentManagedLots=0.0;
-   for(int p=PositionsTotal()-1;p>=0;p--)
-   {
-      ulong managedTicket=PositionGetTicket(p);
-      if(managedTicket==0 || !PositionSelectByTicket(managedTicket)) continue;
-      if(PositionGetString(POSITION_SYMBOL)==_Symbol &&
-         (ulong)PositionGetInteger(POSITION_MAGIC)==InpTradeMagic)
-      {
-         string managedComment=PositionGetString(POSITION_COMMENT);
-         if(StringFind(managedComment,"ALZOOL-ADD")==0 || StringFind(managedComment,"ALZOOL-COOL")==0)
-            currentManagedLots+=PositionGetDouble(POSITION_VOLUME);
-      }
-   }
-   if(currentManagedLots+lots>g_maxTotalAddCoolingLots+1e-8)
-   {
-      g_status="تم إيقاف الإضافة: سقف إجمالي لوتات التعزيز والتبريد";
-      return;
-   }
-   if(InpBlockOppositePositions && side==POSITION_TYPE_BUY && accountSells>0) return;
-   if(InpBlockOppositePositions && side==POSITION_TYPE_SELL && accountBuys>0) return;
-   double adverse=(side==POSITION_TYPE_BUY?(lastPrice-tick.ask)/_Point:(tick.bid-lastPrice)/_Point);
-   if(adverse<distancePoints) return;
-   double minDist=(double)SymbolInfoInteger(_Symbol,SYMBOL_TRADE_STOPS_LEVEL)*_Point;
-   int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
-   double slDist=0.0,sl=0.0,tp=0.0;
-   if(g_serverStopLossEnabled)
-   {
-      slDist=(g_serverStopLossMode=="POINTS")?g_serverStopLossValue*_Point:atr[0]*g_serverStopLossValue;
-      slDist=MathMax(slDist,minDist+_Point);
-   }
-   g_trade.SetExpertMagicNumber(InpTradeMagic);g_trade.SetDeviationInPoints(InpDeviationPoints);
-   g_trade.SetTypeFillingBySymbol(_Symbol);
-   bool sent=false;
-   if(side==POSITION_TYPE_BUY)
-   {
-      if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.ask-slDist,digits);
-      sent=g_trade.Buy(lots,_Symbol,0.0,sl,tp,"ALZOOL-"+chosen);
-   }
-   else
-   {
-      if(g_serverStopLossEnabled) sl=NormalizeDouble(tick.bid+slDist,digits);
-      sent=g_trade.Sell(lots,_Symbol,0.0,sl,tp,"ALZOOL-"+chosen);
-   }
-   uint rc=g_trade.ResultRetcode();
-   if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
-      Print("AL-ZOOL ",chosen," accepted direction=",(side==POSITION_TYPE_BUY?"BUY":"SELL"),
-            " lot=",DoubleToString(lots,2)," adverse_points=",DoubleToString(adverse,1),
-            " dynamic_distance=",DoubleToString(distancePoints,1));
-   else Print("AL-ZOOL ",chosen," rejected: ",g_trade.ResultRetcodeDescription());
+   // Legacy local add-on/cooling code was removed deliberately.
+   // Only PollCentralActions may claim an action-specific signed-off nonce
+   // and then call ExecuteOneCentralAction; no independent order path.
 }
 void ManageEntryTrailing()
 {
-   if(!InpUseTrailing || g_atrHandle==INVALID_HANDLE) return;
+   if(!InpUseTrailing || !g_serverStopLossEnabled || g_atrHandle==INVALID_HANDLE) return;
    double atr[]; ArraySetAsSeries(atr,true);
    if(CopyBuffer(g_atrHandle,0,1,1,atr)!=1 || atr[0]<=0.0) return;
    MqlTick tick; if(!SymbolInfoTick(_Symbol,tick)) return;
@@ -669,7 +821,18 @@ bool EvaluateSmartRecovery()
       double lots=0.0;int count=0;
       double net=RecoveryGroupNet(lots,count);
       if(count==0){ResetRecoveryCycle();return false;}
-      if(net>=0.0) RecoveryCloseAll();
+      if(net>=g_recoveryProfitTarget)
+      {
+         // Latch the requested group close across partial fills. Otherwise a
+         // price retracement after closing one leg would stop the remaining closes.
+         g_groupClosePending=true;
+         if(StringLen(g_groupCloseKey)>0) GlobalVariableSet(g_groupCloseKey,1.0);
+         Print("AL-ZOOL RECOVERY TARGET REACHED: group net=",
+               DoubleToString(net,2)," target=",DoubleToString(g_recoveryProfitTarget,2),
+               " ",AccountInfoString(ACCOUNT_CURRENCY),
+               " | closing ALL account positions.");
+         RecoveryCloseAll();
+      }
       return true;
    }
    if(!g_recoveryEnabled || g_recoveryLossTrigger<=0.0) return false;
@@ -677,72 +840,54 @@ bool EvaluateSmartRecovery()
    double groupNet=RecoveryGroupNet(totalLots,totalPositions);
    if(totalPositions<=0){g_recoveryReferencePrice=0.0;return false;}
    if(groupNet>-g_recoveryLossTrigger) return false;
-   MqlTick tick;
-   if(!SymbolInfoTick(_Symbol,tick) || tick.bid<=0.0) return true;
-   if(g_recoveryReferencePrice<=0.0)
+   // The loss threshold has been reached. The central position-action
+   // planner decides whether a compatible x3 recovery can be authorized.
+   // This local monitor must not open another, duplicate recovery trade.
+   static datetime lastRecoveryCouncilBlockLog=0;
+   if(TimeCurrent()-lastRecoveryCouncilBlockLog>=60)
    {
-      g_recoveryReferencePrice=tick.bid;
-      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
-      Print("AL-ZOOL SMART RECOVERY armed: account loss=",DoubleToString(groupNet,2),
-            " trigger=-",DoubleToString(g_recoveryLossTrigger,2),
-            " total lots=",DoubleToString(totalLots,2),". Waiting for next price movement.");
-      return true;
+      Print("AL-ZOOL RECOVERY ARMED: net=",DoubleToString(groupNet,2),
+            " trigger=",DoubleToString(g_recoveryLossTrigger,2),
+            " | awaiting central position-action proposal / execution diagnostics.");
+      lastRecoveryCouncilBlockLog=TimeCurrent();
    }
-   if(MathAbs(tick.bid-g_recoveryReferencePrice)<_Point*0.1) return true;
-   ENUM_ORDER_TYPE orderType=(tick.bid>g_recoveryReferencePrice?ORDER_TYPE_BUY:ORDER_TYPE_SELL);
-   double rawLots=totalLots*2.0;
-   double minLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
-   double maxLot=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
-   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
-   if(step<=0.0 || rawLots<minLot-1e-8 || rawLots>maxLot+1e-8 ||
-      MathAbs(rawLots/step-MathRound(rawLots/step))>1e-7)
-   {
-      Print("AL-ZOOL SMART RECOVERY blocked: exact x2 lot ",DoubleToString(rawLots,8),
-            " is outside broker min/max/step. No automatic lot reduction.");
-      g_recoveryReferencePrice=tick.bid;
-      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
-      return true;
-   }
-   double price=(orderType==ORDER_TYPE_BUY?tick.ask:tick.bid),margin=0.0;
-   if(!OrderCalcMargin(orderType,_Symbol,rawLots,price,margin) ||
-      margin>AccountInfoDouble(ACCOUNT_MARGIN_FREE))
-   {
-      Print("AL-ZOOL SMART RECOVERY blocked: insufficient free margin for exact x2 lot ",
-            DoubleToString(rawLots,2),".");
-      g_recoveryReferencePrice=tick.bid;
-      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
-      return true;
-   }
-   g_trade.SetExpertMagicNumber(InpTradeMagic);
-   g_trade.SetDeviationInPoints(InpDeviationPoints);
-   g_trade.SetTypeFillingBySymbol(_Symbol);
-   bool sent=(orderType==ORDER_TYPE_BUY?
-      g_trade.Buy(rawLots,_Symbol,0.0,0.0,0.0,"ALZOOL-RECOVERY"):
-      g_trade.Sell(rawLots,_Symbol,0.0,0.0,0.0,"ALZOOL-RECOVERY"));
-   uint rc=g_trade.ResultRetcode();
-   if(sent && (rc==TRADE_RETCODE_DONE || rc==TRADE_RETCODE_PLACED || rc==TRADE_RETCODE_DONE_PARTIAL))
-   {
-      g_recoveryCycleActive=true;
-      if(StringLen(g_recoveryActiveKey)>0) GlobalVariableSet(g_recoveryActiveKey,1.0);
-      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableDel(g_recoveryPriceKey);
-      g_recoveryReferencePrice=0.0;
-      Print("AL-ZOOL SMART RECOVERY opened ",(orderType==ORDER_TYPE_BUY?"BUY":"SELL"),
-            " exact x2 lot=",DoubleToString(rawLots,2),
-            " account positions=",totalPositions," group net=",DoubleToString(groupNet,2));
-   }
-   else
-   {
-      Print("AL-ZOOL SMART RECOVERY order rejected: ",g_trade.ResultRetcodeDescription());
-      g_recoveryReferencePrice=tick.bid;
-      if(StringLen(g_recoveryPriceKey)>0) GlobalVariableSet(g_recoveryPriceKey,g_recoveryReferencePrice);
-   }
-   return true;
+   return false;
 }
 void EvaluateAutoClose()
 {
-   if(EvaluateSmartRecovery()) return;
    int total=PositionsTotal();
-   if(total<=0) return;
+   if(total<=0)
+   {
+      if(g_groupClosePending && StringLen(g_groupCloseKey)>0)
+         GlobalVariableDel(g_groupCloseKey);
+      g_groupClosePending=false;
+      EvaluateSmartRecovery(); // Reset an old recovery cycle if all positions closed.
+      return;
+   }
+   // Once a group profit target has been hit, retry closing EVERY remaining
+   // position, even after the first success leaves only one position.
+   // Never mistake that remaining position for a new "single TP" case.
+   if(g_groupClosePending)
+   {
+      bool allAccepted=true;
+      for(int k=PositionsTotal()-1;k>=0;k--)
+      {
+         ulong ticket=PositionGetTicket(k);
+         if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+         if(!ClosePositionTicket(ticket,"group-pending")) allAccepted=false;
+      }
+      if(PositionsTotal()==0)
+      {
+         g_groupClosePending=false;
+         if(StringLen(g_groupCloseKey)>0) GlobalVariableDel(g_groupCloseKey);
+         Print("AL-ZOOL GROUP CLOSE COMPLETE: all open positions closed.");
+      }
+      else if(!allAccepted)
+         Print("AL-ZOOL GROUP CLOSE PARTIAL: remaining=",PositionsTotal(),
+               ". Retrying at next tick/timer.");
+      return;
+   }
+   if(EvaluateSmartRecovery()) return;
    double groupNet=0.0;
    for(int i=total-1;i>=0;i--)
    {
@@ -750,24 +895,19 @@ void EvaluateAutoClose()
       if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
       groupNet+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
    }
-   // With 2+ open positions, ONLY the combined group target is evaluated.
-   // Never fall through to the single-position rule in a multi-position account.
    if(total>=2)
    {
       if(g_groupCloseEnabled && groupNet>=g_groupProfitTarget)
       {
-         Print("AL-ZOOL GROUP PROFIT TARGET reached: ",DoubleToString(groupNet,2),
-               " >= ",DoubleToString(g_groupProfitTarget,2),". Closing all open positions.");
-         for(int j=PositionsTotal()-1;j>=0;j--)
-         {
-            ulong ticket=PositionGetTicket(j);
-            if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-            ClosePositionTicket(ticket,"group");
-         }
+         g_groupClosePending=true;
+         if(StringLen(g_groupCloseKey)>0) GlobalVariableSet(g_groupCloseKey,1.0);
+         Print("AL-ZOOL GROUP CLOSE START: ",DoubleToString(groupNet,2),
+               " target=",DoubleToString(g_groupProfitTarget,2),
+               " positions=",total,". All tickets will be retried until closed.");
+         EvaluateAutoClose();
       }
       return;
    }
-   // Exactly one open position: apply the single-position target to that position only.
    if(total==1 && g_singleCloseEnabled)
    {
       ulong ticket=PositionGetTicket(0);
@@ -775,11 +915,7 @@ void EvaluateAutoClose()
       {
          double net=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
          if(net>=g_singleProfitTarget)
-         {
-            Print("AL-ZOOL SINGLE PROFIT TARGET reached ticket ",ticket,": ",
-                  DoubleToString(net,2)," >= ",DoubleToString(g_singleProfitTarget,2));
             ClosePositionTicket(ticket,"single");
-         }
       }
    }
 }
@@ -794,16 +930,21 @@ void AppendCandle(string &out,const MqlRates &bar,int digits)
 }
 bool SendHistoricalBatch()
 {
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20) return false;
+   if(!ConnectionReady()) return false;
    MqlRates rates[];
    ArraySetAsSeries(rates,true);
-   int wanted=(int)MathMax(20,MathMin(10000,InpHistoricalCandlesToSend));
+   // Historical sync is lower priority than live trading/telemetry.
+   // Cap batches even when an old chart preset still requests 5000+ bars.
+   int wanted=(int)MathMax(20,MathMin(500,InpHistoricalCandlesToSend));
    int copied=CopyRates(_Symbol,(ENUM_TIMEFRAMES)_Period,1,wanted,rates);
    if(copied<20)
    {
       Print("AL-ZOOL history upload skipped: only ",copied," closed bars are available.");
       return false;
    }
+   static datetime lastUploadedClosedBar=0;
+   if(lastUploadedClosedBar>0 && rates[0].time<=lastUploadedClosedBar)
+      return true; // Do not resend unchanged historical ranges every 15 minutes.
 
    double point=SymbolInfoDouble(_Symbol,SYMBOL_POINT);
    double tick_size=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_TICK_SIZE);
@@ -837,11 +978,11 @@ bool SendHistoricalBatch()
    char data[],result[];
    StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-history/batch/"+InpEngineId,
-                       headers,30000,data,result,response_headers);
+   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-history/batch/"+ConnectionId(),
+                       headers,6000,data,result,response_headers);
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    if(code!=200)
    {
@@ -849,7 +990,8 @@ bool SendHistoricalBatch()
             " body=",StringSubstr(response,0,400));
       return false;
    }
-   Print("AL-ZOOL historical candles uploaded: ",sent," bars. ",StringSubstr(response,0,250));
+   lastUploadedClosedBar=rates[0].time;
+   Print("AL-ZOOL historical candles uploaded: ",sent," bars (bounded noncritical sync).");
    return true;
 }
 
@@ -863,9 +1005,9 @@ int StrategyIdFromComment(const string comment)
 
 bool SendLiveSnapshot()
 {
-   if(StringLen(InpEngineId)<8 || StringLen(InpEngineToken)<20)
+   if(!ConnectionReady())
    {
-      g_status="أدخل معرّف الاتصال ورمز الترخيص";
+      g_status=InpOwnerMode ? "أدخل مفتاح اقتران جهاز المالك" : "أدخل معرّف الاتصال ورمز العميل";
       return false;
    }
 
@@ -885,6 +1027,18 @@ bool SendLiveSnapshot()
    body+=",\"timeframe\":\""+EnumToString((ENUM_TIMEFRAMES)_Period)+"\"";
    body+=",\"mtf_bias\":{\"M5\":\""+MtfDirection(PERIOD_M5,g_m5Fast,g_m5Slow)+"\",\"M15\":\""+MtfDirection(PERIOD_M15,g_m15Fast,g_m15Slow)+"\",\"H1\":\""+MtfDirection(PERIOD_H1,g_h1Fast,g_h1Slow)+"\"}";
    body+=",\"terminal_build\":"+IntegerToString((int)TerminalInfoInteger(TERMINAL_BUILD));
+   body+=",\"last_closed_deal_time\":"+IntegerToString((long)g_lastClosedDealTime);
+   body+=",\"last_m1_closed_open\":"+IntegerToString((long)iTime(_Symbol,PERIOD_M1,1));
+   body+=",\"mt5_position_management_enabled\":"+(InpEnableCentralPositionManagement?"true":"false");
+   body+=",\"mt5_central_trading_enabled\":"+(InpEnableCentralTrading?"true":"false");
+   // Match the exact account-wide recovery net used by this EA (including
+   // position commissions and fees from deal history) with the server planner.
+   if(g_recoveryEnabled && PositionsTotal()>0)
+   {
+      double recoveryLots=0.0;int recoveryCount=0;
+      double recoveryNet=RecoveryGroupNet(recoveryLots,recoveryCount);
+      body+=",\"recovery_group_net\":"+JNum(recoveryNet);
+   }
 
    body+=",\"positions\":[";
    int count=0;
@@ -936,7 +1090,13 @@ bool SendLiveSnapshot()
    }
    body+="]";
 
-   // Closed deals for the last 30 days; telemetry only.
+   ulong historyNow=GetTickCount64();
+   bool historyRefreshed=(g_closedDealsDirty || g_lastClosedDealsBuildMs==0 ||
+      historyNow-g_lastClosedDealsBuildMs>=30000);
+   if(historyRefreshed)
+   {
+   // Cache 30-day deal history; avoid re-selecting and scanning it on every live heartbeat.
+   string historyJson="";
    datetime history_from=TimeCurrent()-30*86400;
    if(HistorySelect(history_from,TimeCurrent()))
    {
@@ -972,7 +1132,7 @@ bool SendLiveSnapshot()
          strategy_links[found].strategy_id=strategy_id;
          strategy_links[found].strategy_comment=entry_comment;
       }
-      body+=",\"closed_deals\":[";
+      historyJson+=",\"closed_deals\":[";
       int deals_sent=0;
       int total_deals=HistoryDealsTotal();
       for(int h=total_deals-1;h>=0 && deals_sent<200;h--)
@@ -982,7 +1142,7 @@ bool SendLiveSnapshot()
          long entry=HistoryDealGetInteger(deal_ticket,DEAL_ENTRY);
          if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT) continue;
          string deal_symbol=HistoryDealGetString(deal_ticket,DEAL_SYMBOL);
-         if(deals_sent>0) body+=",";
+         if(deals_sent>0) historyJson+=",";
          long closed_position_id=HistoryDealGetInteger(deal_ticket,DEAL_POSITION_ID);
          int linked_strategy_id=0;
          string linked_strategy_comment="";
@@ -995,34 +1155,47 @@ bool SendLiveSnapshot()
                break;
             }
          }
-         body+="{\"ticket\":\""+(string)deal_ticket+"\"";
-         body+=",\"position_id\":\""+(string)closed_position_id+"\"";
-         body+=",\"strategy_id\":"+IntegerToString(linked_strategy_id);
-         body+=",\"strategy_comment\":\""+JsonEscape(linked_strategy_comment)+"\"";
-         body+=",\"symbol\":\""+JsonEscape(deal_symbol)+"\"";
-         body+=",\"type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
-         body+=",\"deal_type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
-         body+=",\"entry\":"+IntegerToString((int)entry);
-         body+=",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_REASON));
-         body+=",\"volume\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_VOLUME),2);
-         body+=",\"price\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PRICE),(int)SymbolInfoInteger(deal_symbol,SYMBOL_DIGITS));
-         body+=",\"profit\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PROFIT));
-         body+=",\"commission\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_COMMISSION));
-         body+=",\"swap\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_SWAP));
-         body+=",\"fee\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_FEE));
-         body+=",\"magic\":\""+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_MAGIC))+"\"";
-         body+=",\"comment\":\""+JsonEscape(HistoryDealGetString(deal_ticket,DEAL_COMMENT))+"\"";
-         body+=",\"time\":"+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_TIME))+"}";
+         historyJson+="{\"ticket\":\""+(string)deal_ticket+"\"";
+         historyJson+=",\"position_id\":\""+(string)closed_position_id+"\"";
+         historyJson+=",\"strategy_id\":"+IntegerToString(linked_strategy_id);
+         historyJson+=",\"strategy_comment\":\""+JsonEscape(linked_strategy_comment)+"\"";
+         historyJson+=",\"symbol\":\""+JsonEscape(deal_symbol)+"\"";
+         historyJson+=",\"type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
+         historyJson+=",\"deal_type\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_TYPE));
+         historyJson+=",\"entry\":"+IntegerToString((int)entry);
+         historyJson+=",\"reason\":"+IntegerToString((int)HistoryDealGetInteger(deal_ticket,DEAL_REASON));
+         historyJson+=",\"volume\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_VOLUME),2);
+         historyJson+=",\"price\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PRICE),(int)SymbolInfoInteger(deal_symbol,SYMBOL_DIGITS));
+         historyJson+=",\"profit\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_PROFIT));
+         historyJson+=",\"commission\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_COMMISSION));
+         historyJson+=",\"swap\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_SWAP));
+         historyJson+=",\"fee\":"+JNum(HistoryDealGetDouble(deal_ticket,DEAL_FEE));
+         historyJson+=",\"magic\":\""+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_MAGIC))+"\"";
+         historyJson+=",\"comment\":\""+JsonEscape(HistoryDealGetString(deal_ticket,DEAL_COMMENT))+"\"";
+         historyJson+=",\"time\":"+IntegerToString((long)HistoryDealGetInteger(deal_ticket,DEAL_TIME))+"}";
          deals_sent++;
       }
-      body+="]";
+      historyJson+="]";
    }
-   else body+=",\"closed_deals\":[]";
+   else historyJson+=",\"closed_deals\":[]";
+
+      g_cachedClosedDealsJson=historyJson;
+      g_lastClosedDealsBuildMs=historyNow;
+      g_closedDealsDirty=false;
+   }
+   // Only send the complete closed-deal archive on a change or refresh.
+   // Account balance, positions, orders, ticks and candles remain live.
+   body+=(historyRefreshed ? g_cachedClosedDealsJson :
+      ",\"closed_deals\":[],\"closed_deals_unchanged\":true");
 
    MqlTick tick;
    bool have_tick=SymbolInfoTick(_Symbol,tick);
    int digits=(int)SymbolInfoInteger(_Symbol,SYMBOL_DIGITS);
    body+=",\"tick\":{\"bid\":"+JNum(have_tick?tick.bid:0.0,digits);
+   body+=",\"point_size\":"+JNum(_Point,10);
+   body+=",\"volume_min\":"+JNum(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),8);
+   body+=",\"volume_max\":"+JNum(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX),8);
+   body+=",\"volume_step\":"+JNum(SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP),8);
    body+=",\"ask\":"+JNum(have_tick?tick.ask:0.0,digits);
    body+=",\"spread\":"+JNum(have_tick?(tick.ask-tick.bid)/_Point:0.0,1)+"}";
 
@@ -1052,35 +1225,56 @@ bool SendLiveSnapshot()
    char data[],result[];
    StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
-   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+InpEngineToken+"\r\n";
+   string headers="Content-Type: application/json\r\nAuthorization: Bearer "+ConnectionKey()+"\r\n";
    string response_headers;
    ResetLastError();
-   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-state/live/"+InpEngineId,
+   ulong requestStartedMs=GetTickCount64();
+   int code=WebRequest("POST",BaseUrl()+"/v1/terminal-state/live/"+ConnectionId(),
                        headers,InpHttpTimeoutMs,data,result,response_headers);
+   ulong totalRequestMs=GetTickCount64()-requestStartedMs;
    if(code!=200)
    {
       string response=CharArrayToString(result,0,-1,CP_UTF8);
       g_status="فشل إرسال بيانات الحساب؛ HTTP="+IntegerToString(code)+
                " err="+IntegerToString(GetLastError());
       Print("AL-ZOOL telemetry error: HTTP=",code," body=",StringSubstr(response,0,500));
+      g_closedDealsDirty=true; // Resend history if the previous POST failed.
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
    g_status="متصل — تم إرسال بيانات الحساب والصفقات والشموع";
-   Print("AL-ZOOL telemetry accepted: ",StringSubstr(response,0,300));
+   // Distinguish server CPU time from end-to-end network time.
+   // Report every 30 seconds (or when slow), without printing pairing keys.
+   static ulong lastMetricLogMs=0;
+   ulong stamp=GetTickCount64();
+   if(totalRequestMs>1500 || lastMetricLogMs==0 || stamp-lastMetricLogMs>=30000)
+   {
+      double serverMs=JsonDouble(response,"server_processing_ms",-1.0);
+      Print("AL-ZOOL LATENCY telemetry_http_ms=",totalRequestMs,
+            " server_processing_ms=",DoubleToString(serverMs,1),
+            " payload_bytes=",ArraySize(data));
+      lastMetricLogMs=stamp;
+   }
    return true;
 }
 
 int OnInit()
 {
-   if(InpHeartbeatSeconds<5 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
+   if(InpHeartbeatSeconds<2 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
       InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5 ||
-      InpTradeLots<=0 || InpMaxOpenPositions<1 || InpATRPeriod<2 ||
+      InpTradeLots<=0 || InpMaxCentralActionLots<0 || InpMaxCentralTotalLots<0 ||
+      InpMaxOpenPositions<0 || InpATRPeriod<2 ||
       InpStopLossATR<=0 || InpTrailStartATR<=0 || InpTrailDistanceATR<=0)
    {
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
       return INIT_PARAMETERS_INCORRECT;
    }
+   g_lastClosedDealKey="AZ_M1_REENTRY_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   if(GlobalVariableCheck(g_lastClosedDealKey))
+      g_lastClosedDealTime=(datetime)GlobalVariableGet(g_lastClosedDealKey);
+   SyncLatestClosedDealFromHistory();
+   g_groupCloseKey="AZ_GROUP_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_groupClosePending=(GlobalVariableCheck(g_groupCloseKey) && GlobalVariableGet(g_groupCloseKey)>0.5);
    g_recoveryActiveKey="AZ_REC_ACTIVE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
    g_recoveryPriceKey="AZ_REC_PRICE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
    g_recoveryCycleActive=(GlobalVariableCheck(g_recoveryActiveKey) && GlobalVariableGet(g_recoveryActiveKey)>0.5) || RecoveryHasOpenTrade();
@@ -1102,8 +1296,11 @@ int OnInit()
    EventSetTimer(1);
    g_status="تم تشغيل بيانات MT5 وحماية الأرباح المحلية";
    Print("AL-ZOOL MT5 client started: central trading=",InpEnableCentralTrading,
+         " position_management=",InpEnableCentralPositionManagement,
          " lot=",DoubleToString(InpTradeLots,2)," max positions=",InpMaxOpenPositions,
          "; account-wide profit-close logic preserved.");
+   if(!InpEnableCentralPositionManagement)
+      Print("AL-ZOOL POSITION MANAGEMENT OFF: enable InpEnableCentralPositionManagement=true in EA Inputs to execute server-approved ADD/COOL/RECOVERY actions.");
    return INIT_SUCCEEDED;
 }
 void OnDeinit(const int reason)
@@ -1120,9 +1317,19 @@ void OnDeinit(const int reason)
 void OnTimer()
 {
    EvaluateAutoClose();
+   if(g_closedDealsDirty)SyncLatestClosedDealFromHistory();
    ManageEntryTrailing();
    ManagePositionAddons();
    ulong now=GetTickCount64();
+   // Publish fresh prices and closed-bar data BEFORE asking for a decision.
+   // Previously the decision poll ran first and often saw the previous heartbeat.
+   if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
+   {
+      bool sent=SendLiveSnapshot();
+      g_online=sent;
+      if(!sent) g_serverTradingEnabled=false;
+      g_lastSnapshotMs=GetTickCount64();
+   }
    if(g_lastSettingsPollMs==0 || now-g_lastSettingsPollMs>=1000)
    {
       PollTradeSettings();
@@ -1131,13 +1338,13 @@ void OnTimer()
    if(g_lastDecisionPollMs==0 || now-g_lastDecisionPollMs>=2000)
    {
       PollCentralDecision();
-      g_lastDecisionPollMs=now;
+      g_lastDecisionPollMs=GetTickCount64();
    }
-   if(g_lastSnapshotMs==0 || now-g_lastSnapshotMs>=((ulong)InpHeartbeatSeconds*1000))
+   if(InpEnableCentralPositionManagement &&
+      (g_lastActionPollMs==0 || now-g_lastActionPollMs>=3000))
    {
-      bool sent=SendLiveSnapshot();
-      if(sent) g_online=true;
-      g_lastSnapshotMs=now;
+      PollCentralActions();
+      g_lastActionPollMs=now;
    }
    if(g_lastHistoryAttempt==0 || TimeCurrent()-g_lastHistoryAttempt>=InpHistoryUploadMinutes*60)
    {
@@ -1149,8 +1356,29 @@ void OnTimer()
            "\n",g_aiReason,
            "\nProfit close: single ",(g_singleCloseEnabled?"ON":"OFF"),
            " / group ",(g_groupCloseEnabled?"ON":"OFF"),
+           "\nRecovery target: ",DoubleToString(g_recoveryProfitTarget,2)," ",AccountInfoString(ACCOUNT_CURRENCY),
+           "\nLast exit: ",(g_lastClosedDealTime>0?TimeToString(g_lastClosedDealTime,TIME_DATE|TIME_SECONDS):"—"),
+           "\nM1 reentry: ",(FreshM1ConfirmedAfterClose(g_aiBarTime)?"CONFIRMED":"WAIT"),
            "\nPositions: ",IntegerToString(PositionsTotal()),
            " | Pending: ",IntegerToString(OrdersTotal()));
+}
+void OnTrade()
+{
+   // A newly closed deal should appear immediately in the next live snapshot.
+   g_closedDealsDirty=true;
+   SyncLatestClosedDealFromHistory();
+}
+void OnTradeTransaction(const MqlTradeTransaction &trans,
+                        const MqlTradeRequest &request,
+                        const MqlTradeResult &result)
+{
+   if(trans.type!=TRADE_TRANSACTION_DEAL_ADD || trans.deal==0)return;
+   if(!HistoryDealSelect(trans.deal)) { g_closedDealsDirty=true; return; }
+   long kind=HistoryDealGetInteger(trans.deal,DEAL_TYPE);
+   if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL)return;
+   long entry=HistoryDealGetInteger(trans.deal,DEAL_ENTRY);
+   if(entry!=DEAL_ENTRY_OUT && entry!=DEAL_ENTRY_OUT_BY && entry!=DEAL_ENTRY_INOUT)return;
+   RecordClosedDealTime((datetime)HistoryDealGetInteger(trans.deal,DEAL_TIME));
 }
 void OnTick()
 {

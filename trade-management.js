@@ -9,7 +9,7 @@ async function loadCloseSettings(){
  $("groupEnabled").checked=!!s.group_enabled;
  $("singleTarget").value=Number(s.single_profit_target??1).toFixed(2);
  $("groupTarget").value=Number(s.group_profit_target??5).toFixed(2);
- $("stopLossEnabled").checked=s.stop_loss_enabled!==false;
+ $("stopLossEnabled").checked=s.stop_loss_enabled===true;
  $("stopLossMode").value=(s.stop_loss_mode==="POINTS"?"POINTS":"ATR");
  $("stopLossValue").value=Number(s.stop_loss_value??1.8).toString();
  $("closeEngineState").textContent="الإعدادات محفوظة · "+(d.client_id?"مرتبطة بعميل MT5":"غير مرتبطة");
@@ -17,6 +17,10 @@ async function loadCloseSettings(){
  $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
  updateStopLossHelp();
  const pm=s.position_management||{};
+ if($("ownerEntryMode")){
+  $("ownerEntryMode").value=pm.entry_council_mode==="ADVISORY"?"ADVISORY":"STRICT";
+  $("ownerEntryModeMessage").textContent="الوضع الحالي: "+(pm.entry_council_mode==="ADVISORY"?"Hybrid AI فعّال — Qwen وDeepSeek يشاركان في ترجيح BUY/SELL دون اشتراط الإجماع":"المجلس الصارم — إجماع 3 نماذج");
+ }
  $("entryGuardEnabled").checked=pm.entry_guard_enabled!==false;
  $("entryMaxDelayBars").value=Number(pm.entry_max_delay_bars??1);
  $("entryMaxDeviationAtr").value=Number(pm.entry_max_deviation_atr??0.5);
@@ -24,21 +28,37 @@ async function loadCloseSettings(){
  $("addonEnabled").checked=!!pm.addon_enabled;
  $("addonMax").value=Number(pm.addon_max??0);
  $("addonMultiplier").value=Number(pm.addon_multiplier??1.5);
- $("addonMaxLot").value=Number(pm.addon_max_lot??0.05);
+ $("addonMaxLot").value=pm.addon_max_lot??"";
  $("addonLot").value=Number(pm.addon_lot??0.01);
  $("addonDistance").value=Number(pm.addon_distance_points??100);
  $("coolingEnabled").checked=!!pm.cooling_enabled;
  $("coolingMax").value=Number(pm.cooling_max??0);
  $("coolingMultiplier").value=Number(pm.cooling_multiplier??1.2);
- $("coolingMaxLot").value=Number(pm.cooling_max_lot??0.05);
+ $("coolingMaxLot").value=pm.cooling_max_lot??"";
  $("coolingLot").value=Number(pm.cooling_lot??0.01);
  $("coolingDistance").value=Number(pm.cooling_distance_points??100);
- $("maxTotalLots").value=Number(pm.max_total_lots??0.10);
+ $("maxTotalLots").value=pm.max_total_lots??"";
+ $("maxPositionsPerDirection").value=pm.max_positions_per_direction??"";
+ $("recoveryMaxLot").value=pm.recovery_max_lot??"";
  $("recoveryEnabled").checked=!!pm.recovery_enabled;
  $("recoveryLossTrigger").value=Number(pm.recovery_loss_trigger??0)>0?String(pm.recovery_loss_trigger):"";
+ $("recoveryProfitTarget").value=Number(pm.recovery_profit_target??0).toString();
  $("recoveryMessage").textContent=pm.recovery_enabled?(Number(pm.recovery_loss_trigger??0)>0?"التعافي مفعّل على MT5 بعد استلام الإعدادات.":"التعافي مفعّل، بانتظار تحديد حد الخسارة؛ لن يبدأ قبل إدخال المبلغ."):"التعافي متوقف حسب اختيارك.";
  window.recoverySettings=pm;updateRecoveryMonitor(null,pm,s.currency||"");await loadRecoveryLog();
  updatePmModeUI();
+}
+async function saveOwnerEntryMode(){
+ const mode=$("ownerEntryMode").value;
+ if(mode!=="STRICT"&&mode!=="ADVISORY")return;
+ if(mode==="ADVISORY"&&!window.confirm("Hybrid AI: Qwen وDeepSeek يشاركان فعلياً في ترجيح قرار BUY/SELL عند وصول تصويتهما على الشمعة الحالية، ولا يتوقف المحرك لانتظار الإجماع. قد يؤدي هذا إلى أوامر حقيقية إذا كان التداول مفعّلاً، ووقف الخسارة يبقى حسب إعدادك. هل تريد تطبيق الوضع؟"))return;
+ const button=$("saveOwnerEntryMode"),label=$("ownerEntryModeMessage");
+ button.disabled=true;label.textContent="جارٍ حفظ سياسة الدخول…";
+ try{
+  const response=await api("/api/owner/entry-policy",{method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({mode,confirmed_risk:mode==="ADVISORY"})});
+  label.textContent=response.message||"تم حفظ سياسة الدخول";
+ }catch(e){label.textContent="تعذّر تطبيق السياسة: "+e.message;}
+ finally{button.disabled=false;}
 }
 function updateStopLossHelp(){
  const mode=$("stopLossMode").value;
@@ -56,7 +76,8 @@ async function saveProtectionSettings(){
   await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
    single_enabled:$("singleEnabled").checked,single_profit_target:Number($("singleTarget").value),
    group_enabled:$("groupEnabled").checked,group_profit_target:Number($("groupTarget").value),
-   stop_loss_enabled:$("stopLossEnabled").checked,stop_loss_mode:mode,stop_loss_value:value
+   stop_loss_enabled:$("stopLossEnabled").checked,stop_loss_mode:mode,stop_loss_value:value,
+   stop_loss_user_configured:true
   })});
   $("protectionSettingsMessage").textContent="تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.";
   $("closeEngineState").textContent="الإعدادات محفوظة على الخادم";
@@ -91,33 +112,40 @@ async function savePositionManagement(){
   entry_max_delay_bars:Number($("entryMaxDelayBars").value),
   entry_max_deviation_atr:Number($("entryMaxDeviationAtr").value),
   addon_enabled:$("addonEnabled").checked,addon_max:Number($("addonMax").value),
-  addon_multiplier:Number($("addonMultiplier").value),addon_max_lot:Number($("addonMaxLot").value),
+  addon_multiplier:Number($("addonMultiplier").value),addon_max_lot:$("addonMaxLot").value.trim()?Number($("addonMaxLot").value):null,
   addon_lot:Number($("addonLot").value),addon_distance_points:Number($("addonDistance").value),
   cooling_enabled:$("coolingEnabled").checked,cooling_max:Number($("coolingMax").value),
-  cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:Number($("coolingMaxLot").value),
+  cooling_multiplier:Number($("coolingMultiplier").value),cooling_max_lot:$("coolingMaxLot").value.trim()?Number($("coolingMaxLot").value):null,
   cooling_lot:Number($("coolingLot").value),cooling_distance_points:Number($("coolingDistance").value),
-  max_total_lots:Number($("maxTotalLots").value)};
+  max_total_lots:$("maxTotalLots").value.trim()?Number($("maxTotalLots").value):null,
+  max_positions_per_direction:$("maxPositionsPerDirection").value.trim()?Number($("maxPositionsPerDirection").value):null,
+  optional_limits_user_selected:true};
  if(!Number.isInteger(cfg.entry_max_delay_bars)||cfg.entry_max_delay_bars<1||cfg.entry_max_delay_bars>10){$("pmMessage").textContent="أقصى تأخير يجب أن يكون من 1 إلى 10 شموع.";return;}
  if(!Number.isFinite(cfg.entry_max_deviation_atr)||cfg.entry_max_deviation_atr<0.05||cfg.entry_max_deviation_atr>20){$("pmMessage").textContent="مضاعف ATR يجب أن يكون بين 0.05 و20.";return;}
  for(const key of ["addon_max","cooling_max"]){
   if(!Number.isInteger(cfg[key])||cfg[key]<0||cfg[key]>100){$("pmMessage").textContent="الحد الأقصى يجب أن يكون عدداً صحيحاً من 0 إلى 100.";return;}
  }
- for(const key of ["addon_lot","cooling_lot","addon_max_lot","cooling_max_lot"]){
+ for(const key of ["addon_lot","cooling_lot"]){
   if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100){$("pmMessage").textContent="تحقق من قيم اللوت والحد الأقصى لكل صفقة.";return;}
  }
  for(const key of ["addon_multiplier","cooling_multiplier"]){
   if(!Number.isFinite(cfg[key])||cfg[key]<1||cfg[key]>3){$("pmMessage").textContent="المضاعف يجب أن يكون بين 1.0 و3.0.";return;}
  }
- if(!Number.isFinite(cfg.max_total_lots)||cfg.max_total_lots<=0||cfg.max_total_lots>100){
-  $("pmMessage").textContent="أدخل سقفاً موجباً لإجمالي اللوتات.";return;
+ if(cfg.max_positions_per_direction!==null&&(!Number.isInteger(cfg.max_positions_per_direction)||cfg.max_positions_per_direction<1)){
+  $("pmMessage").textContent="الحد الاختياري لعدد الصفقات يجب أن يكون عدداً موجباً أو يُترك فارغاً.";return;
+ }
+ if(cfg.max_total_lots!==null&&(!Number.isFinite(cfg.max_total_lots)||cfg.max_total_lots<=0)){
+  $("pmMessage").textContent="سقف اللوت الاختياري يجب أن يكون موجباً أو يُترك فارغاً.";return;
+ }
+ for(const key of ["addon_max_lot","cooling_max_lot"]){
+  if(cfg[key]!==null&&(!Number.isFinite(cfg[key])||cfg[key]<=0)){
+   $("pmMessage").textContent="سقف اللوت الاختياري غير صالح.";return;
+  }
  }
  if(mode==="MANUAL"){
   for(const key of ["addon_distance_points","cooling_distance_points"]){
    if(!Number.isFinite(cfg[key])||cfg[key]<=0||cfg[key]>100000000){$("pmMessage").textContent="في الوضع اليدوي أدخل مسافة موجبة بالنقاط.";return;}
   }
- }
- if((cfg.addon_enabled&&cfg.addon_max<1)||(cfg.cooling_enabled&&cfg.cooling_max<1)){
-  $("pmMessage").textContent="حدد الحد الأقصى لكل قسم قبل تفعيله.";return;
  }
  $("savePositionManagement").disabled=true;$("pmMessage").textContent="جارٍ حفظ إعدادات التعزيز والتبريد…";
  try{
@@ -136,20 +164,21 @@ function updateRecoveryMonitor(summary,pm=window.recoverySettings||{},currency="
  $("recoveryNet").textContent=summary?.connected?fmt(net,2)+" "+currency:"—";$("recoveryNet").className=net<0?"recovery-loss":net>0?"recovery-profit":"";
  $("recoveryLots").textContent=summary?.connected?fmt(lots,3):"—";$("recoveryPositions").textContent=summary?.connected?fmt(positions.length,0):"—";
  $("recoveryTriggerView").textContent=Number(pm.recovery_loss_trigger||0)>0?fmt(pm.recovery_loss_trigger,2)+" "+currency:"غير محدد";
+ $("recoveryProfitTargetView").textContent=fmt(Number(pm.recovery_profit_target??0),2)+" "+currency;
  const last=window.lastRecoveryEvent||null;let state="بانتظار اتصال MT5",message="بانتظار بيانات MT5.";
  if(!summary?.connected){state="MT5 غير متصل";message="لا تصل بيانات حديثة من MT5؛ لا يمكن تأكيد حالة التنفيذ.";}
  else if(pm.recovery_enabled!==true){state="متوقف";message="التعافي متوقف حسب الإعدادات المحفوظة.";}
  else if(!(Number(pm.recovery_loss_trigger)>0)){state="بانتظار حد الخسارة";message="حدد حد خسارة موجباً واحفظ الإعدادات حتى يبدأ الرصد.";}
  else if(last){const labels={RECOVERY_ARMED:"بلغ صافي الحساب حد التفعيل؛ بدأت مراقبة الانعكاس.",RECOVERY_WAITING:"لم يفتح التعافي بعد؛ ينتظر توافق تحليل الاستراتيجيات مع الشمعة المغلقة.",RECOVERY_OPENED:"تم فتح صفقة التعافي بالحجم ×3 بعد التأكيد.",RECOVERY_BLOCKED:"منع MT5 فتح الصفقة لسبب أمان أو شروط الوسيط.",RECOVERY_REJECTED:"رفض الوسيط تنفيذ أمر التعافي.",RECOVERY_CLOSED:"اكتملت دورة التعافي وأُغلقت جميع المراكز.",RECOVERY_CLOSE_RETRY:"بعض المراكز ما زالت مفتوحة؛ سيعيد MT5 محاولة الإغلاق."};
- state=({RECOVERY_ARMED:"بدأت مراقبة الانعكاس",RECOVERY_WAITING:"بانتظار تأكيد الانعكاس",RECOVERY_OPENED:"صفقة التعافي مفتوحة",RECOVERY_BLOCKED:"التعافي محجوب",RECOVERY_REJECTED:"رفض الوسيط الأمر",RECOVERY_CLOSED:"اكتملت دورة التعافي",RECOVERY_CLOSE_RETRY:"إعادة محاولة الإغلاق"})[last.event_type]||"مراقبة نشطة";message=last.payload?.message_ar||labels[last.event_type]||"آخر حدث: "+last.event_type;
+ state=({RECOVERY_ARMED:"بدأت مراقبة الانعكاس",RECOVERY_WAITING:"بانتظار تأكيد الانعكاس",RECOVERY_OPENED:"صفقة التعافي مفتوحة",RECOVERY_BLOCKED:"التعافي محجوب",RECOVERY_REJECTED:"رفض الوسيط الأمر",RECOVERY_CLOSED:"اكتملت دورة التعافي",RECOVERY_CLOSE_RETRY:"إعادة محاولة الإغلاق",CENTRAL_ACTION_CLAIM:"تم إصدار تصريح تعافٍ (ليس تأكيد تنفيذ)"})[last.event_type]||"مراقبة نشطة";message=last.payload?.message_ar||labels[last.event_type]||"آخر حدث: "+last.event_type;
  }else{state="مراقبة نشطة";message="الإعدادات محفوظة؛ ينتظر MT5 تحقق حد الخسارة المحدد.";}
  $("recoveryState").textContent=state;$("recoveryLiveMessage").textContent=message;
 }
 async function loadRecoveryLog(){
- try{const d=await api("/api/opportunities/events?kind=trades&days=30&limit=100"),events=(d.events||[]).filter(e=>String(e.event_type||"").startsWith("RECOVERY_"));
+ try{const d=await api("/api/opportunities/events?kind=trades&days=30&limit=100"),events=(d.events||[]).filter(e=>String(e.event_type||"").startsWith("RECOVERY_")||(e.event_type==="CENTRAL_ACTION_CLAIM"&&e.payload?.action==="RECOVERY_PROPOSAL"));
  window.lastRecoveryEvent=events[0]||null;
  if(!events.length){$("recoveryLog").innerHTML='<div class="empty-state">لا توجد أحداث تعافٍ مسجلة خلال آخر 30 يوماً.</div>';return;}
-  const labels={RECOVERY_ARMED:"بدء المراقبة",RECOVERY_WAITING:"تشخيص سبب الانتظار",RECOVERY_OPENED:"فتح صفقة التعافي",RECOVERY_BLOCKED:"منع آمن",RECOVERY_REJECTED:"رفض الأمر",RECOVERY_CLOSED:"اكتمال الإغلاق",RECOVERY_CLOSE_RETRY:"إعادة محاولة الإغلاق"};
+  const labels={RECOVERY_ARMED:"بدء المراقبة",RECOVERY_WAITING:"تشخيص سبب الانتظار",RECOVERY_OPENED:"فتح صفقة التعافي",RECOVERY_BLOCKED:"منع آمن",RECOVERY_REJECTED:"رفض الأمر",RECOVERY_CLOSED:"اكتمال الإغلاق",RECOVERY_CLOSE_RETRY:"إعادة محاولة الإغلاق",CENTRAL_ACTION_CLAIM:"تصريح تعافٍ من المحرك — لا يثبت تنفيذه"};
   $("recoveryLog").innerHTML=events.map(e=>{const p=e.payload||{},details=[p.symbol,p.direction,p.lots!=null?"Lots "+fmt(p.lots,3):"",p.net!=null?"Net "+fmt(p.net,2):"",p.positions!=null?"Positions "+fmt(p.positions,0):"",p.strategy_id?"Strategy #"+p.strategy_id:"",p.confidence!=null?"Confidence "+fmt(Number(p.confidence)*100,1)+"%":"",p.analysis_ar?"AI: "+p.analysis_ar:""].filter(Boolean).join(" · ");return '<article class="recovery-log-item"><div class="recovery-log-top"><b>'+esc(labels[e.event_type]||e.event_type)+'</b><time>'+esc(timeText(e.created_at))+'</time></div><p>'+esc(p.message_ar||"حدث تعافٍ من MT5")+(p.direction?" · "+esc(p.direction):"")+(p.strategy_id?" · Strategy #"+esc(p.strategy_id):"")+(p.confidence!=null?" · "+esc(fmt(Number(p.confidence)*100,1))+"%":"") +'</p><small>'+esc(details)+'</small></article>';}).join("");
  }catch(e){$("recoveryLog").innerHTML='<div class="empty-state">تعذر تحميل سجل التعافي: '+esc(e.message)+'</div>';}
 }
@@ -158,6 +187,16 @@ async function saveRecoverySettings(){
  const raw=$("recoveryLossTrigger").value.trim();
  const trigger=Number(raw.replace(/,/g,""));
  const enabled=$("recoveryEnabled").checked;
+ const recoveryMaxLot=$("recoveryMaxLot").value.trim()?Number($("recoveryMaxLot").value):null;
+ const rawProfitTarget=$("recoveryProfitTarget").value.trim();
+ const recoveryProfitTarget=rawProfitTarget===""?0:Number(rawProfitTarget.replace(/,/g,""));
+ if(!Number.isFinite(recoveryProfitTarget)||recoveryProfitTarget<0){
+  $("recoveryMessage").textContent="هدف الربح يجب أن يكون 0 أو مبلغاً موجباً بعملة حسابك (مثلاً 1 أو 2 أو 3 أو 4).";
+  $("recoveryProfitTarget").focus();return;
+ }
+ if(recoveryMaxLot!==null&&(!Number.isFinite(recoveryMaxLot)||recoveryMaxLot<=0)){
+  $("recoveryMessage").textContent="حدد سقف لوت التعافي بين 0.01 و100.";return;
+ }
  if(enabled&&(!raw||!Number.isFinite(trigger)||trigger<=0||trigger>100000000)){
   $("recoveryMessage").textContent="أدخل مبلغ خسارة موجبًا بعملة حساب MT5 (أكبر من صفر) ثم احفظ.";
   $("recoveryLossTrigger").focus();return;
@@ -173,9 +212,11 @@ async function saveRecoverySettings(){
    single_profit_target:Number($("singleTarget").value),
    group_enabled:$("groupEnabled").checked,
    group_profit_target:Number($("groupTarget").value),
-   position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,recovery_user_configured:true}
+   position_management:{recovery_enabled:enabled,recovery_loss_trigger:raw?trigger:0,
+    recovery_max_lot:recoveryMaxLot,recovery_profit_target:recoveryProfitTarget,
+    recovery_user_configured:true}
   })});
-  $("recoveryMessage").textContent=enabled?"تم الحفظ. سيستلم MT5 الإعدادات خلال دورة التحديث التالية.":"تم حفظ التعافي بوضع الإيقاف.";
+  $("recoveryMessage").textContent=enabled?"تم حفظ التعافي وهدف صافي الربح "+recoveryProfitTarget.toFixed(2)+" بعملة الحساب. سيغلق MT5 المجموعة عند الوصول إلى الهدف بعد فتح صفقة التعافي، بشرط استخدام EA المحدّث.":"تم حفظ التعافي بوضع الإيقاف.";
  }catch(e){$("recoveryMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveRecoverySettings").disabled=false;}
 }
@@ -250,7 +291,8 @@ async function boot(){
   const {data}=await supabaseClient.auth.getSession();
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
-  await api("/api/access/check");
+  const access=await api("/api/access/check");
+  $("entryPolicy").hidden=(access.role!=="owner");
   try{await loadCloseSettings();}catch(settingsError){$("closeSettingsMessage").textContent=settingsError.message;}
   await refresh();
  }catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+esc(e.message)+" — ارجع إلى صفحة الدخول.</span>";}
@@ -259,6 +301,7 @@ $("refreshBtn").addEventListener("click",refresh);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
+$("saveOwnerEntryMode").addEventListener("click",saveOwnerEntryMode);
 $("saveRecoverySettings").addEventListener("click",saveRecoverySettings);
 $("refreshRecoveryLog").addEventListener("click",loadRecoveryLog);
 setInterval(()=>{if(accessToken)loadRecoveryLog();},5000);

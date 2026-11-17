@@ -16,6 +16,7 @@ async function refreshAutoTrading(){
   toggle.checked=!!d.trading_enabled;
   toggle.disabled=(!mt5Connected&&!d.trading_enabled)||autoTradingBusy;
   state.textContent=d.trading_enabled?"مفعّل":"متوقف";
+  if($("azAutoMirror"))$("azAutoMirror").textContent=d.trading_enabled?"مفعّل":"متوقف";
   state.className="state "+(d.trading_enabled?"active":"muted");
   help.textContent=mt5Connected?"التحكم مربوط بالخادم وMT5": "اتصل بـ MT5 أولاً لتفعيل التداول الآلي";
  }catch(e){
@@ -50,9 +51,12 @@ async function boot(){
   const {data}=await supabaseClient.auth.getSession();
   if(!data.session){location.href="/";return;}
   accessToken=data.session.access_token;
-  await api("/api/access/check");
+  if($("azCurrentUser"))$("azCurrentUser").textContent=data.session.user?.user_metadata?.name||data.session.user?.email||"حساب التداول";
+  const access=await api("/api/access/check");
+  if(access?.role==="owner"&&$("aiMonitorInline"))$("aiMonitorInline").hidden=false;
   $("serviceState").textContent="تم التحقق من الحساب";
   await refresh();
+  if(access?.role==="owner")await refreshInlineMonitor();
  }catch(e){
   $("serviceState").textContent="يتطلب تسجيل الدخول";
   $("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+escapeHtml(e.message)+" — ارجع إلى صفحة الدخول.</span>";
@@ -68,16 +72,21 @@ async function refresh(){
    setState("mt5Status","متصل","pending");
    const a=d.connection?.account||{};
    $("mt5Meta").textContent="آخر نبضة: "+(d.connection?.last_seen||"وصلت من MT5")+(a.server?" · "+a.server:"");
+   azUpdateConnectionDisplay(true,d.connection?.last_seen);
   }else{
    setState("mt5Status","غير متصل","muted");
    $("mt5Meta").textContent="لم تصل نبضة خلال آخر 30 ثانية";
+   azUpdateConnectionDisplay(false);
   }
  }catch(e){
   mt5Connected=false;
   setState("mt5Status","غير متاح","muted");
   $("mt5Meta").textContent=e.message;
+  azUpdateConnectionDisplay(false);
  }
  await refreshAutoTrading();
+ azRefreshTradingSettings();
+ azRefreshAiCouncil();
  try{
   const s=await api("/api/dashboard/summary");
   const currency=s.currency||"";
@@ -91,9 +100,12 @@ async function refresh(){
   const dailyProfitEl=$("dailyProfit");if(dailyProfitEl)dailyProfitEl.textContent=daily.profit==null?"—":fmt(daily.profit)+" "+currency;
   const dailyLossEl=$("dailyLoss");if(dailyLossEl)dailyLossEl.textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
   const dailyNetEl=$("dailyNet");if(dailyNetEl)dailyNetEl.textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
+  if(dailyNetEl){dailyNetEl.style.color=Number(daily.net)<0?"#d35470":"#28174a"}
   const dailyTradesEl=$("dailyTrades");if(dailyTradesEl)dailyTradesEl.textContent=daily.trades==null?"—":fmt(daily.trades);
   $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
+  azDrawClientMiniChart(rows,s.currency||"");
+  if($("azPerformanceNote"))$("azPerformanceNote").textContent="نتائج آخر "+rows.length+" مركز مغلق مستلم من سجل MT5؛ ليست توقعات";
   $("closedTrades").innerHTML=rows.length?rows.map(t=>{
    const date=t.time?new Intl.DateTimeFormat("en-GB-u-nu-latn",{dateStyle:"short",timeStyle:"short",timeZone:"Asia/Dubai"}).format(new Date(t.time*1000)):"—";
    const side=Number(t.type)===0?"شراء":Number(t.type)===1?"بيع":"—";
@@ -113,8 +125,106 @@ async function refresh(){
  }
 }
 
+function azUpdateConnectionDisplay(connected,lastSeen=null){
+ const title=$("azBannerTitle"),sub=$("azBannerSub"),icon=$("azBannerCheck"),badge=$("azBannerMt5"),badgeText=$("azBannerMt5Text");
+ if(title)title.textContent=connected?"حسابك نشط وMT5 متصل":"حسابك معتمد — MT5 غير متصل";
+ if(sub)sub.textContent=connected?"بيانات الطرفية متاحة؛ التداول يعتمد على حالة التفعيل":"تحتاج اتصال MT5 فعلي لاستقبال الأسعار والمراكز";
+ if(icon)icon.classList.toggle("disconnected",!connected);
+ if(badge)badge.classList.toggle("connected",connected);
+ if(badgeText)badgeText.textContent=connected?"متصل":"غير متصل";
+ if($("azQuickConnection"))$("azQuickConnection").textContent=connected?"MT5 متصل":"MT5 غير متصل";
+ if($("azLastSeen"))$("azLastSeen").textContent=lastSeen?String(lastSeen).replace("T"," ").slice(0,19):"—";
+}
+async function azRefreshTradingSettings(){
+ try{
+  const d=await api("/api/trade-management/settings");
+  const p=d.settings?.position_management||{};
+  // Show only values with a documented current source, never use recovery/add-on lots as base entry lot.
+  if($("azLotValue"))$("azLotValue").textContent=Number.isFinite(Number(p.base_lot))&&Number(p.base_lot)>0?Number(p.base_lot).toFixed(2):"—";
+  if($("azMaxPositions"))$("azMaxPositions").textContent=Number.isInteger(Number(p.max_positions))&&Number(p.max_positions)>0?String(p.max_positions):"—";
+  if($("azManagementMode"))$("azManagementMode").textContent=String(p.mode||"—");
+  // BUY/SELL controls remain disabled until the central engine supports directional toggles.
+  if($("azBuyToggle")){$("azBuyToggle").checked=p.buy_enabled===true;$("azBuyToggle").disabled=true}
+  if($("azSellToggle")){$("azSellToggle").checked=p.sell_enabled===true;$("azSellToggle").disabled=true}
+ }catch(e){
+  if($("azManagementMode"))$("azManagementMode").textContent="غير متاح";
+ }
+}
+async function azRefreshAiCouncil(){
+ const put=(id,value)=>{const el=$(id);if(el)el.textContent=value};
+ const badge=(id,ready,text)=>{const el=$(id);if(!el)return;
+   el.textContent=text;el.classList.toggle("good",ready===true);el.classList.toggle("bad",ready===false)};
+ try{
+  const d=await api("/api/ai/council");
+  if(!d.connected){
+    put("azAiCouncilStatus","MT5 غير متصل");
+    badge("azCouncilState",null,"WAIT");
+    badge("azRiskState",null,"WAIT");
+    put("azFastVote","لا توجد بيانات MT5");put("azQwenVote","غير متاح");
+    put("azDeepVote","غير متاح");put("azGroqVote","غير متاح");put("azRiskVote","غير متاح");
+    put("azEngineSignal","WAIT");put("azCouncilBarTime","—");
+    put("azCouncilReason","الطرفية غير متصلة؛ لا تُعرض موافقة دخول.");
+    put("azRiskReason","لا توجد بيانات حساب حديثة للتحقق من المخاطر.");
+    return;
+  }
+  const c=d.council||{},risk=d.risk_guardian||{},votes=c.votes||{};
+  const signal=String(d.signal||"WAIT").toUpperCase();
+  const fmtVote=(key)=>{
+    const v=votes[key];
+    if(!v)return "لم يصل تصويت";
+    const state=String(v.status||"PENDING");
+    const decision=String(v.direction||"WAIT");
+    const valid=Number(v.confidence);
+    const confidence=Number.isFinite(valid)?(" · "+Math.round(valid*100)+"%"):"";
+    return state+" · "+decision+confidence;
+  };
+  put("azFastVote",fmtVote("Fast AI"));put("azQwenVote",fmtVote("Qwen"));
+  put("azDeepVote",fmtVote("DeepSeek"));
+  const groq=c.groq_advisory||{};
+  const grStatus=String(groq.status||"NOT_CONFIGURED");
+  put("azGroqVote",grStatus+(groq.status==="READY"?" · "+String(groq.direction||"WAIT")+
+    " · "+Math.round(Number(groq.confidence||0)*100)+"%":"")+(groq.reason_ar?" · "+groq.reason_ar:""));
+  const hybrid=d.mode==="HYBRID";
+  const councilReady=hybrid?(signal==="BUY"||signal==="SELL"):c.approved===true;
+  const allowed=councilReady&&risk.approved===true;
+  badge("azCouncilState",councilReady,hybrid?"HYBRID":(c.approved===true?"APPROVED":"WAIT"));
+  badge("azRiskState",risk.approved===true,risk.approved===true?"PASS":"BLOCK");
+  put("azAiCouncilStatus",hybrid?(allowed?"HYBRID · "+signal:"HYBRID · WAIT"):(allowed?"APPROVED":"WAIT"));
+  put("azEngineSignal",signal);
+  put("azRiskVote",risk.approved===true?"PASS":"BLOCK");
+  put("azCouncilReason",String(hybrid?(d.hybrid?.reason_ar||"نتائج AI تؤثر في الترجيح دون إجماع إلزامي"):(c.reason_ar||"المجلس ينتظر بيانات تصويت حديثة")));
+  put("azRiskReason",String(risk.reason_ar||"لا يوجد تقرير مخاطر مكتمل"));
+  const bar=Number(d.bar_time);
+  put("azCouncilBarTime",Number.isFinite(bar)&&bar>0?
+    new Intl.DateTimeFormat("en-GB-u-nu-latn",{timeZone:"Asia/Dubai",
+      day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}).format(new Date(bar*1000)):"—");
+ }catch(e){
+  put("azAiCouncilStatus","غير متاح");badge("azCouncilState",null,"WAIT");
+  badge("azRiskState",null,"WAIT");
+  put("azCouncilReason","تعذر تحميل التصويت: "+(e.message||"خطأ اتصال"));
+  put("azRiskReason","تعذر تحميل تقرير المخاطر.");
+ }
+}
+$("azRefreshCouncilBtn")?.addEventListener("click",azRefreshAiCouncil);
+function azDrawClientMiniChart(rows,currency){
+ const host=$("azMiniPerformance");if(!host)return;
+ const usable=(rows||[]).filter(r=>Number.isFinite(Number(r.net))&&Number.isFinite(Number(r.time))).slice(0,15).reverse();
+ if(usable.length<2){host.innerHTML='<div class="az-mini-empty">لا توجد صفقات مغلقة كافية لرسم الأداء</div>';return}
+ const values=[];let sum=0;
+ for(const r of usable){sum+=Number(r.net);values.push(sum)}
+ const lo=Math.min(0,...values),hi=Math.max(0,...values),span=Math.max(1,hi-lo),n=values.length;
+ const x=i=>20+i/(n-1)*360;
+ const y=v=>112-(v-lo)/span*94;
+ const points=values.map((v,i)=>[x(i),y(v)]);
+ const line=points.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+ const dots=points.map(p=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="3.8" fill="#8939ea"/>').join("");
+ host.innerHTML='<svg role="img" aria-label="صافي نتائج آخر الصفقات المغلقة" viewBox="0 0 400 135" preserveAspectRatio="none"><defs><linearGradient id="azClientFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#9951fa" stop-opacity=".46"/><stop offset="1" stop-color="#b98afa" stop-opacity=".02"/></linearGradient></defs>'+
+ '<path d="'+line+' L 380 115 L 20 115 Z" fill="url(#azClientFill)"/>'+
+ '<path d="'+line+'" fill="none" stroke="#8c35ed" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg>';
+}
+
 const OLLAMA_URL="http://127.0.0.1:11434";
-const OLLAMA_MODEL="qwen2.5:3b";
+const OLLAMA_MODEL="qwen3.5:4b";
 function aiState(message,kind="muted"){const el=$("aiStatus");if(el){el.textContent=message;el.className="state "+kind;}}
 async function checkLocalOllama(){
  try{
@@ -138,7 +248,7 @@ async function runAiAnalysis(){
  $("aiResult").innerHTML="<div class='ai-placeholder'>يتم فحص Ollama وجلب آخر شموع الذهب من MT5…</div>";
  try{
   const ready=await checkLocalOllama();
-  if(!ready)throw new Error("Ollama غير جاهز أو النموذج qwen2.5:3b غير مثبت. شغّل Ollama وتأكد من تثبيت النموذج.");
+  if(!ready)throw new Error("Ollama غير جاهز أو النموذج qwen3.5:4b غير مثبت. شغّل Ollama وتأكد من تثبيت النموذج.");
   const context=await api("/api/market/context");
   if(!Array.isArray(context.candles)||context.candles.length<20)throw new Error("بيانات الشموع غير كافية. افتح شارت الذهب في MT5 وانتظر وصول 20 شمعة مغلقة على الأقل.");
   const compact={
@@ -168,6 +278,26 @@ async function runAiAnalysis(){
 const aiAnalyzeButton=$("aiAnalyzeBtn");if(aiAnalyzeButton)aiAnalyzeButton.addEventListener("click",runAiAnalysis);
 const autoTradingToggle=$("autoTradingEnabled");if(autoTradingToggle)autoTradingToggle.addEventListener("change",changeAutoTrading);
 
+async function refreshInlineMonitor(){
+ const card=$("aiMonitorInline");
+ if(!card||card.hidden||!accessToken)return;
+ try{
+  const d=await api("/api/ai/monitor");
+  const h=d.hybrid||{};
+  const put=(id,v)=>{const node=$(id);if(node)node.textContent=String(v??"—");};
+  put("azMonitorBase",h.base_direction||d.signal||"WAIT");
+  put("azMonitorEffective",h.effective_direction||d.signal||"WAIT");
+  put("azMonitorUsed",h.model_votes_used??0);
+  put("azMonitorAiReason",h.reason_ar||"لا توجد مساهمة AI جديدة لهذه الشمعة");
+  put("azMonitorReady",d.entry_ready?"جاهز للإرسال إلى MT5":"غير جاهز");
+  put("azMonitorReason",d.reason_ar||"بانتظار بيانات القرار");
+  put("azMonitorMode",d.mode==="ADVISORY"?"Hybrid AI الفعّال":d.mode||"—");
+ }catch(e){
+  const node=$("azMonitorReason");if(node)node.textContent="تعذر تحميل التشخيص: "+(e.message||"خطأ اتصال");
+ }
+}
+$("azInlineMonitorRefresh")?.addEventListener("click",refreshInlineMonitor);
 $("refreshBtn").addEventListener("click",refresh);
 boot();
 setInterval(()=>{if(accessToken)refresh();},10000);
+setInterval(refreshInlineMonitor,15000);

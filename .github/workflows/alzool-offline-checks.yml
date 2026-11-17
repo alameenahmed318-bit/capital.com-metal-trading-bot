@@ -1,0 +1,36 @@
+name: AL-ZOOL offline decision checks
+on:
+  push:
+    branches:
+      - fix/alzool-owner-controls-20261116
+      - fix/alzool-hybrid-ai-20261116
+      - fix/alzool-recovery-profit-target-20261116
+      - fix/alzool-addon-cooling-correct-multipliers-20261116
+      - fix/alzool-entry-quality-soft-evidence-20261116
+      - fix/alzool-live-learning-visible-20261116
+      - fix/alzool-post-close-m1-confirmation-20261116
+      - fix/alzool-smart-recovery-m1-candle-confirm-20261116
+  workflow_dispatch:
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile backend Python
+        run: python -m compileall -q marketplace/backend
+      - name: Run owner decision regression tests
+        run: |
+          python -m unittest discover -s tests -p 'test_owner_decisions.py' -v
+          python -m unittest discover -s tests -p 'test_owner_recovery.py' -v
+          python -m unittest discover -s tests -p 'test_position_sizing.py' -v
+          python -m unittest discover -s tests -p 'test_recovery_action_protocol.py' -v
+          python -m unittest discover -s tests -p 'test_hybrid_decision.py' -v
+          python -m unittest discover -s tests -p 'test_entry_quality.py' -v
+          python -m unittest discover -s tests -p 'test_live_learning.py' -v
+          python -m unittest discover -s tests -p 'test_post_close_m1.py' -v
+          python -m unittest discover -s tests -p 'test_recovery_candle_guard.py' -v

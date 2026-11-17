@@ -2,10 +2,13 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#242238"><title>AL-ZOOL | إدارة التداول</title>
+<meta name="theme-color" content="#080b1a"><title>AL-ZOOL | إدارة التداول</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/trade-management.css?v=8">
 <link rel="stylesheet" href="/ui-shell.css?v=1">
+<link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=dark-ai-pro-20261114-1">
+<link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
 </head>
 <body>
 <div class="shell">
@@ -18,6 +21,7 @@
  <div class="side-label">مركز الذكاء الاصطناعي</div>
  <div class="nav-group">
   <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
+  <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a>
   <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
  </div>
  <div class="side-label">السوق والاستراتيجيات</div>
@@ -49,7 +53,7 @@
   <article class="kpi"><div class="kpi-head"><span>حقوق الحساب</span><i>◈</i></div><strong id="equity">—</strong><small id="balanceMeta">الرصيد —</small></article>
  </section>
  <nav class="section-nav" aria-label="أقسام إدارة التداول">
-  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#smartRecovery">التعافي الذكي</a><a href="#pending">الأوامر المعلقة</a>
+  <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#entryPolicy">قرار الدخول</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#smartRecovery">التعافي الذكي</a><a href="#pending">الأوامر المعلقة</a>
  </nav>
  <section class="card" id="autoClose">
   <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>أهداف الإغلاق التلقائي</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
@@ -71,20 +75,26 @@
  <section class="card" id="smartRecovery">
   <div class="card-title"><div><span class="eyebrow">إدارة تعويض خسارة الحساب</span><h2>التعافي الذكي</h2></div><span class="read-only">تنفيذ محلي داخل MT5</span></div>
   <div class="sl-settings-panel">
-   <div class="sl-settings-head"><div><b>تشغيل التعافي الذكي</b><small>يراقب صافي جميع المراكز المفتوحة في حساب MT5، بما فيها اليدوية وبوتات أخرى</small></div><label class="switch"><input type="checkbox" id="recoveryEnabled" checked><span></span></label></div>
+   <div class="sl-settings-head"><div><b>تشغيل التعافي الذكي</b><small>يراقب صافي جميع المراكز المفتوحة في حساب MT5، بما فيها اليدوية وبوتات أخرى</small></div><label class="switch"><input type="checkbox" id="recoveryEnabled"><span></span></label></div>
    <div class="sl-settings-grid">
     <label for="recoveryLossTrigger">حد تفعيل التعافي — بعملة حساب MT5
      <input id="recoveryLossTrigger" type="number" min="0.01" step="any" inputmode="decimal" lang="en-US" dir="ltr" placeholder="أدخل مبلغًا موجبًا بعملة الحساب">
     </label>
+    <label for="recoveryProfitTarget">هدف صافي ربح التعافي — بعملة الحساب (مثلاً 1 أو 2 أو 3 أو 4)
+     <input id="recoveryProfitTarget" type="number" min="0" step="0.01" inputmode="decimal" lang="en-US" dir="ltr" placeholder="0 = إغلاق عند التعادل">
+    </label>
+    <label for="recoveryMaxLot">حد لوت التعافي الاختياري ×3 (اتركه فارغاً دون حد)
+     <input id="recoveryMaxLot" type="number" min="0.01" step="any" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr">
+    </label>
    </div>
-   <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">مفعّل افتراضيًا، لكن لن يبدأ قبل تحديد حد الخسارة وحفظه.</span></div>
+   <div class="close-actions"><button id="saveRecoverySettings" class="refresh">حفظ إعدادات التعافي</button><span id="recoveryMessage" role="status">متوقف حتى تفعّله صراحةً وتحدد حد الخسارة وتكتمل تصاريح التنفيذ وحفظه.</span></div>
    <div class="recovery-monitor" aria-live="polite">
     <div class="recovery-monitor-head"><b>مراقبة التعافي المباشرة</b><span id="recoveryState" class="recovery-state">بانتظار اتصال MT5</span></div>
-    <div class="recovery-metrics"><div><small>الربح العائم (ربح + سواب)</small><strong id="recoveryNet">—</strong></div><div><small>حد التفعيل</small><strong id="recoveryTriggerView">—</strong></div><div><small>إجمالي اللوتات</small><strong id="recoveryLots">—</strong></div><div><small>عدد المراكز</small><strong id="recoveryPositions">—</strong></div></div>
+    <div class="recovery-metrics"><div><small>الربح العائم (ربح + سواب)</small><strong id="recoveryNet">—</strong></div><div><small>حد التفعيل</small><strong id="recoveryTriggerView">—</strong></div><div><small>هدف صافي ربح التعافي</small><strong id="recoveryProfitTargetView">—</strong></div><div><small>إجمالي اللوتات</small><strong id="recoveryLots">—</strong></div><div><small>عدد المراكز</small><strong id="recoveryPositions">—</strong></div></div>
     <p id="recoveryLiveMessage" class="recovery-live-message">ستظهر هنا حالة التعافي ورسائل MT5 عند وصول الأحداث، مع سبب الانتظار وإشارة الاستراتيجية ودرجة الثقة ووقت الفتح. حساب التعافي نفسه يضم العمولات والرسوم التاريخية أيضاً.</p>
    </div>
    <div class="recovery-log-wrap"><div class="recovery-log-head"><b>سجل التعافي الذكي</b><button type="button" id="refreshRecoveryLog" class="refresh">تحديث السجل</button></div><div id="recoveryLog" class="recovery-log"><div class="empty-state">بانتظار أول حدث من MT5</div></div></div>
-   <p class="section-note">لن يبدأ التعافي قبل إدخال حد خسارة موجب وحفظه. عند بلوغ الحد الذي تحدده، يتسلّح التعافي أولاً ثم ينتظر إشارة الاستراتيجيات المركزية واتجاه شمعة مغلقة متوافقين. عند التأكيد يفتح صفقة تعافٍ بلوت يساوي مجموع لوتات المراكز × 3، ويسجّل سبب الانتظار ووقت الفتح والتحليل المستخدم. عند وصول صافي المجموعة إلى التعادل أو الربح، يحاول إغلاق جميع المراكز المفتوحة. إذا لم يسمح الوسيط باللوت المطلوب أو لم يكفِ الهامش، لن يخفّض اللوت تلقائيًا ولن يفتح الصفقة. هذه آلية عالية المخاطر وقد تجعل حجم التعرض ×3.</p>
+   <p class="section-note">التعافي لا يفتح صفقة بمجرد وصول الخسارة إلى حد التفعيل؛ الحد فقط يسلّح المراقبة (ARMED). بعدها ينتظر <b>شمعة M1 جديدة كاملة مغلقة بعد الوصول للحد</b>؛ يفحص اتجاهها وجسمها ومكان الإغلاق، ولا يفتح (CONFIRMED) إلا إذا دعمت جانباً خاسراً على الذهب مع إعادة تحليل الاستراتيجيات وHybrid AI. الشمعة العكسية أو الضعيفة تعني WAIT حتى تظهر شمعة أفضل، <b>دون اشتراط إجماع Qwen وDeepSeek</b>. يجب أن يكون EA متصلاً بشارت الذهب M1 لتصل شموع التأكيد. الحجم المطلوب = 3 × مجموع لوتات الصفقات المفتوحة بالحساب، بما فيها اليدوية. عند فتح التعافي، يراقب MT5 صافي جميع الصفقات المفتوحة (الربح والسواب والرسوم المحسوبة) ويغلق المجموعة كلها عندما يبلغ <b>هدف الربح الذي تختاره</b>. القيمة 0 تعني التعادل مثل السابق، أما 1 أو 2 أو 3 أو 4 فتعني المبلغ بعملة حسابك، وليس نسبة مئوية. قد يختلف الربح المنفذ بسبب السبريد والعمولات والانزلاق السعري. إذا تعذّر حجم ×3 لدى الوسيط أو لم يكفِ الهامش فلن يُفتح الأمر. مضاعفة ×3 عالية المخاطر.</p>
   </div>
  </section>
  <section class="card" id="positions">
@@ -115,37 +125,53 @@
   <p class="section-note">الجدول التالي يعرض وقف الخسارة وجني الأرباح الموجودين فعليًا على كل صفقة. إعداداتك أعلاه تتحكم في الوقف الأولي للصفقات الجديدة فقط؛ لا تعدّل الصفقات المفتوحة بأثر رجعي.</p>
   <div class="table-scroll"><table><thead><tr><th>التذكرة</th><th>الرمز</th><th>وقف الخسارة</th><th>جني الأرباح</th><th>حالة الحماية</th></tr></thead><tbody id="protectionBody"><tr><td colspan="5" class="empty-cell">لا توجد بيانات بعد</td></tr></tbody></table></div>
  </section>
+ <section class="card" id="entryPolicy" hidden>
+  <div class="card-title"><div><span class="eyebrow">خاص بالمالك</span><h2>سياسة تنفيذ الدخول</h2></div><span class="read-only">التداول على XAUUSD</span></div>
+  <p class="section-note"><b>تأكيد إعادة الدخول بعد الإغلاق — M1:</b> إذا أُغلقت أي صفقة في الحساب، لا يُسمح بفتح صفقة دخول جديدة في نفس الدقيقة. ينتظر المحرك شمعة M1 <b>كاملة تبدأ بعد الإغلاق ثم تُغلق</b>، ويحلل اتجاه الشمعة الجديدة بواسطة الاستراتيجيات وHybrid AI قبل أي دخول. هذه خطوة واحدة بعد الإغلاق، وليست اشتراط إجماع نماذج أو تأخيراً لكل صفقة. التعزيز والتبريد والتعافي والإغلاق تظل تعمل بصورة مستقلة. تظهر حالة الانتظار والسبب في مراقبة Hybrid AI. يتطلب تأكيد MT5 المحلي تحديث EA وتجميعه.</p>
+  <p class="section-note"><b>Hybrid AI الفعّال:</b> المحرك يدمج الاستراتيجيات والتراكيب والبوتات مع الأصوات الحديثة من Fast AI وQwen وDeepSeek لترجيح BUY أو SELL. التصويت يؤثر فعلياً على القرار، ويمكن أن يرجّح الاتجاه المقابل إذا كانت له استراتيجية صالحة، ولكن لا يشترط إجماع النماذج ولا ينتظر النموذج المتأخر. اضغط «مراقبة Hybrid AI» في القائمة لتشاهد أثر كل صوت.</p>
+  <div class="pm-mode-row">
+   <label for="ownerEntryMode">طريقة اتخاذ القرار</label>
+   <select id="ownerEntryMode">
+    <option value="STRICT">المجلس الصارم — موافقة 3 نماذج</option>
+    <option value="ADVISORY">Hybrid AI — الاستراتيجيات + Qwen + DeepSeek (ترجيح فعلي)</option>
+   </select>
+  </div>
+  <div class="close-actions"><button id="saveOwnerEntryMode" class="refresh" type="button">تطبيق سياسة الدخول</button><span id="ownerEntryModeMessage" role="status">يجري تحميل الوضع الحالي</span></div>
+  <p class="section-note">تنبيه: تغيير هذه السياسة قد يسمح بفتح صفقات جديدة مباشرة إذا كان التداول الآلي مفعلاً في MT5. راجع وقف الخسارة وحجم اللوت قبل التطبيق.</p>
+ </section>
  <section class="card" id="positionManagement">
   <div class="card-title"><div><span class="eyebrow">إدارة الإضافات</span><h2>التعزيز والتبريد</h2></div><span class="read-only">نفس اتجاه الصفقة الأصلية فقط</span></div>
   <div class="pm-mode-row">
    <label for="pmMode">طريقة التحكم</label>
    <select id="pmMode"><option value="AI">AI تلقائي</option><option value="MANUAL">يدوي</option></select>
-   <p class="section-note" id="pmModeHelp">في وضع AI يختار المحرك توقيت الإضافة واللوت والمسافة. في الوضع اليدوي تحدد الشروط واللوت والمسافة، والتنفيذ تلقائي عند تحققها.</p>
+   <p class="section-note" id="pmModeHelp">في وضع AI يحدد المحرك توقيت الإضافة من السعر وATR وأصوات Hybrid المتاحة، ويحسب اللوت من الأساس × المضاعف المحفوظ لكل نوع واتجاه. في الوضع اليدوي يستخدم اللوت والمسافة المحددين دون مضاعفة.</p>
   </div>
   <div class="close-grid pm-grid">
    <article class="close-option pm-option">
-    <div class="close-option-head"><div><b>التعزيز</b><small>إضافات في نفس اتجاه الصفقة الخاسرة</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
-    <label for="addonMax">الحد الأقصى لعدد صفقات التعزيز</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <div class="close-option-head"><div><b>التعزيز</b><small>إضافة عند حركة السعر لصالح مراكز الاتجاه نفسه</small></div><label class="switch"><input type="checkbox" id="addonEnabled"><span></span></label></div>
+    <label for="addonMax">عدد إضافات التعزيز فقط لكل اتجاه (0 = بدون حد)</label><input id="addonMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="addonMultiplier">مضاعف لوت التعزيز AI</label><input id="addonMultiplier" type="text" value="1.5" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
-    <label for="addonMaxLot">أقصى لوت لصفقة التعزيز</label><input id="addonMaxLot" type="text" value="0.05" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="addonMaxLot">حد لوت التعزيز الاختياري (فارغ = بدون حد)</label><input id="addonMaxLot" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
-     <label for="addonLot">اللوت اليدوي</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+     <label for="addonLot">اللوت الأساسي (AI / يدوي)</label><input id="addonLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="addonDistance">المسافة اليدوية بالنقاط</label><input id="addonDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
    <article class="close-option pm-option">
     <div class="close-option-head"><div><b>التبريد</b><small>إضافات مستقلة لتبريد متوسط الدخول</small></div><label class="switch"><input type="checkbox" id="coolingEnabled"><span></span></label></div>
-    <label for="coolingMax">الحد الأقصى لعدد صفقات التبريد</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMax">عدد إضافات التبريد فقط لكل اتجاه (0 = بدون حد)</label><input id="coolingMax" type="text" value="0" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <label for="coolingMultiplier">مضاعف لوت التبريد AI</label><input id="coolingMultiplier" type="text" value="1.2" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
-    <label for="coolingMaxLot">أقصى لوت لصفقة التبريد</label><input id="coolingMaxLot" type="text" value="0.05" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+    <label for="coolingMaxLot">حد لوت التبريد الاختياري (فارغ = بدون حد)</label><input id="coolingMaxLot" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     <div class="pm-manual-fields">
-     <label for="coolingLot">اللوت اليدوي</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+     <label for="coolingLot">اللوت الأساسي (AI / يدوي)</label><input id="coolingLot" type="text" value="0.01" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
      <label for="coolingDistance">المسافة اليدوية بالنقاط</label><input id="coolingDistance" type="text" value="100" inputmode="numeric" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
     </div>
    </article>
   </div>
-  <label for="maxTotalLots">أقصى إجمالي لوتات صفقات التعزيز والتبريد</label>
-  <input id="maxTotalLots" type="text" value="0.10" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
+  <label for="maxPositionsPerDirection">حد صفقات الاتجاه اختياري (اتركه فارغاً دون حد)</label>
+  <input id="maxPositionsPerDirection" type="number" min="1" step="1" value="" placeholder="بدون حد" inputmode="numeric" lang="en-US" dir="ltr">
+    <label for="maxTotalLots">حد إجمالي لوتات الحساب اختياري (اتركه فارغاً دون حد)</label>
+  <input id="maxTotalLots" type="text" value="" placeholder="بدون حد" inputmode="decimal" lang="en-US" dir="ltr" autocomplete="off" spellcheck="false">
   <div class="entry-guard-panel">
    <div class="sl-settings-head"><div><b>حماية توقيت وسعر الدخول</b><small>منع تنفيذ الإشارات القديمة أو الدخول بعد ابتعاد السعر عن نقطة الإشارة</small></div><label class="switch"><input type="checkbox" id="entryGuardEnabled" checked><span></span></label></div>
    <div class="entry-guard-grid">
@@ -169,7 +195,7 @@
  <footer>AL-ZOOL GOLD SNIPER <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=12"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=recovery-target-20261116-1"></script>
 <script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=1" defer></script>
+<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
 </body></html>

@@ -1,0 +1,109 @@
+/* AL-ZOOL navigation IA v20261115; loaded LAST after theme styles. */
+.shell{min-width:0}
+.shell>.main{min-width:0}
+.az-mobile-bar,.az-nav-overlay,.az-nav-close{display:none}
+.sidebar#alzool-site-nav{gap:0!important}
+#alzool-site-nav .az-nav-head{display:flex;align-items:center;justify-content:space-between;gap:9px}
+#alzool-site-nav .brand{margin:0 0 13px!important;min-width:0}
+#alzool-site-nav .brand-mark{width:38px;height:38px;flex:0 0 38px;border-radius:13px;display:grid;place-items:center;font:bold 16px Arial,sans-serif;color:#e9d9ff;background:#55338d}
+#alzool-site-nav .brand b{display:block;font-size:15px;white-space:nowrap}
+#alzool-site-nav .brand small{font-size:9px;letter-spacing:.5px}
+#alzool-site-nav .az-nav-intro{display:flex;flex-direction:column;gap:1px;padding:7px 10px 12px;color:#e8ddff}
+#alzool-site-nav .az-nav-intro b{font-size:13px}
+#alzool-site-nav .az-nav-intro small{font-size:10px;color:#ad9cc8}
+#alzool-site-nav .az-nav-search{margin:0 4px 12px}
+#alzool-site-nav .az-nav-search-input{width:100%;min-width:0;background:#251d3f!important;color:#f8f1ff!important;border:1px solid #624486!important;border-radius:11px;padding:11px 12px;direction:rtl;font:600 11px Cairo,Arial,sans-serif;outline:none}
+#alzool-site-nav .az-nav-search-input::placeholder{color:#afa1c7!important}
+#alzool-site-nav .az-nav-search-input:focus{border-color:#b98bfa!important;box-shadow:0 0 0 2px #a36bdb35}
+#alzool-site-nav .az-nav-menu{display:flex;flex:1;flex-direction:column;gap:9px;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#715193 transparent;padding:0 3px 10px}
+#alzool-site-nav .az-nav-category{display:block;min-width:0}
+#alzool-site-nav .side-label{display:block!important;color:#aa93d0!important;padding:10px 9px 4px!important;font-size:10px!important;letter-spacing:0!important}
+#alzool-site-nav .nav-group{display:grid!important;grid-template-columns:1fr;gap:2px!important;margin:0!important}
+#alzool-site-nav .nav{display:flex!important;align-items:center!important;width:100%!important;min-height:39px;padding:9px 11px!important;margin:0!important;border-radius:9px!important;font-size:12px!important;text-align:right!important;white-space:normal!important;gap:10px!important;color:#d4c8e5!important;box-shadow:none!important;text-decoration:none}
+#alzool-site-nav .nav:hover{background:#ffffff11!important;color:white!important}
+#alzool-site-nav .nav.active{background:#613e99!important;color:#fff!important;border:1px solid #aa7dd1!important}
+#alzool-site-nav .nav .nav-label{display:inline!important;flex:1;min-width:0;font-size:12px}
+#alzool-site-nav .nav .az-nav-icon{width:23px!important;min-width:23px!important;flex:0 0 23px!important;text-align:center;font-size:17px!important;line-height:1}
+#alzool-site-nav .side-bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 3px 0;padding:11px}
+#alzool-site-nav .side-bottom small{max-width:100%;overflow-wrap:anywhere}
+#alzool-site-nav .az-nav-empty{padding:14px 10px;color:#c7b5d8;font-size:11px}
+#alzool-site-nav .ui-sidebar-toggle{margin:0 4px 10px!important;width:calc(100% - 8px)!important}
+#alzool-site-nav [hidden]{display:none!important}
+.az-page-shortcuts{display:flex;flex-direction:column;gap:10px;margin:14px 0 20px;padding:14px 16px;border-radius:14px;border:1px solid #6b5189;background:#1b1730;color:#f6f0ff;box-shadow:0 7px 18px #0504141c}
+.az-shortcuts-heading{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.az-shortcuts-heading strong{font-size:13px;color:#f7ecff!important}
+.az-shortcuts-heading small{font-size:10px;color:#b9acd1!important}
+.az-shortcuts-links{display:flex;flex-wrap:wrap;gap:7px}
+.az-page-shortcuts .az-shortcut{display:inline-flex;text-decoration:none;align-items:center;justify-content:center;min-height:32px;padding:6px 11px;border-radius:9px;background:#2b2049!important;color:#ecdcff!important;border:1px solid #624b89!important;font:700 11px Cairo,Arial,sans-serif;white-space:nowrap}
+.az-page-shortcuts .az-shortcut:hover,.az-page-shortcuts .az-shortcut.selected{background:#6e49a7!important;color:#fff!important;border-color:#c199f4!important}
+.main [id]{scroll-margin-top:20px}
+.ui-collapsed #alzool-site-nav .az-nav-intro,.ui-collapsed #alzool-site-nav .az-nav-search,.ui-collapsed #alzool-site-nav .side-label{display:none!important}
+.ui-collapsed #alzool-site-nav .brand>span:last-child,.ui-collapsed #alzool-site-nav .nav-label,.ui-collapsed #alzool-site-nav .side-bottom>span:not(.live-dot),.ui-collapsed #alzool-site-nav .side-bottom small{display:none!important}
+.ui-collapsed #alzool-site-nav .brand{justify-content:center}
+.ui-collapsed #alzool-site-nav .nav{justify-content:center!important;padding:10px 4px!important}
+.ui-collapsed #alzool-site-nav .nav .az-nav-icon{flex:0 0 auto!important}
+.ui-collapsed #alzool-site-nav .ui-sidebar-toggle{font-size:0}
+.ui-collapsed #alzool-site-nav .ui-sidebar-toggle::after{content:'⇥';font-size:19px}
+@media(max-width:900px){
+ .shell,.shell.ui-collapsed{display:block!important;grid-template-columns:1fr!important}
+ .shell>.az-mobile-bar{display:flex!important;position:sticky;top:0;z-index:80;align-items:center;justify-content:flex-start;min-height:53px;padding:8px 12px;background:#18152e;border-bottom:1px solid #594076}
+ .az-mobile-trigger{display:inline-flex!important;align-items:center;gap:6px;padding:7px 16px;min-height:37px;border:1px solid #70549c;border-radius:10px;background:#3b275c;color:#fff;font:800 12px Cairo,Arial;cursor:pointer}
+ #alzool-site-nav.sidebar{display:flex!important;position:fixed!important;top:0!important;right:0!important;left:auto!important;bottom:0!important;z-index:100!important;width:min(310px,86vw)!important;max-height:none!important;height:100dvh!important;min-height:100dvh!important;transform:translateX(110%);transition:transform .23s ease!important;flex-direction:column!important;align-items:stretch!important;gap:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:20px 12px!important;box-shadow:-12px 0 40px #0008!important}
+ .az-menu-open #alzool-site-nav.sidebar{transform:translateX(0)}
+ #alzool-site-nav .az-nav-head{display:flex!important}
+ #alzool-site-nav .az-nav-close{display:block!important;flex:0 0 auto;width:32px;height:32px;border:1px solid #77529b;border-radius:9px;background:#38234c;color:#fff;font-size:16px;cursor:pointer}
+ #alzool-site-nav .az-nav-search{display:block!important}
+ #alzool-site-nav .az-nav-intro{display:flex!important}
+ #alzool-site-nav .az-nav-menu{display:flex!important;flex-direction:column!important;overflow-y:auto!important}
+ #alzool-site-nav .az-nav-category{display:block!important}
+ #alzool-site-nav .side-label{display:block!important}
+ #alzool-site-nav .nav-group{display:grid!important}
+ #alzool-site-nav .nav{display:flex!important;justify-content:flex-start!important;white-space:normal!important}
+ #alzool-site-nav .nav .nav-label{display:inline!important}
+ #alzool-site-nav .ui-sidebar-toggle{display:none!important}
+ #alzool-site-nav .side-bottom{display:flex!important}
+ .az-nav-overlay{display:block;position:fixed;inset:0;background:#080612aa;z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+ .az-menu-open~.az-nav-overlay{opacity:1;pointer-events:auto}
+ body:has(.az-menu-open) .az-nav-overlay{opacity:1;pointer-events:auto}
+ body.az-nav-lock{overflow:hidden}
+ .az-page-shortcuts{margin:10px 0 14px;padding:11px}
+ .az-shortcuts-heading small{display:none}
+ .az-shortcuts-links{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding:0 0 4px}
+}
+@media(max-width:500px){
+ .az-page-shortcuts .az-shortcut{font-size:10px;padding:6px 10px}
+ #alzool-site-nav .nav{font-size:12px!important}
+}
+@media(prefers-reduced-motion:reduce){#alzool-site-nav.sidebar,.az-nav-overlay{transition:none!important}}
+
+/* Owner portal: section navigation and usable mobile menu */
+.az-owner-shortcuts{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 12px;padding:12px 14px;background:#1c1832;border:1px solid #62478c;border-radius:12px}
+.az-owner-shortcuts>b{font:800 12px Cairo,Arial;color:#efdcff}
+.az-owner-shortcuts>a{display:inline-flex;text-decoration:none;font:700 11px Cairo,Arial;padding:7px 10px;border:1px solid #604883;border-radius:9px;color:#f3e8ff!important;background:#30254a;white-space:nowrap}
+.az-owner-shortcuts>a:hover{background:#6945a3!important;color:#fff!important}
+.az-admin-content [id]{scroll-margin-top:20px}
+.az-owner-mobile-bar,.az-owner-overlay{display:none}
+@media(max-width:900px){
+ .az-admin-layout{display:block!important;grid-template-columns:1fr!important}
+ .az-owner-mobile-bar{display:flex!important;position:sticky;top:0;z-index:80;padding:8px 12px;background:#19152c;border-bottom:1px solid #584477}
+ .az-owner-menu-trigger{background:#452c66;color:white;border:1px solid #8b61af;padding:9px 14px;border-radius:10px;font:800 12px Cairo,Arial}
+ #az-owner-menu.az-admin-sidebar{display:flex!important;flex-direction:column!important;align-items:stretch!important;position:fixed!important;z-index:100!important;top:0!important;right:0!important;bottom:0!important;left:auto!important;width:min(320px,88vw)!important;height:100dvh!important;padding:22px 13px!important;transform:translateX(110%);transition:transform .2s!important;overflow-y:auto!important;overflow-x:hidden!important}
+ .az-owner-menu-open #az-owner-menu.az-admin-sidebar{transform:translateX(0)}
+ #az-owner-menu.az-admin-sidebar>.side-label{display:block!important;margin-top:12px!important}
+ #az-owner-menu.az-admin-sidebar nav{display:grid!important;grid-template-columns:1fr!important;gap:4px!important;width:100%!important}
+ #az-owner-menu.az-admin-sidebar nav>a,#az-owner-menu.az-admin-sidebar nav>button{width:100%!important;white-space:normal!important;justify-content:flex-start!important;min-height:40px!important}
+ #az-owner-menu .az-admin-spacer{display:block!important;min-height:8px!important}
+ .az-owner-overlay{display:block;position:fixed;inset:0;background:#05030caa;z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+ .az-owner-menu-open .az-owner-overlay{opacity:1;pointer-events:auto}
+ body.az-owner-nav-lock{overflow:hidden}
+ .az-owner-shortcuts{flex-wrap:nowrap;overflow-x:auto;padding:9px}
+ .az-owner-shortcuts>b{flex:0 0 auto}
+ .az-owner-shortcuts>a{flex:0 0 auto}
+}
+
+/* Focused trading-page workspaces: show one task instead of stacked settings */
+.az-focus-page .main .az-focus-section[hidden]{display:none!important}
+.az-focus-page .main .az-old-section-nav{display:none!important}
+.az-show-all{font:700 11px Cairo,Arial,sans-serif;cursor:pointer;border:1px solid #8263ae;border-radius:9px;background:#312448;color:#f4e5ff;min-height:30px;padding:5px 11px}
+.az-show-all:hover,.az-show-all.selected{background:#65439e;color:#fff}
+.az-focus-page .az-page-shortcuts{position:relative}

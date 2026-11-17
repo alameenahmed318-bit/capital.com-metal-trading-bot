@@ -36,6 +36,16 @@ def _build_combinations():
 COMBINATIONS=_build_combinations()
 assert len(STRATEGIES)==200 and len({(s["base_kind"],s["gate_kind"]) for s in STRATEGIES})==200
 assert len(COMBINATIONS)==1000 and len({c["members"] for c in COMBINATIONS})==1000
+# Derived once at startup. Previously recomputed 5,000 member counts on
+# every new candle even though combination membership is immutable.
+_MEMBER_FREQUENCY={s["id"]:0 for s in STRATEGIES}
+for _group in COMBINATIONS:
+    for _member in _group["members"]:
+        _MEMBER_FREQUENCY[_member]+=1
+_COMBO_INDEPENDENT_BASE={
+    c["id"]:sum(1/max(1,_MEMBER_FREQUENCY[mid]) for mid in c["members"])/5
+    for c in COMBINATIONS
+}
 
 @lru_cache(maxsize=8192)
 def _ema_cached(values,period):
@@ -51,6 +61,36 @@ def _rsi_cached(closes,period):
     gain=sum(max(x,0) for x in changes)/period; loss=sum(max(-x,0) for x in changes)/period
     return 100.0 if loss==0 else 100-100/(1+gain/loss)
 def rsi(closes,period=14):return _rsi_cached(tuple(float(v) for v in closes),int(period))
+
+def wilder_adx(rates,period=14):
+    """Standard Wilder TR/+DM/-DM smoothing and DX smoothing; no future candles."""
+    if len(rates)<2*period+1:return 0.0
+    trs=[]; plus_dm=[]; minus_dm=[]
+    for prev,current in zip(rates[:-1],rates[1:]):
+        ph,pl,pc=float(prev["high"]),float(prev["low"]),float(prev["close"])
+        h,l=float(current["high"]),float(current["low"])
+        up=h-ph;down=pl-l
+        trs.append(max(h-l,abs(h-pc),abs(l-pc)))
+        plus_dm.append(up if up>down and up>0 else 0.0)
+        minus_dm.append(down if down>up and down>0 else 0.0)
+    tr=sum(trs[:period]);positive=sum(plus_dm[:period]);negative=sum(minus_dm[:period])
+    dx_values=[]
+    for i in range(period-1,len(trs)):
+        if i>=period:
+            tr=tr-tr/period+trs[i]
+            positive=positive-positive/period+plus_dm[i]
+            negative=negative-negative/period+minus_dm[i]
+        plus_di=100*positive/tr if tr>0 else 0.0
+        minus_di=100*negative/tr if tr>0 else 0.0
+        total=plus_di+minus_di
+        dx_values.append(100*abs(plus_di-minus_di)/total if total>0 else 0.0)
+    if len(dx_values)<period:return 0.0
+    adx=sum(dx_values[:period])/period
+    for value in dx_values[period:]:
+        adx=(adx*(period-1)+value)/period
+    return round(max(0.,min(100.,adx)),3)
+
+
 
 def _base(rates,s):
     if len(rates)<60:return "WAIT","بيانات الشموع غير كافية"
@@ -156,10 +196,7 @@ def analyze_market_context(rates):
     op,hi,lo,cl=o[-1],h[-1],l[-1],c[-1]; span=max(hi-lo,1e-9); pos=(cl-lo)/span; body=abs(cl-op)
     uw=(hi-max(op,cl))/span; lw=(min(op,cl)-lo)/span; ph=max(h[-21:-1]); pl=min(l[-21:-1])
     buy_trap=hi>ph and cl<ph and uw>.35; sell_trap=lo<pl and cl>pl and lw>.35; mom=rsi(c,14) or 50.
-    plus=[]; minus=[]
-    for i in range(max(1,len(rates)-14),len(rates)):
-        up=h[i]-h[i-1]; down=l[i-1]-l[i]; plus.append(max(up,0.) if up>down else 0.); minus.append(max(down,0.) if down>up else 0.)
-    tr14=max(sum(tr[-14:]),1e-9); pdi=100*sum(plus)/tr14; mdi=100*sum(minus)/tr14; adx=100*abs(pdi-mdi)/max(pdi+mdi,1e-9)
+    adx=wilder_adx(rates,14)  # Actual Wilder ADX, not the old DI imbalance proxy.
     vw=None
     if "tick_volume" in rates[-1]:
         sample=rates[-30:]; vv=[max(1.,float(x.get("tick_volume",1))) for x in sample]; typical=[(float(x["high"])+float(x["low"])+float(x["close"]))/3 for x in sample]; vw=sum(a*b for a,b in zip(typical,vv))/sum(vv)
@@ -196,8 +233,14 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
     ("القرار النهائي",{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[direction],"قرار تحليلي؛ لا يرسل أمراً")]
     return {"direction":direction,"seats":seats,"buy":buy,"sell":sell,"wait":wait}
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None):
+from entry_evidence import closed_candle_pressure
+
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None):
     weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
+    # The last bar is already closed. Its body and close location are soft
+    # evidence, never an additional entry veto or a waiting condition.
+    pressure=closed_candle_pressure(rates)
+    context["last_closed_candle_pressure"]=pressure
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
@@ -210,6 +253,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         votes.append({"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason})
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
     byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}; cc_weighted={"BUY":0.0,"SELL":0.0,"WAIT":0.0}
+    # Repeated members are NOT independent votes. Normalize the entire combination
+    # council by the number of appearances of each underlying strategy.
     for combo in COMBINATIONS:
         combo_weight=max(0.85,min(1.15,float(combination_weights.get(str(combo["id"]),1.0))))
         members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"]) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
@@ -218,7 +263,11 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
             win="BUY" if directional["BUY"]>directional["SELL"] else "SELL" if directional["SELL"]>directional["BUY"] else "WAIT"; conf=max(directional.values())/total
             if win=="WAIT" or conf<.55:cs,why="WAIT","تضارب الأصوات أو توافق أقل من 55%"
             else:cs,why=win,f"{sum(m['signal']==win for m in members)} من 5 أعضاء يؤيدون الاتجاه"
-        cc[cs]+=1; cc_weighted[cs]+=combo_weight; combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"reason":why})
+        # Average inverse-member frequency: even 1000 overlapping groups cannot
+        # masquerade as 1000 independent confirmations.
+        independent_weight=combo_weight*_COMBO_INDEPENDENT_BASE[combo["id"]]
+        cc[cs]+=1; cc_weighted[cs]+=independent_weight
+        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -229,29 +278,82 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     direction="BUY" if bshare>sshare else "SELL" if sshare>bshare else "WAIT"; famagree=max(bshare,sshare); dc=cc_weighted["BUY"]+cc_weighted["SELL"]; combo_share=cc_weighted[direction]/max(1e-9,dc) if direction in ("BUY","SELL") else 0.
     agreement=.85*famagree+.15*combo_share;quality=context["buy_quality"] if direction=="BUY" else context["sell_quality"] if direction=="SELL" else 0.;trap=context["buy_trap"] if direction=="BUY" else context["sell_trap"] if direction=="SELL" else False
     aligned=sum(b==direction for b in mtf_bias.values());opposed=sum(b in ("BUY","SELL") and b!=direction for b in mtf_bias.values());breadth=fb if direction=="BUY" else fsell if direction=="SELL" else 0
-    if str(mode).startswith("HUNTER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.50,2,.42,42,.48,"HUNTER"
-    elif str(mode).startswith("SNIPER"): min_ag,min_breadth,min_combo,min_quality,min_final,policy=.65,4,.58,65,.64,"SNIPER"
-    else: min_ag,min_breadth,min_combo,min_quality,min_final,policy=.42,1,.30,30,.45,"AUTO"
-    if direction=="WAIT" or active<min_breadth or famagree<min_ag:final="WAIT";reason=f"{policy}: انتظار توافق العائلات؛ شراء {fb}/20، بيع {fsell}/20، التوافق {famagree:.0%} (المطلوب {min_ag:.0%})"
-    elif breadth<min_breadth:final="WAIT";reason=f"{policy}: عدد العائلات المؤيدة {breadth}؛ المطلوب {min_breadth}"
-    elif combo_share<min_combo:final="WAIT";reason=f"{policy}: توافق التركيبات {combo_share:.0%}؛ المطلوب {min_combo:.0%}"
-    elif quality<min_quality:final="WAIT";reason=f"{policy}: جودة نقطة الدخول {quality:.0f}/100؛ المطلوب {min_quality}"
+    # Strategy-first arbitration: use observed evidence rather than stacked
+    # fixed confidence/quality/breadth thresholds that can suppress every bar.
+    # No directional strategy = WAIT; this is not a forced-trading fallback.
+    directional_candidates={"BUY":[x for x in candidates if x[2]=="BUY"],
+                            "SELL":[x for x in candidates if x[2]=="SELL"]}
+    family_strength={"BUY":fb/max(1,active),"SELL":fsell/max(1,active)}
+    combo_total=cc_weighted["BUY"]+cc_weighted["SELL"]
+    combo_strength={d:cc_weighted[d]/combo_total if combo_total>0 else 0.0
+                    for d in ("BUY","SELL")}
+    # Five bot advisors contribute evidence when they have evaluated the
+    # same confirmed candle. They never create another mandatory veto.
+    bot_report=bot_signals if isinstance(bot_signals,dict) else {}
+    bot_items=(bot_report.get("advisors") or []) if (
+        bot_report.get("status")=="READY" and
+        int(bot_report.get("bar_time") or 0)==int(rates[-1].get("time") or 0)
+    ) else []
+    bot_counts={d:sum(1 for v in bot_items if isinstance(v,dict)
+                      and v.get("signal")==d) for d in ("BUY","SELL")}
+    bot_active=bot_counts["BUY"]+bot_counts["SELL"]
+    score={}
+    for d in ("BUY","SELL"):
+        quality_d=max(0,min(1,context["buy_quality" if d=="BUY" else "sell_quality"]/100))
+        trap_d=context["buy_trap" if d=="BUY" else "sell_trap"]
+        frame_agree=sum(b==d for b in mtf_bias.values())
+        frame_oppose=sum(b in ("BUY","SELL") and b!=d for b in mtf_bias.values())
+        score[d]=(0.55*family_strength[d]+0.25*combo_strength[d]+0.20*quality_d
+                  +0.03*(frame_agree-frame_oppose)/max(1,len(mtf_bias))
+                  -(0.05 if trap_d else 0)
+                  +(0.10*(bot_counts[d]-bot_counts["SELL" if d=="BUY" else "BUY"])/bot_active
+                    if bot_active else 0)
+                  +0.07*(pressure if d=="BUY" else -pressure))
+    usable=[d for d in ("BUY","SELL") if directional_candidates[d]
+            and (family_strength[d]>0 or combo_strength[d]>0)]
+    chosen=None
+    if not usable:
+        final="WAIT"
+        reason="لا توجد استراتيجية اتجاهية مؤيدة من العائلات أو التراكيب؛ انتظار بيانات سوق أفضل"
     else:
-        if trap:agreement-=.03
-        if mtf_bias:
-            # MTF is a confidence input, never a mandatory gate; missing frames do not block entries.
-            mtf_balance=(aligned-opposed)/max(1,len(mtf_bias))
-            agreement=max(0.0,min(1.0,agreement+0.03*mtf_balance))
-        if agreement<min_final:final="WAIT";reason=f"{policy}: الثقة بعد مراجعة ظروف السوق {agreement:.0%}؛ المطلوب {min_final:.0%}"
+        ordered=sorted(usable,key=lambda d:score[d],reverse=True)
+        if len(ordered)==2 and abs(score[ordered[0]]-score[ordered[1]])<1e-9:
+            final="WAIT"
+            reason="قوة BUY وSELL متساوية؛ لا يمكن اختيار اتجاه دون ترجيح"
         else:
-            pool=[x for x in candidates if x[2]==direction];pool.sort(key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),reverse=True)
-            if pool:_,chosen,final,why=pool[0];reason=f"{policy} | AZ MASTER BRAIN: توافق العائلات {famagree:.0%}؛ العائلات المؤيدة {breadth}/20؛ توافق التركيبات {combo_share:.0%}؛ الثقة {agreement:.0%}؛ الجودة {quality:.0f}/100؛ الفريمات {aligned}/{len(mtf_bias)}؛ السوق {context['regime']}؛ {context['reason']}؛ {why}"
-            else:final="WAIT";chosen=None;reason="لا توجد استراتيجية أصلية متوافقة"
-    if "chosen" not in locals():chosen=None
+            direction=ordered[0]
+            pool=directional_candidates[direction]
+            pool.sort(key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),reverse=True)
+            _,chosen,final,why=pool[0]
+            reason=(f"AZ MASTER BRAIN: ترجيح {direction} حسب العائلات "
+                    f"{fb} BUY / {fsell} SELL، والتركيبات {cc_weighted['BUY']:.2f} BUY / "
+                    f"{cc_weighted['SELL']:.2f} SELL؛ البوتات {bot_counts['BUY']} BUY / "
+                    f"{bot_counts['SELL']} SELL؛ حالة السوق {context['regime']}؛ "
+                    f"ضغط الشمعة المغلقة {pressure:+.2f} (ترجيح لا شرط منع)؛ {why}")
+    agreement=max(0.0,min(1.0,score.get(final,0.0)))
+    # Compact strategy-backed alternatives allow same-bar AI votes to genuinely
+    # change a close BUY/SELL ranking without inventing trades from model text.
+    directional_details={}
+    for side in usable:
+        pool=sorted(directional_candidates[side],
+                    key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),
+                    reverse=True)
+        if not pool:continue
+        _,best,_,trigger_reason=pool[0]
+        supported_combos=[c for c in combo_votes if c["signal"]==side]
+        supported_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
+        directional_details[side]={
+            "strategy_id":int(best["id"]),"strategy_name":best["name"],
+            "combination_id":int(supported_combos[0]["id"]) if supported_combos else 0,
+            "reason_ar":trigger_reason}
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
     winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
     winning_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
     selected_combo_id=int(winning_combos[0]["id"]) if winning_combos else 0
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+    return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
+        "directional_scores":{d:round(score[d],6) for d in ("BUY","SELL")},
+        "directional_candidates":directional_details,
+        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
+           "role":"advisory_evidence_no_veto"},"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}

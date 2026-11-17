@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: al-zool-gold-sniper-web
+    name: al-zool-central-engine
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python marketplace/backend/app.py
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     envVars:
       - key: SUPABASE_URL
         sync: false
@@ -14,6 +14,6 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: OWNER_EMAIL
-        value: Meenosvn1@gmail.com
+        sync: false
       - key: OWNER_PASSWORD
         sync: false

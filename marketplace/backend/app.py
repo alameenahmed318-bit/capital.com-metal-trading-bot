@@ -4,6 +4,28 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
+from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, closed_bar_execution_fresh, entry_council_mode
+from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
+from hybrid_decision import fuse_live_decision
+from learning_memory import memory_snapshot, combine_deals
+from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
+from live_weight_overlay import apply_live_learning, conservative_outcome_weight
+from position_action_engine import plan_account_actions
+from strategy_experiments import sanitize_profile, compare_profiles
+from strategy_audit import audit_strategies
+from strategy_versions import versions as strategy_versions, get_active as get_active_strategy_profile, save_candidate, activate as activate_strategy_version
+from auto_research import schedule as schedule_automatic_research
+from central_action_protocol import propose as propose_central_action, claim as claim_central_action
+from telemetry_persistence import queue_closed_deals
+from system_readiness import owner_readiness
+from bot_advisors import analyze_advisors
+from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
+from offline_m1_smoke import run as run_offline_m1_smoke
+from client_onboarding import build_bundle as build_client_bundle, CLIENT_SERVER as CLIENT_ONBOARDING_URL
+from client_access import (PUBLIC_UI_ASSETS, PROTECTED_OWNER_ASSETS, OWNER_READ_ENDPOINTS,
+                           OWNER_WRITE_ENDPOINTS, public_static, minimal_terminal_decision,
+                           basic_settings)
+from groq_advisor import verify_credentials as verify_groq_credentials
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -11,10 +33,13 @@ SUPABASE_ANON_KEY=os.getenv("SUPABASE_ANON_KEY","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-gold-sniper.onrender.com").rstrip("/")
+LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1","true","yes","on")
 CONNECTIONS={}
 LICENSE_CACHE={}
+OWNER_TERMINAL_ID_CACHE={}
 TRADE_SETTINGS_CACHE={}
 SETTINGS_REFRESHING=set()
+AI_EVENT_CACHE={}
 CACHE_LOCK=threading.RLock()
 LICENSE_CACHE_TTL_SECONDS=60.0
 SETTINGS_CACHE_REFRESH_SECONDS=2.0
@@ -38,6 +63,51 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
             obj=json.loads(detail); detail=obj.get("msg") or obj.get("message") or detail
         except Exception: pass
         raise ValueError(str(detail)[:300])
+
+
+def send_client_password_setup(email):
+    """Request a normal Supabase password-recovery email; no keys/passwords emailed.
+
+    Delivery requires Supabase Auth SMTP and CLIENT_SERVER in Auth redirect allowlist.
+    A rejected request never destroys the newly created account.
+    """
+    email=str(email or "").strip().lower()
+    try:
+        target=urllib.parse.quote(CLIENT_ONBOARDING_URL+"/",safe="")
+        sb("POST","/auth/v1/recover?redirect_to="+target,{"email":email})
+        return "REQUEST_ACCEPTED"
+    except Exception as exc:
+        # Never log email, auth tokens or full provider errors.
+        print("CLIENT_WELCOME_EMAIL_WARNING:",type(exc).__name__,flush=True)
+        return "NOT_SENT"
+
+
+def persist_ai_diagnostic_event(event):
+    """Persist AI diagnostics off latency-sensitive request paths."""
+    try:
+        sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
+           event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
+    except Exception as exc:
+        print("AI_DIAGNOSTIC_SAVE_WARNING:",str(exc)[:180],flush=True)
+
+
+def queue_ai_diagnostic_event(event):
+    """Deduplicate event writes per bar and keep Supabase off the decision path."""
+    if not isinstance(event,dict) or not event.get("event_id"):
+        return False
+    now=time.monotonic()
+    event_id=str(event["event_id"])
+    with CACHE_LOCK:
+        previous=AI_EVENT_CACHE.get(event_id,0.0)
+        if now-previous<60.0:
+            return False
+        AI_EVENT_CACHE[event_id]=now
+        if len(AI_EVENT_CACHE)>4000:
+            for key,_ in sorted(AI_EVENT_CACHE.items(),key=lambda pair:pair[1])[:1000]:
+                AI_EVENT_CACHE.pop(key,None)
+    threading.Thread(target=persist_ai_diagnostic_event,args=(event,),daemon=True).start()
+    return True
+
 
 def bootstrap_owner():
     password=os.getenv("OWNER_PASSWORD","")
@@ -76,6 +146,12 @@ def banned(u):
     try: return datetime.fromisoformat(val.replace("Z","+00:00"))>datetime.now(timezone.utc)
     except Exception: return False
 
+def connection_for_authenticated_user(user):
+    """Never let owner requests borrow a different customer's MT5 connection."""
+    identity=license_for_user(user["id"])
+    client_id=(identity or {}).get("client_id","")
+    return client_id, (CONNECTIONS.get(client_id) if client_id else None)
+
 def license_for_user(user_id):
     rows=sb("GET","/rest/v1/alzool_engine_clients?user_id=eq."+urllib.parse.quote(user_id,safe="")+"&select=client_id,expires_at,revoked&limit=1",admin=True)
     return rows[0] if rows else None
@@ -92,9 +168,63 @@ def issue_license(user_id):
         sb("PATCH","/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe=""),row,admin=True)
     else:
         sb("POST","/rest/v1/alzool_engine_clients",row,admin=True)
+    # Rotated credentials must invalidate any cached prior token immediately.
+    with CACHE_LOCK:
+        LICENSE_CACHE.pop(client_id,None)
     return {"client_id":client_id,"client_token":token,"expires_at":expires}
 
+def issue_owner_pairing(user):
+    """Pair the owner's terminal without creating a client licence."""
+    uid=user["id"]
+    record=admin_user(uid)
+    metadata=dict(record.get("app_metadata") or {})
+    secret=secrets.token_urlsafe(40)
+    metadata["alzool_owner_mt5_hash"]=hashlib.sha256(secret.encode()).hexdigest()
+    sb("PUT","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),
+       {"app_metadata":metadata},admin=True)
+    LICENSE_CACHE.pop("owner",None)
+    identity=license_for_user(uid)
+    if not identity: raise ValueError("معرّف التخزين الخاص بالمالك غير موجود")
+    return {"engine_id":identity["client_id"],"pairing_key":secret,"engine_server_url":PUBLIC_ENGINE_URL}
+
+def validate_owner_terminal(token):
+    if not token or len(token)<32: return False
+    digest=hashlib.sha256(token.encode()).hexdigest()
+    now=time.monotonic()
+    cached=LICENSE_CACHE.get("owner")
+    if cached and cached.get("valid_until",0)>now:
+        return hmac.compare_digest(cached.get("token_hash",""),digest)
+    users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
+    matched=next((u for u in users if (u.get("email") or "").lower()==OWNER_EMAIL),None)
+    expected=((matched or {}).get("app_metadata") or {}).get("alzool_owner_mt5_hash","")
+    LICENSE_CACHE["owner"]={"token_hash":expected,"valid_until":now+30}
+    return bool(expected and hmac.compare_digest(expected,digest))
+
 def validate_license(client_id,token):
+    if client_id!="owner":
+        # The owner device previously triggered two Supabase lookups on every
+        # heartbeat, settings poll and decision poll. Cache ONLY the verified
+        # client-id -> owner mapping briefly. The separate owner pairing key is
+        # still validated on every request and retains its own revocation TTL.
+        try:
+            now=time.monotonic()
+            with CACHE_LOCK:
+                owner_entry=OWNER_TERMINAL_ID_CACHE.get(client_id)
+            if owner_entry and owner_entry["until"]>now:
+                is_owner=owner_entry["is_owner"]
+            else:
+                owner_rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+
+                    urllib.parse.quote(client_id,safe="")+"&select=user_id&limit=1",admin=True)
+                is_owner=False
+                if owner_rows:
+                    owner_record=admin_user(owner_rows[0]["user_id"])
+                    is_owner=(owner_record.get("email") or "").lower()==OWNER_EMAIL
+                with CACHE_LOCK:
+                    if len(OWNER_TERMINAL_ID_CACHE)>256:OWNER_TERMINAL_ID_CACHE.clear()
+                    OWNER_TERMINAL_ID_CACHE[client_id]={"is_owner":is_owner,"until":now+10}
+            if is_owner:return validate_owner_terminal(token)
+        except Exception: return False
+    if client_id=="owner": return False
     if not client_id or not token: return False
     token_hash=hashlib.sha256(token.encode()).hexdigest()
     now=time.monotonic()
@@ -120,6 +250,39 @@ def validate_license(client_id,token):
                               "checked_at":now,"valid_until":now+LICENSE_CACHE_TTL_SECONDS}
     return valid
 
+def terminal_is_owner(client_id):
+    """Check the authorized terminal's owner mapping with short-lived cache."""
+    now=time.monotonic()
+    with CACHE_LOCK:
+        cached=OWNER_TERMINAL_ID_CACHE.get(client_id)
+    if cached and cached.get("until",0)>now:
+        return cached.get("is_owner") is True
+    rows=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+
+            urllib.parse.quote(client_id,safe="")+"&select=user_id&limit=1",admin=True)
+    is_owner=bool(rows and (admin_user(rows[0]["user_id"]).get("email") or "").lower()==OWNER_EMAIL)
+    with CACHE_LOCK:
+        OWNER_TERMINAL_ID_CACHE[client_id]={"is_owner":is_owner,"until":now+10}
+    return is_owner
+
+
+def _owner_trade_settings_view(settings):
+    """Ignore owner-unselected legacy caps and implicit stop losses.
+
+    Older releases wrote numeric defaults into persistent settings. Those
+    defaults do not constitute an owner choice. Leave clients untouched.
+    """
+    copy=dict(settings or {})
+    pm=dict(copy.get("position_management") or {})
+    if not pm.get("optional_limits_user_selected"):
+        for key in ("max_drawdown_pct","max_positions","max_positions_per_direction",
+                    "max_total_lots","addon_max_lot","cooling_max_lot","recovery_max_lot"):
+            pm.pop(key,None)
+    if not pm.get("stop_loss_user_configured"):
+        copy["stop_loss_enabled"]=False
+    copy["position_management"]=pm
+    return copy
+
+
 def _fetch_trade_settings(client_id):
     encoded=urllib.parse.quote(client_id,safe="")
     rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+encoded+
@@ -132,17 +295,19 @@ def _fetch_trade_settings(client_id):
         "addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,
         "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
         "cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10}}
+    if terminal_is_owner(client_id):
+        settings=_owner_trade_settings_view(settings)
     pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
-    pm.setdefault("recovery_enabled",True)
+    if not pm.get("entry_council_mode_user_selected"):
+        pm["entry_council_mode"]="ADVISORY"
+    pm.setdefault("recovery_enabled",False)
     pm.setdefault("recovery_loss_trigger",0.0)
-    # Migrate the legacy implicit OFF default once; retain explicit user choices.
-    if pm.get("recovery_user_configured") is not True and finite_number(pm.get("recovery_loss_trigger"),0.0)<=0.0:
-        pm["recovery_enabled"]=True
+    pm.setdefault("recovery_profit_target",0.0)
     pm.setdefault("entry_guard_enabled",True)
     pm.setdefault("entry_max_delay_bars",1)
     pm.setdefault("entry_max_deviation_atr",0.5)
     settings["position_management"]=pm
-    settings["trading_enabled"]=bool(clients and clients[0].get("trading_enabled",False))
+    settings["trading_enabled"]=False if (clients and clients[0].get("trading_enabled",False)==False) else bool(clients and clients[0].get("trading_enabled",False))
     return settings
 
 def _store_trade_settings(client_id,settings):
@@ -187,6 +352,36 @@ def finite_number(value, default=0.0):
     except (TypeError, ValueError, OverflowError):
         return default
 
+def entry_direction_capacity(positions, symbol, signal, settings):
+    """Enforce per-direction count only when the owner explicitly sets a cap."""
+    pm=(settings or {}).get("position_management") or {}
+    if signal not in ("BUY","SELL"):
+        return {"approved":False,"reason_ar":"لا يوجد اتجاه دخول صالح"}
+    position_type=0 if signal=="BUY" else 1
+    live_symbol_positions=[p for p in (positions or [])
+                           if isinstance(p,dict) and str(p.get("symbol") or "")==symbol]
+    count=sum(1 for p in live_symbol_positions
+              if int(finite_number(p.get("type"),-1))==position_type)
+    opposite_count=sum(1 for p in live_symbol_positions
+                       if int(finite_number(p.get("type"),-1))==1-position_type)
+    # Gold trades from every EA (including manual positions) count. Never open
+    # opposite exposure, regardless of whether a per-direction cap is configured.
+    if opposite_count:
+        return {"approved":False,"open_same_side":count,
+                "open_opposite_side":opposite_count,
+                "reason_ar":"حماية الاتجاه: توجد مراكز ذهب معاكسة؛ منع دخول جديد"}
+    raw=pm.get("max_positions_per_direction")
+    if raw is None or str(raw).strip()=="":
+        return {"approved":True,"open_same_side":count,
+                "reason_ar":"لم يحدد المالك حد عدد للاتجاه"}
+    cap=int(finite_number(raw,-1))
+    if cap<0:
+        return {"approved":False,"reason_ar":"حد صفقات الاتجاه غير صالح"}
+    return {"approved":count<cap,"open_same_side":count,"max_per_direction":cap,
+            "reason_ar":"الحد الذي حدده المالك لصفقات الاتجاه" if count>=cap
+                        else "عدد صفقات الاتجاه ضمن إعدادات المالك"}
+
+
 def clean_telemetry_rows(rows, allowed, limit=200):
     if not isinstance(rows,list): return []
     cleaned=[]
@@ -211,8 +406,11 @@ def clean_telemetry_rows(rows, allowed, limit=200):
 def live_learning_profile(deals):
     """Build transparent, outcome-based live weights from real closed XAUUSD positions."""
     grouped={}
-    today=datetime.now(timezone(timedelta(hours=4))).date()
+    now_utc=datetime.now(timezone.utc)
+    cutoff=int((now_utc-timedelta(days=30)).timestamp())
+    today=now_utc.astimezone(timezone(timedelta(hours=4))).date()
     today_total=set()
+    last_closed_stamp=0
     for deal in deals if isinstance(deals,list) else []:
         if not isinstance(deal,dict): continue
         symbol=str(deal.get("symbol") or "").upper()
@@ -220,6 +418,8 @@ def live_learning_profile(deals):
         entry=int(finite_number(deal.get("entry"),1))
         if entry not in (1,2,3): continue
         stamp=int(finite_number(deal.get("time")))
+        if stamp<=0 or stamp<cutoff:continue
+        last_closed_stamp=max(last_closed_stamp,stamp)
         pid=str(deal.get("position_id") or deal.get("ticket") or "")
         if not pid: continue
         if stamp>0 and datetime.fromtimestamp(stamp,timezone.utc).astimezone(timezone(timedelta(hours=4))).date()==today:
@@ -247,33 +447,56 @@ def live_learning_profile(deals):
         sid=int(row["strategy_id"] or 0)
         cid=int(row.get("combination_id") or 0)
         if 1<=cid<=1000:
-            ckey=str(cid); citem=combo_stats.setdefault(ckey,{"combination_id":cid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
+            ckey=str(cid); citem=combo_stats.setdefault(ckey,{"combination_id":cid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0,
+                "gross_win":0.0,"gross_loss":0.0})
             citem["trades"]+=1; citem["net"]+=row["net"]
-            if row["net"]>0: citem["wins"]+=1; combo_weights[ckey]=min(1.15,combo_weights[ckey]*1.01)
-            elif row["net"]<0: citem["losses"]+=1; combo_weights[ckey]=max(0.85,combo_weights[ckey]*0.99)
-            else: citem["flat"]+=1
+            if row["net"]>0:
+                citem["wins"]+=1;citem["gross_win"]+=row["net"]
+            elif row["net"]<0:
+                citem["losses"]+=1;citem["gross_loss"]+=-row["net"]
+            else:citem["flat"]+=1
         if not 1<=sid<=200: continue
-        key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0})
+        key=str(sid); item=stats.setdefault(key,{"strategy_id":sid,"trades":0,"wins":0,"losses":0,"flat":0,"net":0.0,
+            "gross_win":0.0,"gross_loss":0.0})
         item["trades"]+=1; item["net"]+=row["net"]
         if row["net"]>0:
-            item["wins"]+=1; weights[key]=min(1.5,weights[key]*1.02)
+            item["wins"]+=1;item["gross_win"]+=row["net"]
         elif row["net"]<0:
-            item["losses"]+=1; weights[key]=max(0.5,weights[key]*0.98)
-        else: item["flat"]+=1
+            item["losses"]+=1;item["gross_loss"]+=-row["net"]
+        else:item["flat"]+=1
         if row["position_id"] in today_total: matched_today.add(row["position_id"])
     matched=sum(x["trades"] for x in stats.values())
+    last_attributed_stamp=max((row["time"] for row in rows if row["strategy_id"]),default=0)
     wins=sum(x["wins"] for x in stats.values()); losses=sum(x["losses"] for x in stats.values())
     coverage=(matched/len(rows)*100.0) if rows else 0.0
     daily_coverage=(len(matched_today)/len(today_total)*100.0) if today_total else 0.0
-    for key,item in stats.items(): item["weight"]=round(weights[key],4)
+    # Statistical shrinkage prevents one lucky closed trade from changing votes.
+    for key,item in stats.items():
+        weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"],
+            gross_win=item["gross_win"],gross_loss=item["gross_loss"])
+        item["weight"]=weights[key]
+        item["evidence"]="ELIGIBLE" if item["wins"]+item["losses"]>=8 else "INSUFFICIENT_TRADES"
+    for key,item in combo_stats.items():
+        combo_weights[key]=conservative_outcome_weight(item["wins"],item["losses"],item["net"],
+            range_size=0.15,gross_win=item["gross_win"],gross_loss=item["gross_loss"])
+        item["evidence"]="ELIGIBLE" if item["wins"]+item["losses"]>=8 else "INSUFFICIENT_TRADES"
     return {"processed_positions":matched,"closed_positions":len(rows),"unmatched_positions":max(0,len(rows)-matched),
         "wins":wins,"losses":losses,"flat":sum(x["flat"] for x in stats.values()),
         "net":sum(x["net"] for x in rows if x["strategy_id"]),
         "coverage_percent":round(coverage,1),"daily_closed_positions":len(today_total),
         "daily_processed_positions":len(matched_today),"daily_coverage_percent":round(daily_coverage,1),
-        "updated_strategies":sum(1 for x in stats.values() if x["wins"]+x["losses"]>0),
+        "updated_strategies":sum(1 for x in stats.values() if x["weight"]!=1.0),
+        "last_closed_at":(datetime.fromtimestamp(last_closed_stamp,timezone.utc).isoformat()
+                          if last_closed_stamp else None),
+        "last_attributed_at":(datetime.fromtimestamp(last_attributed_stamp,timezone.utc).isoformat()
+                              if last_attributed_stamp else None),
+        "eligible_strategies":sum(1 for x in stats.values() if x["evidence"]=="ELIGIBLE"),
+        "weight_policy":">=8 attributed NET closed trades; weight is based on net payoff versus total absolute payoff; 12 neutral pseudo-observations",
         "weights":weights,"strategies":sorted(stats.values(),key=lambda x:(x["net"],x["trades"]),reverse=True),
-        "combination_weights":combo_weights,"processed_combinations":sum(x["trades"] for x in combo_stats.values()),
+        "combination_weights":combo_weights,
+        "updated_combinations":sum(1 for k,x in combo_stats.items() if combo_weights[k]!=1.0),
+        "eligible_combinations":sum(1 for x in combo_stats.values() if x["evidence"]=="ELIGIBLE"),
+        "processed_combinations":sum(x["trades"] for x in combo_stats.values()),
         "combinations":sorted([{**x,"weight":round(combo_weights[str(x["combination_id"])],4)} for x in combo_stats.values()],key=lambda x:(x["net"],x["trades"]),reverse=True)}
 
 
@@ -325,8 +548,101 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_response(204); self.send_header("Allow","GET, POST, PATCH, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers","Authorization, Content-Type")
         self.send_header("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS"); self.end_headers()
+    def do_HEAD(self):
+        path=urllib.parse.urlparse(self.path).path
+        if path in ("/health","/api/health"):
+            self.send_response(200);self.send_header("Cache-Control","no-store");self.end_headers()
+            return
+        if path in ("/strategy-engine.js",):
+            try: owner(token_of(self))
+            except PermissionError: return self.send_error(403,"Forbidden")
+            except Exception: return self.send_error(403,"Forbidden")
+        elif not public_static(path):
+            return self.send_error(404,"Not Found")
+        return super().do_HEAD()
+
     def do_GET(self):
         path=urllib.parse.urlparse(self.path).path
+        if path in OWNER_READ_ENDPOINTS or path in PROTECTED_OWNER_ASSETS or path=="/strategy-engine.js":
+            try: owner(token_of(self))
+            except PermissionError: return self.send_json(403,{"error":"هذه الصفحة/الخدمة للمالك فقط"})
+            except Exception: return self.send_json(403,{"error":"التحقق من صلاحيات المالك غير متاح"})
+        if path=="/strategy-engine.js":
+            return super().do_GET()
+        if path=="/health":
+            return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
+                "server_utc":datetime.now(timezone.utc).isoformat(),
+                "trading_enabled_by_health_check":False})
+        if path=="/api/owner/readiness":
+            try:
+                user=owner(token_of(self))
+                identity=license_for_user(user["id"])
+                cid=(identity or {}).get("client_id","")
+                snapshot=CONNECTIONS.get(cid) if cid else None
+                settings=get_trade_settings(cid) if cid else {}
+                decision=(snapshot or {}).get("strategy_decision") or {}
+                council=council_result(cid,decision) if cid else {}
+                latest_candle=None
+                if cid:
+                    rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+
+                        urllib.parse.quote(cid,safe="")+
+                        "&select=candle_time&order=candle_time.desc&limit=1",admin=True)
+                    if rows:latest_candle=rows[0].get("candle_time")
+                result=owner_readiness(identity,snapshot,settings,council,latest_candle)
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(503,{"error":"تعذر إتمام فحص الجاهزية",
+                "reason_type":type(e).__name__})
+        if path.startswith("/v1/local-ai/context/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+            if not terminal_is_owner(client_id):
+                return self.send_json(403,{"error":"واجهة النماذج المحلية للمالك فقط"})
+            item=CONNECTIONS.get(client_id)
+            if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                return self.send_json(409,{"error":"بيانات MT5 غير حديثة"})
+            decision=item.get("strategy_decision") or {}
+            if not decision:return self.send_json(409,{"error":"التحليل لم يكتمل"})
+            context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
+            return self.send_json(200,{"client_id":client_id,
+                "bar_time":int(finite_number(decision.get("bar_time"))),
+                # The local relay consumes 'decision'. Keep 'direction' for legacy relays.
+                "decision":decision.get("decision","WAIT"),
+                "direction":decision.get("decision","WAIT"),
+                "context":context,
+                "candles":(item.get("closed_candles") or [])[:6],
+                "confidence":finite_number(decision.get("confidence")),
+                "strategy_id":int(finite_number(decision.get("strategy_id"))),
+                "entry_reference_price":finite_number(decision.get("entry_reference_price")),
+                "atr":finite_number(context.get("atr")),
+                "advisory_bots_consensus":(decision.get("advisory_bots") or {}).get("consensus",{}),
+                "advisory_bots":(decision.get("advisory_bots") or {}).get("advisors",[]),
+                "family_votes":decision.get("family_votes") or {},
+                "combination_summary":decision.get("combination_summary") or {},
+                "last_seen":item.get("last_seen")})
+        if path.startswith("/v1/terminal-actions/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+            item=CONNECTIONS.get(client_id)
+            if not item:return self.send_json(409,{"execution_ready":False,"reason_ar":"MT5 غير متصل"})
+            decision=item.get("strategy_decision") or {}
+            settings=get_trade_settings(client_id) or {}
+            now=datetime.now(timezone.utc)
+            advisory_mode=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+            council=council_result(client_id,decision)
+            if advisory_mode: decision=fuse_live_decision(decision,council)
+            gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
+                item.get("received_at"),now,bool(settings.get("trading_enabled")),
+                local_ai_advice=(dict(item["local_ai_advice"],
+                    age_seconds=now.timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0)))
+                    if isinstance(item.get("local_ai_advice"),dict) else None),
+                require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
+                strategy_first=advisory_mode)
+            risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
+            return self.send_json(200,propose_central_action(client_id,item,decision,
+                gate,council,risk,settings,now,council_advisory=advisory_mode))
         if path.startswith("/v1/terminal-control/settings/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -341,6 +657,74 @@ class Handler(SimpleHTTPRequestHandler):
                 if cached:
                     return self.send_json(200,cached["settings"])
                 return self.send_json(503,{"error":"تعذر تحديث إعدادات التداول مؤقتاً"})
+        if path=="/api/bot-advisors":
+            # Owner/client authenticated read-only strategy assistants.
+            # No historical data from other customers, no order or settings actions.
+            try:
+                u=current_user(token_of(self))
+                if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
+                identity=license_for_user(u["id"])
+                if not identity or identity.get("revoked"):
+                    return self.send_json(403,{"error":"لا يوجد اتصال MT5 مخوّل لهذا الحساب"})
+                client_id=identity["client_id"]
+                item=CONNECTIONS.get(client_id)
+                if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                    return self.send_json(409,{"error":"MT5 غير متصل أو البيانات أقدم من 30 ثانية. لا نعرض توصيات قديمة.","connected":False})
+                if not str(item.get("symbol","")).upper().startswith("XAUUSD"):
+                    return self.send_json(409,{"error":"مساعدو المكتبة مخصصون حالياً لشارت الذهب XAUUSD.","connected":True})
+                # A chronological list of CLOSED candles only, not the forming bar.
+                current_decision=item.get("strategy_decision") or {}
+                analysis=item.get("bot_report")
+                current_candle=(item.get("closed_candles") or [{}])[0]
+                if not isinstance(analysis,dict) or int(finite_number(analysis.get("bar_time",0)))!=int(finite_number(current_candle.get("time",0))):
+                    analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
+                central=(current_decision.get("decision","WAIT")
+                         if int(finite_number(current_decision.get("bar_time",0)))==
+                            int(finite_number(analysis.get("bar_time",0))) else "WAIT")
+                candle_age_sec=int(time.time()-finite_number(analysis.get("bar_time",0)))
+                analysis_fresh=(analysis.get("status")=="READY" and
+                                market_bar_fresh(analysis.get("bar_time"),item.get("timeframe"),time.time()))
+                result={**analysis,"connected":True,
+                    "market_data_fresh":analysis_fresh,
+                    "candle_age_seconds":candle_age_sec,
+                    "data_status":"RECENT" if analysis_fresh else "STALE_OR_UNAVAILABLE",
+                    "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
+                    "central_decision":central,"received_at":item.get("last_seen"),
+                    "signal_journal":(item.get("bot_signal_history") or [])[-15:],
+                    "signal_bus":{"processed_in_central_engine":True,
+                                  "event_type":"BOT_ANALYSIS_SIGNAL",
+                                  "last_bar_dispatch_count":int(item.get("bot_dispatch_count",0)),
+                                  "persistence":"async_best_effort_not_confirmed"},
+                    "execution_enabled":False,
+                    "commercial_bots_connected":False,
+                    "central_alignment":(
+                        "AGREE" if central==analysis["consensus"]["signal"] and central in ("BUY","SELL")
+                        else "CONFLICT" if central in ("BUY","SELL") and analysis["consensus"]["signal"] in ("BUY","SELL")
+                        else "NO_DIRECTIONAL_CONSENSUS"
+                    )}
+                return self.send_json(200,result)
+            except PermissionError as e: return self.send_json(403,{"error":str(e)})
+            except Exception: return self.send_json(502,{"error":"تعذر إكمال التحليل الاستشاري"})
+        if path=="/api/client/basic-settings":
+            try:
+                u=current_user(token_of(self))
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    return self.send_json(403,{"error":"إعدادات العميل فقط"})
+                if banned(admin_user(u["id"])):
+                    return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"):
+                    return self.send_json(403,{"error":"اتصال العميل غير مرخص"})
+                if datetime.fromisoformat(str(lic["expires_at"]).replace("Z","+00:00"))<=datetime.now(timezone.utc):
+                    return self.send_json(403,{"error":"انتهت صلاحية الاتصال"})
+                settings=get_trade_settings(lic["client_id"]) or {}
+                return self.send_json(200,{"settings":basic_settings(settings),
+                    "trading_enabled":bool(settings.get("trading_enabled")),
+                    "server_managed_ai":True,"advanced_settings_editable":False})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except (ValueError,KeyError,TypeError):
+                return self.send_json(403,{"error":"سجل الترخيص غير صالح"})
+            except Exception:return self.send_json(503,{"error":"تعذّر تحميل إعدادات العميل"})
         if path=="/api/auto-trading":
             try:
                 u=current_user(token_of(self))
@@ -358,23 +742,19 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self))
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
-                else:
-                    lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
+                client_id,item=connection_for_authenticated_user(u)
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management,updated_at&limit=1",admin=True)
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
                     "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
                     "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    settings=_owner_trade_settings_view(settings)
                 pm=settings.get("position_management") if isinstance(settings.get("position_management"),dict) else {}
-                pm.setdefault("recovery_enabled",True)
+                pm.setdefault("recovery_enabled",False)
                 pm.setdefault("recovery_loss_trigger",0.0)
-                # Migrate the legacy implicit OFF default once; retain explicit user choices.
-                if pm.get("recovery_user_configured") is not True and finite_number(pm.get("recovery_loss_trigger"),0.0)<=0.0:
-                    pm["recovery_enabled"]=True
+                pm.setdefault("recovery_profit_target",0.0)
                 pm.setdefault("entry_guard_enabled",True)
                 pm.setdefault("entry_max_delay_bars",1)
                 pm.setdefault("entry_max_deviation_atr",0.5)
@@ -385,7 +765,12 @@ class Handler(SimpleHTTPRequestHandler):
         if path in ("/health","/api/health"):
             return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Central Strategy Execution","mt5_connection_api":True,"trading_engine":True,"execution_location":"licensed MT5 terminal"})
         if path=="/api/config":
-            return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,"owner_email":OWNER_EMAIL,"ready":bool(SUPABASE_URL and SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY)})
+            missing=[]
+            if not SUPABASE_URL: missing.append("SUPABASE_URL")
+            if not SUPABASE_ANON_KEY: missing.append("SUPABASE_ANON_KEY")
+            if not SUPABASE_SERVICE_ROLE_KEY: missing.append("SUPABASE_SERVICE_ROLE_KEY")
+            return self.send_json(200,{"supabase_url":SUPABASE_URL,"supabase_anon_key":SUPABASE_ANON_KEY,
+                "owner_email":OWNER_EMAIL,"ready":not missing,"missing":missing})
         if path=="/api/access/check":
             try:
                 u=current_user(token_of(self)); fresh=admin_user(u["id"])
@@ -415,12 +800,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self))
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                is_owner=(u.get("email") or "").lower()==OWNER_EMAIL
-                if is_owner:
-                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                identity=license_for_user(u["id"])
+                client_id=(identity or {}).get("client_id","") if not (identity or {}).get("revoked") else ""
                 if not client_id:
                     return self.send_json(409,{"error":"لا يوجد سجل تاريخي محفوظ لهذا الحساب بعد. حدّث عميل MT5 لإرسال التاريخ."})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -481,14 +862,10 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self))
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
-                    if not client_id:
-                        latest_run=sb("GET","/rest/v1/alzool_engine_learning_runs?select=client_id&order=created_at.desc&limit=1",admin=True)
-                        client_id=latest_run[0].get("client_id","") if latest_run else ""
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                # Never select the latest customer's candles or learning run
+                # for an owner. The authenticated identity owns exactly one ID.
+                lic=license_for_user(u["id"])
+                client_id=lic.get("client_id","") if lic and not lic.get("revoked") else ""
                 if not client_id: return self.send_json(200,{"runs":[],"count":0})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 limit=max(1,min(100,int(finite_number((params.get("limit") or ["30"])[0],30))))
@@ -500,9 +877,48 @@ class Handler(SimpleHTTPRequestHandler):
                     "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
                 deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
                 live=live_learning_profile(deals)
-                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],"count":len(rows) if isinstance(rows,list) else 0,"live":live})
+                try:
+                    selected=get_active_strategy_profile(client_id,sb)
+                    profile_error=None
+                except Exception as exc:
+                    selected=None
+                    profile_error=type(exc).__name__
+                computed=apply_live_learning(selected,live)["diagnostics"]
+                item=CONNECTIONS.get(client_id) or {}
+                recent_decision=item.get("strategy_decision") or {}
+                current_application=recent_decision.get("learning") or {}
+                return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],
+                    "count":len(rows) if isinstance(rows,list) else 0,"live":live,
+                    "learning_computed":{**computed,
+                       "active_version_label":(selected or {}).get("version_label","DEFAULT"),
+                       "profile_read_error":profile_error},
+                    "learning_applied":current_application,
+                    "learning_applied_at":recent_decision.get("generated_at"),
+                    "learning_decision_bar":recent_decision.get("bar_time")})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path.startswith("/v1/local-ai/context/"):
+            client_id=path.rsplit("/",1)[-1]
+            if not validate_license(client_id,token_of(self)):
+                return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+            item=CONNECTIONS.get(client_id)
+            if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+            decision=item.get("strategy_decision") or {}
+            if not decision:
+                return self.send_json(409,{"error":"لا يوجد قرار مركزي لتحليله"})
+            candles=item.get("closed_candles") or []
+            return self.send_json(200,{
+                "symbol":item.get("symbol",""),"timeframe":item.get("timeframe",""),
+                "bar_time":int(finite_number(decision.get("bar_time",0))),
+                "decision":decision.get("decision","WAIT"),
+                "confidence":finite_number(decision.get("confidence",0)),
+                "reason_ar":str(decision.get("reason_ar",""))[:500],
+                "context":decision.get("context",{}),
+                "candles":candles[:24],
+                "local_ai_required":LOCAL_AI_REQUIRED,
+                "local_ai_vote_current":(isinstance(item.get("local_ai_advice"),dict) and int(finite_number(item["local_ai_advice"].get("bar_time",0)))==int(finite_number(decision.get("bar_time",0))) and datetime.now(timezone.utc).timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0))<=20)
+            })
         if path.startswith("/v1/terminal-decision/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -520,17 +936,81 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
-            ready=(trading_enabled and signal in ("BUY","SELL") and confidence>=0.45 and
-                   1<=strategy_id<=200 and int(finite_number(decision.get("bar_time",0)))>0)
+            advisory_mode=(entry_council_mode(control_settings,terminal_is_owner(client_id))=="ADVISORY")
+            ai_council=council_result(client_id,decision)
+            if advisory_mode:
+                decision=fuse_live_decision(decision,ai_council)
+                confidence=finite_number(decision.get("confidence",0.0))
+                signal=str(decision.get("decision","WAIT"))
+                strategy_id=int(finite_number(decision.get("strategy_id",0)))
+            gate=evaluate_entry_gate(
+                decision=decision,
+                account=item.get("account") or {},
+                symbol=item.get("symbol",""),
+                received_at=item.get("received_at"),
+                now=datetime.now(timezone.utc),
+                trading_enabled=trading_enabled,
+                local_ai_advice=(
+                    {**item.get("local_ai_advice",{}),
+                     "age_seconds":datetime.now(timezone.utc).timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0))}
+                    if isinstance(item.get("local_ai_advice"),dict) else None
+                ),
+                require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
+                strategy_first=advisory_mode
+            )
+            risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
+            direction_limit=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),signal,control_settings)
+            # Late model votes must never turn an older closed bar into a new order.
             bar_time=int(finite_number(decision.get("bar_time",0)))
-            return self.send_json(200,{"signal":signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal),
-                "confidence":confidence,"reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
+            bar_fresh=closed_bar_execution_fresh(bar_time,datetime.now(timezone.utc),
+                                                   item.get("timeframe","M1"))
+            confirmation=post_close_m1_confirmation(
+                item.get("last_closed_deal_time"),item.get("last_m1_closed_open"),
+                decision.get("bar_time"),datetime.now(timezone.utc))
+            ready=bool(bar_fresh and gate.get("approved") and
+                       (advisory_mode or ai_council["approved"]) and
+                       risk_report["approved"] and direction_limit["approved"] and
+                       confirmation["approved"])
+            if not bar_fresh and signal in ("BUY","SELL"):
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":"انتهت نافذة تنفيذ الشمعة المؤكدة؛ انتظار شمعة جديدة"}
+            if not advisory_mode and not ai_council["approved"] and bar_fresh:
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":ai_council["reason_ar"]}
+            if not risk_report["approved"]:
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":risk_report["reason_ar"]}
+            if not direction_limit["approved"] and signal in ("BUY","SELL"):
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":direction_limit["reason_ar"]}
+            if not confirmation["approved"]:
+                gate={**gate,"approved":False,"status":"WAIT","authorization_id":None,
+                      "expires_at_unix":0,"reason_ar":confirmation["reason_ar"]}
+            council_event=build_council_event(client_id,decision,gate,trading_enabled)
+            queue_ai_diagnostic_event(council_event)
+            bar_time=int(finite_number(decision.get("bar_time",0)))
+            output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
+            full_decision={"signal":output_signal,
+                "confidence":confidence,"reason_ar":(decision.get("reason_ar","بانتظار اكتمال بيانات التحليل") if ready else gate.get("reason_ar","تم رفض الدخول بواسطة المجلس أو الحماية")),
+                "decision_reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
-                "bar_time":decision.get("bar_time",0),"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
+                "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
-                "minimum_confidence":0.45,
-                "message":"قرار جاهز للتنفيذ على MT5 بعد إغلاق شمعة التأكيد" if ready else ("التداول الآلي متوقف من لوحة التحكم" if not trading_enabled else "لا توجد إشارة مستوفية لشروط الدخول")})
+                "minimum_confidence":None,
+                "entry_council_mode":"ADVISORY" if advisory_mode else "STRICT",
+                "authorization":gate,
+                "authorization_id":gate.get("authorization_id"),
+                "authorization_expires_at":gate.get("expires_at_unix",0),
+                "council":decision.get("council",{}),
+                "multi_model_council":ai_council,"hybrid":decision.get("hybrid",{}),"risk_guardian":risk_report,
+                "direction_limit":direction_limit,
+                "post_close_m1_confirmation":confirmation,
+                "local_ai_required":LOCAL_AI_REQUIRED,
+                "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
+                "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")}
+            return self.send_json(200,full_decision if terminal_is_owner(client_id)
+                                  else minimal_terminal_decision(full_decision))
         if path=="/api/market/context":
             try:
                 import time
@@ -541,11 +1021,7 @@ class Handler(SimpleHTTPRequestHandler):
                 u=current_user(token_of(self)); t_user=time.perf_counter()
                 t_admin=t_user
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
-                    item=CONNECTIONS.get(client_id) if client_id else None
+                client_id,item=connection_for_authenticated_user(u)
                 t_lookup=time.perf_counter()
                 connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
                 if not connected:
@@ -569,17 +1045,8 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 u=current_user(token_of(self)); fresh=admin_user(u["id"])
                 if banned(fresh): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    # Resolve the owner's stable licensed client_id from Supabase first.
-                    # CONNECTIONS is intentionally ephemeral and may be empty after a Render restart.
-                    lic=license_for_user(u["id"])
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(lic or {}).get("client_id") or (item or {}).get("client_id","")
-                    if client_id:
-                        item=CONNECTIONS.get(client_id) or item
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
-                    item=CONNECTIONS.get(client_id) if client_id else None
+                # Owner and client data always come from their own authenticated identity.
+                client_id,item=connection_for_authenticated_user(u)
                 connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
                 account=(item or {}).get("account",{}) if connected else {}
                 positions=(item or {}).get("positions",[]) if connected else []
@@ -589,9 +1056,6 @@ class Handler(SimpleHTTPRequestHandler):
                 history_records=0
                 history_error=""
                 try:
-                    if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                        latest=sb("GET","/rest/v1/alzool_engine_closed_deals?select=client_id&order=deal_time.desc&limit=1",admin=True)
-                        if latest: client_id=latest[0].get("client_id","")
                     if client_id:
                         cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
                         stored=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
@@ -656,9 +1120,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 lic=license_for_user(u["id"])
                 client_id=(lic or {}).get("client_id","")
-                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
+                # Do not fall back to another user's latest connection.
                 if not client_id: return self.send_json(200,{"events":[],"count":0})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 limit=max(1,min(500,int(finite_number((params.get("limit") or ["200"])[0],200))))
@@ -666,8 +1128,8 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
-                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED"],
-                    "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY"]
+                    "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
+                    "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","CENTRAL_ACTION_CLAIM","RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY"]
                 }.get(kind)
                 query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")
                 if event_types:
@@ -687,9 +1149,6 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 lic=license_for_user(u["id"])
                 client_id=(lic or {}).get("client_id","")
-                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                    latest=sb("GET","/rest/v1/alzool_engine_closed_deals?select=client_id&order=deal_time.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
                 if not client_id: return self.send_json(200,{"trades":[],"count":0,"currency":""})
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 days=int(finite_number((params.get("days") or ["30"])[0],30))
@@ -751,6 +1210,215 @@ class Handler(SimpleHTTPRequestHandler):
                     "net":sum(x["net"] for x in trades),"currency":currency,"days":days})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
+        if path=="/api/ai/actions/control":
+            try:
+                u=owner(token_of(self))
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بالمحرك"})
+                settings=get_trade_settings(identity["client_id"]) or {}
+                pm=settings.get("position_management") or {}
+                return self.send_json(200,{"enabled":pm.get("central_actions_enabled") is True,
+                    "trading_enabled":settings.get("trading_enabled") is True,
+                    "requires_mt5_opt_in":True,
+                    "message":"لا تنفيذ بدون موافقة المجلس، تأكيد المالك، ومفتاح MT5 المحلي"})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/research":
+            try:
+                u=owner(token_of(self))
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"معرّف التخزين غير موجود"})
+                cid=urllib.parse.quote(identity["client_id"],safe="")
+                logs=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=eq."+cid+
+                    "&event_type=eq.AI_RESEARCH_RESULT&select=created_at,payload"+
+                    "&order=created_at.desc&limit=5",admin=True)
+                return self.send_json(200,{"auto_activate":False,"runs":logs})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/versions":
+            try:
+                u=owner(token_of(self))
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين مرتبط بحساب المالك"})
+                return self.send_json(200,{"versions":strategy_versions(identity["client_id"],sb),
+                    "note":"Rollback changes strategy weights only; it never activates trading."})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:200]})
+        if path=="/api/ai/actions":
+            try:
+                u=current_user(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(client_id) if client_id else None
+                if not item: return self.send_json(200,{"mode":"DIAGNOSTIC_ONLY",
+                    "execution_authorized":False,"actions":[],"reason_ar":"لا توجد بيانات MT5 حديثة"})
+                decision=item.get("strategy_decision") or {}
+                council=council_result(client_id,decision)
+                settings=get_trade_settings(client_id) or {}
+                advisory=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                if advisory:decision=fuse_live_decision(decision,council)
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
+                result=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/strategy-audit":
+            try:
+                u=owner(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id:return self.send_json(409,{"error":"معرّف محرك المالك غير موجود"})
+                snapshot=CONNECTIONS.get(client_id) or {}
+                symbol=str(snapshot.get("symbol") or "XAUUSD")[:40]
+                timeframe=str(snapshot.get("timeframe") or "PERIOD_M1")[:20]
+                if not symbol.upper().startswith("XAUUSD"):
+                    return self.send_json(409,{"error":"تدقيق الاستراتيجيات مخصص للذهب"})
+                q=urllib.parse.quote
+                query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
+                    "&symbol=eq."+q(symbol,safe="")+"&timeframe=eq."+q(timeframe,safe="")+
+                    "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"+
+                    "&order=candle_time.desc&limit=230")
+                rows=sb("GET",query,admin=True)
+                if not rows and timeframe!="PERIOD_M1":
+                    query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
+                        "&symbol=eq."+q(symbol,safe="")+
+                        "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"+
+                        "&order=candle_time.desc&limit=230")
+                    rows=sb("GET",query,admin=True)
+                result=audit_strategies(list(reversed(rows)),max_samples=18)
+                result.update({"symbol":symbol,"timeframe":timeframe,
+                    "source":"stored_closed_candles","read_only":True})
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(503,{"error":"تعذر إكمال التدقيق",
+                "reason_type":type(e).__name__})
+        if path=="/api/ai/learning":
+            try:
+                u=current_user(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id: return self.send_json(200,{"status":"NO_CONNECTION","memory_count":0})
+                memory=memory_snapshot(client_id,sb)
+                current=CONNECTIONS.get(client_id) or {}
+                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []))
+                last_decision=(current.get("strategy_decision") or {})
+                last_applied=last_decision.get("learning") or {}
+                return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
+                    "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
+                    "last_closed_at":profile["last_closed_at"],"last_attributed_at":profile["last_attributed_at"],
+                    "eligible_strategies":profile["eligible_strategies"],
+                    "eligible_combinations":profile["eligible_combinations"],
+                    "wins":profile["wins"],"losses":profile["losses"],
+                    "learning_applied":last_applied,
+                    "learning_applied_at":last_decision.get("generated_at"),
+                    "top_strategies":profile["strategies"][:10]})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/monitor/details":
+            # Large strategy/combination evidence is loaded only on demand.
+            try:
+                u=owner(token_of(self))
+                lic=license_for_user(u["id"])
+                cid=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(cid) if cid else None
+                if not item:
+                    return self.send_json(200,{"connected":False,"strategies":[],"combinations":[]})
+                decision=item.get("strategy_decision") or {}
+                return self.send_json(200,{"connected":True,"bar_time":decision.get("bar_time"),
+                    "strategies":decision.get("votes") or [],
+                    "combinations":decision.get("combination_votes") or [],
+                    "vote_summary":decision.get("vote_summary") or {},
+                    "combination_summary":decision.get("combination_summary") or {}})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/monitor":
+            # Owner-only, read-only mirror of the actual decision gates.
+            try:
+                u=owner(token_of(self))
+                lic=license_for_user(u["id"])
+                cid=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(cid) if cid else None
+                if not item:
+                    return self.send_json(200,{"connected":False,"reason_ar":"MT5 غير متصل","signal":"WAIT"})
+                now=datetime.now(timezone.utc)
+                decision=item.get("strategy_decision") or {}
+                settings=get_trade_settings(cid) or {}
+                advisory=(entry_council_mode(settings,True)=="ADVISORY")
+                council=council_result(cid,decision)
+                if advisory: decision=fuse_live_decision(decision,council)
+                signal=str(decision.get("decision","WAIT")).upper()
+                local=item.get("local_ai_advice")
+                local_advice=({**local,"age_seconds":now.timestamp()-finite_number(local.get("received_at_unix",0))}
+                    if isinstance(local,dict) else None)
+                gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
+                    item.get("received_at"),now,bool(settings.get("trading_enabled")),
+                    local_ai_advice=local_advice,require_local_ai=LOCAL_AI_REQUIRED and not advisory,
+                    strategy_first=advisory)
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [],
+                    risk_limits_from_settings(settings))
+                direction=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),
+                    signal,settings)
+                fresh=closed_bar_execution_fresh(decision.get("bar_time"),now,item.get("timeframe","M1"))
+                confirmation=post_close_m1_confirmation(
+                    item.get("last_closed_deal_time"),item.get("last_m1_closed_open"),
+                    decision.get("bar_time"),now)
+                ready=bool(fresh and gate.get("approved") and (advisory or council.get("approved"))
+                    and risk.get("approved") and direction.get("approved") and
+                    confirmation["approved"])
+                if not confirmation["approved"]:reason=confirmation["reason_ar"]
+                elif not gate.get("approved"):reason=gate.get("reason_ar","رفض بوابة الدخول")
+                elif not fresh:reason="انتهت نافذة تنفيذ شمعة التأكيد"
+                elif not advisory and not council.get("approved"):reason=council.get("reason_ar","المجلس ينتظر")
+                elif not risk.get("approved"):reason=risk.get("reason_ar","حارس الحساب منع الدخول")
+                elif not direction.get("approved"):reason=direction.get("reason_ar","حد صفقات الاتجاه")
+                else:reason="إشارة جاهزة للعرض على MT5؛ التنفيذ النهائي يتحقق منه EA"
+                bot=item.get("bot_report") or {}
+                actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
+                return self.send_json(200,{
+                    "connected":0<=(now-item.get("received_at",now-timedelta(days=1))).total_seconds()<=30,
+                    "last_seen":item.get("last_seen"),"symbol":item.get("symbol"),
+                    "timeframe":item.get("timeframe"),"signal":signal,
+                    "confidence":decision.get("confidence"),"strategy_id":decision.get("strategy_id"),
+                    "strategy_name":decision.get("strategy_name"),
+                    "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
+                    "bar_time":decision.get("bar_time"),"entry_ready":ready,
+                    "mode":"ADVISORY" if advisory else "STRICT",
+                    "trading_enabled":bool(settings.get("trading_enabled")),
+                    "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
+                    "mt5_position_management_enabled":item.get("mt5_position_management_enabled"),
+                    "mt5_central_trading_enabled":item.get("mt5_central_trading_enabled"),
+                    "bar_fresh":fresh,"gate":gate,"risk":risk,"direction_limit":direction,
+                    "post_close_m1_confirmation":confirmation,
+                    "council":council,"hybrid":decision.get("hybrid",{}),"local_ai":local_advice,
+                    "family_votes":decision.get("family_votes") or {},
+                    "combination_summary":decision.get("combination_summary") or {},
+                    "bot_evidence":decision.get("bot_evidence") or {},
+                    "bot_report":bot,"actions":actions,
+                    "learning":decision.get("learning") or {},
+                    "learning_applied_at":decision.get("generated_at"),
+                    "strategy_context":decision.get("context") or {}})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/council":
+            try:
+                u=current_user(token_of(self))
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                item=CONNECTIONS.get(client_id) if client_id else None
+                if not item: return self.send_json(200,{"connected":False,"status":"WAIT","reason_ar":"MT5 غير متصل"})
+                decision=item.get("strategy_decision") or {}
+                settings=get_trade_settings(client_id) or {}
+                is_hybrid=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                council=council_result(client_id,decision)
+                if is_hybrid:decision=fuse_live_decision(decision,council)
+                return self.send_json(200,{"connected":True,"client_id":client_id,
+                    "bar_time":decision.get("bar_time"),"signal":decision.get("decision","WAIT"),
+                    "mode":"HYBRID" if is_hybrid else "STRICT",
+                    "hybrid":decision.get("hybrid",{}),"council":council,
+                    "risk_guardian":risk_guardian(item.get("account") or {},item.get("positions") or [],
+                        risk_limits_from_settings(settings))})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
         if path=="/api/connection/status":
             try:
                 u=current_user(token_of(self))
@@ -759,19 +1427,131 @@ class Handler(SimpleHTTPRequestHandler):
                     client_id=lic.get("client_id") if lic else ""
                     item=CONNECTIONS.get(client_id) if client_id else None
                 else:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
+                    item=CONNECTIONS.get((license_for_user(u["id"]) or {}).get("client_id",""))
                 
-                return self.send_json(200,{"connected":bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30),
+                connected=bool(item and (datetime.now(timezone.utc)-item["received_at"]).total_seconds()<30)
+                if (u.get("email") or "").lower()!=OWNER_EMAIL:
+                    a=(item or {}).get("account") or {}
+                    safe_account={key:a.get(key) for key in
+                                  ("login","server","balance","equity","profit","free_margin","currency")}
+                    status={"account":safe_account,"symbol":(item or {}).get("symbol"),
+                            "timeframe":(item or {}).get("timeframe"),
+                            "last_seen":(item or {}).get("last_seen")}
+                    return self.send_json(200,{"connected":connected,"connection":status if item else None})
+                return self.send_json(200,{"connected":connected,
                                            "connection":({k:v for k,v in item.items() if k!="received_at"} if item else None)})
             except Exception as e: return self.send_json(403,{"error":str(e)[:180]})
+        if not public_static(path):
+            return self.send_json(404,{"error":"not_found"})
         return super().do_GET()
     def do_POST(self):
         try:
             data=self.read_json(); token=token_of(self)
             path=urllib.parse.urlparse(self.path).path
+            if path in OWNER_WRITE_ENDPOINTS:
+                owner(token)
+            if path.startswith("/v1/terminal-action-claim/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token):
+                    return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+                item=CONNECTIONS.get(client_id)
+                if not item:return self.send_json(409,{"execution_authorized":False,"reason_ar":"MT5 غير متصل"})
+                decision=item.get("strategy_decision") or {}
+                settings=get_trade_settings(client_id) or {}
+                now=datetime.now(timezone.utc)
+                advisory_mode=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                council=council_result(client_id,decision)
+                if advisory_mode: decision=fuse_live_decision(decision,council)
+                gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
+                    item.get("received_at"),now,bool(settings.get("trading_enabled")),
+                    local_ai_advice=(dict(item["local_ai_advice"],
+                        age_seconds=now.timestamp()-finite_number(item["local_ai_advice"].get("received_at_unix",0)))
+                        if isinstance(item.get("local_ai_advice"),dict) else None),
+                    require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
+                    strategy_first=advisory_mode)
+                risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
+                response=claim_central_action(client_id,data.get("authorization_id"),
+                    item,decision,gate,council,risk,settings,sb,now,
+                    council_advisory=advisory_mode)
+                return self.send_json(200 if response.get("execution_authorized") else 409,response)
+            if path.startswith("/v1/local-ai/advice/"):
+                client_id=path.rsplit("/",1)[-1]
+                if not validate_license(client_id,token):
+                    return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not terminal_is_owner(client_id):
+                    return self.send_json(403,{"error":"تصويت النماذج المحلية للمالك فقط"})
+                item=CONNECTIONS.get(client_id)
+                if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
+                    return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+                decision=item.get("strategy_decision") or {}
+                bar_time=int(finite_number(data.get("bar_time",0)))
+                direction=str(data.get("direction","WAIT")).upper()
+                confidence=finite_number(data.get("confidence",-1),-1)
+                model=str(data.get("model",""))[:80]
+                reason=str(data.get("reason_ar",""))[:500]
+                original_reason=str(data.get("reason_original",""))[:350]
+                current_bar=int(finite_number(decision.get("bar_time",0)))
+                if bar_time<=0 or bar_time!=current_bar:
+                    return self.send_json(409,{"error":"تصويت النموذج لا يخص الشمعة الحالية"})
+                if not closed_bar_execution_fresh(current_bar,datetime.now(timezone.utc),
+                                                   item.get("timeframe","M1")):
+                    return self.send_json(409,{"error":"انتهت صلاحية الشمعة الحالية للتنفيذ"})
+                if direction not in ("BUY","SELL","WAIT") or confidence<0 or confidence>1:
+                    return self.send_json(400,{"error":"صيغة تصويت النموذج غير صالحة"})
+                if model not in ("qwen3.5:4b","qwen2.5:1.5b","deepseek-r1:1.5b"):
+                    return self.send_json(400,{"error":"موديل AI غير معتمد لهذا الربط"})
+                advice={"bar_time":bar_time,"direction":direction,
+                    "confidence":confidence,"model":model,"reason_ar":reason,
+                    "received_at_unix":time.time()}
+                if original_reason and model=="qwen2.5:1.5b":
+                    advice["reason_original"]=original_reason
+                if not accept_local_model_vote(client_id,advice,decision):
+                    return self.send_json(409,{"error":"مجلس النماذج غير جاهز لهذه الشمعة"})
+                if model in ("qwen3.5:4b","qwen2.5:1.5b"):
+                    item["local_ai_advice"]=advice
+                    event=build_qwen_vote_event(client_id,advice,decision)
+                else:
+                    event={"event_id":f"deepseek:{client_id}:{bar_time}","client_id":client_id,
+                        "event_type":"AI_DEEPSEEK_VOTE","payload":advice}
+                diagnostic_queued=queue_ai_diagnostic_event(event) if event else False
+                # Re-evaluate as soon as either late vote arrives. MT5 still
+                # independently polls /terminal-decision and must pass all gates.
+                updated_council=council_result(client_id,decision)
+                # The first terminal poll may record a temporary veto before
+                # either local vote is received. Persist the revised council
+                # reason after each real vote so the owner never sees only a
+                # stale "NOT_CONFIGURED" outcome in the opportunity history.
+                council_votes=updated_council.get("votes") or {}
+                all_voted=all((council_votes.get(name) or {}).get("status")=="READY"
+                              for name in ("Fast AI","Qwen","DeepSeek"))
+                if not updated_council.get("approved"):
+                    queue_ai_diagnostic_event({
+                        "event_id":f"council-post-vote:{client_id}:{bar_time}:{model}",
+                        "client_id":client_id,
+                        "event_type":"AI_COUNCIL_VETO" if all_voted else "AI_COUNCIL_WAIT",
+                        "payload":{"bar_time":bar_time,"outcome":"WAIT",
+                                   "central_direction":decision.get("decision","WAIT"),
+                                   "model":model,"approved":False,
+                                   "confidence":finite_number(decision.get("confidence")),
+                                   "reason_ar":updated_council.get("reason_ar",""),
+                                   "stage":"AFTER_LOCAL_VOTE"}})
+                if updated_council.get("approved"):
+                    queue_ai_diagnostic_event({
+                        "event_id":f"council-votes-ready:{client_id}:{bar_time}",
+                        "client_id":client_id,
+                        "event_type":"AI_COUNCIL_VOTES_READY",
+                        "payload":{"bar_time":bar_time,"direction":direction,
+                                   "central_direction":decision.get("decision","WAIT"),
+                                   "reason_ar":updated_council.get("reason_ar",""),
+                                   "execution_authorized":False}})
+                return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
+                    "bar_time":bar_time,"direction":direction,"model":model,
+                    "council_approved":bool(updated_council.get("approved")),
+                    "council_reason_ar":updated_council.get("reason_ar",""),
+                    "execution_authorized":False})
             if path.startswith("/v1/terminal-recovery-events/"):
                 client_id=path.rsplit("/",1)[-1]
-                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 event_type=str(data.get("event_type") or "")
                 allowed=("RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY")
                 if event_type not in allowed: return self.send_json(400,{"error":"نوع حدث التعافي غير مسموح"})
@@ -784,7 +1564,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"saved":True,"event_type":event_type})
             if path.startswith("/v1/terminal-history/batch/"):
                 client_id=path.rsplit("/",1)[-1]
-                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 symbol=str(data.get("symbol") or "")[:40]
                 timeframe=str(data.get("timeframe") or "")[:20]
                 if not symbol or not timeframe: return self.send_json(400,{"error":"رمز السوق أو الفريم غير صالح"})
@@ -798,6 +1578,53 @@ class Handler(SimpleHTTPRequestHandler):
                        batch,admin=True,prefer="resolution=merge-duplicates")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
+            if path=="/api/client/basic-settings":
+                u=current_user(token)
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    return self.send_json(403,{"error":"إعدادات العميل فقط"})
+                if banned(admin_user(u["id"])):
+                    return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"):
+                    return self.send_json(403,{"error":"اتصال العميل غير مرخص"})
+                try:
+                    if datetime.fromisoformat(str(lic["expires_at"]).replace("Z","+00:00"))<=datetime.now(timezone.utc):
+                        return self.send_json(403,{"error":"انتهت صلاحية الاتصال"})
+                except (KeyError,ValueError,TypeError):
+                    return self.send_json(403,{"error":"سجل الترخيص غير صالح"})
+                allowed={"single_enabled","single_profit_target","group_enabled",
+                         "group_profit_target","stop_loss_enabled","stop_loss_mode","stop_loss_value"}
+                if not isinstance(data,dict) or not data or set(data)-allowed:
+                    return self.send_json(400,{"error":"لا يسمح بتعديل إعدادات AI أو الاستراتيجيات أو أي إعدادات متقدمة"})
+                query="/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(lic["client_id"],safe="")
+                stored=sb("GET",query+"&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
+                prior=stored[0] if stored else get_trade_settings(lic["client_id"]) or {}
+                fields=dict(basic_settings(prior))
+                fields.update(data)
+                for key in ("single_enabled","group_enabled","stop_loss_enabled"):
+                    if not isinstance(fields.get(key),bool):
+                        return self.send_json(400,{"error":"قيمة التفعيل غير صحيحة"})
+                for key in ("single_profit_target","group_profit_target","stop_loss_value"):
+                    value=fields.get(key)
+                    if isinstance(value,bool) or not isinstance(value,(int,float)):
+                        return self.send_json(400,{"error":"القيم يجب أن تكون أرقاماً إنجليزية موجبة"})
+                    value=float(value)
+                    if not math.isfinite(value) or value<=0 or value>100000:
+                        return self.send_json(400,{"error":"قيمة الهدف أو وقف الخسارة خارج الحد"})
+                    fields[key]=value
+                if fields.get("stop_loss_mode") not in ("ATR","POINTS"):
+                    return self.send_json(400,{"error":"نوع وقف الخسارة غير صحيح"})
+                # Do not copy any client-provided position-management fields.
+                # Preserve owner's strategy/AI/risk settings exactly as stored.
+                pm=stored[0].get("position_management") if stored else prior.get("position_management")
+                row={**fields,"client_id":lic["client_id"],
+                     "position_management":pm if isinstance(pm,dict) else {},
+                     "updated_at":datetime.now(timezone.utc).isoformat()}
+                sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",
+                   row,admin=True,prefer="resolution=merge-duplicates,return=representation")
+                TRADE_SETTINGS_CACHE.pop(lic["client_id"],None)
+                return self.send_json(200,{"saved":True,"settings":basic_settings(row),
+                    "advanced_settings_unchanged":True})
             if path=="/api/auto-trading":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
@@ -821,11 +1648,7 @@ class Handler(SimpleHTTPRequestHandler):
             if path=="/api/trade-management/settings":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
-                else:
-                    lic=license_for_user(u["id"]); client_id=(lic or {}).get("client_id","")
+                client_id,item=connection_for_authenticated_user(u)
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 single_enabled=data.get("single_enabled") is True
                 group_enabled=data.get("group_enabled") is True
@@ -838,21 +1661,30 @@ class Handler(SimpleHTTPRequestHandler):
                 existing=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
                 prior=existing[0] if existing else {"stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8}
-                stop_loss_enabled=data.get("stop_loss_enabled",prior.get("stop_loss_enabled")) is True
+                prior_pm=prior.get("position_management") if isinstance(prior.get("position_management"),dict) else {}
+                stop_loss_user_configured=(data.get("stop_loss_user_configured") is True or
+                    prior_pm.get("stop_loss_user_configured") is True)
+                stop_loss_enabled=(data.get("stop_loss_enabled",prior.get("stop_loss_enabled")) is True
+                    if stop_loss_user_configured else False)
                 stop_loss_mode=str(data.get("stop_loss_mode",prior.get("stop_loss_mode","ATR"))).upper()
                 stop_loss_value=finite_number(data.get("stop_loss_value",prior.get("stop_loss_value",1.8)),0)
                 if stop_loss_mode not in ("POINTS","ATR"):
                     return self.send_json(400,{"error":"نوع وقف الخسارة غير صالح"})
                 if not math.isfinite(stop_loss_value) or stop_loss_value<=0 or stop_loss_value>1000000:
                     return self.send_json(400,{"error":"قيمة وقف الخسارة يجب أن تكون أكبر من صفر"})
-                prior_pm=prior.get("position_management") if isinstance(prior.get("position_management"),dict) else {}
                 pm=data.get("position_management",prior_pm)
                 if not isinstance(pm,dict):
                     return self.send_json(400,{"error":"إعدادات التعزيز والتبريد غير صالحة"})
                 mode=str(pm.get("mode",prior_pm.get("mode","AI"))).upper()
                 if mode not in ("AI","MANUAL"):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
-                clean_pm={"mode":mode}
+                clean_pm={"mode":mode,
+                          "entry_council_mode":("STRICT" if str(pm.get("entry_council_mode",prior_pm.get("entry_council_mode","ADVISORY"))).upper()=="STRICT" else "ADVISORY"),
+                          "entry_council_mode_user_selected":prior_pm.get("entry_council_mode_user_selected") is True,
+                          "stop_loss_user_configured":stop_loss_user_configured,
+                          "optional_limits_user_selected":(
+                             pm.get("optional_limits_user_selected") is True or
+                             prior_pm.get("optional_limits_user_selected") is True)}
                 entry_guard_enabled=pm.get("entry_guard_enabled",prior_pm.get("entry_guard_enabled",True)) is True
                 entry_max_delay_bars=int(finite_number(pm.get("entry_max_delay_bars",prior_pm.get("entry_max_delay_bars",1)),0))
                 entry_max_deviation_atr=finite_number(pm.get("entry_max_deviation_atr",prior_pm.get("entry_max_deviation_atr",0.5)),0)
@@ -861,12 +1693,20 @@ class Handler(SimpleHTTPRequestHandler):
                 clean_pm["entry_guard_enabled"]=entry_guard_enabled
                 clean_pm["entry_max_delay_bars"]=entry_max_delay_bars
                 clean_pm["entry_max_deviation_atr"]=entry_max_deviation_atr
-                recovery_enabled=pm.get("recovery_enabled",prior_pm.get("recovery_enabled",True)) is True
+                recovery_enabled=pm.get("recovery_enabled",prior_pm.get("recovery_enabled",False)) is True
                 recovery_loss_trigger=finite_number(pm.get("recovery_loss_trigger",prior_pm.get("recovery_loss_trigger",0.0)),0.0)
                 if not math.isfinite(recovery_loss_trigger) or recovery_loss_trigger<0 or recovery_loss_trigger>100000000:
                     return self.send_json(400,{"error":"حد تفعيل التعافي يجب أن يكون صفرًا أو مبلغًا موجبًا بعملة الحساب"})
                 clean_pm["recovery_enabled"]=recovery_enabled
                 clean_pm["recovery_loss_trigger"]=recovery_loss_trigger
+                raw_profit_target=pm.get("recovery_profit_target",prior_pm.get("recovery_profit_target",0.0))
+                try:
+                    recovery_profit_target=float(raw_profit_target)
+                except (TypeError,ValueError,OverflowError):
+                    return self.send_json(400,{"error":"هدف ربح التعافي يجب أن يكون مبلغًا رقميًا بعملة الحساب"})
+                if not math.isfinite(recovery_profit_target) or recovery_profit_target<0:
+                    return self.send_json(400,{"error":"هدف ربح التعافي لا يمكن أن يكون مبلغًا سالبًا"})
+                clean_pm["recovery_profit_target"]=recovery_profit_target
                 clean_pm["recovery_user_configured"]=pm.get("recovery_user_configured",prior_pm.get("recovery_user_configured",False)) is True
                 for prefix in ("addon","cooling"):
                     enabled=pm.get(prefix+"_enabled",prior_pm.get(prefix+"_enabled",False)) is True
@@ -875,24 +1715,42 @@ class Handler(SimpleHTTPRequestHandler):
                     distance=finite_number(pm.get(prefix+"_distance_points",prior_pm.get(prefix+"_distance_points",0)),0)
                     if maximum<0 or maximum>100 or lot<=0 or lot>100 or distance<0 or distance>100000000:
                         return self.send_json(400,{"error":"تحقق من الحد الأقصى واللوت والمسافة في إعدادات التعزيز والتبريد"})
-                    if enabled and maximum<1:
-                        return self.send_json(400,{"error":"حدد الحد الأقصى لعدد الإضافات قبل تفعيل التعزيز أو التبريد"})
                     if mode=="MANUAL" and enabled and distance<=0:
                         return self.send_json(400,{"error":"في الوضع اليدوي يجب تحديد مسافة أكبر من صفر بالنقاط"})
                     multiplier=finite_number(pm.get(prefix+"_multiplier",prior_pm.get(prefix+"_multiplier",1.5 if prefix=="addon" else 1.2)),0)
-                    max_lot=finite_number(pm.get(prefix+"_max_lot",prior_pm.get(prefix+"_max_lot",0.05)),0)
-                    if not 1.0<=multiplier<=3.0 or not 0.01<=max_lot<=100:
-                        return self.send_json(400,{"error":"المضاعف يجب أن يكون بين 1 و3، والحد الأقصى للوت بين 0.01 و100"})
+                    raw_max_lot=(pm[prefix+"_max_lot"] if prefix+"_max_lot" in pm else
+                        prior_pm.get(prefix+"_max_lot") if prior_pm.get("optional_limits_user_selected") else None)
+                    max_lot=(finite_number(raw_max_lot,-1) if raw_max_lot is not None and
+                        str(raw_max_lot).strip()!="" else None)
+                    if not 1.0<=multiplier<=3.0 or (max_lot is not None and max_lot<=0):
+                        return self.send_json(400,{"error":"قيمة مضاعف أو سقف لوت غير صحيحة"})
                     clean_pm[prefix+"_enabled"]=enabled
                     clean_pm[prefix+"_max"]=maximum
                     clean_pm[prefix+"_lot"]=lot
                     clean_pm[prefix+"_distance_points"]=distance
                     clean_pm[prefix+"_multiplier"]=multiplier
-                    clean_pm[prefix+"_max_lot"]=max_lot
-                max_total_lots=finite_number(pm.get("max_total_lots",prior_pm.get("max_total_lots",0.10)),0)
-                if not 0.01<=max_total_lots<=100:
-                    return self.send_json(400,{"error":"سقف إجمالي اللوتات يجب أن يكون بين 0.01 و100"})
-                clean_pm["max_total_lots"]=max_total_lots
+                    if max_lot is not None:
+                        clean_pm[prefix+"_max_lot"]=max_lot
+                raw_total_lots=(pm.get("max_total_lots") if "max_total_lots" in pm else
+                    prior_pm.get("max_total_lots") if prior_pm.get("optional_limits_user_selected") else None)
+                if raw_total_lots is not None and str(raw_total_lots).strip()!="":
+                    max_total_lots=finite_number(raw_total_lots,-1)
+                    if max_total_lots<0:
+                        return self.send_json(400,{"error":"سقف إجمالي اللوتات غير صالح"})
+                    clean_pm["max_total_lots"]=max_total_lots
+                # Preserve security-critical settings across ordinary form saves.
+                # Never allow a frontend to silently enable sensitive actions.
+                clean_pm["central_actions_enabled"]=prior_pm.get("central_actions_enabled") is True
+                # Keep only owner-selected optional limits; do not manufacture caps.
+                for key in ("max_drawdown_pct","max_positions","max_positions_per_direction","recovery_max_lot"):
+                    raw=(pm[key] if key in pm else prior_pm.get(key)
+                         if prior_pm.get("optional_limits_user_selected") else None)
+                    if raw is None or str(raw).strip()=="":
+                        continue
+                    value=finite_number(raw,-1)
+                    if value<0:
+                        return self.send_json(400,{"error":"قيمة "+key+" غير صالحة"})
+                    clean_pm[key]=int(value) if key in ("max_positions","max_positions_per_direction") else value
                 row={"client_id":client_id,"single_enabled":single_enabled,
                      "single_profit_target":single_target,"group_enabled":group_enabled,
                      "group_profit_target":group_target,"stop_loss_enabled":stop_loss_enabled,
@@ -909,14 +1767,10 @@ class Handler(SimpleHTTPRequestHandler):
             if path=="/api/backtest/learning":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
-                if (u.get("email") or "").lower()==OWNER_EMAIL:
-                    latest=sb("GET","/rest/v1/alzool_engine_market_candles?select=client_id&order=uploaded_at.desc&limit=1",admin=True)
-                    client_id=latest[0].get("client_id","") if latest else ""
-                    if not client_id:
-                        latest_run=sb("GET","/rest/v1/alzool_engine_learning_runs?select=client_id&order=created_at.desc&limit=1",admin=True)
-                        client_id=latest_run[0].get("client_id","") if latest_run else ""
-                else:
-                    lic=license_for_user(u["id"]); client_id=lic.get("client_id") if lic else ""
+                # Never select the latest customer's candles or learning run
+                # for an owner. The authenticated identity owns exactly one ID.
+                lic=license_for_user(u["id"])
+                client_id=lic.get("client_id","") if lic and not lic.get("revoked") else ""
                 if not client_id: return self.send_json(409,{"error":"لا يوجد ترخيص مرتبط لحفظ ذاكرة التعلم"})
                 run=data.get("run") if isinstance(data.get("run"),dict) else {}
                 run_key=str(run.get("run_key") or "")[:80]
@@ -947,9 +1801,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 lic=license_for_user(u["id"])
                 client_id=(lic or {}).get("client_id","")
-                if not client_id and (u.get("email") or "").lower()==OWNER_EMAIL:
-                    item=max(CONNECTIONS.values(),key=lambda x:x["received_at"],default=None)
-                    client_id=(item or {}).get("client_id","")
+                # Do not fall back to another user's latest connection.
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
                 event_type=str(data.get("event_type") or "")
                 if event_type not in ("SIGNAL_CREATED","WAIT"):
@@ -965,6 +1817,130 @@ class Handler(SimpleHTTPRequestHandler):
                 sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",row,admin=True,
                    prefer="resolution=ignore-duplicates,return=minimal")
                 return self.send_json(200,{"saved":True,"event_id":row["event_id"]})
+            if path=="/api/ai/actions/control":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بالمحرك"})
+                enabled=data.get("enabled")
+                if not isinstance(enabled,bool):
+                    return self.send_json(400,{"error":"قيمة التفعيل غير صالحة"})
+                if enabled and data.get("confirmed_risk") is not True:
+                    return self.send_json(400,{"error":"يلزم تأكيد المخاطر لتفعيل الإدارة المركزية"})
+                cid=urllib.parse.quote(identity["client_id"],safe="")
+                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid+
+                    "&select=position_management&limit=1",admin=True)
+                pm=dict((rows[0] if rows else {}).get("position_management") or {})
+                pm["central_actions_enabled"]=enabled
+                if rows:
+                    changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
+                        {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
+                        admin=True,prefer="return=representation")
+                else:
+                    changed=sb("POST","/rest/v1/alzool_engine_trade_settings",
+                        {"client_id":identity["client_id"],"position_management":pm},
+                        admin=True,prefer="return=representation")
+                if not changed:return self.send_json(502,{"error":"لم يتم حفظ مفتاح الإدارة"})
+                TRADE_SETTINGS_CACHE.pop(identity["client_id"],None)
+                return self.send_json(200,{"enabled":enabled,
+                    "message":"تم حفظ مفتاح الإدارة؛ لا يعمل دون تفعيل منفصل في MT5 وموافقة المجلس"})
+            if path=="/api/owner/entry-policy":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بمحرك MT5"})
+                requested=str(data.get("mode","")).upper()
+                if requested not in ("STRICT","ADVISORY"):
+                    return self.send_json(400,{"error":"وضع الدخول غير معروف"})
+                if requested=="ADVISORY" and data.get("confirmed_risk") is not True:
+                    return self.send_json(400,{"error":"يجب تأكيد مخاطر التنفيذ التلقائي أولاً"})
+                cid=urllib.parse.quote(identity["client_id"],safe="")
+                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid+
+                    "&select=position_management,stop_loss_enabled&limit=1",admin=True)
+                prior=rows[0] if rows else {}
+                pm=dict(prior.get("position_management") or {})
+                pm["entry_council_mode"]=requested
+                pm["entry_council_mode_user_selected"]=True
+                if rows:
+                    changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
+                        {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
+                        admin=True,prefer="return=representation")
+                else:
+                    changed=sb("POST","/rest/v1/alzool_engine_trade_settings",
+                        {"client_id":identity["client_id"],"position_management":pm},
+                        admin=True,prefer="return=representation")
+                if not changed:return self.send_json(502,{"error":"تعذر حفظ سياسة الدخول"})
+                with CACHE_LOCK:TRADE_SETTINGS_CACHE.pop(identity["client_id"],None)
+                queue_ai_diagnostic_event({
+                    "event_id":f"entry-policy:{identity['client_id']}:{time.time_ns()}",
+                    "client_id":identity["client_id"],
+                    "event_type":"ENTRY_POLICY_CHANGED",
+                    "payload":{"mode":requested,"actor":"owner","executed_orders":False}})
+                warning=(" | تنبيه: وقف الخسارة معطّل في إعداداتك الحالية"
+                         if prior.get("stop_loss_enabled") is False else "")
+                return self.send_json(200,{"mode":requested,
+                    "message":("تم تفعيل Hybrid AI — أصوات Fast AI وQwen وDeepSeek الحديثة تشارك في ترجيح BUY وSELL دون اشتراط الإجماع"
+                               if requested=="ADVISORY" else "تم تفعيل المجلس الصارم — إجماع 3 نماذج")+warning})
+            if path=="/api/ai/versions/test":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
+                client_id=identity["client_id"]
+                item=CONNECTIONS.get(client_id) or {}
+                symbol=str(item.get("symbol") or "XAUUSD")[:40]
+                timeframe=str(item.get("timeframe") or "M1")[:20]
+                if not symbol.upper().startswith("XAUUSD"):return self.send_json(409,{"error":"اختبار الإصدارات مخصص لشموع الذهب"})
+                q=urllib.parse.quote
+                rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
+                    "&symbol=eq."+q(symbol,safe="")+"&timeframe=eq."+q(timeframe,safe="")+
+                    "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"+
+                    "&order=candle_time.desc&limit=190",admin=True)
+                if len(rows)<75:return self.send_json(409,{"error":"لا توجد 75 شمعة تاريخية محفوظة على الأقل"})
+                memory=memory_snapshot(client_id,sb)
+                history=combine_deals(memory["deals"],item.get("closed_deals") or [])
+                learned=live_learning_profile(history)
+                candidate=sanitize_profile(learned["weights"],learned.get("combination_weights") or {})
+                baseline=get_active_strategy_profile(client_id,sb) or {"strategy_weights":{},"combination_weights":{}}
+                summary=compare_profiles(list(reversed(rows)),baseline,candidate)
+                saved=save_candidate(client_id,candidate,summary,sb)
+                return self.send_json(200,{"id":saved["id"],"version_label":saved["version_label"],
+                    "status":"CANDIDATE","test_summary":summary,
+                    "message":"اختبار تاريخي تشخيصي؛ لا يشغّل التداول ولا يغير الإصدار الحالي"})
+            if path=="/api/ai/versions/activate":
+                u=owner(token)
+                identity=license_for_user(u["id"])
+                if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
+                result=activate_strategy_version(identity["client_id"],data.get("id"),sb)
+                event={"event_id":"version:"+identity["client_id"]+":"+str(result["id"])+":"+str(time.time_ns()),
+                    "client_id":identity["client_id"],"event_type":"AI_VERSION_ACTIVATED",
+                    "payload":{"version_id":result["id"],"previous_id":result.get("previous_id"),
+                        "changed_by":"owner","trading_activated":False}}
+                queue_ai_diagnostic_event(event)
+                return self.send_json(200,result)
+            if path=="/api/owner/terminal-pair":
+                u=owner(token)
+                return self.send_json(200,issue_owner_pairing(u))
+            if path=="/api/owner/engine-license":
+                return self.send_json(410,{"error":"تم إلغاء تراخيص المالك؛ استخدم اقتران MT5 الخاص بالمالك."})
+            if path=="/api/client/onboarding-package":
+                u=current_user(token)
+                if (u.get("email") or "").lower()==OWNER_EMAIL:
+                    return self.send_json(403,{"error":"هذه الخدمة مخصصة للعميل فقط"})
+                if banned(admin_user(u["id"])):
+                    return self.send_json(403,{"error":"حساب العميل موقوف"})
+                record=license_for_user(u["id"])
+                if not record or record.get("revoked"):
+                    return self.send_json(403,{"error":"اتصال العميل غير مرخص أو موقوف"})
+                try:
+                    expires=datetime.fromisoformat(str(record["expires_at"]).replace("Z","+00:00"))
+                    if expires<=datetime.now(timezone.utc):
+                        return self.send_json(403,{"error":"انتهى الترخيص، تواصل مع الإدارة"})
+                except (KeyError,ValueError,TypeError):
+                    return self.send_json(403,{"error":"بيانات الترخيص غير صالحة"})
+                # Only regenerate after an explicit click; this invalidates the older token.
+                credentials=issue_license(u["id"])
+                bundle=build_client_bundle(credentials["client_id"],credentials["client_token"],
+                                           email=u.get("email",""))
+                return self.send_json(200,{"onboarding":bundle,"token_rotated":True,
+                    "warning_ar":"رمز الاتصال السابق انتهى. حمّل الملف الجديد على MT5."})
             if path=="/api/admin/clients":
                 owner(token); email=(data.get("email") or "").strip().lower(); name=(data.get("name") or "").strip()
                 if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+",email): return self.send_json(400,{"error":"أدخل بريداً إلكترونياً صحيحاً للعميل"})
@@ -976,16 +1952,24 @@ class Handler(SimpleHTTPRequestHandler):
                     try: sb("DELETE","/auth/v1/admin/users/"+urllib.parse.quote(u.get("id",""),safe=""),admin=True)
                     except Exception: pass
                     raise
+                # Build the private installation package for this owner response only.
+                # Password setup invitation is a separate Auth email; no credentials emailed.
+                bundle=build_client_bundle(credentials["client_id"],credentials["client_token"],
+                                           email=email,password=password)
+                welcome=send_client_password_setup(email)
                 return self.send_json(201,{"id":u.get("id"),"email":email,"name":name,"password":password,"engine":credentials,
-                                          "engine_server_url":PUBLIC_ENGINE_URL,"message":"بيانات الدخول والترخيص والاتصال فقط. لا توجد صلاحيات تداول."})
+                                          "engine_server_url":CLIENT_ONBOARDING_URL,
+                                          "onboarding":bundle,"welcome_email_status":welcome,
+                                          "message":"ملف MT5 جاهز. بريد إعداد كلمة المرور يعتمد على إرسال Supabase Auth. التداول غير مفعّل تلقائياً."})
             if path=="/api/access/check":
                 u=current_user(token)
                 if banned(admin_user(u["id"])): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 return self.send_json(200,{"ok":True})
             parts=path.strip("/").split("/")
             if len(parts)==4 and parts[:3]==["v1","terminal-state","live"]:
+                heartbeat_start=time.perf_counter()
                 client_id=parts[3]
-                if not validate_license(client_id,token): return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
+                if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 account=data.get("account") or {}
                 if not isinstance(account,dict): return self.send_json(400,{"error":"بيانات الطرفية غير صحيحة"})
                 safe={"login":str(account.get("login",""))[:40],"server":str(account.get("server",""))[:100],
@@ -996,41 +1980,93 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
-                closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
-                # Persist MT5 history so closed trades survive Render restarts/deploys.
-                if closed_deals:
-                    persisted=[]
-                    for deal in closed_deals:
-                        deal_id=str(deal.get("ticket") or "")
-                        stamp=int(deal.get("time") or 0)
-                        if not deal_id or stamp<=0: continue
-                        persisted.append({"client_id":client_id,"deal_id":deal_id,
-                            "deal_time":datetime.fromtimestamp(stamp,timezone.utc).isoformat(),
-                            "payload":deal})
-                    if persisted:
-                        sb("POST","/rest/v1/alzool_engine_closed_deals?on_conflict=client_id,deal_id",
-                           persisted,admin=True,prefer="resolution=merge-duplicates")
+                previous=CONNECTIONS.get(client_id,{})
+                if data.get("closed_deals_unchanged") is True:
+                    # Compact heartbeat: the client only resends the historical
+                    # archive on a trade event or its periodic refresh.
+                    closed_deals=previous.get("closed_deals") or []
+                else:
+                    closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
+                    # Historical persistence must never block real-time ticks.
+                    queue_closed_deals(client_id,closed_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
+                # Two independent ways to learn about *actual* exit fills:
+                # the updated EA's persisted close timestamp, and the deal
+                # archive sent by older terminals. Preserve monotonicity.
+                recent_exit=last_exit_from_deals(closed_deals,int(time.time()))
+                recorded_exit=max(0,int(finite_number(data.get("last_closed_deal_time"))),
+                                  int(finite_number(previous.get("last_closed_deal_time"))),
+                                  recent_exit)
+                m1_closed_open=int(finite_number(data.get("last_m1_closed_open")))
+                if m1_closed_open<=0 and str(data.get("timeframe","")).upper() in ("M1","PERIOD_M1") and candles:
+                    m1_closed_open=int(finite_number(candles[0].get("time")))
                 forming=data.get("forming_candle") if isinstance(data.get("forming_candle"),dict) else None
                 if forming:
                     forming=clean_telemetry_rows([forming],("time","open","high","low","close","tick_volume"),1)
                     forming=forming[0] if forming else None
                 tick=data.get("tick") if isinstance(data.get("tick"),dict) else {}
                 safe_tick={"bid":finite_number(tick.get("bid")),"ask":finite_number(tick.get("ask")),
-                           "spread":finite_number(tick.get("spread"))}
+                           "spread":finite_number(tick.get("spread")),
+                           "point_size":max(0,finite_number(tick.get("point_size"))),
+                           "volume_min":max(0,finite_number(tick.get("volume_min"))),
+                           "volume_max":max(0,finite_number(tick.get("volume_max"))),
+                           "volume_step":max(0,finite_number(tick.get("volume_step")))}
                 now=datetime.now(timezone.utc)
                 previous=CONNECTIONS.get(client_id,{})
                 strategy_decision=previous.get("strategy_decision")
                 strategy_last_bar=previous.get("strategy_last_bar")
+                bot_report=previous.get("bot_report")
+                bot_history=previous.get("bot_signal_history") or []
+                bot_dispatch_count=int(previous.get("bot_dispatch_count",0))
+                bot_new=False
+                # Every new CLOSED candle independently activates all five bot engines,
+                # even if the main 200-strategy decision calculation later fails.
+                if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
+                    current_bar=int(candles[0].get("time") or 0)
+                    if current_bar>0 and (
+                        not isinstance(bot_report,dict)
+                        or int(finite_number(bot_report.get("bar_time",0)))!=current_bar
+                    ):
+                        try:
+                            bot_report=analyze_advisors(list(reversed(candles)))
+                            bot_new=(bot_report.get("status")=="READY" and int(bot_report.get("bar_time",0))==current_bar)
+                        except Exception as bot_error:
+                            bot_report=None
+                            print("BOT_ENGINE_WARNING:",type(bot_error).__name__,flush=True)
                 # MT5 sends closed candles newest-first. Evaluate once per newly closed bar.
                 if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
-                            live_learning=live_learning_profile(closed_deals)
+                            # A live version can be deliberately selected by the owner,
+                            # but must not freeze all subsequent real-trade feedback.
+                            # Never stop analysis while historical memory is loading.
+                            memory=memory_snapshot(client_id,sb)
+                            live_learning=live_learning_profile(combine_deals(
+                                memory.get("deals") or [],closed_deals))
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
-                            evaluated=evaluate_market(list(reversed(candles)),weights=live_learning["weights"],combination_weights=live_learning.get("combination_weights"),mtf_bias=mtf_bias,mode="AUTO")
+                            try:
+                                chosen_profile=get_active_strategy_profile(client_id,sb)
+                                active_profile_error=None
+                            except Exception as profile_error:
+                                # Learning/version storage being unavailable never
+                                # becomes a fresh-trade WAIT gate.
+                                chosen_profile=None
+                                active_profile_error=type(profile_error).__name__
+                                print("ACTIVE_PROFILE_FALLBACK:",active_profile_error,flush=True)
+                            effective=apply_live_learning(chosen_profile,live_learning)
+                            learning_diagnostic={**effective["diagnostics"],
+                                "memory_status":memory.get("status","LOADING"),
+                                "memory_deals":int(memory.get("count",0)),
+                                "active_version_label":(chosen_profile or {}).get("version_label","DEFAULT"),
+                                "active_version_id":(chosen_profile or {}).get("version_id"),
+                                "profile_read_error":active_profile_error}
+                            strategy_weights=effective["strategy_weights"]
+                            combination_weights=effective["combination_weights"]
+                            evaluated=evaluate_market(list(reversed(candles)),weights=strategy_weights,
+                                combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO",
+                                bot_signals=bot_report)
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "entry_reference_price":finite_number(candles[0].get("close")),
@@ -1044,29 +2080,87 @@ class Handler(SimpleHTTPRequestHandler):
                                 "mtf_bias":evaluated.get("mtf_bias",{}),
                                 "adaptive":evaluated["adaptive"],
                                 "council":evaluated["council"],
+                                "family_votes":evaluated.get("family_votes",{}),
                                 "vote_summary":evaluated["vote_summary"],
                                 "combination_summary":evaluated["combination_summary"],
+                                "directional_scores":evaluated.get("directional_scores",{}),
+                                "directional_candidates":evaluated.get("directional_candidates",{}),
+                                "bot_evidence":evaluated.get("bot_evidence",{}),
                                 "strategy_count":evaluated["strategy_count"],
                                 "combination_count":evaluated["combination_count"],
+                                "learning":learning_diagnostic,
                                 "bar_time":bar_time,
+                                "advisory_bots":(bot_report if isinstance(bot_report,dict)
+                                                 and int(finite_number(bot_report.get("bar_time",0)))==bar_time
+                                                 else {"status":"WAIT","advisors":[]}),
                                 "generated_at":now.isoformat(),
                                 "execution_ready":False
                             }
                             strategy_last_bar=bar_time
+                            if learning_diagnostic.get("status")=="APPLIED":
+                                # Persistent, idempotent proof that adjusted live
+                                # weights actually entered a closed-candle decision.
+                                digest=hashlib.sha256(json.dumps({
+                                    "s":learning_diagnostic["changed_strategies"],
+                                    "c":learning_diagnostic["changed_combinations"],
+                                    "at":learning_diagnostic.get("last_attributed_at")},
+                                    ensure_ascii=False,sort_keys=True).encode("utf-8")).hexdigest()[:16]
+                                event_id=("live-learning:"+client_id+":"+digest)
+                                queue_ai_diagnostic_event({
+                                    "event_id":event_id,
+                                    "client_id":client_id,
+                                    "event_type":"LIVE_LEARNING_APPLIED",
+                                    "payload":{"bar_time":bar_time,
+                                        "last_attributed_at":learning_diagnostic.get("last_attributed_at"),
+                                        "processed_positions":learning_diagnostic["processed_positions"],
+                                        "applied_strategies":learning_diagnostic["applied_strategies"],
+                                        "applied_combinations":learning_diagnostic["applied_combinations"],
+                                        "active_version_label":learning_diagnostic["active_version_label"],
+                                        "reason_ar":"تم تطبيق تعلم الصفقات المغلقة فعلياً على أوزان قرار الشمعة"}}
+                                )
                         except Exception as engine_error:
                             print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
+                if bot_new:
+                    # Each bot sends a distinct same-bar signal to the central
+                    # bus and the existing async Supabase diagnostics queue.
+                    bot_events=build_bot_messages(client_id,str(data.get("symbol","")),
+                        str(data.get("timeframe","")),bot_report,
+                        ((strategy_decision or {}).get("decision","WAIT")
+                         if int(finite_number((strategy_decision or {}).get("bar_time",0)))==
+                            int(finite_number(bot_report.get("bar_time",0))) else "WAIT"))
+                    bot_history=update_history(bot_history,bot_events)
+                    bot_dispatch_count=sum(bool(queue_ai_diagnostic_event(e)) for e in bot_events)
+                if strategy_decision:
+                    update_council(client_id,strategy_decision,safe)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
-                    "positions":positions,"orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
+                    "mt5_position_management_enabled":(data.get("mt5_position_management_enabled")
+                        if isinstance(data.get("mt5_position_management_enabled"),bool) else None),
+                    "mt5_central_trading_enabled":(data.get("mt5_central_trading_enabled")
+                        if isinstance(data.get("mt5_central_trading_enabled"),bool) else None),
+                    "positions":positions,
+                    "recovery_group_net":(finite_number(data["recovery_group_net"]) if
+                        data.get("recovery_group_net") is not None else None),
+                    "orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
+                    "last_closed_deal_time":recorded_exit,
+                    "last_m1_closed_open":m1_closed_open,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
+                    "bot_report":bot_report,"bot_signal_history":bot_history,
+                    "bot_dispatch_count":bot_dispatch_count,
+                    "local_ai_advice":retain_current_local_ai_advice(previous.get("local_ai_advice"),strategy_decision,time.time()),
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
+                if strategy_decision:
+                    schedule_automatic_research(client_id,str(data.get("symbol",""))[:40],
+                        str(data.get("timeframe",""))[:20],sb,live_learning_profile,
+                        combine_deals(memory_snapshot(client_id,sb)["deals"],closed_deals))
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
                     "candles_received":len(candles),
-                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles"})
+                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles",
+                    "server_processing_ms":round((time.perf_counter()-heartbeat_start)*1000,1)})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
@@ -1107,9 +2201,48 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e: return self.send_json(400,{"error":str(e)[:250]})
     def end_headers(self):
         self.send_header("X-Content-Type-Options","nosniff"); self.send_header("Referrer-Policy","strict-origin-when-cross-origin")
-        self.send_header("X-Frame-Options","DENY"); super().end_headers()
+        self.send_header("X-Frame-Options","SAMEORIGIN"); self.send_header("Content-Security-Policy","frame-ancestors 'self'"); super().end_headers()
+
+def _read_stored_m1_for_smoke():
+    """Fetch latest 500 closed XAUUSD M1 candles from one source; read only."""
+    base="/rest/v1/alzool_engine_market_candles?"
+    latest=sb("GET",base+"symbol=eq.XAUUSD&timeframe=eq.PERIOD_M1"
+              "&select=client_id&order=candle_time.desc&limit=1",admin=True)
+    if not latest:return []
+    cid=urllib.parse.quote(str(latest[0]["client_id"]),safe="")
+    result=sb("GET",base+"client_id=eq."+cid+"&symbol=eq.XAUUSD"
+              "&timeframe=eq.PERIOD_M1"
+              "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"
+              "&order=candle_time.desc&limit=500",admin=True)
+    return list(reversed(result or []))
+
 
 if __name__=="__main__":
+    # Validate pure trading policy without connecting to MT5 or sending trades.
+    # Fail a deployment rather than activating an untested account recovery change.
+    import unittest
+    from pathlib import Path
+    test_dir=str(Path(__file__).resolve().parents[2]/"tests")
+    recovery_suite=unittest.TestSuite()
+    for pattern in ("test_owner_decisions.py","test_owner_recovery.py",
+                    "test_recovery_action_protocol.py","test_hybrid_decision.py",
+                    "test_position_sizing.py","test_entry_quality.py",
+                    "test_live_learning.py","test_post_close_m1.py",
+                    "test_recovery_candle_guard.py","test_local_ai_relay_cpu.py",
+                    "test_position_action_safety.py"):
+        recovery_suite.addTests(unittest.defaultTestLoader.discover(
+            start_dir=test_dir,pattern=pattern))
+    recovery_result=unittest.TextTestRunner(verbosity=1).run(recovery_suite)
+    if not recovery_result.wasSuccessful():
+        raise RuntimeError("ALZOOL_OFFLINE_RECOVERY_CHECKS_FAILED")
+    print("ALZOOL_OFFLINE_RECOVERY_CHECKS_PASS",flush=True)
+    # Server-side smoke test, read-only, never exposes the API key.
+    if os.getenv("GROQ_VERIFY_ON_STARTUP","false").lower() in ("true","1","yes"):
+        threading.Thread(target=lambda: print("GROQ_SMOKE_STATUS:",verify_groq_credentials(),flush=True),
+                         daemon=True,name="alzool-groq-smoke").start()
+    if os.getenv("ALZOOL_HISTORICAL_M1_SMOKE","false").strip().lower() in ("true","1","yes"):
+        threading.Thread(target=run_offline_m1_smoke,args=(_read_stored_m1_for_smoke,),
+                         daemon=True,name="alzool-offline-m1-diagnostic").start()
     bootstrap_owner()
     port=int(os.getenv("PORT","10000"))
     print("AL-ZOOL connection/licensing service listening on",port,flush=True)

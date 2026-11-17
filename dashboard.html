@@ -2,64 +2,131 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#242238"><title>AL-ZOOL | لوحة القيادة</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/dashboard.css?v=3">
-<link rel="stylesheet" href="/ui-shell.css?v=1">
+<meta name="theme-color" content="#080b1a"><title>AL-ZOOL | لوحة التداول الذكي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/dashboard.css?v=3"><link rel="stylesheet" href="/ui-shell.css?v=1">
+
+<link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=dark-ai-pro-20261114-1">
+<link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
+<style>#aiMonitorInline[hidden]{display:none!important}#aiMonitorInline .az-ai-council-details{width:100%}#aiMonitorInline .az-model-row{gap:12px}#aiMonitorInline .az-model-row span,#aiMonitorInline .az-model-row strong{overflow-wrap:anywhere;text-align:left;max-width:70%}</style>
 </head>
 <body>
 <div class="shell">
 <aside class="sidebar">
- <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
- <div class="side-label">الرئيسية</div>
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">🇸🇩</span><span><b>الزول · AL-ZOOL</b><small>SMART TRADING · SMARTER CONTROL</small></span></a>
+ <div class="side-label">لوحة التداول</div>
  <div class="nav-group">
-  <a class="nav active" href="/dashboard.html" aria-current="page"><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
+  <a class="nav active" href="/dashboard.html" aria-current="page"><span>⌂</span><span class="nav-label">الرئيسية</span></a>
+  <a class="nav" href="/trade-management.html"><span>☷</span><span class="nav-label">إعدادات التداول</span></a>
+  <a class="nav" href="#liveStatus"><span>↗</span><span class="nav-label">الصفقات المفتوحة</span></a>
+  <a class="nav" href="#closedHistory"><span>▤</span><span class="nav-label">سجل الصفقات</span></a>
+  <a class="nav" href="/opportunities.html"><span>◉</span><span class="nav-label">سجل الإشارات</span></a>
+  <a class="nav" href="#accountPerformance"><span>🏆</span><span class="nav-label">الأداء اليومي</span></a>
+  <a class="nav" href="/ai-analysis.html"><span>✧</span><span class="nav-label">التحليل الذكي</span></a>
+  <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a>
+  <a class="nav" href="/learning-lab.html"><span>❖</span><span class="nav-label">التعلم والذاكرة</span></a>
+  <a class="nav" href="/backtest-lab.html"><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
+  <a class="nav" href="/"><span>⚙</span><span class="nav-label">الإدارة والإعدادات</span></a>
  </div>
- <div class="side-label">مركز الذكاء الاصطناعي</div>
- <div class="nav-group">
-  <a class="nav " href="/ai-analysis.html" ><span>✧</span><span class="nav-label">التحليل ومجلس الذكاء</span></a>
-  <a class="nav " href="/learning-lab.html" ><span>◈</span><span class="nav-label">التعلم والذاكرة</span></a>
- </div>
- <div class="side-label">السوق والاستراتيجيات</div>
- <div class="nav-group">
-  <a class="nav " href="/opportunities.html" ><span>◉</span><span class="nav-label">مختبر الفرص</span></a>
-  <a class="nav " href="/backtest-lab.html" ><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
- </div>
- <div class="side-label">إدارة الصفقات والأداء</div>
- <div class="nav-group">
-  <a class="nav " href="/trade-management.html" ><span>⇄</span><span class="nav-label">إدارة التداول والحماية</span></a>
-  <a class="nav " href="/trade-history.html" ><span>▤</span><span class="nav-label">سجل التداول والتقارير</span></a>
- </div>
- <div class="side-label">إدارة النظام</div>
- <div class="nav-group">
-  <a class="nav" href="/"><span>♙</span><span class="nav-label">العملاء والتراخيص</span></a>
- </div>
- <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
+ <div class="side-bottom"><span class="live-dot"></span><span>AL-ZOOL</span><small id="serviceState">جارٍ فحص الخدمة</small></div>
 </aside>
 <main class="main">
- <header class="topbar"><div><div class="eyebrow">مركز القيادة والتحكم</div><h1>لوحة القيادة</h1><p>نظرة موحدة على الذهب والحساب وحالة أنظمة التداول</p></div><div class="top-actions"><span class="date-chip" id="clock">—</span><button id="refreshBtn" class="refresh">⟳ تحديث</button><a class="avatar" href="/">AZ</a></div></header>
- <section class="notice" id="dataNotice"><b>تنبيه حالة الربط</b><span>بيانات الحساب والصفقات تصل بعد تحديث عميل MT5. الذكاء الاصطناعي والتداول الآلي والحماية والتعافي لم تُفعّل في هذه المرحلة.</span></section>
- <section class="kpis">
-  <article class="kpi"><div class="kpi-head"><span>رصيد الحساب</span><i>◈</i></div><strong id="balance">—</strong><small id="balanceMeta">بانتظار مصدر بيانات الحساب</small></article>
-  <article class="kpi"><div class="kpi-head"><span>إجمالي الربح والخسارة العائمة</span><i>↗</i></div><strong id="floating">—</strong><small id="floatingMeta">بانتظار بيانات المراكز المفتوحة</small></article>
-  <article class="kpi"><div class="kpi-head"><span>الصفقات المفتوحة</span><i>▤</i></div><strong id="openTrades">—</strong><small>عدد المراكز المفتوحة حسب بيانات MT5</small></article>
-  <article class="kpi"><div class="kpi-head"><span>نسبة النجاح</span><i>◎</i></div><strong id="winRate">—</strong><small>تظهر بعد ربط سجل الصفقات التاريخي</small></article>
+ <header class="az-user-top">
+  <div class="az-user-logo"><strong>الزول 🇸🇩</strong><small>AL-ZOOL</small></div>
+  <div class="az-user-account"><span class="az-user-name" id="azCurrentUser">الحساب المتصل</span><span class="az-user-bell" aria-hidden="true">◉</span></div>
+ </header>
+ <section class="az-live-banner" id="liveStatus">
+  <div class="az-status-left"><span class="az-checkmark disconnected" id="azBannerCheck">✓</span><div><strong id="azBannerTitle">جارٍ التحقق من اتصال حسابك</strong><small id="azBannerSub">هذه اللوحة تعرض البيانات الحقيقية فقط</small></div></div>
+  <div class="az-status-pill" id="azBannerMt5">MT5 <i></i><span id="azBannerMt5Text">يفحص</span></div>
  </section>
- <section class="grid-main">
-  <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2>الذهب XAUUSD</h2></div><span class="market-tag"><i></i> مخطط السوق</span></div>
-   <div class="chart-wrap"><iframe title="مخطط الذهب المباشر من TradingView" src="https://www.tradingview.com/widgetembed/?frameElementId=tv_gold_chart&symbol=OANDA%3AXAUUSD&interval=15&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=f5f5f7&theme=dark&style=1&timezone=Asia%2FDubai&withdateranges=1&hideideas=1" loading="lazy" allowfullscreen></iframe></div>
-   <p class="chart-foot">المخطط من TradingView كمصدر عرض خارجي؛ تنفيذ الصفقات غير متاح من هذه الصفحة حالياً.</p>
+ <section class="az-client-top-kpis" aria-label="ملخص الحساب">
+  <article class="kpi"><div class="kpi-head"><i>▣</i><span>الرصيد الحالي</span></div><strong id="balance">—</strong><small id="balanceMeta">بانتظار MT5</small></article>
+  <article class="kpi"><div class="kpi-head"><i>▥</i><span>الصفقات المفتوحة</span></div><strong id="openTrades">—</strong><small>من الطرفية المتصلة</small></article>
+  <article class="kpi"><div class="kpi-head"><i>♕</i><span>صافي أرباح اليوم</span></div><strong id="dailyNet">—</strong><small>بعملة حساب MT5</small></article>
+ </section>
+ <section class="az-ai-council-details" id="aiCouncilLive" aria-label="مجلس الذكاء وحارس المخاطر">
+  <article class="az-ai-votes">
+   <div class="card-title"><h2>✧ مجلس الذكاء الاصطناعي</h2><span id="azCouncilState" class="az-council-state">WAIT</span></div>
+   <div class="az-model-row"><b>Fast AI — التحليل السريع</b><span id="azFastVote">بانتظار التصويت</span></div>
+   <div class="az-model-row"><b>Qwen — النموذج المحلي</b><span id="azQwenVote">بانتظار التصويت</span></div>
+   <div class="az-model-row"><b>DeepSeek — التحليل العميق</b><span id="azDeepVote">بانتظار التصويت</span></div>
+   <div class="az-model-row"><b>GPT-OSS 120B — Groq (استشاري فقط)</b><span id="azGroqVote">بانتظار المراجعة</span></div>
+   <p class="muted" id="azCouncilReason">لا يوجد قرار متاح بعد، ولا يعني ظهور اللوحة الموافقة على دخول صفقة.</p>
   </article>
-  <article class="card status-card"><div class="card-title"><div><span class="eyebrow">حالة البنية</span><h2>حالة الأنظمة</h2></div><span class="shield">◆</span></div>
-   <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من آخر نبضة</small></div><span id="mt5Status" class="state pending">يفحص</span></div>
-   <div class="status-row auto-trading-row"><div><b>التداول الآلي</b><small id="autoTradingHelp">تحكم مباشر في السماح بفتح صفقات جديدة</small></div><label class="auto-switch" aria-label="تفعيل التداول الآلي"><input type="checkbox" id="autoTradingEnabled" disabled><span></span></label><span id="autoTradingState" class="state muted">جارٍ الفحص</span></div><p class="auto-note">عند الإيقاف لا تُفتح صفقات جديدة، وتستمر إدارة الصفقات المفتوحة وأهداف الإغلاق. يلزم اتصال MT5 وتفعيل Algo Trading.</p>
-   <p class="muted" id="dailyMeta">الأرقام من الصفقات المغلقة في MT5 بتوقيت الإمارات.</p></article>
+  <article class="az-ai-guard">
+   <div class="card-title"><h2>⬡ Risk Guardian — حماية الحساب</h2><span id="azRiskState" class="az-council-state">WAIT</span></div>
+   <div class="az-model-row"><b>حالة فحص المخاطرة</b><span id="azRiskVote">بانتظار بيانات المحرك</span></div>
+   <div class="az-model-row"><b>إشارة المحرك</b><span id="azEngineSignal">WAIT</span></div>
+   <div class="az-model-row"><b>الشمعة المحللة</b><span id="azCouncilBarTime" dir="ltr">—</span></div>
+   <p class="muted" id="azRiskReason">تصويت النماذج وموافقة المخاطر منفصلان عن تشغيل التداول الحقيقي.</p>
+   <button class="refresh" type="button" id="azRefreshCouncilBtn">⟳ تحديث المجلس</button>
+  </article>
  </section>
- <section class="card history-card"><div class="card-title"><div><span class="eyebrow">سجل MT5</span><h2>آخر الصفقات المغلقة</h2></div><span class="market-tag">آخر 30 يوماً</span></div><div class="table-scroll"><table class="history-table"><thead><tr><th>الوقت</th><th>الرمز</th><th>الاتجاه</th><th>الحجم</th><th>الصافي</th></tr></thead><tbody id="closedTrades"><tr><td colspan="5" class="empty-cell">بانتظار سجل الصفقات المغلقة من MT5</td></tr></tbody></table></div></section>
- <footer>AL-ZOOL GOLD SNIPER <span>•</span> لوحة القيادة · البيانات غير المتاحة لا تُعرض كأرقام تقديرية</footer>
+ <section class="card" id="aiMonitorInline" hidden aria-labelledby="aiMonitorInlineTitle" style="margin-bottom:16px">
+  <div class="card-title"><div><span class="eyebrow">متصل بمحرك التداول الحقيقي</span><h2 id="aiMonitorInlineTitle">◎ مراقبة قرار Hybrid AI</h2><p class="muted">من نفس لوحة القيادة: لماذا BUY أو SELL أو WAIT؟ وكيف أثرت Qwen وDeepSeek؟</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="refresh" id="azInlineMonitorRefresh">⟳ تحديث المراقبة</button><a class="az-settings-link" href="/ai-monitor.html">كل تفاصيل القرار</a></div></div>
+  <div class="az-ai-council-details" style="margin:0">
+   <article class="az-ai-votes"><div class="az-model-row"><b>قرار الاستراتيجية</b><strong id="azMonitorBase">—</strong></div><div class="az-model-row"><b>بعد دمج AI</b><strong id="azMonitorEffective">—</strong></div><div class="az-model-row"><b>أصوات AI المستخدمة فعلياً</b><strong id="azMonitorUsed">—</strong></div><p class="muted" id="azMonitorAiReason">بانتظار قرارات المحرك</p></article>
+   <article class="az-ai-guard"><div class="az-model-row"><b>حالة التنفيذ</b><strong id="azMonitorReady">—</strong></div><div class="az-model-row"><b>السبب المحدد</b><span id="azMonitorReason">—</span></div><div class="az-model-row"><b>وضع قرار الدخول</b><span id="azMonitorMode">—</span></div></article>
+  </div>
+ </section>
+ <section class="card az-client-settings" id="tradingSettingsPanel">
+  <div class="card-title"><div><h2>⚙ إعدادات التداول الخاصة بك</h2><p class="muted">الإعدادات قابلة للتعديل من شاشة إدارة التداول</p></div><span class="shield">⚙</span></div>
+  <div class="az-trade-settings-grid">
+   <div class="az-settings-toggles">
+    <div class="az-toggle-row"><span>التداول الآلي</span><label class="auto-switch" aria-label="التداول الآلي"><input type="checkbox" id="autoTradingEnabled" disabled><span></span></label></div>
+    <div class="az-toggle-row"><span>الشراء BUY</span><label class="auto-switch" aria-label="وضع الشراء يظهر من MT5 ولا يمكن تغييره من هنا"><input type="checkbox" id="azBuyToggle" disabled><span></span></label></div>
+    <div class="az-toggle-row"><span>البيع SELL</span><label class="auto-switch" aria-label="وضع البيع يظهر من MT5 ولا يمكن تغييره من هنا"><input type="checkbox" id="azSellToggle" disabled><span></span></label></div>
+    <small id="autoTradingState" class="state muted">جارٍ الفحص</small>
+   </div>
+   <div class="az-setting-values">
+    <div class="az-field-row"><span>اللوت الأساسي</span><strong id="azLotValue" class="az-field-value">—</strong></div>
+    <div class="az-field-row"><span>الحد الأقصى للصفقات</span><strong id="azMaxPositions" class="az-field-value">—</strong></div>
+    <div class="az-field-row"><span>حالة إدارة الصفقات</span><strong id="azManagementMode" class="az-field-value" style="font-size:12px">—</strong></div>
+   </div>
+  </div>
+  <p id="autoTradingHelp" class="az-config-note">التداول متوقف حتى التحقق من MT5. مفاتيح BUY/SELL للعرض فقط، وليست متصلة بواجهة أوامر.</p>
+  <a class="az-settings-link" href="/trade-management.html">✎ تعديل الإعدادات</a>
+ </section>
+ <section class="az-secondary-row" id="accountPerformance">
+  <article class="card"><div class="card-title"><h2>▥ أداء حسابك</h2><span class="market-tag">الصفقات المسجلة</span></div><div id="azMiniPerformance" class="az-mini-chart"><div class="az-mini-empty">بانتظار سجل الصفقات</div></div><small id="azPerformanceNote" class="muted">يعرض نتائج صفقات MT5 المغلقة التي وصلت إلى الخادم</small></article>
+  <article class="card"><div class="card-title"><h2>ⓘ معلومات سريعة</h2><span class="shield">ⓘ</span></div>
+    <div class="az-quick-info">
+      <div class="info-line"><span>آخر اتصال</span><span class="info-value" id="azLastSeen">—</span></div>
+      <div class="info-line"><span>حالة السيرفر</span><span class="info-value" id="azQuickConnection">جارٍ الفحص</span></div>
+      <div class="info-line"><span>المنصة</span><span class="info-value">MT5</span></div>
+      <div class="info-line"><span>حالة الذكاء المركزي</span><span class="info-value" id="azAiCouncilStatus">—</span></div>
+    </div>
+  </article>
+ </section>
+ <section class="az-extended-kpis">
+  <article class="kpi"><div class="kpi-head"><span>الربح والخسارة العائمة</span><i>↗</i></div><strong id="floating">—</strong><small id="floatingMeta">بانتظار المراكز</small></article>
+  <article class="kpi"><div class="kpi-head"><span>نسبة نجاح الصفقات</span><i>◈</i></div><strong id="winRate">—</strong><small>من النتائج التاريخية المحفوظة</small></article>
+ </section>
+ <section class="az-user-extras">
+  <section class="notice" id="dataNotice"><b>حالة بيانات التداول</b><span>بانتظار تأكيد اتصال MT5 وسجل الصفقات. لا توجد أرقام تجريبية على هذه الصفحة.</span></section>
+  <section class="grid-main">
+    <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2>مخطط الذهب XAUUSD</h2></div><span class="market-tag">مخطط خارجي</span></div>
+      <div class="chart-wrap"><iframe title="مخطط الذهب المباشر من TradingView" src="https://www.tradingview.com/widgetembed/?frameElementId=tv_gold_chart&symbol=OANDA%3AXAUUSD&interval=15&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=f5f5f7&theme=dark&style=1&timezone=Asia%2FDubai&withdateranges=1&hideideas=1" loading="lazy" allowfullscreen></iframe></div>
+      <p class="chart-foot">المخطط للعرض فقط؛ لا تصدر منه أوامر تداول.</p></article>
+    <article class="card status-card"><div class="card-title"><div><h2>حالة MT5 والحماية</h2></div><span class="shield">⬡</span></div>
+      <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من الطرفية</small></div><span id="mt5Status" class="state muted">يفحص</span></div>
+      <div class="status-row"><div><b>التداول الآلي</b><small>من مفتاح التحكم الفعلي أعلاه</small></div><span id="azAutoMirror" class="state muted">جارٍ الفحص</span></div>
+      <p class="auto-note">إيقاف التداول يمنع فتح صفقات جديدة عبر المحرك؛ إدارة المراكز المفتوحة تتبع الضوابط المستقلة.</p>
+      <p class="muted" id="dailyMeta">التاريخ من MT5 بتوقيت الإمارات.</p>
+      <div class="daily-grid"><div><small>الربح اليوم</small><b id="dailyProfit">—</b></div><div><small>الخسارة اليوم</small><b id="dailyLoss">—</b></div><div><small>عدد الصفقات المغلقة اليوم</small><b id="dailyTrades">—</b></div></div>
+    </article>
+  </section>
+  <section class="card history-card" id="closedHistory"><div class="card-title"><div><span class="eyebrow">أرشيف MT5</span><h2>آخر الصفقات المغلقة</h2></div><a class="az-settings-link" style="margin:0" href="/trade-history.html">جميع الصفقات</a></div>
+    <div class="table-scroll"><table class="history-table"><thead><tr><th>الوقت</th><th>الرمز</th><th>الاتجاه</th><th>الحجم</th><th>الصافي</th></tr></thead><tbody id="closedTrades"><tr><td colspan="5" class="empty-cell">بانتظار سجل الصفقات من MT5</td></tr></tbody></table></div>
+  </section>
+ </section>
+ <footer class="az-footer">AL-ZOOL<small>Smart Trading .. Smarter Control · البيانات متصلة بمصادرها الحقيقية</small></footer>
+ <span id="clock" style="display:none">—</span><button id="refreshBtn" type="button" class="refresh" style="position:fixed;bottom:17px;left:17px;z-index:9;box-shadow:0 6px 20px #9a3ae844">⟳ تحديث</button>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/dashboard.js?v=8"></script>
-<script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=1" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/dashboard.js?v=hybrid-monitor-20261116-1"></script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
 </body></html>
