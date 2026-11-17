@@ -358,9 +358,18 @@ def entry_direction_capacity(positions, symbol, signal, settings):
     if signal not in ("BUY","SELL"):
         return {"approved":False,"reason_ar":"لا يوجد اتجاه دخول صالح"}
     position_type=0 if signal=="BUY" else 1
-    count=sum(1 for p in (positions or []) if isinstance(p,dict)
-              and str(p.get("symbol") or "")==symbol
-              and int(finite_number(p.get("type"),-1))==position_type)
+    live_symbol_positions=[p for p in (positions or [])
+                           if isinstance(p,dict) and str(p.get("symbol") or "")==symbol]
+    count=sum(1 for p in live_symbol_positions
+              if int(finite_number(p.get("type"),-1))==position_type)
+    opposite_count=sum(1 for p in live_symbol_positions
+                       if int(finite_number(p.get("type"),-1))==1-position_type)
+    # Gold trades from every EA (including manual positions) count. Never open
+    # opposite exposure, regardless of whether a per-direction cap is configured.
+    if opposite_count:
+        return {"approved":False,"open_same_side":count,
+                "open_opposite_side":opposite_count,
+                "reason_ar":"حماية الاتجاه: توجد مراكز ذهب معاكسة؛ منع دخول جديد"}
     raw=pm.get("max_positions_per_direction")
     if raw is None or str(raw).strip()=="":
         return {"approved":True,"open_same_side":count,
