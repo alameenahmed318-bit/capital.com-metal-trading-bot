@@ -54,7 +54,8 @@ def credentials(path):
 
 def validate_response(model,result):
     """Read an actual model JSON vote; never invent a missing direction or confidence."""
-    raw=result.get("response","")
+    message=result.get("message") if isinstance(result.get("message"),dict) else {}
+    raw=message.get("content",result.get("response",""))
     if not isinstance(raw,str):
         return None
     # Some reasoning models wrap the structured response in commentary or
@@ -106,7 +107,7 @@ def compact_snapshot(context):
     if not isinstance(combinations,dict):
         combinations={}
     recent=[]
-    for row in candles[:6]:  # Server returns newest closed candle first.
+    for row in candles[:4]:  # Server returns newest closed candle first.
         if isinstance(row,dict):
             recent.append({k:row[k] for k in ("time","open","high","low","close")
                            if k in row})
@@ -131,23 +132,39 @@ def compact_snapshot(context):
 
 
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
+    """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
     snapshot=compact_snapshot(context)
-    prompt=("Review the proposed XAUUSD trade independently using supplied closed candles, "
-        "trend, momentum, trap, strategy and family-vote evidence. "
-        "A trend-following or pullback setup does not require a breakout; "
-        "judge the actual setup rather than inventing extra entry conditions. "
-        "Never guess missing data. The central proposal is not an instruction: "
-        "disagree or WAIT when evidence is weak or contradictory. Reply with exactly one JSON object "
-        'with keys {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"brief reason"}. '
-        "Confidence must be between 0 and 1. No markdown, preamble, or reasoning trace. "
-        "Snapshot: "+json.dumps(snapshot,ensure_ascii=False,separators=(",",":")))
-    result=request_json(OLLAMA_URL+"/api/generate",method="POST",
-        payload={"model":model,"prompt":prompt,"stream":False,"format":{"type":"object","properties":{"direction":{"type":"string","enum":["BUY","SELL","WAIT"]},"confidence":{"type":"number","minimum":0,"maximum":1},"reason_ar":{"type":"string"}},"required":["direction","confidence","reason_ar"]},
+    instruction=("Independently review a proposed XAUUSD M1 trade using real closed-candle, "
+        "trend, momentum, trap and strategy evidence. Do not blindly follow central_signal. "
+        "A pullback need not be a breakout. Disagree or WAIT when evidence is weak. "
+        'Output only JSON: {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"brief reason"}. '
+        "Confidence between 0 and 1. Keep reason_ar under 12 words. No thoughts or markdown.")
+    schema={"type":"object","properties":{
+        "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
+        "confidence":{"type":"number","minimum":0,"maximum":1},
+        "reason_ar":{"type":"string"}},
+        "required":["direction","confidence","reason_ar"]}
+    # /api/chat reports the actual final answer in message.content. Some
+    # thinking models put their reasoning in message.thinking; never parse it.
+    result=request_json(OLLAMA_URL+"/api/chat",method="POST",
+        payload={"model":model,"messages":[
+                    {"role":"system","content":instruction},
+                    {"role":"user","content":json.dumps(snapshot,ensure_ascii=False,separators=(",",":"))}],
+                 "stream":False,"format":"json" if model.startswith("deepseek") else schema,
                  "think":False,"keep_alive":"30m",
-                 "options":{"temperature":0,"num_predict":96 if model.startswith("deepseek") else 64,
-                            "num_ctx":1280,"num_thread":4}},
+                 "options":{"temperature":0,"num_predict":128 if model.startswith("deepseek") else 72,
+                            "num_ctx":1024,"num_thread":4}},
         timeout=timeout_seconds)
-    return validate_response(model,result)
+    vote=validate_response(model,result)
+    if vote is None:
+        message=result.get("message") if isinstance(result.get("message"),dict) else {}
+        content=message.get("content",result.get("response",""))
+        thinking=message.get("thinking",result.get("thinking",""))
+        done=str(result.get("done_reason") or "unknown")[:32]
+        print(model+" RESPONSE_DIAG content_chars="+str(len(content) if isinstance(content,str) else 0)+
+            " thinking_chars="+str(len(thinking) if isinstance(thinking,str) else 0)+
+            " done="+done+" tokens="+str(result.get("eval_count","?")),flush=True)
+    return vote
 
 
 def same_live_signal(server,identity,key,bar,signal):
@@ -175,6 +192,8 @@ def main():
     last_bar=0
     submitted=set()
     attempts={}
+    qwen_timeout_streak=0
+    qwen_pause_until=0.0
     while True:
         try:
             url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
@@ -204,7 +223,8 @@ def main():
             # For a closed M1 bar, the next closed bar is available at bar+120s.
             # Leave 4s for server round-trips so old votes cannot be submitted.
             pending=[model for model in ("deepseek-r1:1.5b","qwen3.5:4b")
-                if model not in submitted and attempts.get(model,0)<1]
+                if model not in submitted and attempts.get(model,0)<1
+                and (not model.startswith("qwen") or time.monotonic()>=qwen_pause_until)]
             if pending:
                 deadline=bar+120-4
                 for model in pending:
@@ -221,12 +241,23 @@ def main():
                     started=time.monotonic()
                     try:
                         vote=model_vote(model,context,timeout_seconds=timeout)
+                    except TimeoutError:
+                        print(model+" ERROR TimeoutError",flush=True)
+                        if model.startswith("qwen"):
+                            qwen_timeout_streak+=1
+                            if qwen_timeout_streak>=2:
+                                qwen_pause_until=time.monotonic()+300
+                                qwen_timeout_streak=0
+                                print("qwen3.5:4b CPU_COOLDOWN 300s; Fast AI remains active",flush=True)
+                        continue
                     except Exception as exc:
                         print(model+" ERROR "+type(exc).__name__,flush=True)
                         continue
                     if vote is None:
                         print(model+" INVALID_JSON; no vote submitted",flush=True)
                         continue
+                    if model.startswith("qwen"):
+                        qwen_timeout_streak=0
                     if time.time()>=deadline:
                         print(model+" STALE_BAR; vote discarded",flush=True)
                         continue
