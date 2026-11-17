@@ -65,8 +65,41 @@ class PositionActionSafety(unittest.TestCase):
             "position_management":{"max_positions_per_direction":2}})
         self.assertFalse(result["approved"])
         self.assertEqual(result["open_same_side"],2)
-        self.assertTrue(entry_direction_capacity(positions,"XAUUSD","SELL",{
+        self.assertFalse(entry_direction_capacity(positions,"XAUUSD","SELL",{
             "position_management":{"max_positions_per_direction":2}})["approved"])
+    def test_opposite_gold_rejected_even_without_direction_cap(self):
+        sell=[pos(1,.01,side=1)]
+        report=entry_direction_capacity(sell,"XAUUSD","BUY",{"position_management":{}})
+        self.assertFalse(report["approved"],report)
+        self.assertEqual(report["open_opposite_side"],1)
+        self.assertIn("معاكسة",report["reason_ar"])
+        self.assertTrue(entry_direction_capacity(sell,"XAUUSD","SELL",{"position_management":{}})["approved"])
+
+    def test_other_symbols_do_not_block_gold_entry(self):
+        eur=[pos(1,.1,symbol="EURUSD",side=1)]
+        self.assertTrue(entry_direction_capacity(eur,"XAUUSD","BUY",{"position_management":{}})["approved"])
+
+    def test_mixed_gold_blocks_new_entry_addons_cooling_and_recovery(self):
+        positions=[pos(1,.01,side=0),pos(2,.01,side=1)]
+        snap,decision,settings=scenario(positions,{
+            "recovery_enabled":True,"addon_enabled":True,"cooling_enabled":True})
+        for direction in ("BUY","SELL"):
+            report=entry_direction_capacity(positions,"XAUUSD",direction,settings)
+            self.assertFalse(report["approved"])
+        planned=plan_account_actions(snap,decision,{"approved":True},{"approved":True},settings)
+        self.assertEqual(planned["actions"],[])
+        self.assertIn("BUY وSELL",planned["reason_ar"])
+        report=_allowed("owner",snap,decision,{"approved":True},{"approved":True},
+                         settings,datetime.now(timezone.utc))
+        self.assertFalse(report["execution_ready"])
+
+    def test_ea_disallows_opposite_even_with_legacy_input_false(self):
+        source=(Path(__file__).resolve().parents[1]/"mt5_client"/"ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
+        self.assertIn('InpBlockOppositePositions = true;',source)
+        self.assertNotIn('if(!InpBlockOppositePositions) return true;',source)
+        self.assertIn('if(!IsAccountDirectionAllowed(direction))',source)
+        self.assertIn('!IsAccountDirectionAllowed(side)',source)
+
     def test_group_close_retry_blocks_new_entry_and_survives_restart(self):
         source=(Path(__file__).resolve().parents[1]/"mt5_client"/"ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
         self.assertIn("g_groupClosePending",source)
