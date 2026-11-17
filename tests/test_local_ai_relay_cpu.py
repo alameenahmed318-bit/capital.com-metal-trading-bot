@@ -15,8 +15,8 @@ spec.loader.exec_module(relay)
 BAR=1794839940
 
 class CpuLocalRelayChecks(unittest.TestCase):
-    def cycle(self,signal="SELL",deepseek_delay=0,deepseek_error=False):
-        clock=[BAR+61]
+    def cycle(self,signal="SELL",deepseek_delay=0,deepseek_error=False,start_offset=61):
+        clock=[BAR+start_offset]
         calls=[]
         votes=[]
         def fake_request(url,method="GET",payload=None,token=None,timeout=12):
@@ -71,6 +71,24 @@ class CpuLocalRelayChecks(unittest.TestCase):
         self.assertEqual([m for m,_ in calls],["deepseek-r1:1.5b","qwen3.5:4b"])
         self.assertEqual([v["model"] for v in votes],["qwen3.5:4b"])
         self.assertIn("ERROR TimeoutError",log)
+
+    def test_deepseek_never_starts_without_time_to_finish(self):
+        calls,votes,log=self.cycle(start_offset=92)
+        self.assertEqual(calls,[])
+        self.assertEqual(votes,[])
+        self.assertIn("SKIP_BAR_BUDGET",log)
+
+    def test_deepseek_has_enough_tokens_for_real_answer(self):
+        observed={}
+        def fake_request(url,method="GET",payload=None,token=None,timeout=12):
+            observed["payload"]=payload
+            observed["timeout"]=timeout
+            return {"message":{"content":'{"direction":"SELL","confidence":0.7,"reason_ar":"test"}'}}
+        with patch.object(relay,"request_json",side_effect=fake_request):
+            vote=relay.model_vote("deepseek-r1:1.5b",{"bar_time":BAR,"decision":"BUY"},timeout_seconds=33)
+        self.assertEqual(vote["direction"],"SELL")
+        self.assertEqual(observed["payload"]["options"]["num_predict"],352)
+        self.assertEqual(observed["timeout"],33)
 
     def test_central_wait_saves_cpu(self):
         calls,votes,log=self.cycle(signal="WAIT")
