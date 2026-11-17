@@ -15,6 +15,7 @@ import json
 import math
 import os
 import pathlib
+import re
 import sys
 import time
 import urllib.error
@@ -22,7 +23,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-MODELS=("qwen3.5:4b","deepseek-r1:1.5b")
+MODELS=("qwen2.5:1.5b",)  # Lightweight CPU-only live voting; old models remain installed
 OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
 POLL_SECONDS=3
 MODEL_TIMEOUT_SECONDS=50
@@ -81,6 +82,10 @@ def validate_response(model,result):
         reason=str(parsed.get("reason_ar",""))[:350]
         if direction not in ("BUY","SELL","WAIT") or not math.isfinite(confidence) or not 0<=confidence<=1:
             return None
+        # Reject non-Arabic explanations from the compact multilingual model.
+        # Its raw vote/confidence must never be fabricated or translated.
+        if model=="qwen2.5:1.5b" and not re.search(r"[\u0600-\u06FF]",reason):
+            return None
         return {"model":model,"direction":direction,"confidence":confidence,"reason_ar":reason}
     except (ValueError,TypeError,KeyError,OverflowError):
         return None
@@ -119,6 +124,7 @@ def compact_snapshot(context):
         "market_regime":features.get("regime"),
         "regime_evidence":str(features.get("reason") or "")[:120],
         "atr":features.get("atr"),
+        "rsi":features.get("rsi"),
         "adx":features.get("adx"),
         "trend_strength":features.get("trend_strength"),
         "family_vote_counts":family_vote_counts,
@@ -134,11 +140,14 @@ def compact_snapshot(context):
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
     snapshot=compact_snapshot(context)
-    instruction=("Assess XAUUSD M1 using the supplied closed candles, trend, trap, "
-        "strategy and family evidence. Central signal is a proposal, not a command. "
-        "Choose BUY, SELL or WAIT independently. If unclear, WAIT. "
-        'Return ONLY JSON {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"short reason"}. '
-        "Confidence 0..1, reason_ar maximum 8 words. No explanation.")
+    instruction=("You are a cautious XAUUSD M1 advisory analyst. Use ONLY actual supplied "
+        "closed candles, trends and indicators; central_signal is not an order. "
+        "RSI near 58 is NOT overbought; normally overbought RSI starts around 70. "
+        "Do not infer any missing indicator. WAIT when evidence is insufficient. "
+        "Return one JSON object exactly with direction (BUY, SELL or WAIT), "
+        "confidence (0..1), reason_ar (short reason written ONLY in Arabic). "
+        "The reason_ar MUST contain Arabic script, NOT Chinese or English. "
+        "Keep Arabic reason under 10 words, no extra text.")
     schema={"type":"object","properties":{
         "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
         "confidence":{"type":"number","minimum":0,"maximum":1},
@@ -198,7 +207,7 @@ def main():
     missing=[model for model in MODELS if model not in installed]
     if missing:
         raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
-    print("AL-ZOOL LOCAL AI READY | models=Qwen 3.5 4B, DeepSeek | trading execution=OFF",flush=True)
+    print("AL-ZOOL LOCAL AI READY | model=Qwen 2.5 1.5B FAST | heavy models offline | trading execution=OFF",flush=True)
     last_bar=0
     submitted=set()
     attempts={}
@@ -229,24 +238,23 @@ def main():
                     attempts["wait_logged"]=1
                 if args.once:break
                 time.sleep(POLL_SECONDS);continue
-            # Prioritize Qwen fast final answers; DeepSeek reasoning may take too long.
-            # Never run Qwen and DeepSeek concurrently on a CPU-only laptop.
+            # Fast CPU-friendly Qwen is the only M1 voting model.\n            # Large reasoning models are kept installed for offline research.
             # For a closed M1 bar, the next closed bar is available at bar+120s.
             # Leave 4s for server round-trips so old votes cannot be submitted.
-            pending=[model for model in ("qwen3.5:4b","deepseek-r1:1.5b")
+            pending=[model for model in MODELS
                 if model not in submitted and attempts.get(model,0)<1
                 and time.monotonic()>=model_pause_until.get(model,0.0)]
             if pending:
                 deadline=bar+120-4
                 for model in pending:
                     remaining=deadline-time.time()
-                    min_budget=30 if model.startswith("deepseek") else 25
+                    min_budget=12
                     if remaining<min_budget:
                         print(model+" SKIP_BAR_BUDGET; next M1 candle",flush=True)
                         attempts[model]=1
                         continue
-                    # Qwen gets first chance. DeepSeek runs only with remaining M1 time.
-                    limit=28 if model.startswith("deepseek") else 25
+                    # Do not spend longer than one short CPU inference on a single M1 candle.
+                    limit=18
                     timeout=max(1,min(limit,int(remaining)-2))
                     attempts[model]=1  # No CPU-expensive same-bar retry.
                     started=time.monotonic()
@@ -261,7 +269,7 @@ def main():
                         record_model_failure(model,model_failures,model_pause_until)
                         continue
                     if vote is None:
-                        print(model+" INVALID_JSON; no vote submitted",flush=True)
+                        print(model+" INVALID_OUTPUT (JSON, direction or Arabic reason); no vote submitted",flush=True)
                         record_model_failure(model,model_failures,model_pause_until)
                         continue
                     model_failures[model]=0
