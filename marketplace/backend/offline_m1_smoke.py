@@ -1,4 +1,4 @@
-"""Read-only weekend XAUUSD M1 smoke: historical quant replay + one Groq review.
+"""Read-only BTCUSD M1 smoke: historical quant replay + one Groq review.
 
 Runs only when enabled by the server owner. Never writes market data,
 changes settings, accepts an order, or authorizes execution.
@@ -23,7 +23,7 @@ def run(read_rows):
             return
         audit=audit_strategies(rows,max_samples=18)
         replay=replay_directional(rows,{"strategy_weights":{},"combination_weights":{}},max_samples=30)
-        decision=evaluate_market(valid[-120:])
+        decision=evaluate_market(valid[-120:],market_symbol="BTCUSD")
         elapsed_ms=round((time.perf_counter()-started)*1000,1)
         summary={
             "status":"OK","rows":len(rows),"valid":len(valid),
@@ -48,12 +48,12 @@ def run(read_rows):
             print("ALZOOL_HISTORICAL_GROQ:",json.dumps(
                 {"status":"NOT_CONFIGURED","execution_authorized":False}),flush=True)
             return
-        # Only anonymous gold price/indicator evidence. No personal/account data.
+        # Only anonymous BTC price/indicator evidence. No personal/account data.
         # Explicitly historical: Groq's advisory vote never enters the live council.
         context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
         snapshot={
             "mode":"OFFLINE_HISTORICAL_M1_READ_ONLY",
-            "symbol":"XAUUSD",
+            "symbol":"BTCUSD",
             "closed_bar_time":str(valid[-1]["time"])[:40],
             "close":valid[-1]["close"],
             "atr":context.get("atr"),

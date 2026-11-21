@@ -5,7 +5,9 @@ import sys
 import unittest
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
-from app import btc_market, _fetch_trade_settings, terminal_request_matches_market
+import app as app_module
+from app import btc_market, btc_database_ready, _fetch_trade_settings, terminal_request_matches_market
+from unittest.mock import patch
 from strategy_engine import adaptive_bitcoin_parameters, adaptive_gold_parameters
 from recovery_logic import recovery_intent
 from position_action_engine import plan_account_actions
@@ -18,6 +20,12 @@ class MarketIsolationTests(unittest.TestCase):
             self.assertFalse(btc_market(market))
         self.assertFalse(terminal_request_matches_market(
             "/v1/terminal-decision/owner?symbol=XAUUSD","XAUUSD"))
+
+    def test_wrong_supabase_project_is_fail_closed(self):
+        with patch.object(app_module,"SUPABASE_URL","https://mmevhqgbuqledajrmnav.supabase.co"):
+            self.assertFalse(btc_database_ready())
+        with patch.object(app_module,"SUPABASE_URL","https://egtofwardrkkzflniikp.supabase.co"):
+            self.assertTrue(btc_database_ready())
 
     def test_market_has_own_settings_table(self):
         source=inspect.getsource(_fetch_trade_settings)

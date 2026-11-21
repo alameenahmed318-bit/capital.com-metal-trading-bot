@@ -38,8 +38,14 @@ LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1"
 # The Meeno/Deriv deployment owns BTCUSD only. Gold remains on the untouched
 # original Render service and original Supabase project.
 ENGINE_MARKET="BTCUSD"
+EXPECTED_BTC_DB_HOST="egtofwardrkkzflniikp.supabase.co"
 def btc_market(symbol):
     return supported_market_symbol(symbol) and market_family(symbol)==ENGINE_MARKET
+def btc_database_ready():
+    """Fail closed if the Meeno server was accidentally pointed at gold's DB."""
+    parsed=urllib.parse.urlparse(SUPABASE_URL)
+    return (parsed.scheme=="https" and parsed.netloc==EXPECTED_BTC_DB_HOST
+            and parsed.path in ("","/"))
 
 CONNECTIONS={}
 LICENSE_CACHE={}
@@ -53,6 +59,8 @@ SETTINGS_CACHE_REFRESH_SECONDS=2.0
 
 def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
+    if not btc_database_ready():
+        raise RuntimeError("BTC_SUPABASE_PROJECT_MISMATCH: refusing to access the gold database")
     key=SUPABASE_SERVICE_ROLE_KEY if admin else SUPABASE_ANON_KEY
     if not key: raise RuntimeError("Supabase key is not configured")
     headers={"apikey":key,"Accept":"application/json","Authorization":"Bearer "+(SUPABASE_SERVICE_ROLE_KEY if admin else (bearer or key))}
@@ -789,8 +797,15 @@ class Handler(SimpleHTTPRequestHandler):
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path in ("/health","/api/health"):
-            return self.send_json(200,{"ok":True,"service":"AL-ZOOL MT5 Connection & Central Strategy Execution","mt5_connection_api":True,"trading_engine":True,"execution_location":"licensed MT5 terminal"})
+            return self.send_json(200,{"ok":True,"service":"AL-ZOOL BTC-only Meeno engine",
+                "market":"BTCUSD","btc_database_ready":btc_database_ready(),
+                "mt5_connection_api":True,"trading_engine":True,
+                "trading_enabled_by_health_check":False,"execution_location":"isolated Deriv MT5 terminal"})
         if path=="/api/config":
+            if not btc_database_ready():
+                return self.send_json(503,{"ready":False,"error":
+                    "إعداد SUPABASE_URL لا يشير إلى قاعدة البيتكوين الجديدة؛ حُظر الاتصال لحماية بيانات الذهب",
+                    "market":"BTCUSD"})
             missing=[]
             if not SUPABASE_URL: missing.append("SUPABASE_URL")
             if not SUPABASE_ANON_KEY: missing.append("SUPABASE_ANON_KEY")
@@ -2269,13 +2284,13 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("X-Frame-Options","SAMEORIGIN"); self.send_header("Content-Security-Policy","frame-ancestors 'self'"); super().end_headers()
 
 def _read_stored_m1_for_smoke():
-    """Fetch latest 500 closed XAUUSD M1 candles from one source; read only."""
+    """Fetch latest 500 closed BTCUSD M1 candles; never read legacy gold history."""
     base="/rest/v1/alzool_engine_market_candles?"
-    latest=sb("GET",base+"symbol=eq.XAUUSD&timeframe=eq.PERIOD_M1"
+    latest=sb("GET",base+"symbol=eq.BTCUSD&timeframe=eq.PERIOD_M1"
               "&select=client_id&order=candle_time.desc&limit=1",admin=True)
     if not latest:return []
     cid=urllib.parse.quote(str(latest[0]["client_id"]),safe="")
-    result=sb("GET",base+"client_id=eq."+cid+"&symbol=eq.XAUUSD"
+    result=sb("GET",base+"client_id=eq."+cid+"&symbol=eq.BTCUSD"
               "&timeframe=eq.PERIOD_M1"
               "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume"
               "&order=candle_time.desc&limit=500",admin=True)
@@ -2294,7 +2309,9 @@ if __name__=="__main__":
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_post_close_m1.py",
                     "test_recovery_candle_guard.py","test_local_ai_relay_cpu.py",
-                    "test_position_action_safety.py"):
+                    "test_position_action_safety.py",
+                    "test_btc_market_gate.py","test_btc_market_symbols.py",
+                    "test_btc_market_isolation.py"):
         recovery_suite.addTests(unittest.defaultTestLoader.discover(
             start_dir=test_dir,pattern=pattern))
     recovery_result=unittest.TextTestRunner(verbosity=1).run(recovery_suite)

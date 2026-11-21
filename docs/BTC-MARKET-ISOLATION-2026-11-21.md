@@ -6,6 +6,7 @@ Do not merge this branch into the original gold branch.
 
 ## Isolation rules
 
+- The BTC deployment refuses database requests unless `SUPABASE_URL` points exactly to `https://egtofwardrkkzflniikp.supabase.co`; configuration mismatch is fail-closed and shown in `/health`.
 - BTC trading settings are stored in new Supabase table `public.alzool_btc_trade_settings` in the **new** Supabase project, with default trading actions OFF, profit closes OFF and stop-loss OFF. This table is **not seeded from existing gold settings**.
 - The new server rejects all non-BTCUSD terminal-state snapshots and historical uploads before caching, learning, or persisting them.
 - A BTC terminal snapshot with any foreign-symbol open position or pending order is rejected.
