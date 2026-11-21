@@ -107,9 +107,9 @@
  <section class="az-user-extras">
   <section class="notice" id="dataNotice"><b>حالة بيانات التداول</b><span>بانتظار تأكيد اتصال MT5 وسجل الصفقات. لا توجد أرقام تجريبية على هذه الصفحة.</span></section>
   <section class="grid-main">
-    <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2>مخطط الذهب XAUUSD</h2></div><span class="market-tag">مخطط خارجي</span></div>
-      <div class="chart-wrap"><iframe title="مخطط الذهب المباشر من TradingView" src="https://www.tradingview.com/widgetembed/?frameElementId=tv_gold_chart&symbol=OANDA%3AXAUUSD&interval=15&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=f5f5f7&theme=dark&style=1&timezone=Asia%2FDubai&withdateranges=1&hideideas=1" loading="lazy" allowfullscreen></iframe></div>
-      <p class="chart-foot">المخطط للعرض فقط؛ لا تصدر منه أوامر تداول.</p></article>
+    <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2 id="marketChartTitle">مخطط الذهب XAUUSD</h2></div><label class="market-tag" for="marketChartSymbol">السوق <select id="marketChartSymbol" aria-label="اختيار السوق"><option value="XAUUSD">XAUUSD · الذهب</option><option value="BTCUSD">BTCUSD · بيتكوين</option></select></label></div>
+      <div class="chart-wrap"><iframe id="marketChartFrame" title="مخطط السوق الخارجي من TradingView" src="https://www.tradingview.com/widgetembed/?frameElementId=tv_gold_chart&symbol=OANDA%3AXAUUSD&interval=15&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=f5f5f7&theme=dark&style=1&timezone=Asia%2FDubai&withdateranges=1&hideideas=1" loading="lazy" allowfullscreen></iframe></div>
+      <p class="chart-foot">المخطط للعرض فقط ولا يرسل أوامر. سعر BTC الخارجي لا يطابق بالضرورة سعر عقد Deriv BTCUSD.</p></article>
     <article class="card status-card"><div class="card-title"><div><h2>حالة MT5 والحماية</h2></div><span class="shield">⬡</span></div>
       <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من الطرفية</small></div><span id="mt5Status" class="state muted">يفحص</span></div>
       <div class="status-row"><div><b>التداول الآلي</b><small>من مفتاح التحكم الفعلي أعلاه</small></div><span id="azAutoMirror" class="state muted">جارٍ الفحص</span></div>
