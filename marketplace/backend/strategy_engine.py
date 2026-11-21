@@ -219,6 +219,26 @@ def adaptive_gold_parameters(rates,context=None):
     if ratio<.65:rp=min(21,rp+2);es=min(40,es+4);mode+="؛ تقلب منخفض"
     return {"rsi_period":rp,"ema_fast":ef,"ema_slow":es,"atr_ratio":ratio,"regime":regime,"mode":mode}
 
+def adaptive_bitcoin_parameters(rates,context=None):
+    """Independent BTC starting profile; heuristic until tested on Deriv history.
+
+    ATR is a market-relative ratio; never copy XAUUSD saved weights or
+    its gold-specific adaptive switch thresholds into the BTC evaluator.
+    """
+    context=context or analyze_market_context(rates)
+    ratio=float(context.get("atr_ratio",1.0) or 1.0)
+    regime=context.get("regime","غير محدد")
+    if ratio>=1.7:
+        rp,ef,es,mode=12,10,28,"BTC: نطاق تقلب مرتفع؛ إعداد أولي غير مختبر"
+    elif regime.startswith("اتجاه"):
+        rp,ef,es,mode=14,12,34,"BTC: ترجيح متابعة الاتجاه؛ إعداد أولي غير مختبر"
+    elif regime=="تذبذب جانبي":
+        rp,ef,es,mode=18,12,30,"BTC: تنعيم أولي أثناء التذبذب؛ غير مختبر"
+    else:
+        rp,ef,es,mode=14,12,30,"BTC: إعداد محايد مبدئي؛ بانتظار الاختبار التاريخي"
+    return {"rsi_period":rp,"ema_fast":ef,"ema_slow":es,
+            "atr_ratio":ratio,"regime":regime,"mode":mode,"market":"BTCUSD"}
+
 def build_ai_council(rates,votes=None,context=None,adaptive=None):
     context=context or analyze_market_context(rates); votes=votes or []
     buy=sum(x["signal"]=="BUY" for x in votes); sell=sum(x["signal"]=="SELL" for x in votes); wait=sum(x["signal"]=="WAIT" for x in votes)
@@ -235,8 +255,12 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
 
 from entry_evidence import closed_candle_pressure
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None):
-    weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates); adaptive=adaptive_gold_parameters(rates,context)
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None,market_symbol="XAUUSD"):
+    weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates)
+    # The same rules are reusable, but profile tuning is per market.
+    adaptive=(adaptive_bitcoin_parameters(rates,context) if
+              str(market_symbol or "").upper().startswith("BTCUSD") else
+              adaptive_gold_parameters(rates,context))
     # The last bar is already closed. Its body and close location are soft
     # evidence, never an additional entry veto or a waiting condition.
     pressure=closed_candle_pressure(rates)

@@ -48,9 +48,11 @@ class BTCMarketGateTests(unittest.TestCase):
         self.assertFalse(terminal_request_matches_market(
             "/v1/terminal-decision/engine-1?symbol=BTCUSDm", "BTCUSD"))
 
-    def test_legacy_gold_poll_remains_compatible(self):
-        self.assertTrue(terminal_request_matches_market(
+    def test_gold_poll_is_blocked_by_dedicated_btc_server(self):
+        self.assertFalse(terminal_request_matches_market(
             "/v1/terminal-decision/engine-1", "XAUUSD"))
+        self.assertFalse(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1?symbol=XAUUSD", "XAUUSD"))
         self.assertFalse(terminal_request_matches_market(
             "/v1/terminal-decision/engine-1?symbol=BTCUSD", "XAUUSD"))
 

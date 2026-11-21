@@ -35,6 +35,12 @@ SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 OWNER_EMAIL=os.getenv("OWNER_EMAIL","Meenosvn1@gmail.com").strip().lower()
 PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-meeno-engine.onrender.com").rstrip("/")
 LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1","true","yes","on")
+# The Meeno/Deriv deployment owns BTCUSD only. Gold remains on the untouched
+# original Render service and original Supabase project.
+ENGINE_MARKET="BTCUSD"
+def btc_market(symbol):
+    return supported_market_symbol(symbol) and market_family(symbol)==ENGINE_MARKET
+
 CONNECTIONS={}
 LICENSE_CACHE={}
 OWNER_TERMINAL_ID_CACHE={}
@@ -286,12 +292,12 @@ def _owner_trade_settings_view(settings):
 
 def _fetch_trade_settings(client_id):
     encoded=urllib.parse.quote(client_id,safe="")
-    rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+encoded+
+    rows=sb("GET","/rest/v1/alzool_btc_trade_settings?client_id=eq."+encoded+
             "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
     clients=sb("GET","/rest/v1/alzool_engine_clients?client_id=eq."+encoded+
                "&select=trading_enabled&limit=1",admin=True)
     settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
-        "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,"stop_loss_mode":"ATR",
+        "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":False,"stop_loss_mode":"ATR",
         "stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,
         "addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,
         "cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,
@@ -370,7 +376,7 @@ def entry_direction_capacity(positions, symbol, signal, settings):
     if opposite_count:
         return {"approved":False,"open_same_side":count,
                 "open_opposite_side":opposite_count,
-                "reason_ar":"حماية الاتجاه: توجد مراكز ذهب معاكسة؛ منع دخول جديد"}
+                "reason_ar":"حماية الاتجاه: توجد مراكز معاكسة في السوق الحالي؛ منع دخول جديد"}
     raw=pm.get("max_positions_per_direction")
     if raw is None or str(raw).strip()=="":
         return {"approved":True,"open_same_side":count,
@@ -410,6 +416,8 @@ def terminal_request_matches_market(request_url, active_symbol):
     Legacy gold polls without a symbol remain valid for the gold-only engine.
     An older gold EA must never consume a newly added BTC decision.
     """
+    if not btc_market(active_symbol):
+        return False  # Gold polling is never accepted by the BTC deployment.
     query = urllib.parse.parse_qs(urllib.parse.urlparse(request_url).query)
     requested = (query.get("symbol") or [""])[0]
     if not requested:
@@ -762,10 +770,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
                 client_id,item=connection_for_authenticated_user(u)
                 if not client_id: return self.send_json(409,{"error":"لا يوجد اتصال MT5 مرخّص لهذا الحساب"})
-                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                rows=sb("GET","/rest/v1/alzool_btc_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management,updated_at&limit=1",admin=True)
                 settings=rows[0] if rows else {"single_enabled":False,"single_profit_target":1,
-                    "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":True,
+                    "group_enabled":False,"group_profit_target":5,"stop_loss_enabled":False,
                     "stop_loss_mode":"ATR","stop_loss_value":1.8,"position_management":{"mode":"AI","addon_enabled":False,"addon_max":0,"addon_lot":0.01,"addon_distance_points":0,"addon_multiplier":1.5,"addon_max_lot":0.05,"cooling_enabled":False,"cooling_max":0,"cooling_lot":0.01,"cooling_distance_points":0,"cooling_multiplier":1.2,"cooling_max_lot":0.05,"max_total_lots":0.10},"updated_at":None}
                 if (u.get("email") or "").lower()==OWNER_EMAIL:
                     settings=_owner_trade_settings_view(settings)
@@ -839,6 +847,7 @@ class Handler(SimpleHTTPRequestHandler):
                 for row in meta_rows:
                     tf=str(row.get("timeframe") or "")
                     sym=str(row.get("symbol") or "")
+                    if not btc_market(sym): continue
                     if tf and tf not in available_timeframes: available_timeframes.append(tf)
                     if sym and sym not in available_symbols: available_symbols.append(sym)
                 if not available_timeframes:
@@ -894,9 +903,11 @@ class Handler(SimpleHTTPRequestHandler):
                 history=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
                 deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
-                live=live_learning_profile(deals,symbol=(CONNECTIONS.get(client_id) or {}).get("symbol") or "XAUUSD")
+                live=live_learning_profile(deals,symbol=(CONNECTIONS.get(client_id) or {}).get("symbol") or "BTCUSD")
                 try:
-                    selected=get_active_strategy_profile(client_id,sb)
+                    # Gold's historical version weights are never imported
+                    # into BTC learning or backtest analytics.
+                    selected=None
                     profile_error=None
                 except Exception as exc:
                     selected=None
@@ -1089,7 +1100,9 @@ class Handler(SimpleHTTPRequestHandler):
                                 deal=dict(record["payload"])
                                 if not int(deal.get("time") or 0) and record.get("deal_time"):
                                     deal["time"]=int(datetime.fromisoformat(record["deal_time"].replace("Z","+00:00")).timestamp())
-                                deals.append(deal)
+                                if btc_market(deal.get("symbol")):
+                                    deals.append(deal)
+                            history_records=len(deals)
                 except Exception as history_error_value:
                     history_error=str(history_error_value)[:180]
                     print("CLOSED_HISTORY_READ_WARNING:",history_error,flush=True)
@@ -1099,6 +1112,7 @@ class Handler(SimpleHTTPRequestHandler):
                 daily_by_position={}
                 daily_profit=daily_loss=0.0
                 for deal in deals:
+                    if not btc_market(deal.get("symbol")): continue
                     stamp=int(deal.get("time",0) or 0)
                     if stamp<=0: continue
                     closed_at=datetime.fromtimestamp(stamp,timezone.utc)
@@ -1187,6 +1201,7 @@ class Handler(SimpleHTTPRequestHandler):
                 grouped={}
                 for record in records[:5000]:
                     deal=record.get("payload") if isinstance(record.get("payload"),dict) else {}
+                    if not btc_market(deal.get("symbol")): continue
                     pid=str(deal.get("position_id") or deal.get("ticket") or record.get("deal_time") or "")
                     if not pid: continue
                     row=grouped.setdefault(pid,{"position_id":pid,"symbol":str(deal.get("symbol") or ""),
@@ -1260,8 +1275,8 @@ class Handler(SimpleHTTPRequestHandler):
                 u=owner(token_of(self))
                 identity=license_for_user(u["id"])
                 if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين مرتبط بحساب المالك"})
-                return self.send_json(200,{"versions":strategy_versions(identity["client_id"],sb),
-                    "note":"Rollback changes strategy weights only; it never activates trading."})
+                return self.send_json(200,{"versions":[],"market":"BTCUSD",
+                    "note":"إصدارات الذهب محفوظة منفصلة؛ لا تُفعّل على البيتكوين حتى يتوفر مخزن إصدارات مخصص."})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:200]})
         if path=="/api/ai/actions":
@@ -1590,6 +1605,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 symbol=str(data.get("symbol") or "")[:40]
                 timeframe=str(data.get("timeframe") or "")[:20]
+                if not btc_market(symbol):
+                    return self.send_json(409,{"accepted":False,"error":"السيرفر الجديد مخصص لشموع BTCUSD فقط"})
                 if not symbol or not timeframe: return self.send_json(400,{"error":"رمز السوق أو الفريم غير صالح"})
                 metadata=data.get("metadata") if isinstance(data.get("metadata"),dict) else {}
                 candles=clean_historical_candles(data.get("candles"),metadata,client_id,symbol,timeframe)
@@ -1619,7 +1636,7 @@ class Handler(SimpleHTTPRequestHandler):
                          "group_profit_target","stop_loss_enabled","stop_loss_mode","stop_loss_value"}
                 if not isinstance(data,dict) or not data or set(data)-allowed:
                     return self.send_json(400,{"error":"لا يسمح بتعديل إعدادات AI أو الاستراتيجيات أو أي إعدادات متقدمة"})
-                query="/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(lic["client_id"],safe="")
+                query="/rest/v1/alzool_btc_trade_settings?client_id=eq."+urllib.parse.quote(lic["client_id"],safe="")
                 stored=sb("GET",query+"&select=single_enabled,single_profit_target,group_enabled,group_profit_target,stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
                 prior=stored[0] if stored else get_trade_settings(lic["client_id"]) or {}
                 fields=dict(basic_settings(prior))
@@ -1643,7 +1660,7 @@ class Handler(SimpleHTTPRequestHandler):
                 row={**fields,"client_id":lic["client_id"],
                      "position_management":pm if isinstance(pm,dict) else {},
                      "updated_at":datetime.now(timezone.utc).isoformat()}
-                sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",
+                sb("POST","/rest/v1/alzool_btc_trade_settings?on_conflict=client_id",
                    row,admin=True,prefer="resolution=merge-duplicates,return=representation")
                 TRADE_SETTINGS_CACHE.pop(lic["client_id"],None)
                 return self.send_json(200,{"saved":True,"settings":basic_settings(row),
@@ -1681,9 +1698,9 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"أهداف الربح يجب أن تكون أرقامًا موجبة وبعملة الحساب"})
                 if single_target>100000000 or group_target>100000000:
                     return self.send_json(400,{"error":"قيمة هدف الربح أكبر من الحد المسموح"})
-                existing=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                existing=sb("GET","/rest/v1/alzool_btc_trade_settings?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&select=stop_loss_enabled,stop_loss_mode,stop_loss_value,position_management&limit=1",admin=True)
-                prior=existing[0] if existing else {"stop_loss_enabled":True,"stop_loss_mode":"ATR","stop_loss_value":1.8}
+                prior=existing[0] if existing else {"stop_loss_enabled":False,"stop_loss_mode":"ATR","stop_loss_value":1.8}
                 prior_pm=prior.get("position_management") if isinstance(prior.get("position_management"),dict) else {}
                 stop_loss_user_configured=(data.get("stop_loss_user_configured") is True or
                     prior_pm.get("stop_loss_user_configured") is True)
@@ -1780,7 +1797,7 @@ class Handler(SimpleHTTPRequestHandler):
                      "stop_loss_mode":stop_loss_mode,"stop_loss_value":stop_loss_value,
                      "position_management":clean_pm,
                      "updated_at":datetime.now(timezone.utc).isoformat()}
-                saved=sb("POST","/rest/v1/alzool_engine_trade_settings?on_conflict=client_id",row,admin=True,
+                saved=sb("POST","/rest/v1/alzool_btc_trade_settings?on_conflict=client_id",row,admin=True,
                          prefer="resolution=merge-duplicates,return=representation")
                 current=TRADE_SETTINGS_CACHE.get(client_id)
                 cache_row=dict(row)
@@ -1850,16 +1867,16 @@ class Handler(SimpleHTTPRequestHandler):
                 if enabled and data.get("confirmed_risk") is not True:
                     return self.send_json(400,{"error":"يلزم تأكيد المخاطر لتفعيل الإدارة المركزية"})
                 cid=urllib.parse.quote(identity["client_id"],safe="")
-                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid+
+                rows=sb("GET","/rest/v1/alzool_btc_trade_settings?client_id=eq."+cid+
                     "&select=position_management&limit=1",admin=True)
                 pm=dict((rows[0] if rows else {}).get("position_management") or {})
                 pm["central_actions_enabled"]=enabled
                 if rows:
-                    changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
+                    changed=sb("PATCH","/rest/v1/alzool_btc_trade_settings?client_id=eq."+cid,
                         {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
                         admin=True,prefer="return=representation")
                 else:
-                    changed=sb("POST","/rest/v1/alzool_engine_trade_settings",
+                    changed=sb("POST","/rest/v1/alzool_btc_trade_settings",
                         {"client_id":identity["client_id"],"position_management":pm},
                         admin=True,prefer="return=representation")
                 if not changed:return self.send_json(502,{"error":"لم يتم حفظ مفتاح الإدارة"})
@@ -1876,18 +1893,18 @@ class Handler(SimpleHTTPRequestHandler):
                 if requested=="ADVISORY" and data.get("confirmed_risk") is not True:
                     return self.send_json(400,{"error":"يجب تأكيد مخاطر التنفيذ التلقائي أولاً"})
                 cid=urllib.parse.quote(identity["client_id"],safe="")
-                rows=sb("GET","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid+
+                rows=sb("GET","/rest/v1/alzool_btc_trade_settings?client_id=eq."+cid+
                     "&select=position_management,stop_loss_enabled&limit=1",admin=True)
                 prior=rows[0] if rows else {}
                 pm=dict(prior.get("position_management") or {})
                 pm["entry_council_mode"]=requested
                 pm["entry_council_mode_user_selected"]=True
                 if rows:
-                    changed=sb("PATCH","/rest/v1/alzool_engine_trade_settings?client_id=eq."+cid,
+                    changed=sb("PATCH","/rest/v1/alzool_btc_trade_settings?client_id=eq."+cid,
                         {"position_management":pm,"updated_at":datetime.now(timezone.utc).isoformat()},
                         admin=True,prefer="return=representation")
                 else:
-                    changed=sb("POST","/rest/v1/alzool_engine_trade_settings",
+                    changed=sb("POST","/rest/v1/alzool_btc_trade_settings",
                         {"client_id":identity["client_id"],"position_management":pm},
                         admin=True,prefer="return=representation")
                 if not changed:return self.send_json(502,{"error":"تعذر حفظ سياسة الدخول"})
@@ -1903,6 +1920,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "message":("تم تفعيل Hybrid AI — أصوات Fast AI وQwen وDeepSeek الحديثة تشارك في ترجيح BUY وSELL دون اشتراط الإجماع"
                                if requested=="ADVISORY" else "تم تفعيل المجلس الصارم — إجماع 3 نماذج")+warning})
             if path=="/api/ai/versions/test":
+                return self.send_json(409,{"error":"اختبار إصدارات الذهب غير متاح في محرك BTC؛ استخدم بيانات BTC وخزنه المستقل"})
                 u=owner(token)
                 identity=license_for_user(u["id"])
                 if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
@@ -1928,6 +1946,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "status":"CANDIDATE","test_summary":summary,
                     "message":"اختبار تاريخي تشخيصي؛ لا يشغّل التداول ولا يغير الإصدار الحالي"})
             if path=="/api/ai/versions/activate":
+                return self.send_json(409,{"error":"تنشيط أوزان إصدارات الذهب محظور في محرك BTC"})
                 u=owner(token)
                 identity=license_for_user(u["id"])
                 if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين للمالك"})
@@ -1993,6 +2012,10 @@ class Handler(SimpleHTTPRequestHandler):
                 heartbeat_start=time.perf_counter()
                 client_id=parts[3]
                 if not validate_license(client_id,token): return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
+                # Reject gold/other charts before touching in-memory state or learning.
+                if not btc_market(data.get("symbol")):
+                    return self.send_json(409,{"accepted":False,
+                        "error":"هذا المحرك مخصص لبيتكوين BTCUSD؛ الذهب على السيرفر القديم"})
                 account=data.get("account") or {}
                 if not isinstance(account,dict): return self.send_json(400,{"error":"بيانات الطرفية غير صحيحة"})
                 safe={"login":str(account.get("login",""))[:40],"server":str(account.get("server",""))[:100],
@@ -2003,6 +2026,12 @@ class Handler(SimpleHTTPRequestHandler):
                       "profit":finite_number(account.get("profit"))}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
+                # A BTC profit basket cannot coexist safely with other symbols
+                # while the legacy MT5 closer uses account-wide bookkeeping.
+                active_symbol=str(data.get("symbol") or "")
+                if any(str(p.get("symbol") or "")!=active_symbol for p in positions+orders):
+                    return self.send_json(409,{"accepted":False,
+                        "error":"حساب MT5 يحتوي مراكز أو أوامر لسوق آخر؛ استخدم حساب Deriv BTC تجريبي منفصل"})
                 previous=CONNECTIONS.get(client_id,{})
                 if data.get("closed_deals_unchanged") is True:
                     # Compact heartbeat: the client only resends the historical
@@ -2010,6 +2039,9 @@ class Handler(SimpleHTTPRequestHandler):
                     closed_deals=previous.get("closed_deals") or []
                 else:
                     closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
+                    # Only BTC chart deals enter BTC memory, even when MT5
+                    # history still contains older gold transactions.
+                    closed_deals=[d for d in closed_deals if str(d.get("symbol") or "")==active_symbol]
                     # Historical persistence must never block real-time ticks.
                     queue_closed_deals(client_id,closed_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
@@ -2099,7 +2131,7 @@ class Handler(SimpleHTTPRequestHandler):
                             combination_weights=effective["combination_weights"]
                             evaluated=evaluate_market(list(reversed(candles)),weights=strategy_weights,
                                 combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO",
-                                bot_signals=bot_report)
+                                bot_signals=bot_report,market_symbol=data.get("symbol"))
                             strategy_decision={
                                 "decision":evaluated["decision"],
                                 "entry_reference_price":finite_number(candles[0].get("close")),

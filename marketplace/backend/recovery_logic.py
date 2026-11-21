@@ -18,7 +18,14 @@ def _num(value, default=0.0):
 
 
 def recovery_intent(snapshot, decision, settings):
-    positions=[p for p in (snapshot.get("positions") or []) if isinstance(p,dict)]
+    all_positions=[p for p in (snapshot.get("positions") or []) if isinstance(p,dict)]
+    symbol=str(snapshot.get("symbol") or "")
+    positions=[p for p in all_positions if str(p.get("symbol") or "")==symbol]
+    # Do not calculate an x3 lot or group P/L from another market.
+    if not supported_market_symbol(symbol) or len(positions)!=len(all_positions):
+        return {"armed":False,"active_cycle":False,"action":"HOLD",
+                "side":None,"lot_cap":0.0,"account_net":0.0,"account_lots":0.0,
+                "reason_ar":"فصل الأسواق: صفقات سوق آخر موجودة أو رمز غير مدعوم"}
     pm=(settings or {}).get("position_management") or {}
     enabled=pm.get("recovery_enabled") is True
     trigger=_num(pm.get("recovery_loss_trigger"))

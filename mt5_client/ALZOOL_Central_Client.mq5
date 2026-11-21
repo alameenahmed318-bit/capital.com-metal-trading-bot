@@ -113,6 +113,7 @@ void SyncLatestClosedDealFromHistory()
    {
       ulong deal=HistoryDealGetTicket(i);
       if(deal==0)continue;
+      if(HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol)continue;
       long kind=HistoryDealGetInteger(deal,DEAL_TYPE);
       if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL)continue;
       long entry=HistoryDealGetInteger(deal,DEAL_ENTRY);
@@ -321,13 +322,13 @@ bool IsSupportedMarketSymbol(const string symbol)
 {
    string s=symbol;
    StringToUpper(s);
-   return (StringFind(s,"XAUUSD")==0 || IsBitcoinChartSymbol(s));
+   return IsBitcoinChartSymbol(s); // Meeno deployment is BTC-only; gold uses its own EA.
 }
 // BTCUSD must run on a dedicated demo account while the legacy gold
 // close engine still uses account-wide baskets. Never mix positions.
 bool IsSafeBitcoinAccount()
 {
-   if(!IsBitcoinChartSymbol(_Symbol)) return true;
+   if(!IsBitcoinChartSymbol(_Symbol)) return false;
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
@@ -786,6 +787,13 @@ void ManageEntryTrailing()
 
 bool ClosePositionTicket(const ulong ticket,const string scope)
 {
+   if(!IsBitcoinChartSymbol(_Symbol) || !IsSafeBitcoinAccount() ||
+      !PositionSelectByTicket(ticket) ||
+      PositionGetString(POSITION_SYMBOL)!=_Symbol)
+   {
+      Print("AL-ZOOL BTC CLOSE BLOCKED: foreign symbol / mixed account.");
+      return false;
+   }
    bool sent=g_trade.PositionClose(ticket);
    uint retcode=g_trade.ResultRetcode();
    if(!sent || (retcode!=TRADE_RETCODE_DONE && retcode!=TRADE_RETCODE_DONE_PARTIAL))
@@ -1309,6 +1317,11 @@ bool SendLiveSnapshot()
 
 int OnInit()
 {
+   if(!IsBitcoinChartSymbol(_Symbol))
+   {
+      Print("AL-ZOOL BTC: this EA belongs on a BTCUSD M1 chart only; gold remains on the original server.");
+      return INIT_FAILED;
+   }
    if(InpHeartbeatSeconds<2 || InpCandlesToSend<20 || InpCandlesToSend>120 ||
       InpHistoricalCandlesToSend<20 || InpHistoricalCandlesToSend>10000 || InpHistoryUploadMinutes<5 ||
       InpTradeLots<=0 || InpMaxCentralActionLots<0 || InpMaxCentralTotalLots<0 ||
@@ -1318,14 +1331,14 @@ int OnInit()
       Print("AL-ZOOL: invalid heartbeat, candles, lot, position cap or protection settings");
       return INIT_PARAMETERS_INCORRECT;
    }
-   g_lastClosedDealKey="AZ_M1_REENTRY_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_lastClosedDealKey="AZ_M1_REENTRY_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
    if(GlobalVariableCheck(g_lastClosedDealKey))
       g_lastClosedDealTime=(datetime)GlobalVariableGet(g_lastClosedDealKey);
    SyncLatestClosedDealFromHistory();
-   g_groupCloseKey="AZ_GROUP_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_groupCloseKey="AZ_GROUP_CLOSE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
    g_groupClosePending=(GlobalVariableCheck(g_groupCloseKey) && GlobalVariableGet(g_groupCloseKey)>0.5);
-   g_recoveryActiveKey="AZ_REC_ACTIVE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
-   g_recoveryPriceKey="AZ_REC_PRICE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   g_recoveryActiveKey="AZ_REC_ACTIVE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
+   g_recoveryPriceKey="AZ_REC_PRICE_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
    g_recoveryCycleActive=(GlobalVariableCheck(g_recoveryActiveKey) && GlobalVariableGet(g_recoveryActiveKey)>0.5) || RecoveryHasOpenTrade();
    if(GlobalVariableCheck(g_recoveryPriceKey)) g_recoveryReferencePrice=GlobalVariableGet(g_recoveryPriceKey);
    if(g_recoveryCycleActive && !GlobalVariableCheck(g_recoveryActiveKey)) GlobalVariableSet(g_recoveryActiveKey,1.0);
@@ -1347,7 +1360,7 @@ int OnInit()
    Print("AL-ZOOL MT5 client started: central trading=",InpEnableCentralTrading,
          " position_management=",InpEnableCentralPositionManagement,
          " lot=",DoubleToString(InpTradeLots,2)," max positions=",InpMaxOpenPositions,
-         "; account-wide profit-close logic preserved.");
+         "; BTC-only chart and isolated-account profit-close guard active.");
    if(!InpEnableCentralPositionManagement)
       Print("AL-ZOOL POSITION MANAGEMENT OFF: enable InpEnableCentralPositionManagement=true in EA Inputs to execute server-approved ADD/COOL/RECOVERY actions.");
    return INIT_SUCCEEDED;
@@ -1423,6 +1436,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
 {
    if(trans.type!=TRADE_TRANSACTION_DEAL_ADD || trans.deal==0)return;
    if(!HistoryDealSelect(trans.deal)) { g_closedDealsDirty=true; return; }
+   if(HistoryDealGetString(trans.deal,DEAL_SYMBOL)!=_Symbol)return;
    long kind=HistoryDealGetInteger(trans.deal,DEAL_TYPE);
    if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL)return;
    long entry=HistoryDealGetInteger(trans.deal,DEAL_ENTRY);

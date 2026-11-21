@@ -30,6 +30,9 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             "actions":[],"reason_ar":"لا يوجد قرار إدارة صالح"}
     if not all_positions:
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
+    if len(positions)!=len(all_positions):
+        result["reason_ar"]="مراكز من سوق آخر موجودة بالحساب؛ منع جميع إجراءات التعزيز والتبريد والتعافي"
+        return result
     if not positions:
         result["reason_ar"]="لا توجد مراكز للرمز الحالي يمكن تنفيذ التعافي في اتجاهها";return result
     # Pre-existing mixed-side exposure on the active symbol: don't add either side, including

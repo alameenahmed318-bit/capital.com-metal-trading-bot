@@ -41,11 +41,17 @@ def observe_recovery_arm(snapshot,settings,now=None):
     identity=str(snapshot.get("client_id") or "").strip()
     if not identity:return int(_n(snapshot.get("recovery_armed_at")))
     account=snapshot.get("account") or {}
-    key=(identity,str(account.get("login") or ""))
+    key=(identity,str(account.get("login") or ""),str(snapshot.get("symbol") or ""))
     pm=(settings or {}).get("position_management") or {}
     enabled=pm.get("recovery_enabled") is True
     trigger=_n(pm.get("recovery_loss_trigger"))
     positions=snapshot.get("positions") or []
+    # A foreign-market position must never arm BTC recovery.
+    if any(str(p.get("symbol") or "")!=str(snapshot.get("symbol") or "")
+           for p in positions if isinstance(p,dict)):
+        with _ARM_LOCK:_ARMED.pop(key,None)
+        snapshot.pop("recovery_armed_at",None)
+        return 0
     current=int(now.timestamp() if isinstance(now,datetime) else
                 now if now is not None else time.time())
     received=snapshot.get("received_at")
