@@ -308,6 +308,35 @@ bool PollTradeSettings()
    g_entryMaxDeviationATR=MathMax(0.05,MathMin(20.0,JsonDouble(response,"entry_max_deviation_atr",0.5)));
    return true;
 }
+
+bool IsBitcoinChartSymbol(const string symbol)
+{
+   string s=symbol;
+   StringToUpper(s);
+   return (s=="BTCUSD" || s=="BTCUSDM" ||
+           StringFind(s,"BTCUSD.")==0 || StringFind(s,"BTCUSD_")==0 ||
+           StringFind(s,"BTCUSD-")==0);
+}
+bool IsSupportedMarketSymbol(const string symbol)
+{
+   string s=symbol;
+   StringToUpper(s);
+   return (StringFind(s,"XAUUSD")==0 || IsBitcoinChartSymbol(s));
+}
+// BTCUSD must run on a dedicated demo account while the legacy gold
+// close engine still uses account-wide baskets. Never mix positions.
+bool IsSafeBitcoinAccount()
+{
+   if(!IsBitcoinChartSymbol(_Symbol)) return true;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL)!=_Symbol) return false;
+   }
+   return true;
+}
+
 bool ExecuteOneCentralAction(const string side,const string action,const double requestedLots,const long barTime)
 {
    if(g_groupClosePending) return false;
@@ -316,7 +345,7 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
    if(side!="BUY" && side!="SELL") return false;
    if(action!="ADDON_PROPOSAL" && action!="COOLING_PROPOSAL" && action!="RECOVERY_PROPOSAL")
       return false;
-   if(StringFind(_Symbol,"XAUUSD")!=0 || barTime<=0) return false;
+   if(!IsSupportedMarketSymbol(_Symbol) || !IsSafeBitcoinAccount() || barTime<=0) return false;
    if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side))
       return false;
    if(requestedLots<=0.0 || (InpMaxCentralActionLots>0 && requestedLots>InpMaxCentralActionLots+1e-8))
@@ -425,7 +454,7 @@ bool PollCentralActions()
 {
    if(!InpEnableCentralTrading || !InpEnableCentralPositionManagement ||
       !g_serverTradingEnabled || !ConnectionReady()) return false;
-   if(StringFind(_Symbol,"XAUUSD")!=0) return false;
+   if(!IsSupportedMarketSymbol(_Symbol) || !IsSafeBitcoinAccount()) return false;
    string headers="Authorization: Bearer "+ConnectionKey()+"\r\n";
    char empty[],result[];
    ArrayResize(empty,0);
@@ -552,7 +581,7 @@ bool PollCentralDecision()
    g_aiBarTime=parsed_bar;
    g_aiStrategyId=parsed_strategy;
    g_aiCombinationId=parsed_combination;
-   if(ready && InpEnableCentralTrading && g_serverTradingEnabled) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,entry_reference_price,entry_atr,reason);
+   if(ready && InpEnableCentralTrading && g_serverTradingEnabled && IsSupportedMarketSymbol(_Symbol) && IsSafeBitcoinAccount()) ExecuteCentralEntry(signal,parsed_bar,parsed_confidence,parsed_strategy,parsed_combination,entry_reference_price,entry_atr,reason);
    return true;
 }
 
@@ -561,7 +590,10 @@ double NormalizeTradeLots(double lots)
    double minv=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN),maxv=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
    double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
    if(step<=0.0) return 0.0;
-   lots=MathMax(minv,MathMin(maxv,lots)); lots=MathFloor(lots/step+1e-8)*step;
+   // Never increase the owner-requested BTC exposure to the broker minimum.
+   if(minv<=0.0 || maxv<minv || lots<minv-1e-8 || lots>maxv+1e-8) return 0.0;
+   lots=MathFloor(lots/step+1e-8)*step;
+   if(lots<minv-1e-8 || lots>maxv+1e-8) return 0.0;
    int digits=2; if(step<0.01) digits=3; if(step<0.001) digits=4;
    return NormalizeDouble(lots,digits);
 }
@@ -577,7 +609,7 @@ int CountAlzoolPositions()
    }
    return count;
 }
-// Returns open BUY/SELL counts on this gold symbol, regardless of magic number.
+// Returns open BUY/SELL counts on the attached symbol, regardless of magic number.
 void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 {
    buyPositions=0; sellPositions=0;
@@ -593,7 +625,7 @@ void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 }
 bool IsAccountDirectionAllowed(const string direction)
 {
-   // Never add an opposite XAUUSD position, even with older Inputs=false.
+   // Never add an opposite position on this chart, even with older Inputs=false.
    // This applies to entry, add-on, cooling, and smart recovery.
    int buys=0,sells=0;
    GetAccountDirectionCounts(buys,sells);
@@ -608,6 +640,8 @@ void ExecuteCentralEntry(const string direction,const long decisionBar,const dou
                          const double signalATR,const string reason)
 {
    if(g_groupClosePending) return; // Never reopen exposure during group closure.
+   if(!IsSupportedMarketSymbol(_Symbol) || !IsSafeBitcoinAccount())
+   { g_status="رمز غير مدعوم أو حساب البيتكوين يحتوي صفقات من رموز أخرى"; return; }
    if(!FreshM1ConfirmedAfterClose(decisionBar)) return;
    if(!InpEnableCentralTrading || (direction!="BUY" && direction!="SELL") ||
       (confidence<0.0 || confidence>1.0) || strategyId<1 || strategyId>200 || decisionBar<=0) return;
@@ -855,6 +889,9 @@ bool EvaluateSmartRecovery()
 }
 void EvaluateAutoClose()
 {
+   // Cross-asset account-wide basket closing is not safe for BTC CFDs.
+   // Use a separate Deriv demo account; never close unrelated symbols.
+   if(!IsSafeBitcoinAccount()) return;
    int total=PositionsTotal();
    if(total<=0)
    {
