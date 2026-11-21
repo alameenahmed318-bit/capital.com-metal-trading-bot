@@ -11,7 +11,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 ROOT=Path(__file__).resolve().parents[2]
 EA_SOURCE=ROOT/"mt5_client"/"ALZOOL_Central_Client.mq5"
-CLIENT_SERVER="https://al-zool-central-engine.onrender.com"
+CLIENT_SERVER="https://al-zool-meeno-engine.onrender.com"
 
 
 def _one_line(value, limit):
@@ -26,7 +26,7 @@ def mt5_inputs(client_id, client_token, server_url=CLIENT_SERVER):
     token=_one_line(client_token,200)
     server=_one_line(server_url,200)
     parsed=urlparse(server)
-    if not ident or not token or parsed.scheme!="https" or parsed.netloc!="al-zool-central-engine.onrender.com" or parsed.path not in ("","/"):
+    if not ident or not token or parsed.scheme!="https" or parsed.netloc!="al-zool-meeno-engine.onrender.com" or parsed.path not in ("","/"):
         raise ValueError("Invalid MT5 onboarding destination")
     if len(token)<20:
         raise ValueError("Invalid client token")
