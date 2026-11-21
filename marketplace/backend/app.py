@@ -2319,6 +2319,12 @@ if __name__=="__main__":
         raise RuntimeError("ALZOOL_OFFLINE_RECOVERY_CHECKS_FAILED")
     print("ALZOOL_OFFLINE_RECOVERY_CHECKS_PASS",flush=True)
     print("BTC_SUPABASE_PROJECT_READY:",btc_database_ready(),flush=True)
+    # Safe read-only startup probe: do not print keys, user rows or errors.
+    try:
+        rows=sb("GET","/rest/v1/alzool_engine_clients?select=client_id&limit=1",admin=True)
+        print("BTC_SUPABASE_SERVICE_ROLE_ACCESS:", "OK" if isinstance(rows,list) else "UNEXPECTED_RESPONSE",flush=True)
+    except Exception as exc:
+        print("BTC_SUPABASE_SERVICE_ROLE_ACCESS:FAILED",type(exc).__name__,flush=True)
     # Server-side smoke test, read-only, never exposes the API key.
     if os.getenv("GROQ_VERIFY_ON_STARTUP","false").lower() in ("true","1","yes"):
         threading.Thread(target=lambda: print("GROQ_SMOKE_STATUS:",verify_groq_credentials(),flush=True),
