@@ -7,7 +7,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "marketplac
 
 from decision_guard import evaluate_entry_gate
 from bot_signal_bus import build_bot_messages, BOT_IDS
-from app import live_learning_profile
+from app import live_learning_profile, terminal_request_matches_market
 
 class BTCMarketGateTests(unittest.TestCase):
     def setUp(self):
@@ -37,6 +37,22 @@ class BTCMarketGateTests(unittest.TestCase):
         self.assertEqual(len(btc),5)
         self.assertEqual(len(gold),5)
         self.assertNotEqual(btc[0]["event_id"],gold[0]["event_id"])
+
+    def test_btc_requires_explicit_symbol_on_terminal_poll(self):
+        self.assertFalse(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1", "BTCUSD"))
+        self.assertTrue(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1?symbol=BTCUSD", "BTCUSD"))
+        self.assertFalse(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1?symbol=XAUUSD", "BTCUSD"))
+        self.assertFalse(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1?symbol=BTCUSDm", "BTCUSD"))
+
+    def test_legacy_gold_poll_remains_compatible(self):
+        self.assertTrue(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1", "XAUUSD"))
+        self.assertFalse(terminal_request_matches_market(
+            "/v1/terminal-decision/engine-1?symbol=BTCUSD", "XAUUSD"))
 
     def test_learning_keeps_gold_and_btc_separate(self):
         now = int(self.now.timestamp())
