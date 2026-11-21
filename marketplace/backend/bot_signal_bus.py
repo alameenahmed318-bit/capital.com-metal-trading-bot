@@ -1,10 +1,10 @@
-from market_symbols import supported_market_symbol
 """Read-only per-bot signal envelopes delivered to the AL-ZOOL central bus.
 
 This module never sends a broker command. Event IDs are stable for a client,
 bot and closed candle, so retries and restarts do not duplicate journal rows.
 """
 from __future__ import annotations
+from market_symbols import supported_market_symbol
 import math
 
 BOT_IDS = ("adaptive", "selective", "scalping", "breakout", "ensemble")
