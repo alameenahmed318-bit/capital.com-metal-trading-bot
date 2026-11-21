@@ -40,11 +40,11 @@ class PositionActionSafety(unittest.TestCase):
         p=plan_account_actions(snap,d,{"approved":True},{"approved":True},settings)
         self.assertEqual(p["actions"][0]["action"],"HOLD")
         self.assertEqual(p["actions"][0]["lot_cap"],0)
-    def test_same_symbol_only_and_profitable_lots_excluded(self):
+    def test_foreign_symbol_blocks_actions_before_lot_sizing(self):
         snap,d,settings=scenario([pos(1,.01),pos(2,.02),pos(3,.5,100,symbol="EURUSD")])
         p=plan_account_actions(snap,d,{"approved":True},{"approved":True},settings)
-        self.assertEqual(p["actions"][0]["action"],"HOLD")
-        self.assertEqual(p["actions"][0]["lot_cap"],0)
+        self.assertEqual(p["actions"],[],p)
+        self.assertIn("سوق آخر",p["reason_ar"],p)
     def test_direction_cap_applies_to_manual_positions(self):
         snap,d,settings=scenario([pos(1,.01),pos(2,.02)],{"max_positions_per_direction":2})
         p=plan_account_actions(snap,d,{"approved":True},{"approved":True},settings)

@@ -70,13 +70,15 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(result["actions"],[],result)
         self.assertTrue(result["recovery"]["active_cycle"],result)
 
-    def test_account_other_symbol_lots_count_toward_exact_x3(self):
+    def test_foreign_symbol_cannot_increase_recovery_lots(self):
+        # Market-isolated Meeno engine: gold and BTC baskets never share x3.
         p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,
             "profit":-30,"swap":0},
            {"symbol":"EURUSD","type":0,"volume":0.01,"open_price":1.10,
             "profit":-2,"swap":0}]
         result=scenario(p)
-        self.assertEqual(result["actions"][0]["lot_cap"],0.09,result)
+        self.assertEqual(result["actions"],[],result)
+        self.assertIn("سوق آخر",result["reason_ar"],result)
 
     def test_explicit_owner_cap_remains_effective(self):
         p=[{"symbol":"XAUUSD","type":0,"volume":0.02,"open_price":3010,

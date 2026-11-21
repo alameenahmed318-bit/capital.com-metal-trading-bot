@@ -1,5 +1,8 @@
 name: AL-ZOOL BTCUSD integration checks
 on:
+  push:
+    branches:
+      - deploy/alzool-meeno-btc-demo-20261121
   pull_request:
     branches:
       - work/alzool-foundation-20261114
