@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - alzool-gold-sniper-web
+      - work/alzool-foundation-20261114
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
