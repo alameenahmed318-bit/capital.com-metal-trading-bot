@@ -38,7 +38,7 @@ def public_static(path):
 
 def minimal_terminal_decision(full):
     """Only authorization facts/price needed by the EA; never central votes."""
-    keys=("signal","confidence","strategy_id","combination_id","bar_time",
+    keys=("symbol","signal","confidence","strategy_id","combination_id","bar_time",
           "entry_reference_price","entry_atr","execution_ready","trading_enabled",
           "authorization_id","authorization_expires_at")
     result={k:full[k] for k in keys if k in full}
