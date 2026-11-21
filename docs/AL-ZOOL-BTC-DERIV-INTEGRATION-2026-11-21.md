@@ -4,6 +4,7 @@
 - Keep the existing XAUUSD central engine and trading rules intact.
 - Allow the Deriv `BTCUSD` chart (and limited broker suffixes) through strategy, advisor, entry and authorized position-action symbol gates.
 - The existing 200 strategies and 1000 combinations evaluate *closed BTC candles* using price-relative technical signals, not prewritten gold prices. The method is **not** a verified profitable BTC strategy.
+- Terminal decision and position-action polling are bound to the **exact chart symbol**. New BTC clients send `?symbol=BTCUSD`; server rejects old gold-only clients that try to consume a BTC snapshot. Claim submissions also carry the chart symbol.
 - The MT5 relay uses the live contract's `SYMBOL_VOLUME_MIN/MAX/STEP`, tick value and contract size. It **rejects** a configured lot below the broker minimum instead of silently increasing exposure.
 - Learning statistics only use closed deals of the active chart symbol. A stored gold strategy version is **not** automatically activated for BTC.
 - The BTC external TradingView chart is *illustrative spot data* and can differ from Deriv's CFD prices.
