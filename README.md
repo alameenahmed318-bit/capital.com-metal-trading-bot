@@ -1,4 +1,4 @@
-# AL-ZOOL SUPER AI — Central MT5 Gold Engine
+# AL-ZOOL SUPER AI — Central MT5 XAUUSD + BTCUSD Engine
 
 Main service: https://al-zool-central-engine.onrender.com
 Deployment branch: `work/alzool-foundation-20261114`
@@ -23,7 +23,8 @@ one-time claim and independent opt-in. Never enable these during setup.
   `SUPABASE_SERVICE_ROLE_KEY` to clients.
 
 ## Operational constraints
-- Current market support: XAUUSD family; verify broker suffix and point size.
+- Supported chart symbols: XAUUSD family and Deriv MT5 BTCUSD (plus limited broker suffixes). Verify the actual contract specification and volume minimum/step before Demo execution.
+- BTC integration safety and dedicated-Demo requirement: [docs/AL-ZOOL-BTC-DERIV-INTEGRATION-2026-11-21.md](docs/AL-ZOOL-BTC-DERIV-INTEGRATION-2026-11-21.md).
 - Dashboard manages configuration. Local EA still has hard safety settings and
   must be compiled/installed on each Windows terminal; deployment alone cannot
   update a running .ex5.
