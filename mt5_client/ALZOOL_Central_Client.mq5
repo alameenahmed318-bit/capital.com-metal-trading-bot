@@ -11,7 +11,7 @@ CTrade g_trade;
 #property description "AL-ZOOL central AI voting and single-use action authorization"
 
 input group "بيانات الاتصال بالخادم"
-input string InpServerUrl = "https://al-zool-central-engine.onrender.com";
+input string InpServerUrl = "https://al-zool-meeno-engine.onrender.com";
 input bool InpOwnerMode = true;
 input string InpOwnerPairingKey = "";
 input string InpOwnerConnectionId = "";
