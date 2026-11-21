@@ -1,3 +1,4 @@
+from market_symbols import supported_market_symbol
 """Account-wide recovery intent for AL-ZOOL.
 
 Pure diagnostics only. MT5 executes only after the server's one-use action claim.
@@ -46,7 +47,7 @@ def recovery_intent(snapshot, decision, settings):
     sides={}
     symbol=str(snapshot.get("symbol") or "")
     for p in positions:
-        if str(p.get("symbol") or "")!=symbol or not symbol.upper().startswith("XAUUSD"):
+        if str(p.get("symbol") or "")!=symbol or not supported_market_symbol(symbol):
             continue
         typ=int(_num(p.get("type"),-1))
         side="BUY" if typ==0 else "SELL" if typ==1 else None
@@ -58,7 +59,7 @@ def recovery_intent(snapshot, decision, settings):
         values["positions"]+=1
     eligible=[side for side,data in sides.items() if data["loss"]<0 and data["losing_lots"]>0]
     if not eligible:
-        result["reason_ar"]="حد خسارة الحساب تحقق، لكن لا توجد صفقات ذهب خاسرة لتحديد اتجاه تعافٍ مطابق"
+        result["reason_ar"]="حد خسارة الحساب تحقق، لكن لا توجد صفقات خاسرة للرمز الحالي لتحديد اتجاه تعافٍ مطابق"
         return result
     size=round(3.0*lots,3)
     if size<=0:
