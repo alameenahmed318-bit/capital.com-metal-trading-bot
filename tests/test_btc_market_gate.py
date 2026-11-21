@@ -46,7 +46,8 @@ class BTCMarketGateTests(unittest.TestCase):
                "profit":-30,"strategy_id":7}]
         btc_only=live_learning_profile(btc+gold,symbol="BTCUSD")
         gold_only=live_learning_profile(btc+gold,symbol="XAUUSD")
-        self.assertNotEqual(btc_only["stats"]["7"]["net"],gold_only["stats"]["7"]["net"])
+        self.assertEqual(btc_only["strategies"][0]["net"],15.0)
+        self.assertEqual(gold_only["strategies"][0]["net"],-30.0)
 
 if __name__=="__main__":
     unittest.main()
