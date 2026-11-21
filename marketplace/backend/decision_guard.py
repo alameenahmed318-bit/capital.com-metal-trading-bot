@@ -1,3 +1,4 @@
+from market_symbols import supported_market_symbol
 """Fail-closed entry authorization for the central AL-ZOOL decision path.
 
 This is a deterministic first-stage council/risk gate. It deliberately does not
@@ -177,8 +178,8 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
         return reject("decision", "لا يوجد قرار مركزي صالح")
     if not isinstance(account, dict) or not account:
         return reject("account_snapshot", "بيانات الحساب غير متاحة؛ الحماية تمنع الدخول")
-    if not str(symbol or "").upper().startswith("XAUUSD"):
-        return reject("symbol", "رمز التداول ليس XAUUSD المدعوم في محرك الذهب")
+    if not supported_market_symbol(symbol):
+        return reject("symbol", "رمز السوق غير مدعوم؛ المسموح XAUUSD أو BTCUSD")
     if not isinstance(received_at, datetime):
         return reject("telemetry_time", "وقت استقبال بيانات MT5 غير صالح")
     if received_at.tzinfo is None:

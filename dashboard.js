@@ -1,4 +1,16 @@
 let supabaseClient=null,accessToken=null,mt5Connected=false,autoTradingBusy=false;
+let activeMarketSymbol="XAUUSD";
+function setMarketChart(symbol){
+ const chosen=String(symbol||"").toUpperCase().startsWith("BTCUSD")?"BTCUSD":"XAUUSD";
+ activeMarketSymbol=chosen;
+ const picker=document.getElementById("marketChartSymbol");if(picker)picker.value=chosen;
+ const heading=document.getElementById("marketChartTitle");if(heading)heading.textContent=chosen==="BTCUSD"?"مخطط البيتكوين BTCUSD":"مخطط الذهب XAUUSD";
+ const frame=document.getElementById("marketChartFrame");if(!frame)return;
+ const url=new URL(frame.src);
+ const newSymbol=chosen==="BTCUSD"?"BITSTAMP:BTCUSD":"OANDA:XAUUSD";
+ if(url.searchParams.get("symbol")!==newSymbol){url.searchParams.set("symbol",newSymbol);frame.src=url.toString();}
+}
+
 const $=id=>document.getElementById(id);
 async function api(path,options={}){
  const headers={...(accessToken?{Authorization:"Bearer "+accessToken}:{}),...(options.headers||{})};
@@ -71,6 +83,7 @@ async function refresh(){
   if(d.connected){
    setState("mt5Status","متصل","pending");
    const a=d.connection?.account||{};
+   if(d.connection?.symbol)setMarketChart(d.connection.symbol);
    $("mt5Meta").textContent="آخر نبضة: "+(d.connection?.last_seen||"وصلت من MT5")+(a.server?" · "+a.server:"");
    azUpdateConnectionDisplay(true,d.connection?.last_seen);
   }else{
@@ -245,17 +258,17 @@ async function checkLocalOllama(){
 function showAiError(message){$("aiResult").innerHTML="<div class='ai-error'>"+escapeHtml(message)+"</div>";}
 async function runAiAnalysis(){
  const btn=$("aiAnalyzeBtn");btn.disabled=true;btn.textContent="جارٍ التحليل…";
- $("aiResult").innerHTML="<div class='ai-placeholder'>يتم فحص Ollama وجلب آخر شموع الذهب من MT5…</div>";
+ $("aiResult").innerHTML="<div class='ai-placeholder'>يتم فحص Ollama وجلب آخر شموع السوق من MT5…</div>";
  try{
   const ready=await checkLocalOllama();
   if(!ready)throw new Error("Ollama غير جاهز أو النموذج qwen3.5:4b غير مثبت. شغّل Ollama وتأكد من تثبيت النموذج.");
   const context=await api("/api/market/context");
-  if(!Array.isArray(context.candles)||context.candles.length<20)throw new Error("بيانات الشموع غير كافية. افتح شارت الذهب في MT5 وانتظر وصول 20 شمعة مغلقة على الأقل.");
+  if(!Array.isArray(context.candles)||context.candles.length<20)throw new Error("بيانات الشموع غير كافية. افتح شارت BTCUSD أو XAUUSD في MT5 وانتظر وصول 20 شمعة مغلقة على الأقل.");
   const compact={
    symbol:context.symbol,timeframe:context.timeframe,tick:context.tick,
    candles:context.candles.slice(-120).map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.tick_volume}))
   };
-  const systemPrompt="أنت محلل فني للذهب XAUUSD. حلل البيانات المرفقة فقط ولا تخترع أسعاراً أو أخباراً أو مؤشرات غير محسوبة. أخرج JSON صالحاً فقط وبالعربية بهذه المفاتيح: signal ويكون BUY أو SELL أو WAIT، confidence رقم من 0 إلى 100، trend وصف قصير، momentum وصف قصير، support قيمة أو غير واضح، resistance قيمة أو غير واضح، reasons مصفوفة من 2 إلى 4 أسباب محددة مستندة إلى الشموع، risk_note تنبيه مختصر. لا تدّعِ ضمان الربح. إذا كانت البيانات متضاربة أو غير كافية اختر WAIT وثقة منخفضة. هذا تحليل استشاري فقط وليس أمراً بتنفيذ صفقة.";
+  const systemPrompt="أنت محلل فني للسوق "+compact.symbol+". حلل البيانات المرفقة فقط ولا تخترع أسعاراً أو أخباراً أو مؤشرات غير محسوبة. أخرج JSON صالحاً فقط وبالعربية بهذه المفاتيح: signal ويكون BUY أو SELL أو WAIT، confidence رقم من 0 إلى 100، trend وصف قصير، momentum وصف قصير، support قيمة أو غير واضح، resistance قيمة أو غير واضح، reasons مصفوفة من 2 إلى 4 أسباب محددة مستندة إلى الشموع، risk_note تنبيه مختصر. لا تدّعِ ضمان الربح. إذا كانت البيانات متضاربة أو غير كافية اختر WAIT وثقة منخفضة. هذا تحليل استشاري فقط وليس أمراً بتنفيذ صفقة.";
   const response=await fetch(OLLAMA_URL+"/api/chat",{
    method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({model:OLLAMA_MODEL,stream:false,format:"json",options:{temperature:0.15},messages:[{role:"system",content:systemPrompt},{role:"user",content:JSON.stringify(compact)}]}),
@@ -273,7 +286,7 @@ async function runAiAnalysis(){
   $("aiResult").innerHTML="<div class='ai-result-head'><span class='ai-signal "+safeSignal.toLowerCase()+"'>"+label+"</span><span class='ai-confidence'>درجة ثقة النموذج: "+escapeHtml(parsed.confidence??"—")+"%</span></div><div class='ai-facts'>"+facts+"</div><b style='font-size:11px'>أسباب القرار</b><ul class='ai-reasons'>"+(reasons.length?reasons.map(x=>"<li>"+escapeHtml(x)+"</li>").join(""):"<li>لم يقدم النموذج أسباباً مفصلة.</li>")+"</ul><div class='ai-risk'>"+escapeHtml(parsed.risk_note||"التحليل غير مضمون ولا ينفذ أوامر تداول.")+"</div>";
   aiState("تحليل جاهز","pending");
  }catch(e){showAiError(e.message||"تعذر إكمال التحليل.");}
- finally{btn.disabled=false;btn.textContent="تحليل الذهب الآن";}
+ finally{btn.disabled=false;btn.textContent="تحليل السوق الآن";}
 }
 const aiAnalyzeButton=$("aiAnalyzeBtn");if(aiAnalyzeButton)aiAnalyzeButton.addEventListener("click",runAiAnalysis);
 const autoTradingToggle=$("autoTradingEnabled");if(autoTradingToggle)autoTradingToggle.addEventListener("change",changeAutoTrading);
@@ -297,6 +310,7 @@ async function refreshInlineMonitor(){
  }
 }
 $("azInlineMonitorRefresh")?.addEventListener("click",refreshInlineMonitor);
+$("marketChartSymbol")?.addEventListener("change",e=>setMarketChart(e.target.value));
 $("refreshBtn").addEventListener("click",refresh);
 boot();
 setInterval(()=>{if(accessToken)refresh();},10000);

@@ -4,6 +4,7 @@ This module never sends a broker command. Event IDs are stable for a client,
 bot and closed candle, so retries and restarts do not duplicate journal rows.
 """
 from __future__ import annotations
+from market_symbols import supported_market_symbol, market_family
 import math
 
 BOT_IDS = ("adaptive", "selective", "scalping", "breakout", "ensemble")
@@ -16,7 +17,7 @@ def build_bot_messages(client_id, symbol, timeframe, report, central_direction="
     client_id = str(client_id or "")[:80]
     symbol = str(symbol or "")[:40]
     timeframe = str(timeframe or "")[:20]
-    if not client_id or not symbol.upper().startswith("XAUUSD"):
+    if not client_id or not supported_market_symbol(symbol):
         return []
     try:
         bar = int(report["bar_time"])
@@ -51,7 +52,8 @@ def build_bot_messages(client_id, symbol, timeframe, report, central_direction="
             except (TypeError, ValueError, OverflowError):
                 continue
         messages.append({
-            "event_id": f"bot:{client_id}:{bar}:{bot['id']}",
+            "event_id": (f"bot:{client_id}:{bar}:{bot['id']}" if market_family(symbol)=="XAUUSD"
+                         else f"bot:{client_id}:{symbol.upper()}:{bar}:{bot['id']}"),
             "client_id": client_id,
             "event_type": "BOT_ANALYSIS_SIGNAL",
             "payload": {

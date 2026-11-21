@@ -3,6 +3,7 @@ import hashlib, hmac, json, math, os, re, secrets, threading, time, urllib.parse
 from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from market_symbols import supported_market_symbol, same_market_symbol, market_family
 from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, closed_bar_execution_fresh, entry_council_mode
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
@@ -403,8 +404,22 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         cleaned.append(row)
     return cleaned
 
-def live_learning_profile(deals):
-    """Build transparent, outcome-based live weights from real closed XAUUSD positions."""
+def terminal_request_matches_market(request_url, active_symbol):
+    """New BTC clients MUST bind their poll to the chart in the snapshot.
+
+    Legacy gold polls without a symbol remain valid for the gold-only engine.
+    An older gold EA must never consume a newly added BTC decision.
+    """
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(request_url).query)
+    requested = (query.get("symbol") or [""])[0]
+    if not requested:
+        return market_family(active_symbol) == "XAUUSD"
+    return supported_market_symbol(requested) and same_market_symbol(requested, active_symbol)
+
+
+def live_learning_profile(deals, symbol="XAUUSD"):
+    """Build outcome-based weights only from closed positions on this market symbol."""
+    market_symbol = symbol
     grouped={}
     now_utc=datetime.now(timezone.utc)
     cutoff=int((now_utc-timedelta(days=30)).timestamp())
@@ -414,7 +429,7 @@ def live_learning_profile(deals):
     for deal in deals if isinstance(deals,list) else []:
         if not isinstance(deal,dict): continue
         symbol=str(deal.get("symbol") or "").upper()
-        if not symbol.startswith("XAUUSD"): continue
+        if not same_market_symbol(symbol, market_symbol): continue
         entry=int(finite_number(deal.get("entry"),1))
         if entry not in (1,2,3): continue
         stamp=int(finite_number(deal.get("time")))
@@ -627,6 +642,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
             item=CONNECTIONS.get(client_id)
             if not item:return self.send_json(409,{"execution_ready":False,"reason_ar":"MT5 غير متصل"})
+            if not terminal_request_matches_market(self.path,item.get("symbol")):
+                return self.send_json(409,{"execution_ready":False,"reason_ar":"رمز شارت MT5 لا يطابق المحرك"})
             decision=item.get("strategy_decision") or {}
             settings=get_trade_settings(client_id) or {}
             now=datetime.now(timezone.utc)
@@ -641,8 +658,9 @@ class Handler(SimpleHTTPRequestHandler):
                 require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
                 strategy_first=advisory_mode)
             risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
-            return self.send_json(200,propose_central_action(client_id,item,decision,
-                gate,council,risk,settings,now,council_advisory=advisory_mode))
+            proposal=propose_central_action(client_id,item,decision,
+                gate,council,risk,settings,now,council_advisory=advisory_mode)
+            return self.send_json(200,{**proposal,"symbol":item.get("symbol","")})
         if path.startswith("/v1/terminal-control/settings/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -670,14 +688,14 @@ class Handler(SimpleHTTPRequestHandler):
                 item=CONNECTIONS.get(client_id)
                 if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                     return self.send_json(409,{"error":"MT5 غير متصل أو البيانات أقدم من 30 ثانية. لا نعرض توصيات قديمة.","connected":False})
-                if not str(item.get("symbol","")).upper().startswith("XAUUSD"):
-                    return self.send_json(409,{"error":"مساعدو المكتبة مخصصون حالياً لشارت الذهب XAUUSD.","connected":True})
+                if not supported_market_symbol(item.get("symbol")):
+                    return self.send_json(409,{"error":"مساعدو المكتبة متاحون لشارت XAUUSD أو BTCUSD فقط.","connected":True})
                 # A chronological list of CLOSED candles only, not the forming bar.
                 current_decision=item.get("strategy_decision") or {}
                 analysis=item.get("bot_report")
                 current_candle=(item.get("closed_candles") or [{}])[0]
                 if not isinstance(analysis,dict) or int(finite_number(analysis.get("bar_time",0)))!=int(finite_number(current_candle.get("time",0))):
-                    analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])))
+                    analysis=analyze_advisors(list(reversed(item.get("closed_candles") or [])),symbol=item.get("symbol"))
                 central=(current_decision.get("decision","WAIT")
                          if int(finite_number(current_decision.get("bar_time",0)))==
                             int(finite_number(analysis.get("bar_time",0))) else "WAIT")
@@ -876,7 +894,7 @@ class Handler(SimpleHTTPRequestHandler):
                 history=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
                 deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
-                live=live_learning_profile(deals)
+                live=live_learning_profile(deals,symbol=(CONNECTIONS.get(client_id) or {}).get("symbol") or "XAUUSD")
                 try:
                     selected=get_active_strategy_profile(client_id,sb)
                     profile_error=None
@@ -926,6 +944,8 @@ class Handler(SimpleHTTPRequestHandler):
             item=CONNECTIONS.get(client_id)
             if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                 return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+            if not terminal_request_matches_market(self.path,item.get("symbol")):
+                return self.send_json(409,{"execution_ready":False,"error":"رمز شارت MT5 لا يطابق بيانات المحرك"})
             decision=item.get("strategy_decision") or {}
             confidence=finite_number(decision.get("confidence",0.0))
             signal=str(decision.get("decision","WAIT"))
@@ -990,7 +1010,7 @@ class Handler(SimpleHTTPRequestHandler):
             queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
             output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
-            full_decision={"signal":output_signal,
+            full_decision={"symbol":item.get("symbol",""),"signal":output_signal,
                 "confidence":confidence,"reason_ar":(decision.get("reason_ar","بانتظار اكتمال بيانات التحليل") if ready else gate.get("reason_ar","تم رفض الدخول بواسطة المجلس أو الحماية")),
                 "decision_reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
@@ -1271,8 +1291,8 @@ class Handler(SimpleHTTPRequestHandler):
                 snapshot=CONNECTIONS.get(client_id) or {}
                 symbol=str(snapshot.get("symbol") or "XAUUSD")[:40]
                 timeframe=str(snapshot.get("timeframe") or "PERIOD_M1")[:20]
-                if not symbol.upper().startswith("XAUUSD"):
-                    return self.send_json(409,{"error":"تدقيق الاستراتيجيات مخصص للذهب"})
+                if not supported_market_symbol(symbol):
+                    return self.send_json(409,{"error":"تدقيق الاستراتيجيات متاح لرمز XAUUSD أو BTCUSD فقط"})
                 q=urllib.parse.quote
                 query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
                     "&symbol=eq."+q(symbol,safe="")+"&timeframe=eq."+q(timeframe,safe="")+
@@ -1300,7 +1320,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not client_id: return self.send_json(200,{"status":"NO_CONNECTION","memory_count":0})
                 memory=memory_snapshot(client_id,sb)
                 current=CONNECTIONS.get(client_id) or {}
-                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []))
+                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []),symbol=current.get("symbol") or "XAUUSD")
                 last_decision=(current.get("strategy_decision") or {})
                 last_applied=last_decision.get("learning") or {}
                 return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
@@ -1456,6 +1476,9 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 item=CONNECTIONS.get(client_id)
                 if not item:return self.send_json(409,{"execution_authorized":False,"reason_ar":"MT5 غير متصل"})
+                req_symbol=str(data.get("symbol") or "")
+                if (not req_symbol and market_family(item.get("symbol"))!="XAUUSD") or (req_symbol and not same_market_symbol(req_symbol,item.get("symbol"))):
+                    return self.send_json(409,{"execution_authorized":False,"reason_ar":"رمز الشارت غير مطابق؛ رفض المطالبة"})
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(client_id) or {}
                 now=datetime.now(timezone.utc)
@@ -1473,7 +1496,7 @@ class Handler(SimpleHTTPRequestHandler):
                 response=claim_central_action(client_id,data.get("authorization_id"),
                     item,decision,gate,council,risk,settings,sb,now,
                     council_advisory=advisory_mode)
-                return self.send_json(200 if response.get("execution_authorized") else 409,response)
+                return self.send_json(200 if response.get("execution_authorized") else 409,{**response,"symbol":item.get("symbol","")})
             if path.startswith("/v1/local-ai/advice/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
@@ -1887,7 +1910,7 @@ class Handler(SimpleHTTPRequestHandler):
                 item=CONNECTIONS.get(client_id) or {}
                 symbol=str(item.get("symbol") or "XAUUSD")[:40]
                 timeframe=str(item.get("timeframe") or "M1")[:20]
-                if not symbol.upper().startswith("XAUUSD"):return self.send_json(409,{"error":"اختبار الإصدارات مخصص لشموع الذهب"})
+                if not symbol.upper().startswith("XAUUSD"):return self.send_json(409,{"error":"اختبار الإصدارات مخصص للذهب إلى حين فصل مخزن الإصدارات حسب الرمز"})
                 q=urllib.parse.quote
                 rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+q(client_id,safe="")+
                     "&symbol=eq."+q(symbol,safe="")+"&timeframe=eq."+q(timeframe,safe="")+
@@ -2019,22 +2042,31 @@ class Handler(SimpleHTTPRequestHandler):
                 bot_history=previous.get("bot_signal_history") or []
                 bot_dispatch_count=int(previous.get("bot_dispatch_count",0))
                 bot_new=False
+                # A single engine ID holds one chart snapshot. Never re-use a
+                # prior XAUUSD decision/vote after the terminal switches to BTCUSD.
+                if (str(previous.get("symbol") or "").upper()!=str(data.get("symbol") or "").upper()
+                        or str(previous.get("timeframe") or "")!=str(data.get("timeframe") or "")):
+                    strategy_decision=None
+                    strategy_last_bar=None
+                    bot_report=None
+                    bot_history=[]
+                    bot_dispatch_count=0
                 # Every new CLOSED candle independently activates all five bot engines,
                 # even if the main 200-strategy decision calculation later fails.
-                if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
+                if len(candles)>=65 and supported_market_symbol(data.get("symbol")):
                     current_bar=int(candles[0].get("time") or 0)
                     if current_bar>0 and (
                         not isinstance(bot_report,dict)
                         or int(finite_number(bot_report.get("bar_time",0)))!=current_bar
                     ):
                         try:
-                            bot_report=analyze_advisors(list(reversed(candles)))
+                            bot_report=analyze_advisors(list(reversed(candles)),symbol=data.get("symbol"))
                             bot_new=(bot_report.get("status")=="READY" and int(bot_report.get("bar_time",0))==current_bar)
                         except Exception as bot_error:
                             bot_report=None
                             print("BOT_ENGINE_WARNING:",type(bot_error).__name__,flush=True)
                 # MT5 sends closed candles newest-first. Evaluate once per newly closed bar.
-                if len(candles)>=65 and str(data.get("symbol","")).upper().startswith("XAUUSD"):
+                if len(candles)>=65 and supported_market_symbol(data.get("symbol")):
                     bar_time=int(candles[0].get("time") or 0)
                     if bar_time>0 and bar_time!=strategy_last_bar:
                         try:
@@ -2043,11 +2075,12 @@ class Handler(SimpleHTTPRequestHandler):
                             # Never stop analysis while historical memory is loading.
                             memory=memory_snapshot(client_id,sb)
                             live_learning=live_learning_profile(combine_deals(
-                                memory.get("deals") or [],closed_deals))
+                                memory.get("deals") or [],closed_deals),symbol=data.get("symbol") or "XAUUSD")
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
                             try:
-                                chosen_profile=get_active_strategy_profile(client_id,sb)
+                                chosen_profile=(get_active_strategy_profile(client_id,sb)
+                                    if market_family(data.get("symbol"))=="XAUUSD" else None)
                                 active_profile_error=None
                             except Exception as profile_error:
                                 # Learning/version storage being unavailable never
@@ -2159,7 +2192,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
                     "candles_received":len(candles),
-                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_XAUUSD_candles",
+                    "strategy_engine":"ready" if strategy_decision else "waiting_for_65_closed_supported_market_candles",
                     "server_processing_ms":round((time.perf_counter()-heartbeat_start)*1000,1)})
             return self.send_json(404,{"error":"not_found"})
         except PermissionError as e: return self.send_json(403,{"error":str(e)})

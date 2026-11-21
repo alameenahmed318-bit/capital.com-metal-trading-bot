@@ -1,4 +1,4 @@
-"""Five independent read-only analytical bots for AL-ZOOL closed MT5 gold candles.
+"""Five independent read-only analytical bots for AL-ZOOL closed MT5 XAUUSD/BTCUSD candles.
 
 These are ORIGINAL rule-based implementations of common public trading ideas,
 NOT the code, learned weights, or proprietary signals of commercial MQL5 EAs.
@@ -73,7 +73,7 @@ def _validate(rows):
     return clean if len(clean) >= MIN_CANDLES else None
 
 
-def analyze_advisors(closed_candles):
+def analyze_advisors(closed_candles, symbol="XAUUSD"):
     """Pure, deterministic advisors; expects oldest-first CLOSED candles only.
 
     A malformed/insufficient series never creates a directional signal.
@@ -185,7 +185,7 @@ def analyze_advisors(closed_candles):
     sells = sum(x["signal"] == "SELL" for x in advisors)
     consensus_signal = ("BUY" if buys >= 3 and sells == 0 else
                         "SELL" if sells >= 3 and buys == 0 else "WAIT")
-    return {"status":"READY","symbol_hint":"XAUUSD","bar_time":last["time"],"last_close":last["close"],
+    return {"status":"READY","symbol_hint":symbol,"bar_time":last["time"],"last_close":last["close"],
             "candle_count":len(rows),"advisors":advisors,
             "consensus":{"signal":consensus_signal,"agreeing":max(buys,sells),
                          "buy":buys,"sell":sells,"active":buys+sells,

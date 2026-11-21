@@ -4,6 +4,9 @@ on:
     branches:
       - work/alzool-foundation-20261114
   workflow_dispatch:
+  pull_request:
+    branches:
+      - work/alzool-foundation-20261114
 jobs:
   safety:
     runs-on: ubuntu-latest
