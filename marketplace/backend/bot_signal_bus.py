@@ -52,7 +52,7 @@ def build_bot_messages(client_id, symbol, timeframe, report, central_direction="
             except (TypeError, ValueError, OverflowError):
                 continue
         messages.append({
-            "event_id": (f"bot:{client_id}:{bar}:{bot['id']}" if market_family(symbol)=="XAUUSD"\
+            "event_id": (f"bot:{client_id}:{bar}:{bot['id']}" if market_family(symbol)=="XAUUSD"
                          else f"bot:{client_id}:{symbol.upper()}:{bar}:{bot['id']}"),
             "client_id": client_id,
             "event_type": "BOT_ANALYSIS_SIGNAL",
