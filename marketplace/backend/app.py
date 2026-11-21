@@ -404,6 +404,19 @@ def clean_telemetry_rows(rows, allowed, limit=200):
         cleaned.append(row)
     return cleaned
 
+def terminal_request_matches_market(request_url, active_symbol):
+    """New BTC clients MUST bind their poll to the chart in the snapshot.
+
+    Legacy gold polls without a symbol remain valid for the gold-only engine.
+    An older gold EA must never consume a newly added BTC decision.
+    """
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(request_url).query)
+    requested = (query.get("symbol") or [""])[0]
+    if not requested:
+        return market_family(active_symbol) == "XAUUSD"
+    return supported_market_symbol(requested) and same_market_symbol(requested, active_symbol)
+
+
 def live_learning_profile(deals, symbol="XAUUSD"):
     """Build outcome-based weights only from closed positions on this market symbol."""
     market_symbol = symbol
@@ -629,6 +642,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
             item=CONNECTIONS.get(client_id)
             if not item:return self.send_json(409,{"execution_ready":False,"reason_ar":"MT5 غير متصل"})
+            if not terminal_request_matches_market(self.path,item.get("symbol")):
+                return self.send_json(409,{"execution_ready":False,"reason_ar":"رمز شارت MT5 لا يطابق المحرك"})
             decision=item.get("strategy_decision") or {}
             settings=get_trade_settings(client_id) or {}
             now=datetime.now(timezone.utc)
@@ -643,8 +658,9 @@ class Handler(SimpleHTTPRequestHandler):
                 require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
                 strategy_first=advisory_mode)
             risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
-            return self.send_json(200,propose_central_action(client_id,item,decision,
-                gate,council,risk,settings,now,council_advisory=advisory_mode))
+            proposal=propose_central_action(client_id,item,decision,
+                gate,council,risk,settings,now,council_advisory=advisory_mode)
+            return self.send_json(200,{**proposal,"symbol":item.get("symbol","")})
         if path.startswith("/v1/terminal-control/settings/"):
             client_id=path.rsplit("/",1)[-1]
             if not validate_license(client_id,token_of(self)):
@@ -928,6 +944,8 @@ class Handler(SimpleHTTPRequestHandler):
             item=CONNECTIONS.get(client_id)
             if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                 return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
+            if not terminal_request_matches_market(self.path,item.get("symbol")):
+                return self.send_json(409,{"execution_ready":False,"error":"رمز شارت MT5 لا يطابق بيانات المحرك"})
             decision=item.get("strategy_decision") or {}
             confidence=finite_number(decision.get("confidence",0.0))
             signal=str(decision.get("decision","WAIT"))
@@ -992,7 +1010,7 @@ class Handler(SimpleHTTPRequestHandler):
             queue_ai_diagnostic_event(council_event)
             bar_time=int(finite_number(decision.get("bar_time",0)))
             output_signal=signal if ready else ("WAIT" if signal in ("BUY","SELL") else signal)
-            full_decision={"signal":output_signal,
+            full_decision={"symbol":item.get("symbol",""),"signal":output_signal,
                 "confidence":confidence,"reason_ar":(decision.get("reason_ar","بانتظار اكتمال بيانات التحليل") if ready else gate.get("reason_ar","تم رفض الدخول بواسطة المجلس أو الحماية")),
                 "decision_reason_ar":decision.get("reason_ar","بانتظار اكتمال بيانات التحليل"),
                 "strategy_id":strategy_id,"strategy_name":decision.get("strategy_name",""),
@@ -1458,6 +1476,9 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(403,{"error":"مصادقة اتصال MT5 غير صالحة"})
                 item=CONNECTIONS.get(client_id)
                 if not item:return self.send_json(409,{"execution_authorized":False,"reason_ar":"MT5 غير متصل"})
+                req_symbol=str(data.get("symbol") or "")
+                if (not req_symbol and market_family(item.get("symbol"))!="XAUUSD") or (req_symbol and not same_market_symbol(req_symbol,item.get("symbol"))):
+                    return self.send_json(409,{"execution_authorized":False,"reason_ar":"رمز الشارت غير مطابق؛ رفض المطالبة"})
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(client_id) or {}
                 now=datetime.now(timezone.utc)
@@ -1475,7 +1496,7 @@ class Handler(SimpleHTTPRequestHandler):
                 response=claim_central_action(client_id,data.get("authorization_id"),
                     item,decision,gate,council,risk,settings,sb,now,
                     council_advisory=advisory_mode)
-                return self.send_json(200 if response.get("execution_authorized") else 409,response)
+                return self.send_json(200 if response.get("execution_authorized") else 409,{**response,"symbol":item.get("symbol","")})
             if path.startswith("/v1/local-ai/advice/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
