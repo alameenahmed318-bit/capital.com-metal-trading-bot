@@ -1,3 +1,4 @@
+from market_symbols import supported_market_symbol
 """One-time central MT5 position action authorization.
 
 Fail closed by default: owner must explicitly enable central_actions_enabled in
@@ -55,8 +56,8 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_
     # entry vote must not veto analysis of an existing position.
     if not risk.get("approved"):
         return blocked("حالة الحساب لا تسمح بإجراء إدارة جديد")
-    if not str(snapshot.get("symbol","")).upper().startswith("XAUUSD"):
-        return blocked("المركز المدعوم حالياً هو الذهب فقط")
+    if not supported_market_symbol(snapshot.get("symbol")):
+        return blocked("إجراءات الإدارة متاحة فقط لرموز XAUUSD وBTCUSD المدعومة")
     if not 0<=_age_seconds(snapshot,now)<=15:
         return blocked("بيانات حساب MT5 قديمة")
     bar=int(_num(decision.get("bar_time")))
