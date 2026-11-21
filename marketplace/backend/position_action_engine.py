@@ -1,3 +1,4 @@
+from market_symbols import supported_market_symbol
 """Central position-management planner for AL-ZOOL.
 
 Returns non-executable proposals only. MT5 must require a separate, short-lived,
@@ -19,7 +20,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     all_positions=snapshot.get("positions") or []
     symbol=str(snapshot.get("symbol") or "")
     positions=[p for p in all_positions if isinstance(p,dict) and
-        str(p.get("symbol") or "")==symbol and symbol.upper().startswith("XAUUSD")]
+        str(p.get("symbol") or "")==symbol and supported_market_symbol(symbol)]
     pm=(settings or {}).get("position_management") or {}
     atr=num(decision.get("entry_atr") or (decision.get("context") or {}).get("atr"))
     tick=snapshot.get("tick") or {}
@@ -30,12 +31,12 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     if not all_positions:
         result["reason_ar"]="لا توجد صفقات مفتوحة للحساب";return result
     if not positions:
-        result["reason_ar"]="لا توجد مراكز XAUUSD يمكن تنفيذ التعافي في اتجاهها";return result
-    # Pre-existing mixed-side gold exposure: don't add either side, including
+        result["reason_ar"]="لا توجد مراكز للرمز الحالي يمكن تنفيذ التعافي في اتجاهها";return result
+    # Pre-existing mixed-side exposure on the active symbol: don't add either side, including
     # x3 smart recovery. Existing positions are never automatically closed.
     open_directions={int(num(p.get("type"),-1)) for p in positions}
     if 0 in open_directions and 1 in open_directions:
-        result["reason_ar"]="حماية الاتجاه: توجد مراكز ذهب BUY وSELL معاً؛ إيقاف التعزيز والتبريد والتعافي الجديد"
+        result["reason_ar"]="حماية الاتجاه: توجد مراكز BUY وSELL للرمز الحالي معاً؛ إيقاف التعزيز والتبريد والتعافي الجديد"
         return result
     if str(pm.get("mode","AI")).upper() not in ("AI","MANUAL"):
         result["reason_ar"]="وضع إدارة الصفقات غير صالح";return result
@@ -44,7 +45,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     if not risk.get("approved") or not settings.get("trading_enabled"):
         result["reason_ar"]="حالة الحساب أو مفتاح التداول يمنع إجراء إدارة جديد";return result
     # Account-wide recovery takes priority over entry/add-on signals.
-    # The recovery direction comes from existing losing gold positions;
+    # The recovery direction comes from losing positions on the active symbol;
     # a Qwen/strategy WAIT does not become a second veto.
     observe_recovery_arm(snapshot,settings)
     recovery=recovery_intent(snapshot,decision,settings)
