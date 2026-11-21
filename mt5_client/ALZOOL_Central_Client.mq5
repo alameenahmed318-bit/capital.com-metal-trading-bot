@@ -460,7 +460,7 @@ bool PollCentralActions()
    ArrayResize(empty,0);
    string response_headers;
    ResetLastError();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-actions/"+ConnectionId(),
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-actions/"+ConnectionId()+"?symbol="+_Symbol,
                        headers,3000,empty,result,response_headers);
    if(code!=200)
    {
@@ -468,6 +468,10 @@ bool PollCentralActions()
       return false;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
+   string requestedSymbol=JsonField(response,"symbol");
+   StringReplace(requestedSymbol,"\"","");
+   if(requestedSymbol!=_Symbol)
+   { Print("AL-ZOOL ACTION BLOCKED: central market symbol mismatch"); return false; }
    if(!JsonBool(response,"execution_ready"))
    {
       static datetime lastWaitLog=0;
@@ -495,7 +499,7 @@ bool PollCentralActions()
    if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side) ||
       lots<=0.0 || (InpMaxCentralActionLots>0 && lots>InpMaxCentralActionLots+1e-8)) return false;
    // Claim the unique central authorization before submitting any broker order.
-   string body="{\"authorization_id\":\""+JsonEscape(nonce)+"\"}";
+   string body="{\"authorization_id\":\""+JsonEscape(nonce)+"\",\"symbol\":\""+JsonEscape(_Symbol)+"\"}";
    char data[],claimResult[];
    StringToCharArray(body,data,0,WHOLE_ARRAY,CP_UTF8);
    if(ArraySize(data)>0) ArrayResize(data,ArraySize(data)-1);
@@ -509,6 +513,10 @@ bool PollCentralActions()
       Print("AL-ZOOL central action not authorized: HTTP=",code," err=",GetLastError());
       return false;
    }
+   string claimSymbol=JsonField(confirmed,"symbol");
+   StringReplace(claimSymbol,"\"","");
+   if(claimSymbol!=_Symbol)
+   { Print("AL-ZOOL ACTION CLAIM BLOCKED: chart symbol mismatch"); return false; }
    string claimSide=JsonField(confirmed,"side");
    string claimAction=JsonField(confirmed,"action");
    StringReplace(claimSide,"\"","");
@@ -529,7 +537,7 @@ bool PollCentralDecision()
    string response_headers;
    ResetLastError();
    ulong startedMs=GetTickCount64();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId(),
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId()+"?symbol="+_Symbol,
                        headers,1500,data,result,response_headers);
    ulong elapsedMs=GetTickCount64()-startedMs;
    if(code!=200)
@@ -546,6 +554,10 @@ bool PollCentralDecision()
       lastDecisionLatencyLog=metricAt;
    }
    string response=CharArrayToString(result,0,-1,CP_UTF8);
+   string returnedSymbol=JsonField(response,"symbol");
+   StringReplace(returnedSymbol,"\"","");
+   if(returnedSymbol!=_Symbol)
+   { Print("AL-ZOOL ENTRY BLOCKED: central market symbol mismatch"); return false; }
    string signal=JsonField(response,"signal");
    string reason=JsonField(response,"reason_ar");
    string confidence=JsonField(response,"confidence");
