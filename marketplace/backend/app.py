@@ -2318,6 +2318,7 @@ if __name__=="__main__":
     if not recovery_result.wasSuccessful():
         raise RuntimeError("ALZOOL_OFFLINE_RECOVERY_CHECKS_FAILED")
     print("ALZOOL_OFFLINE_RECOVERY_CHECKS_PASS",flush=True)
+    print("BTC_SUPABASE_PROJECT_READY:",btc_database_ready(),flush=True)
     # Server-side smoke test, read-only, never exposes the API key.
     if os.getenv("GROQ_VERIFY_ON_STARTUP","false").lower() in ("true","1","yes"):
         threading.Thread(target=lambda: print("GROQ_SMOKE_STATUS:",verify_groq_credentials(),flush=True),
