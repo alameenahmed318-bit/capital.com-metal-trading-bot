@@ -1,16 +1,12 @@
 let supabaseClient=null,accessToken=null,mt5Connected=false,autoTradingBusy=false;
-let activeMarketSymbol="XAUUSD";
+let activeMarketSymbol="BTCUSD";
 function setMarketChart(symbol){
- const chosen=String(symbol||"").toUpperCase().startsWith("BTCUSD")?"BTCUSD":"XAUUSD";
- activeMarketSymbol=chosen;
- const picker=document.getElementById("marketChartSymbol");if(picker)picker.value=chosen;
- const heading=document.getElementById("marketChartTitle");if(heading)heading.textContent=chosen==="BTCUSD"?"مخطط البيتكوين BTCUSD":"مخطط الذهب XAUUSD";
- const frame=document.getElementById("marketChartFrame");if(!frame)return;
- const url=new URL(frame.src);
- const newSymbol=chosen==="BTCUSD"?"BITSTAMP:BTCUSD":"OANDA:XAUUSD";
- if(url.searchParams.get("symbol")!==newSymbol){url.searchParams.set("symbol",newSymbol);frame.src=url.toString();}
+ const value=String(symbol||"BTCUSD").toUpperCase();
+ if(!value.startsWith("BTCUSD"))return;
+ activeMarketSymbol=value;
+ if(document.getElementById("marketChartTitle"))document.getElementById("marketChartTitle").textContent=value+" · M1";
+ if(document.getElementById("shadowMarketSymbol"))document.getElementById("shadowMarketSymbol").textContent=value;
 }
-
 const $=id=>document.getElementById(id);
 async function api(path,options={}){
  const headers={...(accessToken?{Authorization:"Bearer "+accessToken}:{}),...(options.headers||{})};
@@ -98,10 +94,12 @@ async function refresh(){
   azUpdateConnectionDisplay(false);
  }
  await refreshAutoTrading();
+ shadowRefreshMarket();
  azRefreshTradingSettings();
  azRefreshAiCouncil();
  try{
   const s=await api("/api/dashboard/summary");
+  shadowRenderPositions(s);
   const currency=s.currency||"";
   $("balance").textContent=s.balance==null?"—":fmt(s.balance)+" "+currency;
   $("floating").textContent=s.floating_pl==null?"—":fmt(s.floating_pl)+" "+currency;
@@ -113,7 +111,7 @@ async function refresh(){
   const dailyProfitEl=$("dailyProfit");if(dailyProfitEl)dailyProfitEl.textContent=daily.profit==null?"—":fmt(daily.profit)+" "+currency;
   const dailyLossEl=$("dailyLoss");if(dailyLossEl)dailyLossEl.textContent=daily.loss==null?"—":fmt(daily.loss)+" "+currency;
   const dailyNetEl=$("dailyNet");if(dailyNetEl)dailyNetEl.textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;
-  if(dailyNetEl){dailyNetEl.style.color=Number(daily.net)<0?"#d35470":"#28174a"}
+  if(dailyNetEl){dailyNetEl.style.removeProperty("color");setFloatingColor(dailyNetEl,daily.net)}
   const dailyTradesEl=$("dailyTrades");if(dailyTradesEl)dailyTradesEl.textContent=daily.trades==null?"—":fmt(daily.trades);
   $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
@@ -296,6 +294,7 @@ async function refreshInlineMonitor(){
  if(!card||card.hidden||!accessToken)return;
  try{
   const d=await api("/api/ai/monitor");
+  shadowRenderDecision(d);
   const h=d.hybrid||{};
   const put=(id,v)=>{const node=$(id);if(node)node.textContent=String(v??"—");};
   put("azMonitorBase",h.base_direction||d.signal||"WAIT");
@@ -312,6 +311,120 @@ async function refreshInlineMonitor(){
 $("azInlineMonitorRefresh")?.addEventListener("click",refreshInlineMonitor);
 $("marketChartSymbol")?.addEventListener("change",e=>setMarketChart(e.target.value));
 $("refreshBtn").addEventListener("click",refresh);
+
+/* Shadow System visual composition. Read-only widgets use authenticated existing APIs. */
+function shadowLayout(){
+ document.body.classList.add("shadow-dashboard");
+ const main=document.querySelector(".main");
+ if(!main)return;
+ const logo=main.querySelector(".az-user-logo");
+ logo.innerHTML='<strong>AL-ZOOL 🇸🇩</strong><small>SHADOW SYSTEM · SUPER AI</small>';
+ const top=main.querySelector(".az-user-top");
+ const strip=document.createElement("div");strip.className="shadow-market-strip";
+ strip.innerHTML='<span>₿ <b id="shadowMarketSymbol">BTCUSD</b> · M1</span><strong id="shadowCurrentPrice" dir="ltr">—</strong><span id="shadowMarketStamp">بانتظار أسعار MT5</span><span>BITCOIN SYSTEM / LIVE</span>';
+ top.after(strip);
+ const kpi=main.querySelector(".az-client-top-kpis"),ext=main.querySelector(".az-extended-kpis");
+ if(kpi&&ext){[...ext.children].forEach(n=>kpi.appendChild(n));ext.remove();}
+ const chart=main.querySelector(".chart-card");
+ if(!chart)return;
+ const wrap=chart.querySelector(".chart-wrap");
+ wrap.innerHTML='<div id="shadowCandleChart" style="width:100%;min-height:260px;display:grid;place-items:center;color:#abb4db">بانتظار الشموع الحقيقية من MT5</div>';
+ chart.querySelector("label.market-tag")?.remove();
+ chart.querySelector(".chart-foot").textContent="شموع M1 من حساب MT5 المتصل · لا توجد أسعار أو إشارات افتراضية";
+ chart.querySelector(".card-title").insertAdjacentHTML("beforeend",'<strong id="shadowChartPrice" class="shadow-price-label">—</strong>');
+ setMarketChart("BTCUSD");
+ const ai=document.createElement("article");ai.className="card shadow-ai-panel";
+ ai.innerHTML='<div class="shadow-ai-top"><div><b>AL-ZOOL AI</b><div class="shadow-ai-sub">المحرك الذكي المباشر</div></div><span class="shadow-crown" aria-hidden="true">♛</span></div><div class="shadow-ai-metrics"><div id="shadowSignal" class="shadow-signal" data-signal="WAIT"><small>الإشارة الحالية</small><strong>WAIT</strong></div><div class="shadow-confidence"><small>ثقة المحرك</small><strong id="shadowConfidence">—</strong><div class="shadow-meter"><i id="shadowMeterFill"></i></div></div></div><div class="shadow-ai-row"><span>وضع السوق</span><b id="shadowRegime">—</b></div><div class="shadow-ai-row"><span>حالة التنفيذ</span><b id="shadowExecution">بانتظار التحقق</b></div><div class="shadow-ai-row"><span>المساهمة الفعلية للنماذج</span><b id="shadowVotesUsed">—</b></div><div class="shadow-reason" id="shadowReason">بانتظار قرار حديث من المحرك.</div><a class="shadow-details-link" href="/ai-monitor.html">تفاصيل القرار وأسباب الدخول أو الانتظار ↗</a>';
+ const stage=document.createElement("section");stage.className="shadow-stage";stage.append(chart,ai);kpi.after(stage);
+ const bottom=document.createElement("section");bottom.className="shadow-bottom";stage.after(bottom);
+ const performance=main.querySelector("#accountPerformance article:first-child");
+ if(performance)bottom.append(performance);
+ const positions=document.createElement("article");positions.className="card";
+ positions.innerHTML='<div class="card-title"><h2>الصفقات المفتوحة</h2><a class="shadow-details-link" href="/trade-management.html#positions">إدارة</a></div><div class="table-scroll"><table class="history-table"><thead><tr><th>الرمز</th><th>الاتجاه</th><th>اللوت</th><th>الربح</th></tr></thead><tbody id="shadowPositions"><tr><td colspan="4">بانتظار MT5</td></tr></tbody></table></div>';
+ bottom.append(positions);
+ const history=$("closedHistory");if(history)bottom.append(history);
+ const more=document.createElement("section");more.className="shadow-more";bottom.after(more);
+ const groups=[["المحرك والذكاء الاصطناعي",["aiCouncilLive","aiMonitorInline"]],["إعدادات التداول والاتصال",["tradingSettingsPanel","accountPerformance"]]];
+ for(const [name,ids] of groups){
+  const d=document.createElement("details");const summary=document.createElement("summary");summary.textContent=name;d.append(summary);
+  for(const id of ids){const n=$(id);if(n)d.append(n);}more.append(d);
+ }
+ const status=main.querySelector(".grid-main .status-card");
+ const notice=$("dataNotice");
+ if(status||notice){const d=document.createElement("details");d.innerHTML="<summary>حالة البيانات والتفاصيل اليومية</summary>";if(notice)d.append(notice);if(status)d.append(status);more.append(d);}
+}
+function shadowText(id,value){const x=$(id);if(x)x.textContent=value??"—";}
+function shadowRenderPositions(s){
+ const host=$("shadowPositions");if(!host)return;
+ if(!s.connected){host.innerHTML='<tr><td colspan="4">MT5 غير متصل</td></tr>';return;}
+ const positions=Array.isArray(s.positions)?s.positions:[];
+ host.innerHTML=positions.length?positions.slice(0,20).map(p=>{
+ const pnl=Number(p.profit||0)+Number(p.swap||0),side=Number(p.type)===0?"BUY":Number(p.type)===1?"SELL":"—";
+ return "<tr><td>"+escapeHtml(p.symbol||"—")+"</td><td>"+side+"</td><td>"+escapeHtml(p.volume??"—")+"</td><td class='"+(pnl>=0?"positive":"negative")+"'>"+pnl.toFixed(2)+" "+escapeHtml(s.currency||"")+"</td></tr>";
+ }).join(""):'<tr><td colspan="4">لا توجد صفقات مفتوحة</td></tr>';
+}
+let shadowOwnerDecisionAt=0;
+function shadowRenderDecision(d,authoritative=true){
+ if(!d||!d.connected)return shadowClearDecision();
+ if(authoritative)shadowOwnerDecisionAt=Date.now();
+ if(!authoritative&&Date.now()-shadowOwnerDecisionAt<20000)return;
+ const sig=["BUY","SELL","WAIT"].includes(d.signal)?d.signal:"WAIT";
+ const node=$("shadowSignal");if(node){node.dataset.signal=sig;node.querySelector("strong").textContent=sig;}
+ const numeric=d.confidence!=null?Number(d.confidence):NaN;
+ const confidence=Number.isFinite(numeric)&&numeric>=0&&numeric<=1?Math.round(numeric*100):null;
+ shadowText("shadowConfidence",confidence==null?"—":confidence+"%");
+ if($("shadowMeterFill"))$("shadowMeterFill").style.width=(confidence??0)+"%";
+ shadowText("shadowRegime",d.strategy_context?.regime||d.context?.regime||"—");
+ shadowText("shadowExecution",authoritative?(d.mt5_central_trading_enabled===false?"تنفيذ MT5 متوقف":d.trading_enabled===false?"التداول متوقف":d.entry_ready?"إشارة جاهزة · التنفيذ عند MT5":"انتظار"): "تحليل استشاري");
+ shadowText("shadowVotesUsed",authoritative?(d.hybrid?.model_votes_used??"—"):"—");
+ shadowText("shadowReason",d.reason_ar||d.decision_reason_ar||"بانتظار تفسير المحرك");
+}
+function shadowClearDecision(){
+ shadowOwnerDecisionAt=0;
+ const node=$("shadowSignal");if(node){node.dataset.signal="WAIT";node.querySelector("strong").textContent="WAIT";}
+ for(const [id,value] of [["shadowConfidence","—"],["shadowRegime","—"],["shadowExecution","MT5 غير متصل"],["shadowVotesUsed","—"],["shadowReason","لم تصل بيانات حديثة من الطرفية."]])shadowText(id,value);
+ if($("shadowMeterFill"))$("shadowMeterFill").style.width="0%";
+}
+let shadowMarketBusy=false;
+async function shadowRefreshMarket(){
+ if(!accessToken||shadowMarketBusy)return;shadowMarketBusy=true;
+ const host=$("shadowCandleChart");if(!host){shadowMarketBusy=false;return;}
+ try{
+  const data=await api("/api/market/context");
+  if(!String(data.symbol||"").toUpperCase().startsWith("BTCUSD"))throw Error("الرمز غير مطابق لمحرك البيتكوين");
+  setMarketChart(data.symbol);
+  const candles=(Array.isArray(data.candles)?data.candles:[]).filter(c=>["open","high","low","close","time"].every(k=>Number.isFinite(Number(c[k])))).sort((a,b)=>Number(a.time)-Number(b.time));
+  const compact=candles.slice(-76);
+  const forming=data.forming_candle;
+  if(forming&&["open","high","low","close","time"].every(k=>Number.isFinite(Number(forming[k])))&&(!compact.length||Number(forming.time)>Number(compact[compact.length-1].time)))compact.push(forming);
+  const price=Number(data.tick?.bid||compact[compact.length-1]?.close||0);
+  const fmt=n=>new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+  shadowText("shadowCurrentPrice",price>0?fmt(price):"—");shadowText("shadowChartPrice",price>0?fmt(price):"—");
+  shadowText("shadowMarketStamp",data.received_at?"آخر بيانات MT5: "+String(data.received_at).replace("T"," ").slice(0,19):"بيانات حديثة");
+  if(compact.length<2){host.textContent="لا توجد شموع كافية للرسم";return;}
+  const lo=Math.min(...compact.map(c=>Number(c.low))),hi=Math.max(...compact.map(c=>Number(c.high))),span=Math.max(hi-lo,.001),padding=span*.07,minP=lo-padding,maxP=hi+padding;
+  const W=900,H=350,left=12,right=811,top=14,bottom=270,dx=(right-left)/compact.length;
+  const y=n=>top+(maxP-n)/(maxP-minP)*(bottom-top);
+  const x=i=>left+dx*(i+.5);
+  const maxVol=Math.max(1,...compact.map(c=>Number(c.tick_volume)||0));
+  let grid="",bars="",vol="",labels="";
+  for(let i=0;i<=5;i++){const n=maxP-i*(maxP-minP)/5,py=y(n);grid+='<path d="M12 '+py+' H811" stroke="#25324b" stroke-width=".7"/><text x="823" y="'+(py+4)+'" fill="#b6c6e8" font-size="11">'+fmt(n)+'</text>';}
+  for(let i=0;i<compact.length;i++){
+    const c=compact[i],px=x(i),up=Number(c.close)>=Number(c.open),color=up?"#39d6ed":"#b457fc",a=y(Number(c.open)),b=y(Number(c.close)),vh=(Number(c.tick_volume)||0)/maxVol*38;
+    bars+='<path d="M'+px+' '+y(Number(c.high))+' V'+y(Number(c.low))+'" stroke="'+color+'" stroke-width="1.1"/><rect x="'+(px-dx*.29)+'" y="'+Math.min(a,b)+'" width="'+Math.max(1,dx*.58)+'" height="'+Math.max(1.2,Math.abs(a-b))+'" rx=".5" fill="'+color+'"><title>'+escapeHtml("O "+fmt(c.open)+" H "+fmt(c.high)+" L "+fmt(c.low)+" C "+fmt(c.close))+'</title></rect>';
+    vol+='<rect x="'+(px-dx*.29)+'" y="'+(319-vh)+'" width="'+Math.max(1,dx*.58)+'" height="'+vh+'" fill="'+color+'" opacity=".52"/>';
+    if(i%Math.max(1,Math.floor(compact.length/5))===0){const t=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(Number(c.time)*1000));labels+='<text x="'+px+'" y="341" text-anchor="middle" font-size="10" fill="#acbbdf">'+t+'</text>';grid+='<path d="M'+px+' 14 V319" stroke="#1a2742" stroke-width=".6"/>';}
+  }
+  function ema(period,color){let v=Number(compact[0].close),a=2/(period+1);let p=compact.map((c,i)=>{v=i?a*Number(c.close)+(1-a)*v:v;return (i?"L":"M")+x(i).toFixed(2)+" "+y(v).toFixed(2)}).join(" ");return '<path d="'+p+'" fill="none" stroke="'+color+'" stroke-width="1.5" opacity=".82"/>';}
+  const py=price>0?y(Math.max(minP,Math.min(maxP,price))):0;
+  host.innerHTML='<svg class="shadow-chart" role="img" aria-label="شموع البيتكوين الحقيقية من MT5" viewBox="0 0 '+W+' '+H+'"><defs><linearGradient id="shadowChartBg" x2="1" y2="1"><stop stop-color="#071125"/><stop offset="1" stop-color="#130b29"/></linearGradient></defs><rect width="900" height="350" fill="url(#shadowChartBg)"/><text x="405" y="156" text-anchor="middle" font-size="65" fill="#8297e4" opacity=".06" font-weight="900">BTC · SYSTEM</text>'+grid+vol+ema(9,"#5ee3ff")+ema(21,"#ba6dff")+bars+(price>0?'<path d="M12 '+py+' H811" stroke="#44dce9" stroke-dasharray="4 4"/><rect x="813" y="'+(py-10)+'" width="87" height="20" rx="3" fill="#185e85"/><text x="855" y="'+(py+4)+'" text-anchor="middle" font-size="11" fill="white">'+fmt(price)+'</text>':'')+labels+'</svg><div class="shadow-chart-note">EMA 9 / EMA 21 · حجم تيكات MT5 · توقيت الإمارات</div>';
+  const q=data.strategy_decision||{};
+  shadowRenderDecision({connected:true,signal:q.decision,confidence:q.confidence,context:q.context,reason_ar:q.reason_ar},false);
+ }catch(e){host.textContent="بانتظار بيانات MT5 الحية: "+String(e.message||"لا يوجد اتصال");shadowText("shadowCurrentPrice","—");shadowText("shadowChartPrice","—");shadowText("shadowMarketStamp","لا توجد بيانات حديثة");shadowClearDecision();}
+ finally{shadowMarketBusy=false;}
+}
+shadowLayout();
+
 boot();
 setInterval(()=>{if(accessToken)refresh();},10000);
 setInterval(refreshInlineMonitor,15000);
