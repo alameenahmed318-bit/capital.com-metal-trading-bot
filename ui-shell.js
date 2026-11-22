@@ -1,174 +1,53 @@
-/* AL-ZOOL UI navigation v20261115: central information architecture.
-   Navigation only: never changes API, auth, account settings or trading state. */
-(()=>{
-"use strict";
-const shell=document.querySelector(".shell"),sidebar=document.querySelector(".sidebar");
-if(!shell||!sidebar)return;
-const current=(location.pathname.split("/").pop()||"dashboard.html").toLowerCase();
-const groups=[
- {title:"الرئيسية والمتابعة",icon:"◫",items:[
-  ["dashboard.html","⌂","لوحة القيادة","الحساب، السوق، حالة MT5"],
-  ["opportunities.html","◎","الفرص والإشارات","فرص البيتكوين وأسباب القرار"]]},
- {title:"الصفقات والتنفيذ",icon:"⇄",items:[
-  ["trade-management.html","⇄","الصفقات والحماية","المراكز، الوقف، الأوامر، التعافي"],
-  ["trade-history.html","▤","السجل والأداء","الصفقات المغلقة والنتائج"]]},
- {title:"الذكاء والاستراتيجيات",icon:"✦",items:[
-  ["ai-analysis.html","✧","التحليل ومجلس الذكاء","تصويت النماذج والتشخيص"],
-  ["ai-monitor.html","◎","مراقبة Hybrid AI","أسباب BUY وSELL وWAIT وتأثير Qwen وDeepSeek والتراكيب والبوتات"],
-  ["learning-lab.html","◈","التعلّم والاستراتيجيات","الأوزان وذاكرة النتائج"],
-  ["backtest-lab.html","⌁","الاختبارات التاريخية","الشموع والتجارب"]]},
- {title:"العملاء والإعدادات",icon:"⚙",items:[
-  ["","⚙","الإعدادات والربط","ربط MT5 وإدارة الحساب"]]}
-];
-const sections={
- "dashboard.html":[["liveStatus","حالة MT5"],["aiCouncilLive","مجلس الذكاء"],["aiMonitorInline","مراقبة Hybrid AI"],["tradingSettingsPanel","إعدادات التداول"],["accountPerformance","أداء الحساب"],["closedHistory","آخر الصفقات"]],
- "trade-management.html":[["positions","الصفقات المفتوحة"],["protection","الحماية والوقف"],["entryPolicy","قرار Hybrid AI"],["autoClose","جني الأرباح"],["positionManagement","التعزيز والتبريد"],["smartRecovery","التعافي الذكي"],["pending","الأوامر المعلقة"],["recoveryLog","سجل التعافي"]],
- "ai-analysis.html":[["aiResult","نتيجة التحليل"],["diagPanel","التشخيص"]],
- "ai-monitor.html":[["hybridEffectPanel","قرار Hybrid AI"],["gatePanel","أسباب السماح والمنع"],["modelsPanel","أصوات النماذج"],["familiesPanel","الاستراتيجيات والتراكيب"],["botsPanel","البوتات"],["actionsPanel","التعزيز والتبريد والتعافي"],["eventsPanel","سجل الأحداث"]],
- "learning-lab.html":[["strategyAuditPanel","تدقيق الاستراتيجيات"],["liveStatus","التعلّم المباشر"],["runsTable","جولات الاختبار"],["learningStatus","نتائج التعلّم"]],
- "opportunities.html":[["marketStatus","السوق الآن"],["topStrategies","أقوى الاستراتيجيات"],["topCombinations","أفضل التركيبات"],["eventTable","سجل الإشارات"]],
- "backtest-lab.html":[["methodNote","إعدادات الاختبار"],["strategyResults","نتائج الاستراتيجيات"],["comboResults","نتائج التركيبات"]],
- "trade-history.html":[["historyStatus","ملخص النتائج"],["tradesTable","الصفقات المغلقة"],["tradeEventsTable","أحداث التداول"]]
-};
-const slug=page=>page?"/"+page:"/?manage=1";
-const $=(tag,cls,txt)=>{let e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
-const statusText=sidebar.querySelector("#serviceState")?.textContent||"";
-const brand=$("a","brand");brand.href="/dashboard.html";
-brand.innerHTML='<span class="brand-mark" aria-hidden="true">AZ</span><span><b>AL-ZOOL 🇸🇩</b><small>SHADOW SYSTEM · BTC</small></span>';
-const top=$("div","az-nav-head");
-const mobileClose=$("button","az-nav-close","✕");mobileClose.type="button";mobileClose.setAttribute("aria-label","إغلاق القائمة");
-top.append(brand,mobileClose);
-const intro=$("div","az-nav-intro");
-intro.innerHTML='<b>القائمة الرئيسية</b><small>كل قسم في مكان واضح</small>';
-const searchWrap=$("div","az-nav-search");searchWrap.setAttribute("role","search");
-const search=$("input","az-nav-search-input");search.type="search";search.placeholder="ابحث عن صفحة أو وظيفة…";
-search.setAttribute("aria-label","بحث عن صفحة أو وظيفة داخل AL-ZOOL");
-search.autocomplete="off";
-searchWrap.appendChild(search);
-const nav=$("nav","az-nav-menu");nav.setAttribute("aria-label","التنقل الرئيسي");
-const nodes=[];
-for(const group of groups){
- const category=$("section","az-nav-category");
- const title=$("div","side-label",group.title);category.appendChild(title);
- const links=$("div","nav-group");
- for(const [page,icon,label,description] of group.items){
-  const link=$("a","nav"+(page===current?" active":""));
-  link.href=slug(page);link.title=description;
-  if(page===current)link.setAttribute("aria-current","page");
-  const glyph=$("span","az-nav-icon",icon);glyph.setAttribute("aria-hidden","true");
-  const labelEl=$("span","nav-label",label);
-  link.append(glyph,labelEl);
-  links.appendChild(link);
-  nodes.push({category,link,search:(label+" "+description+" "+group.title).toLocaleLowerCase("ar")});
+/* Single shared Shadow System shell; DOM presentation only. */
+(()=>{"use strict";
+const HEADER="<header class=\"ss-hero\"><div class=\"ss-hero-art\" aria-hidden=\"true\"></div><div class=\"ss-logo\"><div class=\"ss-logo-line\"><span class=\"ss-crest\">♛</span><strong>AL-ZOOL</strong><span class=\"ss-flag\" role=\"img\" aria-label=\"علم السودان\"></span></div><div class=\"ss-brand-sub\">SUPER AI TRADING STUDIO</div><div class=\"ss-tagline\" dir=\"rtl\">منصة التداول الذكي الشاملة</div></div><div class=\"ss-hero-right\"><div class=\"ss-account\"><i>♛</i><span id=\"azCurrentUser\">الحساب المتصل</span></div><time id=\"clock\" class=\"ss-clock\">—</time><a class=\"jump\" href=\"/?manage=1\">إدارة الحساب</a></div></header>";
+const MENU="<aside class=\"ss-menu\" aria-label=\"القائمة الرئيسية\"><a href=\"/dashboard.html\" class=\"active\" aria-current=\"page\"><span>لوحة القيادة</span><i aria-hidden=\"true\">⌂</i></a><a href=\"/ai-analysis.html\"><span>تحليل البيتكوين</span><i aria-hidden=\"true\">◫</i></a><a href=\"/dashboard.html#market\"><span>الشموع</span><i aria-hidden=\"true\">▥</i></a><a href=\"/ai-monitor.html#modelsPanel\"><span>مجلس التصويت</span><i aria-hidden=\"true\">◎</i></a><a href=\"/ai-monitor.html\"><span>التحليل الذكي</span><i aria-hidden=\"true\">✦</i></a><a href=\"/opportunities.html\"><span>مختبر الفرص</span><i aria-hidden=\"true\">◇</i></a><a href=\"/learning-lab.html\"><span>عائلات الاستراتيجيات</span><i aria-hidden=\"true\">▱</i></a><a href=\"/opportunities.html#eventTable\"><span>سجل الفرص</span><i aria-hidden=\"true\">▤</i></a><a href=\"/trade-management.html#positions\"><span>الصفقات المفتوحة</span><i aria-hidden=\"true\">⇄</i></a><a href=\"/trade-management.html#pending\"><span>الأوامر المعلقة</span><i aria-hidden=\"true\">◷</i></a><a href=\"/trade-history.html\"><span>الأداء اليومي</span><i aria-hidden=\"true\">▧</i></a><a href=\"/backtest-lab.html\"><span>الاختبار التاريخي</span><i aria-hidden=\"true\">⬡</i></a><a href=\"/trade-management.html#autoClose\"><span>الإعدادات</span><i aria-hidden=\"true\">⚙</i></a><a href=\"/bots-library.html\"><span>مكتبة البوتات</span><i aria-hidden=\"true\">◇</i></a><a href=\"/?manage=1#ownerPairPanel\"><span>الربط والإدارة</span><i aria-hidden=\"true\">⌁</i></a><div id=\"serviceState\" class=\"ss-menu-footer\">جارٍ فحص الخدمة</div></aside>";
+const SECTIONS={"trade-management.html":[["positions","الصفقات المفتوحة"],["autoClose","جني الأرباح"],["protection","الحماية والوقف"],["entryPolicy","قرار الدخول"],["positionManagement","التعزيز والتبريد"],["smartRecovery","التعافي الذكي"],["pending","الأوامر المعلقة"]],"ai-analysis.html":[["aiResult","نتيجة التحليل"],["diagPanel","التشخيص"]],"ai-monitor.html":[["hybridEffectPanel","قرار Hybrid AI"],["gatePanel","أسباب السماح والمنع"],["modelsPanel","أصوات النماذج"],["familiesPanel","الاستراتيجيات والتراكيب"],["botsPanel","البوتات"],["actionsPanel","التعزيز والتبريد والتعافي"],["eventsPanel","سجل الأحداث"]],"learning-lab.html":[["strategyAuditPanel","تدقيق الاستراتيجيات"],["liveStatus","التعلم المباشر"],["runsTable","جولات الاختبار"],["learningStatus","نتائج التعلم"]],"opportunities.html":[["marketStatus","السوق الآن"],["topStrategies","أقوى الاستراتيجيات"],["topCombinations","أفضل التركيبات"],["eventTable","سجل الإشارات"]],"backtest-lab.html":[["methodNote","إعدادات الاختبار"],["strategyResults","نتائج الاستراتيجيات"],["comboResults","نتائج التركيبات"]],"trade-history.html":[["historyStatus","ملخص النتائج"],["tradesTable","الصفقات المغلقة"],["tradeEventsTable","أحداث التداول"]],"bots-library.html":[["activeAdvisors","البوتات التحليلية"],["botsHeading","المكتبة المرجعية"],["ideasHeading","الأفكار"]]};
+const page=(location.pathname.split("/").pop()||"index.html").toLowerCase();
+const mk=(markup)=>{const template=document.createElement("template");template.innerHTML=markup.trim();return template.content.firstElementChild;};
+const hash=()=>{try{return decodeURIComponent(location.hash.slice(1))}catch{return ""}};
+const refreshActive=()=>{const all=[...document.querySelectorAll(".ss-menu a")];const href=location.pathname+location.search+location.hash;const actual=page==="index.html"?"/":"/"+page;let exact=all.find(a=>{const u=new URL(a.href,location.origin);return u.pathname+u.search+u.hash===href});if(!exact)exact=all.find(a=>{const u=new URL(a.href,location.origin);return u.pathname===actual&&!u.hash;});if(!exact)exact=all.find(a=>{const u=new URL(a.href,location.origin);return u.pathname===actual});for(const a of all){a.classList.toggle("active",a===exact);if(a===exact)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")}};
+const buildHeader=(label)=>{const el=mk(HEADER);el.querySelector("#azCurrentUser").removeAttribute("id");el.querySelector(".ss-account span").textContent=label;el.querySelector("#clock").id="ssSharedClock";return el};
+const buildMenu=(status)=>{const el=mk(MENU);const node=el.querySelector("#serviceState");if(status){status.className="ss-menu-footer";node.replaceWith(status)}else{node.removeAttribute("id");node.textContent="AL-ZOOL · SHADOW SYSTEM"}return el};
+const meta=(title)=>mk('<div class="ss-meta"><b>₿ BTC · SHADOW SYSTEM</b><span dir="rtl">'+title+'</span><a href="/dashboard.html">لوحة القيادة ↗</a></div>');
+const tick=()=>{const el=document.getElementById("ssSharedClock");if(el)el.textContent=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",dateStyle:"medium",timeStyle:"short"}).format(new Date())+" · UAE"}; 
+if(document.getElementById("shadow-studio-v2")){refreshActive();window.addEventListener("hashchange",refreshActive);return}
+if(page==="index.html"){
+ const original=document.querySelector("main.wrap");if(!original)return;
+ const studio=document.createElement("div");studio.className="ss-studio ss-portal";original.before(studio);studio.append(original);
+ const top=original.querySelector("header.top");const header=buildHeader("بوابة النظام");const status=document.getElementById("connection");
+ if(status){status.classList.add("ss-portal-status");header.querySelector(".ss-hero-right").prepend(status);}
+ if(top)top.replaceWith(header);else original.prepend(header);
+ header.after(meta("الاتصال والإدارة"));
+ const admin=document.getElementById("adminView"),old=admin?.querySelector(".az-admin-sidebar"),content=admin?.querySelector(".az-admin-content");
+ if(admin&&old&&content){
+ const menu=buildMenu();const logout=document.getElementById("adminSidebarLogoutBtn");if(logout)menu.append(logout);old.replaceWith(menu);
+ const links=[["adminOverview","نظرة عامة"],["ownerPairPanel","ربط MT5"],["adminClients","إدارة العملاء"],["actionPanel","إدارة الصفقات"],["learningPanel","التعلم"],["councilPanel","مجلس الذكاء"],["versionsPanel","الاختبارات"]];
+ const tabs=document.createElement("nav");tabs.className="ss-admin-tabs";for(const [id,title] of links){const a=document.createElement("a");a.href="#"+id;a.textContent=title;tabs.append(a)}const welcome=content.querySelector(".welcome");if(welcome)welcome.after(tabs);else content.prepend(tabs);
  }
- category.appendChild(links);nav.appendChild(category);
+ const client=document.getElementById("clientView");if(client){const link=document.createElement("a");link.className="jump";link.href="/dashboard.html";link.textContent="العودة إلى لوحة القيادة";client.prepend(link)}
+ tick();setInterval(tick,30000);refreshActive();window.addEventListener("hashchange",refreshActive);return
 }
-const empty=$("p","az-nav-empty","ما لقينا صفحة بهذا الاسم.");empty.hidden=true;
-nav.appendChild(empty);
-const resultsFilter=()=>{
- const q=search.value.trim().toLocaleLowerCase("ar");
- let visible=0;
- for(const node of nodes){const show=!q||node.search.includes(q);node.link.hidden=!show;if(show)visible++;}
- for(const group of nav.querySelectorAll(".az-nav-category"))group.hidden=![...group.querySelectorAll(".nav")].some(x=>!x.hidden);
- empty.hidden=visible!==0;
-};
-search.addEventListener("input",resultsFilter);
-const last=$("div","side-bottom");
-last.innerHTML='<span class="live-dot" aria-hidden="true"></span><span>حالة الاتصال</span><small id="serviceState"></small>';
-last.querySelector("#serviceState").textContent=statusText;
-sidebar.replaceChildren(top,intro,searchWrap,nav,last);
-sidebar.id="alzool-site-nav";
-sidebar.setAttribute("aria-label","قائمة AL-ZOOL");
-const key="alzool-ui-sidebar-collapsed";
-let collapsed=false;try{collapsed=localStorage.getItem(key)==="1"}catch{}
-const collapse=$("button","ui-sidebar-toggle","⇤ طي القائمة");collapse.type="button";
-collapse.setAttribute("aria-label","طي أو توسيع القائمة الجانبية");
-sidebar.insertBefore(collapse,nav);
-const isMobile=()=>matchMedia("(max-width:900px)").matches;
-const toggleCollapse=()=>{
- const compact=collapsed&&!isMobile();shell.classList.toggle("ui-collapsed",compact);
- collapse.textContent=compact?"⇥ توسيع القائمة":"⇤ طي القائمة";
- collapse.setAttribute("aria-expanded",String(!compact));
-};
-collapse.addEventListener("click",()=>{collapsed=!collapsed;try{localStorage.setItem(key,collapsed?"1":"0")}catch{}toggleCollapse()});
-const overlay=$("div","az-nav-overlay");
-const mobileTrigger=$("button","az-mobile-trigger","☰  القائمة");mobileTrigger.type="button";
-mobileTrigger.setAttribute("aria-controls","alzool-site-nav");mobileTrigger.setAttribute("aria-expanded","false");
-const mobileBar=$("div","az-mobile-bar");mobileBar.appendChild(mobileTrigger);
-shell.insertBefore(mobileBar,sidebar);
-document.body.appendChild(overlay);
-const close=()=>{shell.classList.remove("az-menu-open");mobileTrigger.setAttribute("aria-expanded","false");document.body.classList.remove("az-nav-lock")};
-const open=()=>{shell.classList.add("az-menu-open");mobileTrigger.setAttribute("aria-expanded","true");document.body.classList.add("az-nav-lock");search.focus()};
-mobileTrigger.addEventListener("click",()=>shell.classList.contains("az-menu-open")?close():open());
-mobileClose.addEventListener("click",close);overlay.addEventListener("click",close);
-nav.addEventListener("click",e=>{if(e.target.closest("a"))close()});
-window.addEventListener("resize",()=>{toggleCollapse();if(!isMobile())close()},{passive:true});
-document.addEventListener("keydown",event=>{
- if(event.key==="Escape"){close();if(document.activeElement===search)search.blur();}
- if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
-  event.preventDefault();if(isMobile())open();else{search.focus();search.select();}
- }
-});
-toggleCollapse();
-const main=shell.querySelector(".main");
-const links=(sections[current]||[]).filter(([id])=>document.getElementById(id));
-if(main&&links.length){
- const shortcuts=$("section","az-page-shortcuts");
- shortcuts.setAttribute("aria-label","انتقال سريع داخل الصفحة");
- const heading=$("div","az-shortcuts-heading");
- heading.innerHTML='<strong>اذهب مباشرة إلى</strong><small>اختر القسم الذي تحتاجه بدون بحث بين البطاقات</small>';
- const items=$("div","az-shortcuts-links");
- for(const [id,label] of links){
-  const a=$("a","az-shortcut",label);a.href="#"+id;
-  a.addEventListener("click",()=>{for(const el of items.children)el.classList.remove("selected");a.classList.add("selected")});
-  items.appendChild(a);
- }
- shortcuts.append(heading,items);
- const topbar=main.querySelector(".topbar");
- if(topbar)topbar.insertAdjacentElement("afterend",shortcuts);else main.prepend(shortcuts);
-}
-// Trade management has many independent control panels. Present one area at
-// a time by default; preserve every form element, event handler and API call.
-if(current==="trade-management.html"&&main){
- const focusIds=["positions","protection","entryPolicy","autoClose","positionManagement","smartRecovery","pending"];
- const cards=focusIds.map(id=>document.getElementById(id)).filter(Boolean);
- const sectionNav=main.querySelector(".section-nav");
- const shortcutSection=main.querySelector(".az-page-shortcuts");
- if(cards.length&&shortcutSection){
-  document.body.classList.add("az-focus-page");
-  if(sectionNav)sectionNav.classList.add("az-old-section-nav");
-  const heading=shortcutSection.querySelector(".az-shortcuts-heading");
-  const showAll=$("button","az-show-all","عرض كل الأقسام");showAll.type="button";
-  heading?.appendChild(showAll);
-  const focus=(id)=>{
-   const chosen=id==="recoveryLog"?"smartRecovery":id;
-   const all=chosen==="all";
-   for(const card of cards){
-    card.classList.add("az-focus-section");
-    card.hidden=!all&&card.id!==chosen;
-   }
-   for(const a of shortcutSection.querySelectorAll("a.az-shortcut")){
-    a.classList.toggle("selected",!all&&(a.hash.slice(1)===id||a.hash.slice(1)===chosen));
-   }
-   showAll.classList.toggle("selected",all);
-   showAll.textContent=all?"اختر قسماً للتركيز":"عرض كل الأقسام";
-  };
-  shortcutSection.addEventListener("click",e=>{
-   const a=e.target.closest("a.az-shortcut");
-   if(!a)return;
-   focus(decodeURIComponent(a.hash.slice(1)));
-  });
-  showAll.addEventListener("click",()=>focus("all"));
-  const selected=decodeURIComponent((location.hash||"").replace(/^#/,""));
-  focus(focusIds.includes(selected)||selected==="recoveryLog"?selected:"positions");
-  window.addEventListener("hashchange",()=>{
-   const id=decodeURIComponent(location.hash.slice(1));
-   if(focusIds.includes(id)||id==="recoveryLog")focus(id);
-  });
- }
-}
-// Navigate back to the main list when deep-linked to a section.
-if(location.hash&&document.getElementById(decodeURIComponent(location.hash.slice(1)))){
- requestAnimationFrame(()=>document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({block:"start"}));
-}
+const shell=document.querySelector(".shell");let main=shell?.querySelector(".main");
+const bots=page==="bots-library.html";
+if(!main&&bots)main=document.querySelector("main.wrap");
+if(!main)return;
+const studio=document.createElement("div");studio.className="ss-studio ss-secondary";
+const workspace=document.createElement("div");workspace.className="ss-workspace";
+const title=(document.title.split("|").pop()||"مركز التداول").trim();
+const status=document.getElementById("serviceState");
+const menu=buildMenu(status);
+const anchor=shell||main;anchor.before(studio);studio.append(buildHeader("AL-ZOOL · BTC"),meta(title),workspace);workspace.append(menu,main);
+if(shell)shell.remove();if(bots){main.classList.add("ss-bots-content");main.classList.remove("wrap")}else main.classList.add("main");
+const items=(SECTIONS[page]||[]).filter(([id])=>document.getElementById(id)); 
+if(items.length){const old=main.querySelector(".section-nav");const tabs=document.createElement("nav");tabs.className="ss-section-tabs";tabs.setAttribute("aria-label","أقسام الصفحة");for(const [id,label] of items){const a=document.createElement("a");a.href="#"+id;a.textContent=label;tabs.append(a)}if(old)old.replaceWith(tabs);else {const top=main.querySelector(".topbar")||main.querySelector(".hero");if(top)top.after(tabs);else main.prepend(tabs)}
+if(page==="trade-management.html"){
+ const cards=items.map(([id])=>document.getElementById(id));const all=document.createElement("button");all.type="button";all.textContent="عرض كل الأقسام";tabs.append(all);
+ const focus=(id)=>{const selected=id==="recoveryLog"?"smartRecovery":id;for(const card of cards){card.classList.add("ss-focus");card.hidden=selected!=="all"&&card.id!==selected}for(const a of tabs.querySelectorAll("a"))a.classList.toggle("active",a.hash==="#"+selected);all.textContent=selected==="all"?"كل الأقسام معروضة":"عرض كل الأقسام";};
+ const apply=()=>focus(items.some(([id])=>id===hash())||hash()==="recoveryLog"?hash():"positions");
+ all.addEventListener("click",()=>focus("all"));window.addEventListener("hashchange",apply);
+ tabs.addEventListener("click",e=>{const a=e.target.closest("a");if(a)focus(a.hash.slice(1));});apply();
+}}
+tick();setInterval(tick,30000);refreshActive();window.addEventListener("hashchange",refreshActive);
+if(hash())requestAnimationFrame(()=>document.getElementById(hash())?.scrollIntoView({block:"start"}));
 })();
