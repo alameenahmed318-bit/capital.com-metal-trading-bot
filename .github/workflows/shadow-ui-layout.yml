@@ -1,0 +1,29 @@
+name: Shadow UI browser layout
+on:
+  pull_request:
+    branches:
+      - deploy/alzool-meeno-btc-demo-20261121
+  push:
+    branches:
+      - work/shadow-layout-containment-20261122
+      - deploy/alzool-meeno-btc-demo-20261121
+    paths:
+      - '**.html'
+      - '**.css'
+      - ui-shell.js
+      - tests/shadow_ui_layout.py
+      - .github/workflows/shadow-ui-layout.yml
+permissions:
+  contents: read
+jobs:
+  layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/shadow_ui_layout.py
