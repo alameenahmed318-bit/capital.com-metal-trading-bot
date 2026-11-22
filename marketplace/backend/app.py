@@ -2442,4 +2442,13 @@ if __name__=="__main__":
     bootstrap_owner()
     port=int(os.getenv("PORT","10000"))
     print("AL-ZOOL connection/licensing service listening on",port,flush=True)
-    ThreadingHTTPServer((os.getenv("ALZOOL_BIND_HOST","0.0.0.0"),port),Handler).serve_forever()
+    # This release is the owner-approved unified pilot. Starts with NO entry
+    # market selected, even if an older account had trading_enabled=true.
+    # Existing exit management uses the same isolated account settings.
+    if os.getenv("ALZOOL_ENABLE_DUAL_PILOT","1")=="1":
+        os.environ["ALZOOL_ENABLE_DUAL_PILOT"]="1"
+        from dual_market_server import run as run_dual_market
+        print("AL-ZOOL DUAL MARKET startup: entry selection OFF",flush=True)
+        run_dual_market()
+    else:
+        ThreadingHTTPServer((os.getenv("ALZOOL_BIND_HOST","0.0.0.0"),port),Handler).serve_forever()
