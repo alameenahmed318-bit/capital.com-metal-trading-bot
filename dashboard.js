@@ -115,6 +115,10 @@ async function refresh(){
   const dailyTradesEl=$("dailyTrades");if(dailyTradesEl)dailyTradesEl.textContent=daily.trades==null?"—":fmt(daily.trades);
   $("dailyMeta").textContent="صفقات محفوظة في السجل: "+fmt(s.history_records||0)+" · المراكز المغلقة: "+fmt(s.closed_count||0)+(s.history_error?" · خطأ السجل: "+s.history_error:"");
   const rows=Array.isArray(s.closed_trades)?s.closed_trades:[];
+ if($("studioDayNet")){$("studioDayNet").textContent=daily.net==null?"—":fmt(daily.net)+" "+currency;setFloatingColor($("studioDayNet"),daily.net);}
+ if($("studioEquity"))$("studioEquity").textContent=s.equity==null?"—":fmt(s.equity)+" "+currency;
+ if($("dailyNet")){$("dailyNet").style.removeProperty("color");setFloatingColor($("dailyNet"),daily.net);}
+ 
   azDrawClientMiniChart(rows,s.currency||"");
   if($("azPerformanceNote"))$("azPerformanceNote").textContent="نتائج آخر "+rows.length+" مركز مغلق مستلم من سجل MT5؛ ليست توقعات";
   $("closedTrades").innerHTML=rows.length?rows.map(t=>{
@@ -137,6 +141,9 @@ async function refresh(){
 }
 
 function azUpdateConnectionDisplay(connected,lastSeen=null){
+ const live=$("studioLive");const dot=$("studioDot");
+ if(live)live.textContent=connected?"MT5 متصل":"MT5 غير متصل";
+ if(dot)dot.classList.toggle("online",connected);
  const title=$("azBannerTitle"),sub=$("azBannerSub"),icon=$("azBannerCheck"),badge=$("azBannerMt5"),badgeText=$("azBannerMt5Text");
  if(title)title.textContent=connected?"حسابك نشط وMT5 متصل":"حسابك معتمد — MT5 غير متصل";
  if(sub)sub.textContent=connected?"بيانات الطرفية متاحة؛ التداول يعتمد على حالة التفعيل":"تحتاج اتصال MT5 فعلي لاستقبال الأسعار والمراكز";
@@ -314,6 +321,7 @@ $("refreshBtn").addEventListener("click",refresh);
 
 /* Shadow System visual composition. Read-only widgets use authenticated existing APIs. */
 function shadowLayout(){
+ if(document.getElementById("shadow-studio-v2"))return;
  document.body.classList.add("shadow-dashboard");
  const main=document.querySelector(".main");
  if(!main)return;
