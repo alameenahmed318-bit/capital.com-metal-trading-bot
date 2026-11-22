@@ -92,3 +92,10 @@ body{font-family:Arial,Tahoma,sans-serif!important;background:#030714!important;
 .ss-secondary .ss-bots-content .rating{color:#d5a9ff}.ss-secondary .ss-bots-content .tag,.ss-secondary .ss-bots-content .capsule{background:#172249!important;color:#c5d5fa!important;border-color:#4d62a5!important}
 @media(max-width:850px){.ss-portal .admin-grid,.ss-portal .login-layout{grid-template-columns:1fr!important}.ss-portal .az-kpi-grid,.ss-portal .az-account-quick{grid-template-columns:repeat(2,minmax(0,1fr))}.ss-secondary .topbar,.ss-portal .welcome{padding:9px!important}}
 @media(max-width:650px){.ss-portal #adminView:not(.hidden){grid-template-columns:1fr!important}.ss-portal .az-admin-content{grid-column:1}.ss-secondary .ss-menu,.ss-portal .ss-menu{max-height:none}.ss-meta{gap:6px;flex-wrap:wrap}.ss-secondary .topbar h1,.ss-portal .welcome h1{font-size:20px!important}}
+
+/* Never override authorization-driven hidden attributes with layout state. */
+.ss-secondary .ss-focus-hidden{display:none!important}
+.ss-portal label{color:#c1d0ea!important}.ss-portal input[type=checkbox]{width:auto!important;display:inline-block!important;margin:0 0 0 6px!important}.ss-portal .welcome h1 span{color:#c18cff}.ss-portal .client-row{border-color:#3b5c93!important}.ss-portal .pill.online{background:#0d352b!important;color:#44f2a3!important}.ss-portal .pill.offline{background:#321c30!important;color:#ffab86!important}
+.ss-secondary .switch input:checked+span,.ss-secondary .switch input:checked+.slider{background:#7542d1!important}
+.ss-secondary .jump,.ss-portal .jump{background:#081431}
+.ss-secondary .ss-menu,.ss-portal .ss-menu{align-self:start}
