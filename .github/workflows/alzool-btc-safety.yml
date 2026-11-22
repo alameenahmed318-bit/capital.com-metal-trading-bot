@@ -7,6 +7,7 @@ on:
       - work/alzool-fast-strategy-lab-20261122
       - work/alzool-strategy-evidence-20261122
       - work/backtest-market-selector-20261122
+      - work/alzool-stress-learning-20261122
   pull_request:
     branches:
       - work/alzool-foundation-20261114
@@ -26,6 +27,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_dual_market_gateway.py -v
       - name: Check research comparison safety
         run: python -m unittest discover -s tests -p test_strategy_research.py -v
+      - name: Check stress learning and chronological validation
+        run: python -m unittest discover -s tests -p test_stress_learning.py -v
       - name: Check backend syntax
         run: python -m compileall -q marketplace/backend tests
       - name: Check BTCUSD market gates, learning and advisor signals
