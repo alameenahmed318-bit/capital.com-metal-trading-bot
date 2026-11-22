@@ -83,18 +83,23 @@ function updateChrome(){
 }
 async function mount(){
  updateChrome();
- try{token=await auth();if(!token)return;const initial=await gateway("/api/multi-market/status");if(!initial.ok)return;
+ try{
  const node=document.createElement("section");node.id="mm-selector";node.setAttribute("aria-label","اختيار سوق التداول");
  node.innerHTML='<div class="mm-options"><button type="button" id="mm-XAUUSD"><b>◆ الذهب · XAUUSD</b><small>جارٍ الفحص</small></button><button type="button" id="mm-BTCUSD"><b>₿ البيتكوين · BTCUSD</b><small>جارٍ الفحص</small></button></div><div class="mm-info"><b id="mm-market-state">جارٍ التحقق</b><a href="/?manage=1#ownerPairPanel">ربط السوق المعروض مع MT5 ↗</a></div>';
  const style=document.createElement("style");style.textContent='#mm-selector{direction:rtl;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 8px;padding:7px 9px;border:1px solid #3566ae;border-radius:8px;background:linear-gradient(115deg,#08172e,#170b32);box-shadow:0 0 9px #236dff33;color:#edf4ff}#mm-selector .mm-options{display:flex;gap:6px;flex:1}#mm-selector button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;flex:1;min-width:0;background:#08132a;color:#dce8ff;border:1px solid #3d5c91;padding:7px 10px;border-radius:6px;font-size:12px;cursor:pointer}#mm-selector button.is-view{border-color:#b076ff;box-shadow:0 0 9px #a14fff77}#mm-selector button.is-active{border-color:#33ef82}#mm-selector button small{font-size:10px;color:#9eb7d9}#mm-selector button#mm-XAUUSD b{color:#f3cc69}#mm-selector button#mm-BTCUSD b{color:#ffae56}#mm-selector .mm-info{display:flex;flex-direction:column;gap:4px;font-size:11px;min-width:0}#mm-selector a{color:#bb9aff}#mm-selector button:disabled{opacity:.6}@media(max-width:650px){#mm-selector .mm-options{flex-basis:100%}#mm-selector .mm-info{font-size:10px}}';
  document.head.append(style);
- const hero=document.querySelector(".ss-hero,.hero"),main=document.querySelector(".ss-studio")||document.body;
+ const hero=document.querySelector(".ss-market-strip,.ss-hero,.hero"),main=document.querySelector(".ss-studio")||document.body;
  if(hero)hero.after(node);else main.prepend(node);
- for(const m of allowed)document.getElementById("mm-"+m).addEventListener("click",()=>choose(m));
+ for(const m of allowed){const btn=document.getElementById("mm-"+m);btn.disabled=true;btn.addEventListener("click",()=>choose(m));}
+ token=await auth();
+ if(!token){showMessage("سجّل الدخول لعرض حالة السوقين.");return}
+ const initial=await gateway("/api/multi-market/status");
+ if(!initial.ok){showMessage("لم يكتمل التحقق من الربط؛ لا يمكن تفعيل أي سوق.");return}
+ for(const m of allowed)document.getElementById("mm-"+m).disabled=false;
  draw(initial.data);
  try{const notice=sessionStorage.getItem("alzool_market_notice");if(notice){showMessage(notice+" — عرض "+names[viewed]+" فقط");sessionStorage.removeItem("alzool_market_notice")}}catch{}
  setInterval(update,5000);
- }catch{}
+ }catch{showMessage("تعذر التحقق من اتصال المحرك؛ اختيار السوق لا يفعّل التداول.")}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(mount,100));else setTimeout(mount,100);
 })();
