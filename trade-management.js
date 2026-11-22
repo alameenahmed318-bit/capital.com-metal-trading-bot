@@ -283,6 +283,40 @@ function normalizePmDigits(input){
  field.addEventListener("change",()=>normalizePmDigits(field));
 });
 
+async function refreshPositionManagementDiagnostics(){
+ const out=$("pmDiagnosticResult"),btn=$("refreshPositionManagementDiagnostics");
+ if(!out||!btn)return;
+ btn.disabled=true;
+ out.textContent="جارٍ فحص إعدادات السيرفر وآخر حالة MT5...";
+ try{
+  const d=await api("/api/ai/actions");
+  const pm=d.position_management_status||{};
+  const flag=v=>v===true?"ON":v===false?"OFF":"غير معروف";
+  const lines=[
+   "اتصال MT5: "+(pm.mt5_connected?"متصل":"غير متصل أو بيانات قديمة"),
+   "السيرفر - التداول المركزي: "+flag(pm.trading_enabled),
+   "السيرفر - السماح بإدارة المراكز: "+flag(pm.central_actions_enabled),
+   "داخل MT5 - InpEnableCentralTrading: "+flag(pm.mt5_central_trading_enabled),
+   "داخل MT5 - InpEnableCentralPositionManagement: "+flag(pm.mt5_position_management_enabled),
+   "إعداد التعزيز: "+flag(pm.addon_enabled),
+   "إعداد التبريد: "+flag(pm.cooling_enabled),
+   "قناة طلبات الإدارة: "+(pm.polling_ready?"جاهزة لطلب تصريح":"غير جاهزة"),
+   "سبب منع التنفيذ: "+(pm.reason_ar||"لم تصل تفاصيل التشخيص"),
+   "قرار BUY: "+(d.buy||"HOLD")+" | قرار SELL: "+(d.sell||"HOLD"),
+   "سبب قرار الإدارة: "+(d.reason_ar||"لا يوجد")
+  ];
+  for(const a of (d.actions||[])){
+   lines.push(String(a.side||"")+" | "+String(a.action||"HOLD")+
+     " | حجم مقترح: "+String(a.lot_cap??0)+" | "+String(a.reason_ar||""));
+  }
+  lines.push("هذه نتيجة قراءة فقط؛ لا تعني فتح صفقة أو الموافقة على المخاطرة.");
+  out.textContent=lines.join("\n");
+ }catch(e){
+  out.textContent="تعذر فحص التنفيذ: "+(e.message||"خطأ غير معروف")+
+   "\nتأكد من تسجيل الدخول بحساب المالك.";
+ }finally{btn.disabled=false;}
+}
+
 async function boot(){
  try{
   const cfg=await fetch("/api/config").then(r=>r.json());
@@ -295,9 +329,11 @@ async function boot(){
   $("entryPolicy").hidden=(access.role!=="owner");
   try{await loadCloseSettings();}catch(settingsError){$("closeSettingsMessage").textContent=settingsError.message;}
   await refresh();
+  await refreshPositionManagementDiagnostics();
  }catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("dataNotice").innerHTML="<b>تعذر التحقق من الحساب</b><span>"+esc(e.message)+" — ارجع إلى صفحة الدخول.</span>";}
 }
 $("refreshBtn").addEventListener("click",refresh);
+$("refreshPositionManagementDiagnostics").addEventListener("click",refreshPositionManagementDiagnostics);
 $("saveCloseSettings").addEventListener("click",saveCloseSettings);
 $("saveProtectionSettings").addEventListener("click",saveProtectionSettings);
 $("savePositionManagement").addEventListener("click",savePositionManagement);
