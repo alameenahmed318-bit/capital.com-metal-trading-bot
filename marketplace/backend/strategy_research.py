@@ -107,6 +107,19 @@ def run(sb,owner_email):
         for market in MARKETS:reports[market]={"status":"UNAVAILABLE","policy":"RESEARCH_ONLY","error":type(exc).__name__}
         _publish(reports)
         return
+    # Research tasks are sequential, bounded, and independent of live entry.
+    # The stress profile is deduplicated by archive content, not by test runs.
+    from stress_learning import run_market
+    def stress_cycle():
+        for market in MARKETS:
+            try:
+                result=run_market(sb,uid,market)
+                print("STRESS_LEARNING_RESULT",market,json.dumps({k:result.get(k) for k in
+                     ("status","candles","training_windows","validation_windows","changed_strategies",
+                      "changed_combinations","verdict","persisted","reused_same_archive")},ensure_ascii=False),flush=True)
+            except Exception as exc:
+                print("STRESS_LEARNING_ERROR",market,type(exc).__name__,flush=True)
+    stress_cycle()
     for market in MARKETS:
         try:
             rows=load_history(sb,uid,market)
@@ -117,3 +130,6 @@ def run(sb,owner_email):
         reports[market]=result
         _publish(reports)
         print("STRATEGY_REPLAY_V2",market,json.dumps(result,ensure_ascii=False),flush=True)
+    while True:
+        time.sleep(1800)
+        stress_cycle()
