@@ -48,7 +48,8 @@
 <div class="lab-controls">
 <label>الفترة التاريخية<select id="historyDays"><option value="30">آخر 30 يوم</option><option value="90" selected>آخر 90 يوم</option><option value="180">آخر 180 يوم</option><option value="365">آخر سنة</option><option value="730">آخر سنتين</option><option value="0">كل السجل المحفوظ</option></select></label>
 <label>الفريم المحفوظ<select id="timeframe" disabled><option>جارٍ تحميل الفريمات</option></select></label>
-<label>رمز السوق<select id="symbol" disabled><option>جارٍ تحميل الرموز</option></select></label>
+<label>سوق الاختبار<select id="backtestMarket"><option value="BTCUSD">البيتكوين · BTCUSD</option><option value="XAUUSD">الذهب · XAUUSD</option></select></label>
+<label>رمز الوسيط المحفوظ<select id="symbol" disabled><option>جارٍ تحميل الرموز</option></select></label>
 <label>حد الشموع<select id="sampleLimit"><option value="1000">1000 شمعة</option><option value="2500">2500 شمعة</option><option value="5000" selected>5000 شمعة</option><option value="10000">10000 شمعة</option></select></label>
 <label>حجم اللوت<input id="lotSize" type="number" min="0.01" max="10" step="0.01" value="0.01"></label>
 <label>عمولة اللوت ذهاب وعودة<input id="commissionPerLot" type="number" min="0" step="0.01" value="0"></label>
@@ -57,7 +58,7 @@
 <label>هدف الربح (مضاعف ATR)<input id="tpAtr" type="number" min="0.1" max="20" step="0.1" value="2"></label>
 <label>التريلينج (مضاعف ATR، صفر للتعطيل)<input id="trailAtr" type="number" min="0" max="10" step="0.1" value="1"></label>
 <label>أقصى مدة للصفقة (شموع)<input id="maxHoldBars" type="number" min="1" max="500" step="1" value="48"></label>
-<div class="lab-actions"><button id="runBtn" class="refresh" type="button">بدء الاختبار</button><span class="lab-tag" id="runStatus">جارٍ التحقق من الأرشيف</span></div>
+<div class="lab-actions"><button id="runBtn" class="refresh" type="button" disabled>بدء الاختبار</button><button id="cancelTest" class="refresh" type="button" hidden>إلغاء الاختبار</button><span class="lab-tag" id="runStatus">جارٍ التحقق من الأرشيف</span></div>
 </div>
 <div class="lab-progress"><span id="progressBar"></span></div>
 <div class="lab-note" id="methodNote"><b>منهجية المحاكاة:</b> دخول عند افتتاح الشمعة التالية، مع وقف خسارة وهدف ربح محسوبين بمضاعفات ATR، وتريلينج اختياري وحد أقصى لمدة الصفقة. تُفحص أسعار High/Low لكل شمعة، ويُحتسب الوقف أولاً عند غموض ترتيب لمس الوقف والهدف. النتائج مستقلة لكل نموذج وليست محفظة واحدة أو تنفيذًا حقيقيًا. تُخصم تكاليف السبريد والعمولة والانزلاق المقدرة؛ لا تشمل السواب أو تأخر التنفيذ أو الأوامر المعلقة والتعزيز والتبريد.</div></section>
@@ -74,11 +75,16 @@
 <footer>AL-ZOOL SHADOW SYSTEM <span>•</span> مختبر بحثي مستقل · لا ينفذ الصفقات</footer></main></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/owner-strategy-loader.js?v=role-owner-20261115"></script>
 <script>
-const $=id=>document.getElementById(id);let accessToken=null,running=false,historyMeta=null;
+const $=id=>document.getElementById(id);let accessToken=null,running=false,historyMeta=null,metaGeneration=0,runAbort=null;
+const markets=["BTCUSD","XAUUSD"];
+let initialMarket=new URLSearchParams(location.search).get("market")||window.ALZOOL_MARKET_VIEW?.()||"BTCUSD";
+$("backtestMarket").value=markets.includes(initialMarket)?initialMarket:"BTCUSD";
+function marketPath(market,path){if(!markets.includes(market))throw Error("سوق غير صالح");return "/market/"+market+path;}
+function ensureNotCancelled(){if(runAbort?.signal.aborted)throw new DOMException("تم إلغاء الاختبار","AbortError");}
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-async function api(path,timeout=60000){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{},signal:AbortSignal.timeout(timeout)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
+async function api(path,timeout=60000,signal=null){const r=await fetch(path,{headers:accessToken?{Authorization:"Bearer "+accessToken}:{},signal:signal?AbortSignal.any([signal,AbortSignal.timeout(timeout)]):AbortSignal.timeout(timeout)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"API "+r.status);return d}
 function setState(message){$("runStatus").textContent=message}
-async function apiPostLearning(run){const body=JSON.stringify({run});if(body.length>1500000)throw Error("حجم سجل التعلم تجاوز الحد الآمن؛ قلّل تفاصيل التشخيص وأعد الاختبار.");const r=await fetch("/api/backtest/learning",{method:"POST",headers:{"Content-Type":"application/json",...(accessToken?{Authorization:"Bearer "+accessToken}:{})},body,signal:AbortSignal.timeout(120000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر حفظ ذاكرة التعلم (HTTP "+r.status+")");if(!d.saved)throw Error("لم يؤكد الخادم حفظ جولة التعلم");return d}
+async function apiPostLearning(run,market){const body=JSON.stringify({run});if(body.length>1500000)throw Error("حجم سجل التعلم تجاوز الحد الآمن؛ قلّل تفاصيل التشخيص وأعد الاختبار.");const r=await fetch(marketPath(market,"/api/backtest/learning"),{method:"POST",headers:{"Content-Type":"application/json",...(accessToken?{Authorization:"Bearer "+accessToken}:{})},body,signal:AbortSignal.timeout(120000)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"تعذر حفظ ذاكرة التعلم (HTTP "+r.status+")");if(!d.saved)throw Error("لم يؤكد الخادم حفظ جولة التعلم");return d}
 function buildLearningPolicy(runs,current){
  const out={};
  const same=(a,b)=>Math.abs(Number(a||0)-Number(b||0))<1e-8;
@@ -108,13 +114,23 @@ function classifyRegime(z,spreadPrice,point){
  return base+(spreadPrice>point*35?"_high_spread":"_normal_spread");
 }
 async function loadHistoryMeta(){
-  const d=await api("/api/backtest/history?days=90&limit=1000");
-  historyMeta=d;
-  $("timeframe").innerHTML=d.available_timeframes.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
-  $("symbol").innerHTML=d.available_symbols.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
-  $("timeframe").disabled=!d.available_timeframes.length;$("symbol").disabled=!d.available_symbols.length;
-  $("timeframe").value=d.timeframe;$("symbol").value=d.symbol;
-  setState("الأرشيف جاهز · "+d.count+" شمعة · "+d.timeframe);
+  const generation=++metaGeneration,market=$("backtestMarket").value;
+  historyMeta=null;$("runBtn").disabled=true;$("symbol").disabled=true;$("timeframe").disabled=true;
+  $("symbol").innerHTML="<option value=''>جارٍ التحميل</option>";$("timeframe").innerHTML="<option value=''>جارٍ التحميل</option>";
+  setState("تحميل أرشيف "+market+"...");
+  try{
+   const d=await api(marketPath(market,"/api/backtest/history?days=90&limit=1000&meta=1"));
+   if(generation!==metaGeneration)return;
+   const symbols=(d.available_symbols||[]).filter(x=>String(x).toUpperCase().startsWith(market));
+   if(!symbols.length)throw Error("لا توجد شموع محفوظة لهذا السوق");
+   historyMeta=d;
+   $("timeframe").innerHTML=d.available_timeframes.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
+   $("symbol").innerHTML=symbols.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
+   $("timeframe").value=d.timeframe;$("symbol").value=d.symbol;
+   $("timeframe").disabled=!d.available_timeframes.length;$("symbol").disabled=false;
+   $("runBtn").disabled=!$("timeframe").value||!$("symbol").value;
+   setState("أرشيف "+market+" جاهز · "+d.symbol+" · "+d.timeframe+" · اختبار فقط");
+  }catch(e){if(generation!==metaGeneration)return;setState(market+" — "+e.message);}
 }
 async function boot(){try{
   const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");
@@ -181,7 +197,7 @@ function table(rows,currency){
  rows.slice(0,20).map((x,i)=>{const win=x.n?x.wins/x.n*100:0,pf=x.grossLoss?x.grossWins/x.grossLoss:x.grossWins>0?Infinity:0;return "<tr><td>"+(i+1)+"</td><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td>"+win.toFixed(1)+"%</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net,currency)+"</td><td>"+(pf===Infinity?"∞":pf.toFixed(2))+"</td><td>"+money(x.maxDD,currency)+"</td></tr>"}).join("")+"</tbody></table>";
 }
 async function run(){
- if(running)return;running=true;const btn=$("runBtn");btn.disabled=true;btn.textContent="جارٍ الاختبار…";$("progressBar").style.width="0%";
+ if(running||!historyMeta)return;running=true;runAbort=new AbortController();const market=$("backtestMarket").value,btn=$("runBtn");$("backtestMarket").disabled=true;$("symbol").disabled=true;$("timeframe").disabled=true;$("cancelTest").hidden=false;$("cancelTest").disabled=false;btn.disabled=true;btn.textContent="جارٍ الاختبار…";$("progressBar").style.width="0%";
  try{
   await window.ALZOOL_STRATEGY_READY;
   if(window.ALZOOLStrategyEngine.size!==200)throw Error("عدد الاستراتيجيات المسجلة ليس 200؛ تم إيقاف الاختبار.");
@@ -189,7 +205,8 @@ async function run(){
   if(!tf||!symbol)throw Error("لا توجد فريمات تاريخية محفوظة بعد.");
   setState("تحميل الشموع التاريخية من قاعدة البيانات…");
   const qs=new URLSearchParams({days:String(days),limit:String(limit),timeframe:tf,symbol});
-  const h=await api("/api/backtest/history?"+qs.toString(),120000),candles=h.candles||[];
+  const h=await api(marketPath(market,"/api/backtest/history?"+qs.toString()),120000,runAbort.signal),candles=h.candles||[];
+  ensureNotCancelled();if(h.symbol!==symbol||h.timeframe!==tf||!String(symbol).toUpperCase().startsWith(market))throw Error("بيانات الاختبار لا تطابق السوق المطلوب");
   if(candles.length<52)throw Error("البيانات غير كافية. المتاح "+candles.length+" شمعة؛ نحتاج 52 على الأقل.");
   const lot=Number($("lotSize").value),commission=Number($("commissionPerLot").value),slippage=Number($("slippagePoints").value);
   const slAtr=Number($("slAtr").value),tpAtr=Number($("tpAtr").value),trailAtr=Number($("trailAtr").value),maxHoldBars=Math.floor(Number($("maxHoldBars").value));
@@ -197,11 +214,12 @@ async function run(){
   const strategies=new Map(window.ALZOOLStrategyEngine.list().map(x=>[x.id,{...metrics(),id:x.id,name:x.name}]));
   const combinations=new Map();let strategyTrades=0,strategyNet=0,suppressedSignals=0;
   const currency=candles.at(-1).currency||"عملة الحساب";
-  const priorLearning=await api("/api/backtest/learning?limit=100");
+  const priorLearning=await api(marketPath(market,"/api/backtest/learning?limit=100"),60000,runAbort.signal);ensureNotCancelled();
   const policy=buildLearningPolicy(priorLearning.runs||[],{symbol,timeframe:tf,account_currency:currency,lot_size:lot,commission_per_lot:commission,slippage_points:slippage,stop_atr:slAtr,target_atr:tpAtr,trailing_atr:trailAtr,max_holding_bars:maxHoldBars});
   const start=50,end=candles.length-1,points=end-start,validationStart=start+Math.floor(points*.7);
   const strategyPositions=new Map(),comboPositions=new Map();
   for(let i=start;i<end;i++){
+   ensureNotCancelled();
    const history=candles.slice(0,i+1),current=Number(history.at(-1).close);
    const point=Number(history.at(-1).point_size||0),spread=Number(history.at(-1).spread_points||0)*point;
    const result=window.ALZOOLStrategyEngine.evaluate({candles:history,tick:{bid:current,ask:current+Math.max(spread,0.000001)}});
@@ -264,13 +282,22 @@ async function run(){
     summary:{strategy_net_sum:strategyNet,validation_strategy_net_sum:validationNet,strategy_trade_count:strategyTrades,suppressed_signals:suppressedSignals,validation_start_index:validationStart,overall_strategy_count:200,overall_combination_count:1000},
     strategy_results:strategyRows,combination_results:comboRows,
     diagnostics:{simulation:{stop_atr:slAtr,target_atr:tpAtr,trailing_atr:trailAtr,max_holding_bars:maxHoldBars,one_position_per_model:true,ohlc_intrabar_rule:"conservative_stop_first",end_of_sample:"close_at_final_candle"},validation_share:0.30,policy_rules:"Only comparable prior runs (same symbol, timeframe, currency, lot and costs) validation metrics can suppress a model; minimum 30 trades, negative net and profit factor below 0.90.",regime_method:"EMA20/EMA50 trend plus historical spread bucket.",warning:"Independent model results are not one combined account portfolio."}};
-  const saved=await apiPostLearning(runRecord);
+  ensureNotCancelled();$("cancelTest").disabled=true;setState("حفظ نتائج "+market+"...");const saved=await apiPostLearning(runRecord,market);
   $("methodNote").innerHTML+="<br><b>ذاكرة التعلم:</b> تم حفظ الجولة "+esc(runRecord.run_key)+". النصف الأول/70% للتدريب الوصفي وآخر 30% للتحقق؛ الجولة القادمة تستخدم نتائج التحقق السابقة فقط. تم كبح "+suppressedSignals+" إشارة بناءً على سجل سابق سلبي مؤكد. <br>تعلم السيرفر المستقل: "+esc(saved.server_learning?.status||"LOADING")+"؛ يعيد تقييم شموع M1 على مكتبة التداول نفسها، ولا ينقل أوزان مكتبة المتصفح المختلفة." ;
   $("progressBar").style.width="100%";setState("اكتمل الاختبار وحُفظت جولة التعلم · "+candles.length+" شمعة · "+tf+" · "+h.symbol);
- }catch(e){setState(e.message);const msg="<div class='lab-state'>"+esc(e.message)+"</div>";$("strategyResults").innerHTML=msg;$("comboResults").innerHTML=msg}
- finally{running=false;btn.disabled=false;btn.textContent="إعادة الاختبار"}
+ }catch(e){setState(e.name==="AbortError"?"تم إلغاء الاختبار دون حفظ جولة جديدة":e.message);const msg="<div class='lab-state'>"+esc(e.message)+"</div>";$("strategyResults").innerHTML=msg;$("comboResults").innerHTML=msg}
+ finally{running=false;runAbort=null;$("backtestMarket").disabled=false;$("symbol").disabled=!historyMeta;$("timeframe").disabled=!historyMeta;$("cancelTest").hidden=true;btn.disabled=!historyMeta;btn.textContent="إعادة الاختبار"}
 }
 $("runBtn").addEventListener("click",run);
+$("cancelTest").addEventListener("click",()=>{if(runAbort){runAbort.abort();setState("إلغاء الاختبار...")}});
+$("backtestMarket").addEventListener("change",()=>{
+ if(running)return;
+ const url=new URL(location.href);url.searchParams.set("market",$("backtestMarket").value);history.replaceState(null,"",url);
+ for(const id of ["barCount","points","tradeCount","netProfit"])$(id).textContent="—";
+ $("progressBar").style.width="0%";
+ for(const id of ["strategyResults","comboResults"])$(id).textContent="بانتظار اختبار السوق المختار";
+ loadHistoryMeta();
+});
 $("timeframe").addEventListener("change",()=>setState("تم تغيير الفريم؛ اضغط بدء الاختبار."));
 $("symbol").addEventListener("change",()=>setState("تم تغيير الرمز؛ اضغط بدء الاختبار."));
 boot();
