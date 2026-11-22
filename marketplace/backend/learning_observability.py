@@ -86,14 +86,20 @@ def live_learning_health(market_symbol, current, last_decision, profile, now=Non
                           same_market_symbol(current.get("symbol"), market_symbol))
     candles = current.get("closed_candles") or []
     last_bar = _nonnegative_int(candles[0].get("time")) if candles and isinstance(candles[0], dict) else 0
+    candle_age = max(0, int(now.timestamp()) - last_bar) if last_bar else None
+    # A 30-second terminal heartbeat is not proof that its M1 market candles are fresh.
+    # MT5 can keep sending Friday's bars when gold is closed or a feed is stalled.
+    candle_fresh = bool(candle_age is not None and candle_age <= 180)
     evaluated_bar = _nonnegative_int(decision.get("bar_time"))
-    decision_current = bool(terminal_fresh and evaluated_bar > 0 and evaluated_bar == last_bar)
+    decision_current = bool(terminal_fresh and candle_fresh and evaluated_bar > 0 and evaluated_bar == last_bar)
     diagnostics = decision.get("learning") if decision_current else {}
     status = str((diagnostics or {}).get("status") or "NO_CURRENT_CANDLE_ANALYSIS")
     return {
         "terminal_fresh": terminal_fresh,
         "terminal_age_seconds": round(age, 1) if age is not None else None,
         "last_closed_bar": last_bar or None,
+        "last_closed_bar_age_seconds": candle_age,
+        "closed_candle_fresh": candle_fresh,
         "last_evaluated_bar": evaluated_bar or None,
         "decision_current": decision_current,
         "candle_learning_status": status,
