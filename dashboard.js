@@ -1,8 +1,8 @@
 let supabaseClient=null,accessToken=null,mt5Connected=false,autoTradingBusy=false;
-let activeMarketSymbol="BTCUSD";
+let activeMarketSymbol=window.ALZOOL_MARKET_VIEW?.()||"BTCUSD";
 function setMarketChart(symbol){
- const value=String(symbol||"BTCUSD").toUpperCase();
- if(!value.startsWith("BTCUSD"))return;
+ const value=String(symbol||window.ALZOOL_MARKET_VIEW?.()||"BTCUSD").toUpperCase();
+ if(!/^(BTCUSD|XAUUSD)/.test(value))return;
  activeMarketSymbol=value;
  if(document.getElementById("marketChartTitle"))document.getElementById("marketChartTitle").textContent=value+" · M1";
  if(document.getElementById("shadowMarketSymbol"))document.getElementById("shadowMarketSymbol").textContent=value;
@@ -340,7 +340,7 @@ function shadowLayout(){
  chart.querySelector("label.market-tag")?.remove();
  chart.querySelector(".chart-foot").textContent="شموع M1 من حساب MT5 المتصل · لا توجد أسعار أو إشارات افتراضية";
  chart.querySelector(".card-title").insertAdjacentHTML("beforeend",'<strong id="shadowChartPrice" class="shadow-price-label">—</strong>');
- setMarketChart("BTCUSD");
+ setMarketChart(window.ALZOOL_MARKET_VIEW?.()||"BTCUSD");
  const ai=document.createElement("article");ai.className="card shadow-ai-panel";
  ai.innerHTML='<div class="shadow-ai-top"><div><b>AL-ZOOL AI</b><div class="shadow-ai-sub">المحرك الذكي المباشر</div></div><span class="shadow-crown" aria-hidden="true">♛</span></div><div class="shadow-ai-metrics"><div id="shadowSignal" class="shadow-signal" data-signal="WAIT"><small>الإشارة الحالية</small><strong>WAIT</strong></div><div class="shadow-confidence"><small>ثقة المحرك</small><strong id="shadowConfidence">—</strong><div class="shadow-meter"><i id="shadowMeterFill"></i></div></div></div><div class="shadow-ai-row"><span>وضع السوق</span><b id="shadowRegime">—</b></div><div class="shadow-ai-row"><span>حالة التنفيذ</span><b id="shadowExecution">بانتظار التحقق</b></div><div class="shadow-ai-row"><span>المساهمة الفعلية للنماذج</span><b id="shadowVotesUsed">—</b></div><div class="shadow-reason" id="shadowReason">بانتظار قرار حديث من المحرك.</div><a class="shadow-details-link" href="/ai-monitor.html">تفاصيل القرار وأسباب الدخول أو الانتظار ↗</a>';
  const stage=document.createElement("section");stage.className="shadow-stage";stage.append(chart,ai);kpi.after(stage);
@@ -417,7 +417,7 @@ async function shadowRefreshMarket(){
  const host=$("shadowCandleChart");if(!host){shadowMarketBusy=false;return;}
  try{
   const data=await api("/api/market/context");
-  if(!String(data.symbol||"").toUpperCase().startsWith("BTCUSD"))throw Error("الرمز غير مطابق لمحرك البيتكوين");
+  if(!String(data.symbol||"").toUpperCase().startsWith(window.ALZOOL_MARKET_VIEW?.()||"BTCUSD"))throw Error("الرمز غير مطابق للسوق المعروض");
   setMarketChart(data.symbol);
   const candles=(Array.isArray(data.candles)?data.candles:[]).filter(c=>["open","high","low","close","time"].every(k=>Number.isFinite(Number(c[k])))).sort((a,b)=>Number(a.time)-Number(b.time));
   const compact=candles.slice(-76);
