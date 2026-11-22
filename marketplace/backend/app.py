@@ -4,7 +4,8 @@ from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from market_symbols import supported_market_symbol, same_market_symbol, market_family
-from strategy_engine import evaluate_market, STRATEGIES, COMBINATIONS
+from strategy_engine import evaluate_market, analyze_market_context, STRATEGIES, COMBINATIONS
+from btc_adaptive_learning import snapshot as btc_learning_snapshot, effective_weights as btc_learning_weights
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, closed_bar_execution_fresh, entry_council_mode
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from hybrid_decision import fuse_live_decision
@@ -927,14 +928,21 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as exc:
                     selected=None
                     profile_error=type(exc).__name__
-                computed=apply_live_learning(selected,live)["diagnostics"]
+                current=CONNECTIONS.get(client_id) or {}
+                current_symbol=current.get("symbol") or next((r.get("symbol") for r in rows if btc_market(r.get("symbol"))),"BTCUSD")
+                current_tf=current.get("timeframe") or "PERIOD_M1"
+                live=live_learning_profile(combine_deals(deals,current.get("closed_deals") or []),symbol=current_symbol)
+                history=btc_learning_snapshot(client_id,current_symbol,current_tf,sb)
+                regime=((current.get("strategy_decision") or {}).get("context") or {}).get("regime","غير محدد")
+                computed=btc_learning_weights(history,live,regime)["diagnostics"]
+                rows=[r for r in rows if btc_market(r.get("symbol"))]
                 item=CONNECTIONS.get(client_id) or {}
                 recent_decision=item.get("strategy_decision") or {}
                 current_application=recent_decision.get("learning") or {}
                 return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],
                     "count":len(rows) if isinstance(rows,list) else 0,"live":live,
                     "learning_computed":{**computed,
-                       "active_version_label":(selected or {}).get("version_label","DEFAULT"),
+                       "active_version_label":"BTC ADAPTIVE V1",
                        "profile_read_error":profile_error},
                     "learning_applied":current_application,
                     "learning_applied_at":recent_decision.get("generated_at"),
@@ -1350,7 +1358,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if not client_id: return self.send_json(200,{"status":"NO_CONNECTION","memory_count":0})
                 memory=memory_snapshot(client_id,sb)
                 current=CONNECTIONS.get(client_id) or {}
-                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []),symbol=current.get("symbol") or "XAUUSD")
+                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []),symbol=current.get("symbol") or "BTCUSD")
                 last_decision=(current.get("strategy_decision") or {})
                 last_applied=last_decision.get("learning") or {}
                 return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
@@ -1833,6 +1841,8 @@ class Handler(SimpleHTTPRequestHandler):
                 timeframe=str(run.get("timeframe") or "")[:20]
                 strategies=run.get("strategy_results") if isinstance(run.get("strategy_results"),list) else []
                 combinations=run.get("combination_results") if isinstance(run.get("combination_results"),list) else []
+                if not btc_market(symbol):
+                    return self.send_json(400,{"error":"ذاكرة هذا المشروع مخصصة للبيتكوين فقط"})
                 if not run_key or not symbol or not timeframe or len(strategies)!=200 or len(combinations)!=1000:
                     return self.send_json(400,{"error":"بيانات جولة التعلم غير مكتملة؛ يلزم 200 استراتيجية و1000 تركيبة"})
                 if len(json.dumps(run,ensure_ascii=False))>1800000:
@@ -1850,7 +1860,10 @@ class Handler(SimpleHTTPRequestHandler):
                     "strategy_results":strategies,"combination_results":combinations,
                     "diagnostics":run.get("diagnostics") if isinstance(run.get("diagnostics"),dict) else {}}
                 saved=sb("POST","/rest/v1/alzool_engine_learning_runs?on_conflict=client_id,run_key",row,admin=True,prefer="resolution=merge-duplicates,return=representation")
-                return self.send_json(200,{"saved":True,"run":saved[0] if isinstance(saved,list) and saved else {"run_key":run_key}})
+                history_state=btc_learning_snapshot(client_id,symbol,timeframe,sb,refresh=True)
+                return self.send_json(200,{"saved":True,"run":saved[0] if isinstance(saved,list) and saved else {"run_key":run_key},
+                    "server_learning":{"status":history_state.get("status"),"refreshing":history_state.get("refreshing",False),
+                        "samples":history_state.get("samples",0),"method":"BTC_SERVER_REPLAY_V1"}})
             if path=="/api/opportunities/events":
                 u=current_user(token)
                 if banned(u): return self.send_json(403,{"error":"تم إيقاف هذا الحساب من الإدارة"})
@@ -2122,7 +2135,7 @@ class Handler(SimpleHTTPRequestHandler):
                             # Never stop analysis while historical memory is loading.
                             memory=memory_snapshot(client_id,sb)
                             live_learning=live_learning_profile(combine_deals(
-                                memory.get("deals") or [],closed_deals),symbol=data.get("symbol") or "XAUUSD")
+                                memory.get("deals") or [],closed_deals),symbol=data.get("symbol") or "BTCUSD")
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
                             try:
@@ -2135,16 +2148,19 @@ class Handler(SimpleHTTPRequestHandler):
                                 chosen_profile=None
                                 active_profile_error=type(profile_error).__name__
                                 print("ACTIVE_PROFILE_FALLBACK:",active_profile_error,flush=True)
-                            effective=apply_live_learning(chosen_profile,live_learning)
+                            rates=list(reversed(candles))
+                            regime=analyze_market_context(rates).get("regime","غير محدد")
+                            historical=btc_learning_snapshot(client_id,active_symbol,data.get("timeframe"),sb)
+                            effective=btc_learning_weights(historical,live_learning,regime)
                             learning_diagnostic={**effective["diagnostics"],
                                 "memory_status":memory.get("status","LOADING"),
                                 "memory_deals":int(memory.get("count",0)),
-                                "active_version_label":(chosen_profile or {}).get("version_label","DEFAULT"),
+                                "active_version_label":"BTC ADAPTIVE V1",
                                 "active_version_id":(chosen_profile or {}).get("version_id"),
                                 "profile_read_error":active_profile_error}
                             strategy_weights=effective["strategy_weights"]
                             combination_weights=effective["combination_weights"]
-                            evaluated=evaluate_market(list(reversed(candles)),weights=strategy_weights,
+                            evaluated=evaluate_market(rates,weights=strategy_weights,
                                 combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO",
                                 bot_signals=bot_report,market_symbol=data.get("symbol"))
                             strategy_decision={
@@ -2183,7 +2199,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 digest=hashlib.sha256(json.dumps({
                                     "s":learning_diagnostic["changed_strategies"],
                                     "c":learning_diagnostic["changed_combinations"],
-                                    "at":learning_diagnostic.get("last_attributed_at")},
+                                    "at":learning_diagnostic.get("last_attributed_at"),"historical_last_bar":learning_diagnostic.get("historical_last_bar"),"regime":learning_diagnostic.get("regime")},
                                     ensure_ascii=False,sort_keys=True).encode("utf-8")).hexdigest()[:16]
                                 event_id=("live-learning:"+client_id+":"+digest)
                                 queue_ai_diagnostic_event({
@@ -2196,7 +2212,9 @@ class Handler(SimpleHTTPRequestHandler):
                                         "applied_strategies":learning_diagnostic["applied_strategies"],
                                         "applied_combinations":learning_diagnostic["applied_combinations"],
                                         "active_version_label":learning_diagnostic["active_version_label"],
-                                        "reason_ar":"تم تطبيق تعلم الصفقات المغلقة فعلياً على أوزان قرار الشمعة"}}
+                                        "historical_samples":learning_diagnostic.get("historical_samples",0),
+                                        "regime":learning_diagnostic.get("regime"),
+                                        "reason_ar":"تم تطبيق التعلم المتوافق مع محرك البيتكوين على أوزان قرار الشمعة"}}
                                 )
                         except Exception as engine_error:
                             print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
@@ -2232,9 +2250,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "strategy_last_bar":strategy_last_bar,
                     "received_at":now,"last_seen":now.isoformat()}
                 if strategy_decision:
-                    schedule_automatic_research(client_id,str(data.get("symbol",""))[:40],
-                        str(data.get("timeframe",""))[:20],sb,live_learning_profile,
-                        combine_deals(memory_snapshot(client_id,sb)["deals"],closed_deals))
+                    btc_learning_snapshot(client_id,active_symbol,data.get("timeframe"),sb)
                 return self.send_json(200,{"accepted":True,"telemetry":True,
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
@@ -2311,7 +2327,7 @@ if __name__=="__main__":
                     "test_recovery_candle_guard.py","test_local_ai_relay_cpu.py",
                     "test_position_action_safety.py",
                     "test_btc_market_gate.py","test_btc_market_symbols.py",
-                    "test_btc_market_isolation.py"):
+                    "test_btc_market_isolation.py","test_btc_adaptive_learning.py"):
         recovery_suite.addTests(unittest.defaultTestLoader.discover(
             start_dir=test_dir,pattern=pattern))
     recovery_result=unittest.TextTestRunner(verbosity=1).run(recovery_suite)
