@@ -4,7 +4,7 @@ async function api(path,method="GET",body=null){const headers={"Content-Type":"a
 function show(id){["loginView","adminView","clientView","resetPasswordView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 function msg(id,value){$(id).textContent=value||""}
 async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const isRecoveryLink=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery";sb.auth.onAuthStateChange((event,newSession)=>{if(event==="PASSWORD_RECOVERY"){resetFlow=true;session=newSession;show("resetPasswordView");}});const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(resetFlow||isRecoveryLink)show("resetPasswordView");else if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
-async function route(){const a=await api("/api/access/check");if(location.pathname==="/"&&!location.hash&&!new URLSearchParams(location.search).has("manage")){location.replace("/dashboard.html");return;}if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl();await refreshAdminOverview();await refreshOwnerReadiness()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true);await loadClientBasicSettings();return}}
+async function route(){const a=await api("/api/access/check");if(location.pathname==="/"&&!location.hash&&!new URLSearchParams(location.search).has("manage")){location.replace("/dashboard.html");return;}if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl();await refreshActions();await refreshAdminOverview();await refreshOwnerReadiness()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true);await loadClientBasicSettings();return}}
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("loginError","");if(!supabaseReady||!sb?.auth){msg("loginError","تسجيل الدخول متوقف لأن إعدادات Supabase لم تكتمل بعد. راجع رسالة إعداد الخادم أعلاه.");return;}try{const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)throw error;session=data.session;await route()}catch(x){msg("loginError",x.message||"تعذر تسجيل الدخول")}});
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
@@ -146,8 +146,10 @@ async function refreshOwnerReadiness(){
     const sub=document.createElement("small");sub.textContent=check.detail||"";
     detail.append(name,sub);row.append(detail,indicator);container.append(row);
   }
+  const pm=d.position_management_status||{};
   if(note)note.textContent="فتح صفقات جديدة: "+(d.trading_enabled?"ON":"OFF")+
-    " | إدارة التعزيز والتبريد: "+(d.central_actions_enabled?"ON":"OFF")+
+    " | إعداد إدارة السيرفر: "+(d.central_actions_enabled?"ON":"OFF")+
+    " | تنفيذ MT5: "+(pm.polling_ready?"جاهز لطلب التصريح":(pm.reason_ar||"غير معروف"))+
     " | التداول الحقيقي: يحتاج اختبار حساب تجريبي مكتمل";
  }catch(e){
   status.textContent="تعذر إتمام الفحص: "+(e.message||"خطأ اتصال");
@@ -307,7 +309,11 @@ async function refreshActions(){
   const target=$("actionsSummary");if(!target)return;
   try{
     const d=await api("/api/ai/actions");
-    const lines=["حالة التنفيذ: "+(d.execution_authorized?"AUTHORIZED":"DIAGNOSTIC ONLY"),
+    const pm=d.position_management_status||{};
+    const lines=["حالة قناة إدارة MT5: "+(pm.polling_ready?"جاهزة لطلب التصريح":"غير جاهزة"),
+      "سبب منع التنفيذ: "+(pm.reason_ar||"لم تصل بيانات التشخيص"),
+      "تنبيه: القناة الجاهزة ليست تصريحاً لفتح صفقة",
+      "حالة التنفيذ: "+(d.execution_authorized?"AUTHORIZED":"DIAGNOSTIC ONLY"),
       "القرار BUY: "+(d.buy||"HOLD"),"القرار SELL: "+(d.sell||"HOLD"),
       "السبب: "+(d.reason_ar||"—")];
     for(const a of d.actions||[]){
