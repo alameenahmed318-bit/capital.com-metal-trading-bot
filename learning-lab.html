@@ -54,7 +54,7 @@
 <article class="learn-stat"><small>استراتيجيات تأثرت أوزانها (آخر 30 يومًا)</small><strong id="liveUpdated">—</strong></article>
 </section>
 <section class="learn-grid" id="liveLearningHealth">
-<article class="learn-stat"><small>هل أوزان الصفقات الحقيقية مستخدمة في الدخول؟</small><strong id="learningAppliedState">جارٍ التحقق</strong></article>
+<article class="learn-stat"><small>هل وصلت أوزان التعلّم لتحليل آخر شمعة؟</small><strong id="learningAppliedState">جارٍ التحقق</strong></article>
 <article class="learn-stat"><small>استراتيجيات تغير وزنها فعلياً</small><strong id="learningAppliedStrategies">—</strong></article>
 <article class="learn-stat"><small>تراكيب تغير وزنها فعلياً</small><strong id="learningAppliedCombinations">—</strong></article>
 <article class="learn-stat"><small>آخر إغلاق منسوب لاستراتيجية</small><strong id="learningLastAttributed">—</strong></article>
@@ -65,8 +65,10 @@
 <article class="learn-stat"><small>أوزان استراتيجيات محسوبة</small><strong id="computedStrategyWeights">—</strong></article>
 <article class="learn-stat"><small>أوزان تركيبات محسوبة</small><strong id="computedComboWeights">—</strong></article>
 </section>
-<section class="learn-card" id="liveLearningEvidence"><h2>دليل تطبيق التعلم في قرار التداول</h2>
-<div class="learn-note" id="learningAppliedDetail">جارٍ التحقق من القرار الذي استخدمه المحرك فعلياً.</div>
+<section class="learn-card" id="liveLearningEvidence"><h2>دليل التعلّم الفعلي في تحليل الشموع</h2>
+<div class="learn-note" id="learningAppliedDetail">جارٍ التحقق من الأوزان المستخدمة في آخر تحليل شمعة.</div>
+<div class="learn-note" id="learningVerifiedAudit">لم يصل دليل محفوظ من تحليل الشموع بعد.</div>
+<div class="learn-note" id="learningAttributionGap">جارٍ فحص الصفقات التي لا يمكن نسبتها لاستراتيجية.</div>
 <div class="learn-table-wrap" id="learningAppliedChanges">لم تُعرض أوزان مستخدمة بعد.</div>
 <p class="learn-note">يتعلم AL-ZOOL إحصائياً من الصفقات المغلقة المنسوبة لاستراتيجية أو تركيبة. هذه أوزان متغيرة تُستخدم في ترتيب الإشارات، وليست تدريباً جديداً لأوزان Qwen أو DeepSeek. الأوزان التي لا تملك أدلة كافية تبقى محايدة، والتعلم لا يغير إعدادات اللوت أو وقف الخسارة ولا يضيف شرط منع للدخول.</p>
 </section>
@@ -142,7 +144,7 @@ async function load(){
    calculated=d.learning_computed||{},applied=d.learning_applied||{};
   renderComputed(d.symbol,calculated);
   const appliedNow=applied.status==="APPLIED";
-  $("learningAppliedState").textContent=appliedNow?"مفعّل ويؤثر على الدخول":
+  $("learningAppliedState").textContent=appliedNow?"أوزان في تحليل شمعة (ليس تنفيذ صفقة)":
       applied.status==="INSUFFICIENT_EVIDENCE"?"بانتظار أدلة كافية":
       applied.status==="NEUTRAL_NO_CHANGE"?"محايد حالياً":
       calculated.status==="APPLIED"?"أوزان محسوبة — بانتظار قرار جديد":"لا يوجد إثبات تطبيق بعد";
@@ -151,7 +153,7 @@ async function load(){
   const latest=applied.last_attributed_at||calculated.last_attributed_at||live.last_attributed_at;
   $("learningLastAttributed").textContent=latest?new Date(latest).toLocaleString("en-GB"):"لا توجد صفقة منسوبة";
   const updatedAt=d.learning_applied_at?new Date(d.learning_applied_at).toLocaleString("en-GB"):"لا يوجد";
-  $("learningAppliedDetail").textContent="القرار الفعلي: "+String(applied.status||"لا توجد قراءة بعد")+
+  $("learningAppliedDetail").textContent="آخر تحليل شمعة: "+String(applied.status||"لا توجد قراءة بعد")+
      " | آخر حساب قرار: "+updatedAt+
      " | آخر شمعة: "+String(d.learning_decision_bar||"—")+
      " | نسخة الاستراتيجيات الأساسية: "+String(applied.active_version_label||calculated.active_version_label||"DEFAULT")+
@@ -227,8 +229,23 @@ async function refreshLearningState(){
   const live=await api("/api/ai/learning"),last=live.learning_applied||{};
   const c=live.learning_computed||{};renderComputed(live.symbol,c);
   const state=last.status||"NO_RECENT_DECISION";
-  $("learningAppliedState").textContent=state==="APPLIED"?"يؤثر على قرار الدخول":
-   c.status==="APPLIED"?"أوزان محسوبة — لم يثبت استخدامها في قرار حي":state==="INSUFFICIENT_EVIDENCE"?"تجميع أدلة":"تعلم محايد أو بلا قرار جديد";
+  const health=live.live_learning_health||{};
+  const audit=live.last_persisted_learning_audit||{};
+  $("learningAppliedState").textContent=health.learned_weights_used_in_analysis===true
+   ?"أوزان مستخدمة في تحليل الشمعة":health.decision_current===true
+   ?"تحليل شمعة حديث — أوزان محايدة":"لم يثبت تحليل شمعة حديث";
+  $("learningVerifiedAudit").textContent=audit.bar_time
+   ?"آخر دليل محفوظ: "+new Date(Number(audit.bar_time)*1000).toLocaleString("en-GB")+
+    " | السوق: "+String(audit.symbol||"—")+" | الأوزان: "+String(audit.status||"—")+
+    " | عدد الاستراتيجيات غير المحايدة: "+Number(audit.effective_non_neutral_strategies||0)+
+    " | إثبات تنفيذ صفقة: لا"
+   :"لا يوجد دليل محفوظ لتطبيق الأوزان في تحليل شمعة لهذا السوق بعد.";
+  $("learningAttributionGap").textContent="الصفقات المغلقة: "+
+   Number(health.closed_positions||0)+" | مرتبطة باستراتيجية: "+
+   Number(health.attributed_positions||0)+" | غير منسوبة: "+
+   Number(health.unattributed_positions||0)+" | التغطية: "+
+   Number(health.attribution_coverage_percent||0).toFixed(1)+
+   "% | هذه البيانات لا تعني أن التداول مُفعّل.";
   $("learningAppliedStrategies").textContent=String(last.applied_strategies??0)+" / 200";
   $("learningAppliedCombinations").textContent=String(last.applied_combinations??0)+" / 1000";
   $("liveProcessed").textContent=String(live.processed_positions??0)+" / "+String(live.closed_positions??0);
@@ -236,7 +253,8 @@ async function refreshLearningState(){
   $("liveUpdated").textContent=String(c.live_strategies??0)+" / 200";
   const stamp=last.last_attributed_at||live.last_attributed_at;
   $("learningLastAttributed").textContent=stamp?new Date(stamp).toLocaleString("en-GB"):"لا يوجد إغلاق منسوب";
-  if(last.status)$("learningAppliedDetail").textContent="القرار الفعلي: "+state+" | آخر قرار: "+String(live.learning_applied_at||"—")+learningBreakdown(last,live.learning_computed||{});
+  if(last.status)$("learningAppliedDetail").textContent="آخر تحليل شمعة: "+state+" | آخر حساب: "+String(live.learning_applied_at||"—")+
+    " | اتصال MT5 حديث: "+(health.terminal_fresh?"نعم":"لا")+learningBreakdown(last,live.learning_computed||{});
   if(!last.status)$("learningAppliedDetail").textContent="لم يثبت تطبيق أوزان التعلم على قرار شمعة بعد؛ تاريخ الصفقات محفوظ: "+
      String(live.memory_count??0)+" صفقة، ومراكز منسوبة: "+String(live.processed_positions??0);
  }catch(e){$("learningAppliedState").textContent="تعذر التحقق من الحالة";}
