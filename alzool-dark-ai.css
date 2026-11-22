@@ -99,3 +99,75 @@ body{font-family:Arial,Tahoma,sans-serif!important;background:#030714!important;
 .ss-secondary .switch input:checked+span,.ss-secondary .switch input:checked+.slider{background:#7542d1!important}
 .ss-secondary .jump,.ss-portal .jump{background:#081431}
 .ss-secondary .ss-menu,.ss-portal .ss-menu{align-self:start}
+
+/* v5 — LAYOUT CONTRACT: no page, grid or table may paint over the navigation.
+   Preserve full table contents using local scrolling; no global scaling. */
+html,body{width:100%;max-width:100%;min-width:0;margin:0}
+html{overflow-x:clip}
+body{direction:ltr;overflow-x:clip}
+.ss-studio,.ss-studio *,.ss-studio *::before,.ss-studio *::after{box-sizing:border-box}
+.ss-studio{width:100%;max-width:1920px;min-width:0;margin-inline:auto;container-type:inline-size}
+.ss-studio>.ss-workspace,.ss-portal #adminView:not(.hidden){
+ display:grid!important;grid-template-columns:minmax(0,clamp(155px,14.4vw,220px)) minmax(0,1fr)!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ gap:9px!important;align-items:start!important;direction:ltr;isolation:isolate
+}
+.ss-workspace>.ss-menu,.ss-portal #adminView>.ss-menu{
+ grid-column:1;grid-row:1;position:sticky;top:8px;z-index:4;min-width:0;
+ width:100%;max-width:100%;max-height:calc(100vh - 16px);
+ overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;align-self:start
+}
+.ss-workspace>main,.ss-portal #adminView>.az-admin-content{
+ grid-column:2;grid-row:1;min-width:0!important;width:100%!important;max-width:100%!important;
+ margin:0!important;position:relative;isolation:isolate;z-index:0;
+ overflow:clip;container-type:inline-size;direction:rtl
+}
+#shadow-studio-v2 .ss-workspace>main{direction:ltr}
+.ss-studio :is(.main,.az-admin-content,.ss-bots-content,.wrap,.card,.panel,.learn-card,.op-card,.th-card,.lab-results,.op-columns,.grid,.kpis,.stats,.lab-controls,.learn-grid,.op-grid,.lab-grid,.th-grid,.admin-grid,.az-admin-performance,.credential,.close-grid,.protection-grid,.pm-grid,.recovery-metrics,.entry-guard-grid,.sl-settings-grid,.table-wrap,.ss-table-scroll,.live-grid,.ideas,.controls,.top-actions,.panel-title,.card-title,.panel-head){
+ min-width:0!important;max-width:100%!important
+}
+.ss-studio :is(.lab-results,.op-columns,.grid,.kpis,.stats,.lab-controls,.learn-grid,.op-grid,.lab-grid,.th-grid,.admin-grid,.close-grid,.protection-grid,.pm-grid,.recovery-metrics,.entry-guard-grid,.sl-settings-grid,.live-grid,.ideas,.bottom,.stage)>*{min-width:0!important;max-width:100%!important}
+.ss-secondary .lab-results,.ss-secondary .op-columns{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+.ss-secondary .lab-results>.card,.ss-secondary .op-columns>*{width:100%;min-width:0;max-width:100%;margin:0!important}
+.ss-secondary .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr))}
+.ss-secondary .ss-bots-content .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,275px),1fr))}
+.ss-secondary .ss-bots-content .live-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.ss-secondary .pm-mode-row{grid-template-columns:minmax(0,140px) minmax(0,1fr)}
+.ss-studio :is(.lab-table-wrap,.op-table-wrap,.learn-table-wrap,.th-table-wrap,.table-scroll,.table-wrap,.ss-table-scroll,.scroll){min-width:0!important;max-width:100%!important;width:100%!important;overflow-x:auto!important;overscroll-behavior-x:contain;position:relative;isolation:isolate;scrollbar-width:thin;scrollbar-color:#4e70aa #091329}
+.ss-studio .ss-table-scroll{overflow-y:auto}
+.ss-studio :is(.lab-table-wrap,.op-table-wrap,.learn-table-wrap,.th-table-wrap,.table-scroll,.table-wrap,.ss-table-scroll,.scroll) table{max-width:none!important;margin:0}
+.ss-secondary .lab-table-wrap,.ss-secondary .op-table-wrap{max-height:490px;overflow-y:auto!important}
+.ss-studio :is(.card,.panel,.learn-card,.op-card,.th-card,.az-admin-performance,.bot,.live-card,.idea){overflow-wrap:anywhere}
+.ss-studio :is(.card-title,.panel-title,.panel-head,.section-head,.topbar,.welcome,.controls,.top-actions,.ss-meta,.ss-market-strip){flex-wrap:wrap;min-width:0}
+.ss-studio :is(.card-title,.panel-title,.panel-head,.section-head,.topbar,.welcome,.controls,.top-actions)>*{min-width:0;max-width:100%}
+.ss-studio :is(h1,h2,h3,.metric small,.panel-title h2,.market-tag){overflow-wrap:anywhere}
+.ss-studio img,.ss-studio canvas,.ss-studio iframe,.ss-studio svg{max-width:100%}
+.ss-studio :is(input:not([type=checkbox]):not([type=radio]),select,textarea){max-width:100%;min-width:0!important}
+.ss-studio .metric strong{font-size:clamp(12px,1.38vw,22px)}
+.ss-studio .ss-menu-footer{overflow-wrap:anywhere}
+.ss-secondary .section-head{direction:rtl}
+@container (min-width:1450px){
+ .ss-secondary .lab-results,.ss-secondary .op-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+}
+@container (max-width:1000px){
+ .ss-secondary .lab-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .ss-secondary .lab-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #shadow-studio-v2 .metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #shadow-studio-v2 .stage{grid-template-columns:minmax(0,1fr)}
+ #shadow-studio-v2 .bottom{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@container (max-width:620px){
+ .ss-secondary :is(.lab-grid,.lab-controls,.kpis,.learn-grid,.op-grid,.th-grid),.ss-portal :is(.az-kpi-grid,.stats){grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .ss-secondary :is(.grid,.pm-grid,.close-grid,.protection-grid,.entry-guard-grid,.sl-settings-grid),.ss-portal .admin-grid{grid-template-columns:minmax(0,1fr)!important}
+ #shadow-studio-v2 .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #shadow-studio-v2 .bottom{grid-template-columns:minmax(0,1fr)}
+ .ss-secondary .pm-mode-row{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:760px){
+ .ss-studio>.ss-workspace,.ss-portal #adminView:not(.hidden){grid-template-columns:minmax(0,1fr)!important}
+ .ss-workspace>.ss-menu,.ss-portal #adminView>.ss-menu{grid-column:1;grid-row:1;position:static;display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;max-height:none;white-space:nowrap;padding:5px}
+ .ss-menu>a{flex:0 0 auto;margin:0!important;white-space:nowrap!important;height:32px!important}
+ .ss-workspace>main,.ss-portal #adminView>.az-admin-content{grid-column:1;grid-row:2}
+ .ss-studio .ss-menu-footer{display:none}
+ .ss-studio .ss-menu>button{flex:0 0 auto;width:auto}
+}
