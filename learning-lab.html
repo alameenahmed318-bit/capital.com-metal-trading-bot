@@ -59,10 +59,24 @@
 <article class="learn-stat"><small>تراكيب تغير وزنها فعلياً</small><strong id="learningAppliedCombinations">—</strong></article>
 <article class="learn-stat"><small>آخر إغلاق منسوب لاستراتيجية</small><strong id="learningLastAttributed">—</strong></article>
 </section>
+<section class="learn-grid" id="computedLearningHealth">
+<article class="learn-stat"><small>رمز التعلم الفعلي</small><strong id="computedSymbol">—</strong></article>
+<article class="learn-stat"><small>عينات التعلم التاريخي</small><strong id="computedSamples">—</strong></article>
+<article class="learn-stat"><small>أوزان استراتيجيات محسوبة</small><strong id="computedStrategyWeights">—</strong></article>
+<article class="learn-stat"><small>أوزان تركيبات محسوبة</small><strong id="computedComboWeights">—</strong></article>
+</section>
 <section class="learn-card" id="liveLearningEvidence"><h2>دليل تطبيق التعلم في قرار التداول</h2>
 <div class="learn-note" id="learningAppliedDetail">جارٍ التحقق من القرار الذي استخدمه المحرك فعلياً.</div>
 <div class="learn-table-wrap" id="learningAppliedChanges">لم تُعرض أوزان مستخدمة بعد.</div>
 <p class="learn-note">يتعلم AL-ZOOL إحصائياً من الصفقات المغلقة المنسوبة لاستراتيجية أو تركيبة. هذه أوزان متغيرة تُستخدم في ترتيب الإشارات، وليست تدريباً جديداً لأوزان Qwen أو DeepSeek. الأوزان التي لا تملك أدلة كافية تبقى محايدة، والتعلم لا يغير إعدادات اللوت أو وقف الخسارة ولا يضيف شرط منع للدخول.</p>
+</section>
+<section class="learn-card" id="stressLearningPanel">
+<h2>مختبر الضغط والتعلم المتقدم · STRESS AI</h2>
+<p class="learn-note">تدريب على 70% الأقدم من الشموع المتاحة (حتى 10,000)، ثم تحقق زمني منفصل على الـ30% الأحدث. لا تكرار لاحتساب الخبرة نفسها. تكاليف الضغط افتراضية؛ الشموع من الأرشيف الحقيقي. لا يتم تفعيل إصدار جديد على التداول لمجرد انتهاء التدريب.</p>
+<div class="learn-note" id="stressLearningStatus">جارٍ التحقق من سجل التدريب المحفوظ...</div>
+<div class="learn-table-wrap" id="stressLearningTable"></div>
+<div class="learn-note" id="stressLearningVerdict">النتيجة لا تعني أن الأوزان استُخدمت في صفقة حية.</div>
+<button type="button" class="refresh" id="stressLearningRefresh">تحديث نتائج الضغط</button>
 </section>
 <section class="learn-card" id="strategyComparisonPanel">
 <h2>تطوير الاستراتيجيات والتركيبات — مقارنة حقيقية</h2>
@@ -126,6 +140,7 @@ async function load(){
   if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");
   const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models,live=d.live||{},
    calculated=d.learning_computed||{},applied=d.learning_applied||{};
+  renderComputed(d.symbol,calculated);
   const appliedNow=applied.status==="APPLIED";
   $("learningAppliedState").textContent=appliedNow?"مفعّل ويؤثر على الدخول":
       applied.status==="INSUFFICIENT_EVIDENCE"?"بانتظار أدلة كافية":
@@ -157,7 +172,7 @@ async function load(){
    $("liveUpdated").textContent=String(live.updated_strategies||0)+" / 200";
    $("liveStatus").textContent=live.closed_positions
     ? "تم تحليل "+live.processed_positions+" مركزًا من أصل "+live.closed_positions+" خلال آخر 30 يومًا. تغطية ربط الصفقات باستراتيجياتها: "+Number(live.coverage_percent||0).toFixed(1)+"%. صفقات اليوم: "+live.daily_processed_positions+" من "+live.daily_closed_positions+". تدخل النتائج المنسوبة في التعلم تدريجياً من أول صفقة غير صفرية، مع تقليل تأثير العينات الصغيرة؛ الصافي السلبي لا يزيد الوزن. الصفقات غير المرتبطة باستراتيجية لا تغيّر الأوزان."
-    : "لا توجد صفقات BTCUSD مغلقة تحمل معرّف استراتيجية قابلًا للتحقق بعد. سيظهر التعلم بعد وصول صفقات مغلقة من MT5.";
+    : "لا توجد صفقات مغلقة للسوق المحدد تحمل معرّف استراتيجية قابلًا للتحقق بعد. سيظهر التعلم بعد وصول صفقات مغلقة من MT5.";
    const liveRows=live.strategies||[];
    $("liveStrategies").innerHTML=liveRows.length
     ? "<table class='learn-table'><thead><tr><th>الاستراتيجية</th><th>الصفقات</th><th>رابحة</th><th>خاسرة</th><th>الصافي</th><th>وزن التعلم المحسوب</th></tr></thead><tbody>"+liveRows.slice(0,20).map(x=>"<tr><td>#"+Number(x.strategy_id)+"</td><td>"+Number(x.trades)+"</td><td class='positive'>"+Number(x.wins)+"</td><td class='negative'>"+Number(x.losses)+"</td><td class='"+(Number(x.net)>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+Number(x.weight||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>"
@@ -191,6 +206,12 @@ async function runStrategyAudit(){
  }catch(e){status.textContent="تعذر التدقيق: "+(e.message||"خطأ غير معروف")}
  finally{button.disabled=false}
 }
+function renderComputed(symbol,c={}){
+ $("computedSymbol").textContent=symbol||"—";
+ $("computedSamples").textContent=c.history_refreshing&&!c.historical_samples?"جارٍ الحساب":String(c.historical_samples??0);
+ $("computedStrategyWeights").textContent=String(c.applied_strategies??0)+" / 200";
+ $("computedComboWeights").textContent=String(c.applied_combinations??0)+" / 1000";
+}
 function learningBreakdown(applied,calculated={}){
  const a=applied||{},c=calculated||{};
  return " | حالة إعادة الاختبار: "+String(c.history_status||a.history_status||"LOADING")+
@@ -204,11 +225,15 @@ async function refreshLearningState(){
  if(!accessToken)return;
  try{
   const live=await api("/api/ai/learning"),last=live.learning_applied||{};
+  const c=live.learning_computed||{};renderComputed(live.symbol,c);
   const state=last.status||"NO_RECENT_DECISION";
   $("learningAppliedState").textContent=state==="APPLIED"?"يؤثر على قرار الدخول":
-   state==="INSUFFICIENT_EVIDENCE"?"تجميع أدلة":"تعلم محايد أو بلا قرار جديد";
+   c.status==="APPLIED"?"أوزان محسوبة — لم يثبت استخدامها في قرار حي":state==="INSUFFICIENT_EVIDENCE"?"تجميع أدلة":"تعلم محايد أو بلا قرار جديد";
   $("learningAppliedStrategies").textContent=String(last.applied_strategies??0)+" / 200";
   $("learningAppliedCombinations").textContent=String(last.applied_combinations??0)+" / 1000";
+  $("liveProcessed").textContent=String(live.processed_positions??0)+" / "+String(live.closed_positions??0);
+  $("liveWinLoss").textContent=String(live.wins??0)+" / "+String(live.losses??0);
+  $("liveUpdated").textContent=String(c.live_strategies??0)+" / 200";
   const stamp=last.last_attributed_at||live.last_attributed_at;
   $("learningLastAttributed").textContent=stamp?new Date(stamp).toLocaleString("en-GB"):"لا يوجد إغلاق منسوب";
   if(last.status)$("learningAppliedDetail").textContent="القرار الفعلي: "+state+" | آخر قرار: "+String(live.learning_applied_at||"—")+learningBreakdown(last,live.learning_computed||{});
@@ -216,6 +241,27 @@ async function refreshLearningState(){
      String(live.memory_count??0)+" صفقة، ومراكز منسوبة: "+String(live.processed_positions??0);
  }catch(e){$("learningAppliedState").textContent="تعذر التحقق من الحالة";}
 }
+async function refreshStressLearning(){
+ if(!accessToken)return;
+ try{
+  const d=await api("/api/ai/stress-learning");
+  const status=$("stressLearningStatus"),table=$("stressLearningTable"),verdict=$("stressLearningVerdict");
+  if(d.status!=="RESEARCH_COMPLETE"){
+   status.textContent="لا توجد نتيجة تدريب ضغط محفوظة لهذا السوق بعد. لا يعني ذلك توقف التعلم العادي.";
+   table.textContent="";return;
+  }
+  status.textContent=d.symbol+" | "+Number(d.candles)+" شمعة | تدريب "+Number(d.training_windows)+" | تحقق "+Number(d.validation_windows)+
+    " | "+Number(d.changed_strategies)+" وزن استراتيجية و"+Number(d.changed_combinations)+" وزن تركيبة (بحثي محفوظ) | "+Number(d.extreme_observed_windows)+" نافذة بحركة فعلية كبيرة";
+  const labels={observed:"السبريد المسجل",wide:"سبريد ×2 وانزلاق 0.10 ATR لكل جهة",extreme:"سبريد ×5 وانزلاق 0.30 ATR لكل جهة",delayed:"تأخير دقيقة + تكاليف",gap:"فجوة عكسية افتراضية + تكاليف قصوى"};
+  const cell=x=>x&&Number.isFinite(Number(x.net_per_window))?Number(x.net_per_window).toFixed(4):"—";
+  table.innerHTML="<table class='learn-table'><thead><tr><th>اختبار الضغط</th><th>بدون أوزان</th><th>تعلم عادي</th><th>تعلم الضغط</th></tr></thead><tbody>"+
+    Object.keys(labels).map(k=>"<tr><td>"+esc(labels[k])+"</td><td>"+cell(d.validation?.unweighted?.[k])+"</td><td>"+cell(d.validation?.ordinary?.[k])+"</td><td>"+cell(d.validation?.stress?.[k])+"</td></tr>").join("")+"</tbody></table>";
+  verdict.textContent=(d.verdict==="CANDIDATE_FOR_MORE_TESTS"?"مرشح لمزيد من التحقق":"لم يثبت تفوق التعلم بالضغط")+
+   " | النتائج بوحدات ATR لكل نافذة بعد التكاليف، وليست أرباحاً مالية. التدريب محفوظ ولم يُفعّل على التداول.";
+ }catch(e){$("stressLearningStatus").textContent="تعذر التحقق من سجل الضغط المحفوظ."}
+}
+$("stressLearningRefresh").addEventListener("click",refreshStressLearning);
+setInterval(refreshStressLearning,20000);
 async function refreshStrategyComparison(){
  if(!accessToken)return;
  try{
@@ -232,7 +278,7 @@ $("strategyComparisonRefresh").addEventListener("click",refreshStrategyCompariso
 setInterval(refreshStrategyComparison,15000);
 $("strategyAuditBtn").addEventListener("click",runStrategyAudit);
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});
-load().then(refreshStrategyComparison);setInterval(refreshLearningState,20000);
+load().then(()=>{refreshStrategyComparison();refreshStressLearning()});setInterval(refreshLearningState,20000);
 </script><script src="/numbers-en.js?v=3"></script>
 
 <script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
