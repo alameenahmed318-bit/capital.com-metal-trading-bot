@@ -371,12 +371,29 @@ function shadowRenderPositions(s){
  return "<tr><td>"+escapeHtml(p.symbol||"—")+"</td><td>"+side+"</td><td>"+escapeHtml(p.volume??"—")+"</td><td class='"+(pnl>=0?"positive":"negative")+"'>"+pnl.toFixed(2)+" "+escapeHtml(s.currency||"")+"</td></tr>";
  }).join(""):'<tr><td colspan="4">لا توجد صفقات مفتوحة</td></tr>';
 }
+let studioSignals=[];
+function studioRenderStrength(context){
+ const raw=context?.trend_strength;
+ const n=raw!=null&&Number.isFinite(Number(raw))&&Number(raw)>=0&&Number(raw)<=1?Math.round(Number(raw)*100):null;
+ shadowText("studioStrength",n==null?"—":n+"%");
+ if($("studioArc"))$("studioArc").setAttribute("stroke-dasharray",(n??0)+" 100");
+ shadowText("studioTrend",context?.regime||"بانتظار التحليل");
+}
+function studioRecordSignal(d){
+ const host=$("studioSignals");if(!host||!d?.connected||!["BUY","SELL","WAIT"].includes(d.signal)||!Number.isFinite(Number(d.bar_time))||Number(d.bar_time)<=0)return;
+ const bar=Number(d.bar_time),n=Number(d.confidence),confidence=d.confidence!=null&&Number.isFinite(n)&&n>=0&&n<=1?Math.round(n*100)+"%":"—";
+ studioSignals=studioSignals.filter(x=>x.bar!==bar);
+ studioSignals.unshift({bar,signal:d.signal,confidence});
+ studioSignals=studioSignals.slice(0,5);
+ host.innerHTML=studioSignals.map(x=>'<tr><td>'+new Intl.DateTimeFormat("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Dubai",hourCycle:"h23"}).format(new Date(x.bar*1000))+'</td><td class="'+(x.signal==="BUY"?"positive":x.signal==="SELL"?"negative":"pnl-neutral")+'">'+x.signal+'</td><td>'+x.confidence+'</td></tr>').join("");
+}
 let shadowOwnerDecisionAt=0;
 function shadowRenderDecision(d,authoritative=true){
  if(!d||!d.connected)return shadowClearDecision();
  if(authoritative)shadowOwnerDecisionAt=Date.now();
  if(!authoritative&&Date.now()-shadowOwnerDecisionAt<20000)return;
  const sig=["BUY","SELL","WAIT"].includes(d.signal)?d.signal:"WAIT";
+ studioRenderStrength(d.strategy_context||d.context); if(authoritative)studioRecordSignal(d);
  const node=$("shadowSignal");if(node){node.dataset.signal=sig;node.querySelector("strong").textContent=sig;}
  const numeric=d.confidence!=null?Number(d.confidence):NaN;
  const confidence=Number.isFinite(numeric)&&numeric>=0&&numeric<=1?Math.round(numeric*100):null;
@@ -388,6 +405,7 @@ function shadowRenderDecision(d,authoritative=true){
  shadowText("shadowReason",d.reason_ar||d.decision_reason_ar||"بانتظار تفسير المحرك");
 }
 function shadowClearDecision(){
+ studioRenderStrength(null);
  shadowOwnerDecisionAt=0;
  const node=$("shadowSignal");if(node){node.dataset.signal="WAIT";node.querySelector("strong").textContent="WAIT";}
  for(const [id,value] of [["shadowConfidence","—"],["shadowRegime","—"],["shadowExecution","MT5 غير متصل"],["shadowVotesUsed","—"],["shadowReason","لم تصل بيانات حديثة من الطرفية."]])shadowText(id,value);
@@ -411,7 +429,7 @@ async function shadowRefreshMarket(){
   shadowText("shadowMarketStamp",data.received_at?"آخر بيانات MT5: "+String(data.received_at).replace("T"," ").slice(0,19):"بيانات حديثة");
   if(compact.length<2){host.textContent="لا توجد شموع كافية للرسم";return;}
   const lo=Math.min(...compact.map(c=>Number(c.low))),hi=Math.max(...compact.map(c=>Number(c.high))),span=Math.max(hi-lo,.001),padding=span*.07,minP=lo-padding,maxP=hi+padding;
-  const W=900,H=350,left=12,right=811,top=14,bottom=270,dx=(right-left)/compact.length;
+  const W=900,H=402,left=12,right=811,top=14,bottom=270,dx=(right-left)/compact.length;
   const y=n=>top+(maxP-n)/(maxP-minP)*(bottom-top);
   const x=i=>left+dx*(i+.5);
   const maxVol=Math.max(1,...compact.map(c=>Number(c.tick_volume)||0));
@@ -421,11 +439,22 @@ async function shadowRefreshMarket(){
     const c=compact[i],px=x(i),up=Number(c.close)>=Number(c.open),color=up?"#39d6ed":"#b457fc",a=y(Number(c.open)),b=y(Number(c.close)),vh=(Number(c.tick_volume)||0)/maxVol*38;
     bars+='<path d="M'+px+' '+y(Number(c.high))+' V'+y(Number(c.low))+'" stroke="'+color+'" stroke-width="1.1"/><rect x="'+(px-dx*.29)+'" y="'+Math.min(a,b)+'" width="'+Math.max(1,dx*.58)+'" height="'+Math.max(1.2,Math.abs(a-b))+'" rx=".5" fill="'+color+'"><title>'+escapeHtml("O "+fmt(c.open)+" H "+fmt(c.high)+" L "+fmt(c.low)+" C "+fmt(c.close))+'</title></rect>';
     vol+='<rect x="'+(px-dx*.29)+'" y="'+(319-vh)+'" width="'+Math.max(1,dx*.58)+'" height="'+vh+'" fill="'+color+'" opacity=".52"/>';
-    if(i%Math.max(1,Math.floor(compact.length/5))===0){const t=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(Number(c.time)*1000));labels+='<text x="'+px+'" y="341" text-anchor="middle" font-size="10" fill="#acbbdf">'+t+'</text>';grid+='<path d="M'+px+' 14 V319" stroke="#1a2742" stroke-width=".6"/>';}
+    if(i%Math.max(1,Math.floor(compact.length/5))===0){const t=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Dubai",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(Number(c.time)*1000));labels+='<text x="'+px+'" y="392" text-anchor="middle" font-size="10" fill="#acbbdf">'+t+'</text>';grid+='<path d="M'+px+' 14 V319" stroke="#1a2742" stroke-width=".6"/>';}
   }
   function ema(period,color){let v=Number(compact[0].close),a=2/(period+1);let p=compact.map((c,i)=>{v=i?a*Number(c.close)+(1-a)*v:v;return (i?"L":"M")+x(i).toFixed(2)+" "+y(v).toFixed(2)}).join(" ");return '<path d="'+p+'" fill="none" stroke="'+color+'" stroke-width="1.5" opacity=".82"/>';}
+  // RSI 14 (Wilder smoothing), computed only from actual closed MT5 candles.
+  const rsiMap=new Map();let ag=0,al=0;
+  for(let i=1;i<candles.length;i++){
+   const delta=Number(candles[i].close)-Number(candles[i-1].close),gain=Math.max(delta,0),loss=Math.max(-delta,0);
+   if(i<=14){ag+=gain/14;al+=loss/14;}else{ag=(13*ag+gain)/14;al=(13*al+loss)/14;}
+   if(i>=14)rsiMap.set(Number(candles[i].time),al===0?(ag===0?50:100):100-100/(1+ag/al));
+  }
+  const ry=v=>375-v*.48;
+  let rsiPath="",rsiLast=null;
+  compact.forEach((c,i)=>{const v=rsiMap.get(Number(c.time));if(v!=null){rsiPath+=(rsiPath?" L":"M")+x(i).toFixed(2)+" "+ry(v).toFixed(2);rsiLast=v;}});
+  const rsiLayer='<rect x="12" y="324" width="799" height="53" fill="#160e2f"/><path d="M12 '+ry(70)+' H811 M12 '+ry(30)+' H811" stroke="#ba75ea" stroke-width=".7" stroke-dasharray="4 4"/><text x="18" y="334" font-size="10" fill="#daacff">RSI (14) '+(rsiLast==null?"—":rsiLast.toFixed(2))+'</text><text x="825" y="'+(ry(70)+3)+'" fill="#aebddd" font-size="9">70</text><text x="825" y="'+(ry(30)+3)+'" fill="#aebddd" font-size="9">30</text>'+(rsiPath?'<path d="'+rsiPath+'" fill="none" stroke="#c76bff" stroke-width="1.3"/>':"");
   const py=price>0?y(Math.max(minP,Math.min(maxP,price))):0;
-  host.innerHTML='<svg class="shadow-chart" role="img" aria-label="شموع البيتكوين الحقيقية من MT5" viewBox="0 0 '+W+' '+H+'"><defs><linearGradient id="shadowChartBg" x2="1" y2="1"><stop stop-color="#071125"/><stop offset="1" stop-color="#130b29"/></linearGradient></defs><rect width="900" height="350" fill="url(#shadowChartBg)"/><text x="405" y="156" text-anchor="middle" font-size="65" fill="#8297e4" opacity=".06" font-weight="900">BTC · SYSTEM</text>'+grid+vol+ema(9,"#5ee3ff")+ema(21,"#ba6dff")+bars+(price>0?'<path d="M12 '+py+' H811" stroke="#44dce9" stroke-dasharray="4 4"/><rect x="813" y="'+(py-10)+'" width="87" height="20" rx="3" fill="#185e85"/><text x="855" y="'+(py+4)+'" text-anchor="middle" font-size="11" fill="white">'+fmt(price)+'</text>':'')+labels+'</svg><div class="shadow-chart-note">EMA 9 / EMA 21 · حجم تيكات MT5 · توقيت الإمارات</div>';
+  host.innerHTML='<svg class="shadow-chart" role="img" aria-label="شموع البيتكوين الحقيقية من MT5" viewBox="0 0 '+W+' '+H+'"><defs><linearGradient id="shadowChartBg" x2="1" y2="1"><stop stop-color="#071125"/><stop offset="1" stop-color="#130b29"/></linearGradient></defs><rect width="900" height="402" fill="url(#shadowChartBg)"/><text x="405" y="156" text-anchor="middle" font-size="65" fill="#8297e4" opacity=".06" font-weight="900">BTC · SYSTEM</text>'+grid+vol+ema(9,"#5ee3ff")+ema(21,"#ba6dff")+bars+(price>0?'<path d="M12 '+py+' H811" stroke="#44dce9" stroke-dasharray="4 4"/><rect x="813" y="'+(py-10)+'" width="87" height="20" rx="3" fill="#185e85"/><text x="855" y="'+(py+4)+'" text-anchor="middle" font-size="11" fill="white">'+fmt(price)+'</text>':'')+rsiLayer+labels+'</svg><div class="shadow-chart-note">EMA 9 / EMA 21 · RSI 14 · حجم تيكات MT5 · توقيت الإمارات</div>';
   const q=data.strategy_decision||{};
   shadowRenderDecision({connected:true,signal:q.decision,confidence:q.confidence,context:q.context,reason_ar:q.reason_ar},false);
  }catch(e){host.textContent="بانتظار بيانات MT5 الحية: "+String(e.message||"لا يوجد اتصال");shadowText("shadowCurrentPrice","—");shadowText("shadowChartPrice","—");shadowText("shadowMarketStamp","لا توجد بيانات حديثة");shadowClearDecision();}
