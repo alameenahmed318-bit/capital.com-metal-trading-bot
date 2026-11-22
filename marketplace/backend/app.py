@@ -701,7 +701,7 @@ class Handler(SimpleHTTPRequestHandler):
             decision=item.get("strategy_decision") or {}
             if not decision:return self.send_json(409,{"error":"التحليل لم يكتمل"})
             context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
-            return self.send_json(200,{"client_id":client_id,
+            return self.send_json(200,{"client_id":client_id,"symbol":item.get("symbol"),
                 "bar_time":int(finite_number(decision.get("bar_time"))),
                 # The local relay consumes 'decision'. Keep 'direction' for legacy relays.
                 "decision":decision.get("decision","WAIT"),
@@ -1626,6 +1626,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if not item or (datetime.now(timezone.utc)-item["received_at"]).total_seconds()>30:
                     return self.send_json(409,{"error":"لا توجد بيانات MT5 حديثة"})
                 decision=item.get("strategy_decision") or {}
+                if DUAL_MARKET_MODE and (ENGINE_MARKET=="XAUUSD" or data.get("symbol")) and not same_market_symbol(data.get("symbol"),item.get("symbol")):
+                    return self.send_json(409,{"error":"تصويت النموذج لا يطابق رمز السوق الحالي"})
                 bar_time=int(finite_number(data.get("bar_time",0)))
                 direction=str(data.get("direction","WAIT")).upper()
                 confidence=finite_number(data.get("confidence",-1),-1)
