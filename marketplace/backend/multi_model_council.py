@@ -82,7 +82,7 @@ def _prompt(decision):
         ]
         summary["trading_bot_consensus"]=bot_feed.get("consensus",{})
 
-    return ("You are an independent XAUUSD market-direction analyst, not an order executor. "
+    return ("You are an independent BTCUSD Bitcoin market-direction analyst, not an order executor. "
             "Assess BUY and SELL using only this same-closed-bar market snapshot. "
             "Return ONLY JSON with keys direction (BUY, SELL or WAIT), confidence (0..1), "
             "reason_ar (short Arabic). WAIT if evidence is insufficient. "
