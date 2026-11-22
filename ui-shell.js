@@ -43,7 +43,7 @@ const items=(SECTIONS[page]||[]).filter(([id])=>document.getElementById(id));
 if(items.length){const old=main.querySelector(".section-nav");const tabs=document.createElement("nav");tabs.className="ss-section-tabs";tabs.setAttribute("aria-label","أقسام الصفحة");for(const [id,label] of items){const a=document.createElement("a");a.href="#"+id;a.textContent=label;tabs.append(a)}if(old)old.replaceWith(tabs);else {const top=main.querySelector(".topbar")||main.querySelector(".hero");if(top)top.after(tabs);else main.prepend(tabs)}
 if(page==="trade-management.html"){
  const cards=items.map(([id])=>document.getElementById(id));const all=document.createElement("button");all.type="button";all.textContent="عرض كل الأقسام";tabs.append(all);
- const focus=(id)=>{const selected=id==="recoveryLog"?"smartRecovery":id;for(const card of cards){card.classList.add("ss-focus");card.hidden=selected!=="all"&&card.id!==selected}for(const a of tabs.querySelectorAll("a"))a.classList.toggle("active",a.hash==="#"+selected);all.textContent=selected==="all"?"كل الأقسام معروضة":"عرض كل الأقسام";};
+ const focus=(id)=>{const selected=id==="recoveryLog"?"smartRecovery":id;for(const card of cards){card.classList.add("ss-focus");card.classList.toggle("ss-focus-hidden",selected!=="all"&&card.id!==selected)}for(const a of tabs.querySelectorAll("a"))a.classList.toggle("active",a.hash==="#"+selected);all.textContent=selected==="all"?"كل الأقسام معروضة":"عرض كل الأقسام";};
  const apply=()=>focus(items.some(([id])=>id===hash())||hash()==="recoveryLog"?hash():"positions");
  all.addEventListener("click",()=>focus("all"));window.addEventListener("hashchange",apply);
  tabs.addEventListener("click",e=>{const a=e.target.closest("a");if(a)focus(a.hash.slice(1));});apply();
