@@ -20,7 +20,7 @@ from strategy_versions import versions as strategy_versions, get_active as get_a
 from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
 from telemetry_persistence import queue_closed_deals
-from system_readiness import owner_readiness
+from system_readiness import owner_readiness, position_management_status
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
 from offline_m1_smoke import run as run_offline_m1_smoke
@@ -1413,7 +1413,8 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id=(lic or {}).get("client_id","")
                 item=CONNECTIONS.get(client_id) if client_id else None
                 if not item: return self.send_json(200,{"mode":"DIAGNOSTIC_ONLY",
-                    "execution_authorized":False,"actions":[],"reason_ar":"لا توجد بيانات MT5 حديثة"})
+                    "execution_authorized":False,"actions":[],"reason_ar":"لا توجد بيانات MT5 حديثة",
+                    "position_management_status":position_management_status(None,None)})
                 decision=item.get("strategy_decision") or {}
                 council=council_result(client_id,decision)
                 settings=get_trade_settings(client_id) or {}
@@ -1421,6 +1422,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if advisory:decision=fuse_live_decision(decision,council)
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
                 result=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
+                result["position_management_status"]=position_management_status(item,settings)
                 return self.send_json(200,result)
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
@@ -2476,7 +2478,7 @@ if __name__=="__main__":
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
                     "test_recovery_candle_guard.py","test_local_ai_relay_cpu.py",
-                    "test_position_action_safety.py",
+                    "test_position_action_safety.py","test_position_management_status.py",
                     "test_btc_market_gate.py","test_btc_market_symbols.py",
                     "test_btc_market_isolation.py","test_btc_adaptive_learning.py"):
         recovery_suite.addTests(unittest.defaultTestLoader.discover(
