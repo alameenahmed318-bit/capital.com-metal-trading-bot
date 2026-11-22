@@ -38,7 +38,11 @@ PUBLIC_ENGINE_URL=os.getenv("PUBLIC_ENGINE_URL","https://al-zool-meeno-engine.on
 LOCAL_AI_REQUIRED=os.getenv("LOCAL_AI_REQUIRED","false").strip().lower() in ("1","true","yes","on")
 # The Meeno/Deriv deployment owns BTCUSD only. Gold remains on the untouched
 # original Render service and original Supabase project.
-ENGINE_MARKET="BTCUSD"
+DUAL_MARKET_MODE=os.getenv("ALZOOL_MULTI_MARKET","0")=="1"
+ENGINE_MARKET=os.getenv("ALZOOL_ENGINE_MARKET","BTCUSD") if DUAL_MARKET_MODE else "BTCUSD"
+if ENGINE_MARKET not in ("BTCUSD","XAUUSD"):
+    raise RuntimeError("Unsupported market worker")
+PAIRING_HASH_FIELD="alzool_owner_mt5_hash" if ENGINE_MARKET=="BTCUSD" else "alzool_owner_gold_mt5_hash"
 EXPECTED_BTC_DB_HOST="egtofwardrkkzflniikp.supabase.co"
 def btc_market(symbol):
     return supported_market_symbol(symbol) and market_family(symbol)==ENGINE_MARKET
@@ -59,6 +63,15 @@ LICENSE_CACHE_TTL_SECONDS=60.0
 SETTINGS_CACHE_REFRESH_SECONDS=2.0
 
 def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
+    if DUAL_MARKET_MODE:
+        if path.split("?",1)[0]=="/rest/v1/alzool_engine_clients":
+            if method in ("GET","PATCH","DELETE"):
+                path+=("&" if "?" in path else "?")+"market=eq."+ENGINE_MARKET
+            elif method=="POST":
+                if not isinstance(payload,dict):raise ValueError("Market-scoped identity required")
+                payload={**payload,"market":ENGINE_MARKET}
+        if ENGINE_MARKET=="XAUUSD":
+            path=path.replace("/rest/v1/alzool_btc_trade_settings","/rest/v1/alzool_engine_trade_settings")
     if not SUPABASE_URL: raise RuntimeError("SUPABASE_URL is not configured")
     if not btc_database_ready():
         raise RuntimeError("BTC_SUPABASE_PROJECT_MISMATCH: refusing to access the gold database")
@@ -195,11 +208,14 @@ def issue_owner_pairing(user):
     record=admin_user(uid)
     metadata=dict(record.get("app_metadata") or {})
     secret=secrets.token_urlsafe(40)
-    metadata["alzool_owner_mt5_hash"]=hashlib.sha256(secret.encode()).hexdigest()
+    metadata[PAIRING_HASH_FIELD]=hashlib.sha256(secret.encode()).hexdigest()
     sb("PUT","/auth/v1/admin/users/"+urllib.parse.quote(uid,safe=""),
        {"app_metadata":metadata},admin=True)
     LICENSE_CACHE.pop("owner",None)
     identity=license_for_user(uid)
+    if not identity and DUAL_MARKET_MODE and ENGINE_MARKET=="XAUUSD":
+        issue_license(uid)
+        identity=license_for_user(uid)
     if not identity: raise ValueError("معرّف التخزين الخاص بالمالك غير موجود")
     return {"engine_id":identity["client_id"],"pairing_key":secret,"engine_server_url":PUBLIC_ENGINE_URL}
 
@@ -212,7 +228,7 @@ def validate_owner_terminal(token):
         return hmac.compare_digest(cached.get("token_hash",""),digest)
     users=sb("GET","/auth/v1/admin/users?page=1&per_page=100",admin=True).get("users",[])
     matched=next((u for u in users if (u.get("email") or "").lower()==OWNER_EMAIL),None)
-    expected=((matched or {}).get("app_metadata") or {}).get("alzool_owner_mt5_hash","")
+    expected=((matched or {}).get("app_metadata") or {}).get(PAIRING_HASH_FIELD,"")
     LICENSE_CACHE["owner"]={"token_hash":expected,"valid_until":now+30}
     return bool(expected and hmac.compare_digest(expected,digest))
 
@@ -430,7 +446,7 @@ def terminal_request_matches_market(request_url, active_symbol):
     query = urllib.parse.parse_qs(urllib.parse.urlparse(request_url).query)
     requested = (query.get("symbol") or [""])[0]
     if not requested:
-        return market_family(active_symbol) == "XAUUSD"
+        return False
     return supported_market_symbol(requested) and same_market_symbol(requested, active_symbol)
 
 
@@ -605,6 +621,24 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
                 "server_utc":datetime.now(timezone.utc).isoformat(),
                 "trading_enabled_by_health_check":False})
+        if path=="/api/multi-market/owner-state":
+            try:
+                u=owner(token_of(self))
+                if banned(u):return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                cid=(lic or {}).get("client_id","")
+                snap=CONNECTIONS.get(cid) or {}
+                acct=snap.get("account") or {}
+                seen=snap.get("received_at")
+                settings=get_trade_settings(cid) if cid else {}
+                return self.send_json(200,{"market":ENGINE_MARKET,"owner":True,
+                    "paired":bool(cid),"symbol":snap.get("symbol"),"login":acct.get("login"),
+                    "broker":acct.get("server"),"seen_at":seen.timestamp() if seen else 0,
+                    "open_positions":len(snap.get("positions") or []),
+                    "ready":bool(lic and not lic.get("revoked") and snap.get("mt5_central_trading_enabled") is True),
+                    "trading_enabled":bool((settings or {}).get("trading_enabled"))})
+            except PermissionError:return self.send_json(403,{"error":"هذه الخدمة للمالك فقط"})
+            except Exception:return self.send_json(503,{"error":"تعذر التحقق من حالة السوق"})
         if path=="/api/owner/readiness":
             try:
                 user=owner(token_of(self))
@@ -913,28 +947,35 @@ class Handler(SimpleHTTPRequestHandler):
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 limit=max(1,min(100,int(finite_number((params.get("limit") or ["30"])[0],30))))
                 rows=sb("GET","/rest/v1/alzool_engine_learning_runs?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&symbol=ilike.BTCUSD*&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
+                    "&symbol=ilike."+ENGINE_MARKET+"*&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
                     "&order=created_at.desc&limit="+str(limit),admin=True)
-                cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
-                history=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
-                deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
-                live=live_learning_profile(deals,symbol=(CONNECTIONS.get(client_id) or {}).get("symbol") or "BTCUSD")
-                try:
-                    # Gold's historical version weights are never imported
-                    # into BTC learning or backtest analytics.
-                    selected=None
-                    profile_error=None
-                except Exception as exc:
-                    selected=None
-                    profile_error=type(exc).__name__
                 current=CONNECTIONS.get(client_id) or {}
-                current_symbol=current.get("symbol") or next((r.get("symbol") for r in rows if btc_market(r.get("symbol"))),"BTCUSD")
+                current_symbol=current.get("symbol") or next((r.get("symbol") for r in rows if btc_market(r.get("symbol"))),ENGINE_MARKET)
                 current_tf=current.get("timeframe") or "PERIOD_M1"
+                cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
+                # Filter BEFORE pagination. Older migrated XAUUSD deals must
+                # never consume PostgREST's row limit on a BTC-only report.
+                query=("/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&"+urllib.parse.quote("payload->>symbol",safe="")+"=eq."+urllib.parse.quote(current_symbol,safe="")+
+                    "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.desc,deal_id.desc")
+                deals=[]
+                for offset in range(0,5000,1000):
+                    page=sb("GET",query+"&limit=1000&offset="+str(offset),admin=True)
+                    if not isinstance(page,list):raise ValueError("Invalid BTC deal history")
+                    deals.extend(x["payload"] for x in page if isinstance(x,dict) and isinstance(x.get("payload"),dict))
+                    if len(page)<1000:break
                 live=live_learning_profile(combine_deals(deals,current.get("closed_deals") or []),symbol=current_symbol)
+                profile_error=None
                 history=btc_learning_snapshot(client_id,current_symbol,current_tf,sb)
                 regime=((current.get("strategy_decision") or {}).get("context") or {}).get("regime","غير محدد")
-                computed=btc_learning_weights(history,live,regime)["diagnostics"]
+                effective=btc_learning_weights(history,live,regime)
+                computed=effective["diagnostics"]
+                live_only=btc_learning_weights({},live,regime)
+                live["updated_strategies"]=live_only["diagnostics"]["live_strategies"]
+                for row in live["strategies"]:
+                    row["weight"]=live_only["strategy_weights"].get(str(row["strategy_id"]),1.0)
+                computed["history_refreshing"]=bool(history.get("refreshing"))
+                computed["history_error"]=history.get("error")
                 rows=[r for r in rows if btc_market(r.get("symbol"))]
                 item=CONNECTIONS.get(client_id) or {}
                 recent_decision=item.get("strategy_decision") or {}
@@ -942,7 +983,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],
                     "count":len(rows) if isinstance(rows,list) else 0,"live":live,
                     "learning_computed":{**computed,
-                       "active_version_label":"BTC ADAPTIVE V1",
+                       "active_version_label":ENGINE_MARKET+" ADAPTIVE V1",
                        "profile_read_error":profile_error},
                     "learning_applied":current_application,
                     "learning_applied_at":recent_decision.get("generated_at"),
@@ -1365,8 +1406,12 @@ class Handler(SimpleHTTPRequestHandler):
                 regime=(last_decision.get("context") or {}).get("regime","غير محدد")
                 historical=btc_learning_snapshot(client_id,symbol,current.get("timeframe") or "PERIOD_M1",sb)
                 computed=btc_learning_weights(historical,profile,regime)["diagnostics"]
+                computed["history_refreshing"]=bool(historical.get("refreshing"))
+                computed["history_error"]=historical.get("error")
+                btc_deals=[d for d in deals if same_market_symbol(d.get("symbol"),symbol)]
                 last_applied=last_decision.get("learning") or {}
-                return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
+                return self.send_json(200,{"status":memory["status"],"memory_count":len(btc_deals),
+                    "closed_positions":profile["closed_positions"],
                     "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
                     "last_closed_at":profile["last_closed_at"],"last_attributed_at":profile["last_attributed_at"],
                     "eligible_strategies":computed["eligible_strategies"],
@@ -1521,7 +1566,7 @@ class Handler(SimpleHTTPRequestHandler):
                 item=CONNECTIONS.get(client_id)
                 if not item:return self.send_json(409,{"execution_authorized":False,"reason_ar":"MT5 غير متصل"})
                 req_symbol=str(data.get("symbol") or "")
-                if (not req_symbol and market_family(item.get("symbol"))!="XAUUSD") or (req_symbol and not same_market_symbol(req_symbol,item.get("symbol"))):
+                if not req_symbol or not same_market_symbol(req_symbol,item.get("symbol")):
                     return self.send_json(409,{"execution_authorized":False,"reason_ar":"رمز الشارت غير مطابق؛ رفض المطالبة"})
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(client_id) or {}
@@ -1635,7 +1680,7 @@ class Handler(SimpleHTTPRequestHandler):
                 symbol=str(data.get("symbol") or "")[:40]
                 timeframe=str(data.get("timeframe") or "")[:20]
                 if not btc_market(symbol):
-                    return self.send_json(409,{"accepted":False,"error":"السيرفر الجديد مخصص لشموع BTCUSD فقط"})
+                    return self.send_json(409,{"accepted":False,"error":"رمز الشموع لا يطابق مسار التداول "+ENGINE_MARKET})
                 if not symbol or not timeframe: return self.send_json(400,{"error":"رمز السوق أو الفريم غير صالح"})
                 metadata=data.get("metadata") if isinstance(data.get("metadata"),dict) else {}
                 candles=clean_historical_candles(data.get("candles"),metadata,client_id,symbol,timeframe)
@@ -1848,7 +1893,7 @@ class Handler(SimpleHTTPRequestHandler):
                 strategies=run.get("strategy_results") if isinstance(run.get("strategy_results"),list) else []
                 combinations=run.get("combination_results") if isinstance(run.get("combination_results"),list) else []
                 if not btc_market(symbol):
-                    return self.send_json(400,{"error":"ذاكرة هذا المشروع مخصصة للبيتكوين فقط"})
+                    return self.send_json(400,{"error":"رمز الاختبار لا يطابق السوق "+ENGINE_MARKET})
                 if not run_key or not symbol or not timeframe or len(strategies)!=200 or len(combinations)!=1000:
                     return self.send_json(400,{"error":"بيانات جولة التعلم غير مكتملة؛ يلزم 200 استراتيجية و1000 تركيبة"})
                 if len(json.dumps(run,ensure_ascii=False))>1800000:
@@ -2049,7 +2094,7 @@ class Handler(SimpleHTTPRequestHandler):
                 # Reject gold/other charts before touching in-memory state or learning.
                 if not btc_market(data.get("symbol")):
                     return self.send_json(409,{"accepted":False,
-                        "error":"هذا المحرك مخصص لبيتكوين BTCUSD؛ الذهب على السيرفر القديم"})
+                        "error":"رمز الشارت لا يطابق مسار التداول "+ENGINE_MARKET})
                 account=data.get("account") or {}
                 if not isinstance(account,dict): return self.send_json(400,{"error":"بيانات الطرفية غير صحيحة"})
                 safe={"login":str(account.get("login",""))[:40],"server":str(account.get("server",""))[:100],
@@ -2141,12 +2186,12 @@ class Handler(SimpleHTTPRequestHandler):
                             # Never stop analysis while historical memory is loading.
                             memory=memory_snapshot(client_id,sb)
                             live_learning=live_learning_profile(combine_deals(
-                                memory.get("deals") or [],closed_deals),symbol=data.get("symbol") or "BTCUSD")
+                                memory.get("deals") or [],closed_deals),symbol=data.get("symbol") or ENGINE_MARKET)
                             raw_mtf=data.get("mtf_bias") if isinstance(data.get("mtf_bias"),dict) else {}
                             mtf_bias={k:str(v).upper() for k,v in raw_mtf.items() if k in ("M5","M15","H1") and str(v).upper() in ("BUY","SELL","WAIT")}
                             try:
                                 chosen_profile=(get_active_strategy_profile(client_id,sb)
-                                    if market_family(data.get("symbol"))=="XAUUSD" else None)
+                                    if market_family(data.get("symbol"))=="XAUUSD" and not DUAL_MARKET_MODE else None)
                                 active_profile_error=None
                             except Exception as profile_error:
                                 # Learning/version storage being unavailable never
@@ -2165,7 +2210,7 @@ class Handler(SimpleHTTPRequestHandler):
                             learning_diagnostic={**effective["diagnostics"],
                                 "memory_status":memory.get("status","LOADING"),
                                 "memory_deals":int(memory.get("count",0)),
-                                "active_version_label":"BTC ADAPTIVE V1",
+                                "active_version_label":ENGINE_MARKET+" ADAPTIVE V1",
                                 "active_version_id":(chosen_profile or {}).get("version_id"),
                                 "profile_read_error":active_profile_error}
                             strategy_weights=effective["strategy_weights"]
@@ -2262,6 +2307,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if strategy_decision:
                     btc_learning_snapshot(client_id,active_symbol,data.get("timeframe"),sb)
                 return self.send_json(200,{"accepted":True,"telemetry":True,
+                    "market_owner_terminal":terminal_is_owner(client_id) if DUAL_MARKET_MODE else False,
                     "positions_received":len(positions),"orders_received":len(orders),
                     "closed_deals_received":len(closed_deals),
                     "candles_received":len(candles),
@@ -2361,4 +2407,4 @@ if __name__=="__main__":
     bootstrap_owner()
     port=int(os.getenv("PORT","10000"))
     print("AL-ZOOL connection/licensing service listening on",port,flush=True)
-    ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
+    ThreadingHTTPServer((os.getenv("ALZOOL_BIND_HOST","0.0.0.0"),port),Handler).serve_forever()
