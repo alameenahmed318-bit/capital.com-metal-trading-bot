@@ -207,7 +207,7 @@ def run_market(db,uid,market):
 
 def latest_report(db,cid):
     rows=db("GET","/rest/v1/alzool_engine_signal_events?client_id=eq."+_encode(cid)+
-        "&event_type=eq.STRESS_LEARNING_PROFILE&select=payload->summary&order=created_at.desc&limit=1",admin=True)
+        "&event_type=eq.STRESS_LEARNING_PROFILE&select=summary:payload-%3Esummary&order=created_at.desc&limit=1",admin=True)
     if rows and isinstance(rows[0].get("summary"),dict):
         return {**rows[0]["summary"],"persisted":True}
     return {"status":"NO_SAVED_REPORT","policy":"RESEARCH_ONLY"}
