@@ -55,6 +55,8 @@ def btc_database_ready():
 CONNECTIONS={}
 LICENSE_CACHE={}
 OWNER_TERMINAL_ID_CACHE={}
+MARKET_ACCOUNT_BINDINGS={}
+MARKET_ACCOUNT_LOCK=threading.RLock()
 TRADE_SETTINGS_CACHE={}
 SETTINGS_REFRESHING=set()
 AI_EVENT_CACHE={}
@@ -281,6 +283,34 @@ def validate_license(client_id,token):
     LICENSE_CACHE[client_id]={"token_hash":token_hash,"valid":valid,"expires_at":row.get("expires_at",""),
                               "checked_at":now,"valid_until":now+LICENSE_CACHE_TTL_SECONDS}
     return valid
+
+def bind_market_account(client_id,account):
+    """One broker account per lane, with database-enforced cross-lane uniqueness."""
+    if not DUAL_MARKET_MODE:return True
+    login=str(account.get("login") or "").strip()
+    broker=str(account.get("server") or "").strip().casefold()
+    if not login or not broker:return False
+    pair=(login,broker)
+    with MARKET_ACCOUNT_LOCK:
+        known=MARKET_ACCOUNT_BINDINGS.get(client_id)
+        if known is not None:return known==pair
+        path="/rest/v1/alzool_engine_clients?client_id=eq."+urllib.parse.quote(client_id,safe="")
+        rows=sb("GET",path+"&select=account_login,broker_server,revoked&limit=1",admin=True)
+        if not rows or rows[0].get("revoked"):return False
+        row=rows[0]
+        if row.get("account_login") is None and row.get("broker_server") is None:
+            try:
+                sb("PATCH",path+"&account_login=is.null&broker_server=is.null",
+                   {"account_login":login,"broker_server":broker},admin=True,prefer="return=representation")
+            except ValueError:
+                # Concurrent binding or other lane already owns this broker account.
+                return False
+            rows=sb("GET",path+"&select=account_login,broker_server,revoked&limit=1",admin=True)
+            if not rows or rows[0].get("revoked"):return False
+            row=rows[0]
+        if (row.get("account_login"),row.get("broker_server"))!=pair:return False
+        MARKET_ACCOUNT_BINDINGS[client_id]=pair
+        return True
 
 def terminal_is_owner(client_id):
     """Check the authorized terminal's owner mapping with short-lived cache."""
@@ -832,15 +862,15 @@ class Handler(SimpleHTTPRequestHandler):
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path in ("/health","/api/health"):
-            return self.send_json(200,{"ok":True,"service":"AL-ZOOL BTC-only Meeno engine",
-                "market":"BTCUSD","btc_database_ready":btc_database_ready(),
+            return self.send_json(200,{"ok":True,"service":"AL-ZOOL "+ENGINE_MARKET+" engine",
+                "market":ENGINE_MARKET,"btc_database_ready":btc_database_ready(),
                 "mt5_connection_api":True,"trading_engine":True,
                 "trading_enabled_by_health_check":False,"execution_location":"isolated Deriv MT5 terminal"})
         if path=="/api/config":
             if not btc_database_ready():
                 return self.send_json(503,{"ready":False,"error":
                     "إعداد SUPABASE_URL لا يشير إلى قاعدة البيتكوين الجديدة؛ حُظر الاتصال لحماية بيانات الذهب",
-                    "market":"BTCUSD"})
+                    "market":ENGINE_MARKET})
             missing=[]
             if not SUPABASE_URL: missing.append("SUPABASE_URL")
             if not SUPABASE_ANON_KEY: missing.append("SUPABASE_ANON_KEY")
@@ -1339,7 +1369,7 @@ class Handler(SimpleHTTPRequestHandler):
                 u=owner(token_of(self))
                 identity=license_for_user(u["id"])
                 if not identity:return self.send_json(409,{"error":"لا يوجد معرّف تخزين مرتبط بحساب المالك"})
-                return self.send_json(200,{"versions":[],"market":"BTCUSD",
+                return self.send_json(200,{"versions":[],"market":ENGINE_MARKET,
                     "note":"إصدارات الذهب محفوظة منفصلة؛ لا تُفعّل على البيتكوين حتى يتوفر مخزن إصدارات مخصص."})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:200]})
@@ -1400,7 +1430,7 @@ class Handler(SimpleHTTPRequestHandler):
                 memory=memory_snapshot(client_id,sb)
                 current=CONNECTIONS.get(client_id) or {}
                 deals=combine_deals(memory["deals"],current.get("closed_deals") or [])
-                symbol=current.get("symbol") or next((d.get("symbol") for d in sorted(deals,key=lambda d:finite_number(d.get("time")),reverse=True) if btc_market(d.get("symbol"))),"BTCUSD")
+                symbol=current.get("symbol") or next((d.get("symbol") for d in sorted(deals,key=lambda d:finite_number(d.get("time")),reverse=True) if btc_market(d.get("symbol"))),ENGINE_MARKET)
                 profile=live_learning_profile(deals,symbol=symbol)
                 last_decision=(current.get("strategy_decision") or {})
                 regime=(last_decision.get("context") or {}).get("regime","غير محدد")
@@ -2111,6 +2141,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if any(str(p.get("symbol") or "")!=active_symbol for p in positions+orders):
                     return self.send_json(409,{"accepted":False,
                         "error":"حساب MT5 يحتوي مراكز أو أوامر لسوق آخر؛ استخدم حساب Deriv BTC تجريبي منفصل"})
+                if not bind_market_account(client_id,safe):
+                    return self.send_json(409,{"accepted":False,"error":"معرّف السوق مرتبط بحساب MT5 مختلف أو مستخدم في السوق الآخر"})
                 previous=CONNECTIONS.get(client_id,{})
                 if data.get("closed_deals_unchanged") is True:
                     # Compact heartbeat: the client only resends the historical
@@ -2219,6 +2251,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 combination_weights=combination_weights,mtf_bias=mtf_bias,mode="AUTO",
                                 bot_signals=bot_report,market_symbol=data.get("symbol"))
                             strategy_decision={
+                                "symbol":active_symbol,
                                 "decision":evaluated["decision"],
                                 "entry_reference_price":finite_number(candles[0].get("close")),
                                 "entry_atr":finite_number(evaluated.get("context",{}).get("atr",0.0)),
