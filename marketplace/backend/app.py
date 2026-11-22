@@ -913,7 +913,7 @@ class Handler(SimpleHTTPRequestHandler):
                 params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 limit=max(1,min(100,int(finite_number((params.get("limit") or ["30"])[0],30))))
                 rows=sb("GET","/rest/v1/alzool_engine_learning_runs?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
+                    "&symbol=ilike.BTCUSD*&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
                     "&order=created_at.desc&limit="+str(limit),admin=True)
                 cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
                 history=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
@@ -1358,14 +1358,20 @@ class Handler(SimpleHTTPRequestHandler):
                 if not client_id: return self.send_json(200,{"status":"NO_CONNECTION","memory_count":0})
                 memory=memory_snapshot(client_id,sb)
                 current=CONNECTIONS.get(client_id) or {}
-                profile=live_learning_profile(combine_deals(memory["deals"],current.get("closed_deals") or []),symbol=current.get("symbol") or "BTCUSD")
+                deals=combine_deals(memory["deals"],current.get("closed_deals") or [])
+                symbol=current.get("symbol") or next((d.get("symbol") for d in sorted(deals,key=lambda d:finite_number(d.get("time")),reverse=True) if btc_market(d.get("symbol"))),"BTCUSD")
+                profile=live_learning_profile(deals,symbol=symbol)
                 last_decision=(current.get("strategy_decision") or {})
+                regime=(last_decision.get("context") or {}).get("regime","غير محدد")
+                historical=btc_learning_snapshot(client_id,symbol,current.get("timeframe") or "PERIOD_M1",sb)
+                computed=btc_learning_weights(historical,profile,regime)["diagnostics"]
                 last_applied=last_decision.get("learning") or {}
                 return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
                     "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
                     "last_closed_at":profile["last_closed_at"],"last_attributed_at":profile["last_attributed_at"],
-                    "eligible_strategies":profile["eligible_strategies"],
-                    "eligible_combinations":profile["eligible_combinations"],
+                    "eligible_strategies":computed["eligible_strategies"],
+                    "eligible_combinations":computed["eligible_combinations"],
+                    "learning_computed":computed,
                     "wins":profile["wins"],"losses":profile["losses"],
                     "learning_applied":last_applied,
                     "learning_applied_at":last_decision.get("generated_at"),
@@ -2151,7 +2157,11 @@ class Handler(SimpleHTTPRequestHandler):
                             rates=list(reversed(candles))
                             regime=analyze_market_context(rates).get("regime","غير محدد")
                             historical=btc_learning_snapshot(client_id,active_symbol,data.get("timeframe"),sb)
-                            effective=btc_learning_weights(historical,live_learning,regime)
+                            try:
+                                effective=btc_learning_weights(historical,live_learning,regime)
+                            except Exception as learning_error:
+                                print("BTC_LEARNING_FALLBACK:",type(learning_error).__name__,flush=True)
+                                effective=btc_learning_weights({},live_learning,regime)
                             learning_diagnostic={**effective["diagnostics"],
                                 "memory_status":memory.get("status","LOADING"),
                                 "memory_deals":int(memory.get("count",0)),
