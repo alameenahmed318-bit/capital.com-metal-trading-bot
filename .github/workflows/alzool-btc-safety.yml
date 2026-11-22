@@ -68,6 +68,7 @@ jobs:
         run: |
           node --check dashboard.js
           node --check multi-market-ui.js
+          node tests/backtest_market_selector.cjs
       - name: Confirm live execution remains opt-in
         run: |
           grep -q 'input bool InpEnableCentralTrading = false;' mt5_client/ALZOOL_Central_Client.mq5
