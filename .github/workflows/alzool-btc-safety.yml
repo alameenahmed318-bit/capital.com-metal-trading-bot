@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - deploy/alzool-meeno-btc-demo-20261121
+      - work/alzool-dual-market-20261122
   pull_request:
     branches:
       - work/alzool-foundation-20261114
@@ -18,6 +19,8 @@ jobs:
           python-version: '3.12'
       - name: Check isolated market switching contract
         run: python -m unittest discover -s tests -p test_multi_market_switch.py -v
+      - name: Check dual-market gateway
+        run: python -m unittest discover -s tests -p test_dual_market_gateway.py -v
       - name: Check backend syntax
         run: python -m compileall -q marketplace/backend tests
       - name: Check BTCUSD market gates, learning and advisor signals
@@ -53,8 +56,12 @@ jobs:
           if not unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful():raise SystemExit(1)
           PY
       - name: Check updated dashboard JavaScript
-        run: node --check dashboard.js
+        run: |
+          node --check dashboard.js
+          node --check multi-market-ui.js
       - name: Confirm live execution remains opt-in
         run: |
           grep -q 'input bool InpEnableCentralTrading = false;' mt5_client/ALZOOL_Central_Client.mq5
           grep -q 'input bool InpEnableCentralPositionManagement = false;' mt5_client/ALZOOL_Central_Client.mq5
+          grep -q 'input bool InpEnableCentralTrading = false;' mt5_client/ALZOOL_Multi_Market_Client.mq5
+          grep -q 'input bool InpEnableCentralPositionManagement = false;' mt5_client/ALZOOL_Multi_Market_Client.mq5
