@@ -8,7 +8,7 @@ const current=(location.pathname.split("/").pop()||"dashboard.html").toLowerCase
 const groups=[
  {title:"الرئيسية والمتابعة",icon:"◫",items:[
   ["dashboard.html","⌂","لوحة القيادة","الحساب، السوق، حالة MT5"],
-  ["opportunities.html","◎","الفرص والإشارات","فرص الذهب وأسباب القرار"]]},
+  ["opportunities.html","◎","الفرص والإشارات","فرص البيتكوين وأسباب القرار"]]},
  {title:"الصفقات والتنفيذ",icon:"⇄",items:[
   ["trade-management.html","⇄","الصفقات والحماية","المراكز، الوقف، الأوامر، التعافي"],
   ["trade-history.html","▤","السجل والأداء","الصفقات المغلقة والنتائج"]]},
@@ -18,7 +18,7 @@ const groups=[
   ["learning-lab.html","◈","التعلّم والاستراتيجيات","الأوزان وذاكرة النتائج"],
   ["backtest-lab.html","⌁","الاختبارات التاريخية","الشموع والتجارب"]]},
  {title:"العملاء والإعدادات",icon:"⚙",items:[
-  ["","⚙","بوابة المالك والعملاء","الربط والتراخيص والإدارة"]]}
+  ["","⚙","الإعدادات والربط","ربط MT5 وإدارة الحساب"]]}
 ];
 const sections={
  "dashboard.html":[["liveStatus","حالة MT5"],["aiCouncilLive","مجلس الذكاء"],["aiMonitorInline","مراقبة Hybrid AI"],["tradingSettingsPanel","إعدادات التداول"],["accountPerformance","أداء الحساب"],["closedHistory","آخر الصفقات"]],
@@ -30,11 +30,11 @@ const sections={
  "backtest-lab.html":[["methodNote","إعدادات الاختبار"],["strategyResults","نتائج الاستراتيجيات"],["comboResults","نتائج التركيبات"]],
  "trade-history.html":[["historyStatus","ملخص النتائج"],["tradesTable","الصفقات المغلقة"],["tradeEventsTable","أحداث التداول"]]
 };
-const slug=page=>page?"/"+page:"/";
+const slug=page=>page?"/"+page:"/?manage=1";
 const $=(tag,cls,txt)=>{let e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
 const statusText=sidebar.querySelector("#serviceState")?.textContent||"";
 const brand=$("a","brand");brand.href="/dashboard.html";
-brand.innerHTML='<span class="brand-mark" aria-hidden="true">AZ</span><span><b>AL-ZOOL</b><small>GOLD CONTROL CENTER</small></span>';
+brand.innerHTML='<span class="brand-mark" aria-hidden="true">AZ</span><span><b>AL-ZOOL 🇸🇩</b><small>SHADOW SYSTEM · BTC</small></span>';
 const top=$("div","az-nav-head");
 const mobileClose=$("button","az-nav-close","✕");mobileClose.type="button";mobileClose.setAttribute("aria-label","إغلاق القائمة");
 top.append(brand,mobileClose);
