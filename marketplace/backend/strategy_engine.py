@@ -216,6 +216,23 @@ def calculate_signal(rates,s,features=None):
     confirm,gatewhy=_confirm(rates,s,features)
     return (trigger,f"المحفّز: {_arabic_trigger_reason(why)}؛ {gatewhy}") if confirm==trigger else ("WAIT",f"إشارة المحفّز {trigger} دون تأكيد مستقل؛ {gatewhy}")
 
+def candidate_evidence(rates,s,features):
+    """Research policy: a neutral confirmation is weak evidence, not a veto.
+
+    An explicitly opposing confirmation still invalidates that individual
+    strategy, and a missing trigger is always WAIT. No new entry rule,
+    spread filter or minimum confidence is introduced.
+    """
+    if len(rates)<60:return "WAIT","بيانات الشموع غير كافية",0.0
+    base=dict(s);base["kind"]=s["base_kind"]
+    trigger,why=_base(rates,base,features)
+    reason=_arabic_trigger_reason(why)
+    if trigger=="WAIT":return "WAIT","المحفّز لم يكتمل: "+reason,0.0
+    confirm,gatewhy=_confirm(rates,s,features)
+    if confirm==trigger:return trigger,f"المحفّز: {reason}؛ {gatewhy}",1.0
+    if confirm=="WAIT":return trigger,f"المحفّز: {reason}؛ تأكيد محايد (وزن جزئي)",0.35
+    return "WAIT",f"المحفّز {trigger} وتأكيد معاكس؛ {gatewhy}",0.0
+
 def analyze_market_context(rates):
     if len(rates)<65:return {"regime":"غير محدد","atr":0.,"atr_ratio":1.,"trend_strength":0.,"adx":0.,"vwap":None,"buy_quality":0.,"sell_quality":0.,"buy_trap":False,"sell_trap":False,"support":None,"resistance":None,"reason":"بيانات غير كافية"}
     c=[float(x["close"]) for x in rates]; h=[float(x["high"]) for x in rates]; l=[float(x["low"]) for x in rates]; o=[float(x["open"]) for x in rates]
@@ -286,7 +303,7 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
 
 from entry_evidence import closed_candle_pressure
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None,market_symbol="XAUUSD"):
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None,market_symbol="XAUUSD",research_policy=False):
     weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates)
     # The same rules are reusable, but profile tuning is per market.
     adaptive=(adaptive_bitcoin_parameters(rates,context) if
@@ -300,20 +317,27 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
-        sig,reason=calculate_signal(rates,tuned,features); weight=float(weights.get(str(s["id"]),1.)); fam=s["family"]; bonus=1.
+        if research_policy:
+            sig,reason,evidence=candidate_evidence(rates,tuned,features)
+        else:
+            sig,reason=calculate_signal(rates,tuned,features)
+            evidence=1.0
+        weight=float(weights.get(str(s["id"]),1.)); fam=s["family"]; bonus=1.
         if context["regime"].startswith("اتجاه") and fam in ("EMA Trend","EMA Pullback","Hybrid Confluence","MACD Momentum"):bonus=1.2
         elif context["regime"]=="تذبذب جانبي" and fam in ("Bollinger Reversion","Range Reversion","RSI Momentum"):bonus=1.2
         elif context["regime"]=="تقلب مرتفع" and fam in ("Donchian Breakout","ATR Expansion","Candle Momentum"):bonus=1.15
         aligned=sum(b==sig for b in mtf_bias.values()) if sig!="WAIT" else 0; opposed=sum(b in ("BUY","SELL") and b!=sig for b in mtf_bias.values()) if sig!="WAIT" else 0
-        score=weight*bonus*(1+.06*aligned-.04*opposed); counts[sig]+=1
-        votes.append({"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason})
+        score=weight*bonus*(1+.06*aligned-.04*opposed)*evidence; counts[sig]+=1
+        vote={"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason}
+        if research_policy:vote["evidence_strength"]=evidence
+        votes.append(vote)
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
     byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}; cc_weighted={"BUY":0.0,"SELL":0.0,"WAIT":0.0}
     # Repeated members are NOT independent votes. Normalize the entire combination
     # council by the number of appearances of each underlying strategy.
     for combo in COMBINATIONS:
         combo_weight=max(0.85,min(1.15,float(combination_weights.get(str(combo["id"]),1.0))))
-        members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"]) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
+        members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"])*m.get("evidence_strength",1.0) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
         if active<2 or total<=0:cs,conf,why="WAIT",0.,"أقل من عضوين لديهما إشارة اتجاهية"
         else:
             win="BUY" if directional["BUY"]>directional["SELL"] else "SELL" if directional["SELL"]>directional["BUY"] else "WAIT"; conf=max(directional.values())/total
@@ -340,6 +364,17 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     directional_candidates={"BUY":[x for x in candidates if x[2]=="BUY"],
                             "SELL":[x for x in candidates if x[2]=="SELL"]}
     family_strength={"BUY":fb/max(1,active),"SELL":fsell/max(1,active)}
+    if research_policy:
+        # Preserve one voice per family, but scale that voice by the
+        # relative strength of its evidence rather than a binary majority.
+        family_mass={"BUY":0.0,"SELL":0.0}
+        for family,points in fs.items():
+            denom=max(1.0,points["BUY"]+points["SELL"])
+            delta=(points["BUY"]-points["SELL"])/denom
+            family_mass["BUY"]+=max(0.0,delta)
+            family_mass["SELL"]+=max(0.0,-delta)
+        mass=sum(family_mass.values())
+        if mass>0:family_strength={d:family_mass[d]/mass for d in family_mass}
     combo_total=cc_weighted["BUY"]+cc_weighted["SELL"]
     combo_strength={d:cc_weighted[d]/combo_total if combo_total>0 else 0.0
                     for d in ("BUY","SELL")}
@@ -414,7 +449,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     selected_combo_id=int(best_combo[final]["id"]) if final in best_combo else 0
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
+    return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"RESEARCH_SOFT_CONFIRMATION_V2" if research_policy else "FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
         "directional_scores":{d:round(score[d],6) for d in ("BUY","SELL")},
         "directional_candidates":directional_details,
         "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
