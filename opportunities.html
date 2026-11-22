@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#080b1a"><title>AL-ZOOL | مختبر الفرص</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/dashboard.css?v=2">
-<link rel="stylesheet" href="/ui-shell.css?v=1">
+
 <style>
 .op-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
 .op-stat,.op-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
@@ -15,9 +15,10 @@
 .op-table-wrap{overflow:auto}.op-table{width:100%;border-collapse:collapse;min-width:720px;font-size:12px}.op-table th,.op-table td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.op-table th{color:var(--muted);font-weight:600}
 .buy{color:#48c99a}.sell{color:#ff7888}.wait{color:var(--muted)}.op-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:850px){.op-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.op-columns{grid-template-columns:1fr}}
-</style><link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=shadow-system-20261122">
-<link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
+</style>
+
+
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=full-shadow-20261122-4">
 </head>
 <body><div class="shell">
 <aside class="sidebar">
@@ -83,5 +84,6 @@ async function loadEvents(){try{const d=await api("/api/opportunities/events?kin
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await analyze();await loadEvents();setInterval(analyze,5000);setInterval(loadEvents,15000)}catch(e){$("serviceState").textContent="تعذر التحقق";$("marketStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",analyze);$("reloadHistory").addEventListener("click",loadEvents);$("historyDays").addEventListener("change",loadEvents);boot();
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=shadow-system-20261122" defer></script>
+
+<script src="/ui-shell.js?v=full-shadow-20261122-4" defer></script>
 </body></html>
