@@ -20,8 +20,36 @@ jobs:
         run: python -m compileall -q marketplace/backend tests
       - name: Check BTCUSD market gates, learning and advisor signals
         run: python -m unittest discover -s tests -p 'test_btc*.py' -v
-      - name: Run full backend policy tests
-        run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Compare all policy tests with deployed baseline
+        env:
+          BASELINE_SHA: 5d4f1a29aecece40a90e6007e22de7b6fe5b31ae
+        run: |
+          git fetch --depth=1 origin "$BASELINE_SHA"
+          git worktree add --detach /tmp/alzool-baseline "$BASELINE_SHA"
+          python - <<'PY'
+          import subprocess,re,sys
+          def run(path):
+              p=subprocess.run([sys.executable,"-m","unittest","discover","-s","tests","-p","test_*.py","-v"],cwd=path,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+              failures=set(re.findall(r"^(?:FAIL|ERROR): (.+)$",p.stdout,re.M))
+              summary=re.findall(r"^Ran \d+ tests.*$|^FAILED.*$|^OK$",p.stdout,re.M)
+              if not summary or (p.returncode and not failures):raise RuntimeError("Incomplete test run: "+p.stdout[-3000:])
+              print(path,summary,flush=True)
+              for f in sorted(failures):print("Failure:",f)
+              return failures
+          base=run("/tmp/alzool-baseline")
+          new=run(".")
+          print("Existing failures:",len(base),"Current failures:",len(new),"New failures:",len(new-base))
+          if new-base:raise SystemExit("NEW REGRESSIONS: "+repr(sorted(new-base)))
+          PY
+      - name: Check production startup suite
+        run: |
+          python - <<'PY'
+          import unittest
+          suite=unittest.TestSuite()
+          for pattern in ("test_owner_decisions.py","test_owner_recovery.py","test_recovery_action_protocol.py","test_hybrid_decision.py","test_position_sizing.py","test_entry_quality.py","test_live_learning.py","test_post_close_m1.py","test_recovery_candle_guard.py","test_local_ai_relay_cpu.py","test_position_action_safety.py","test_btc_market_gate.py","test_btc_market_symbols.py","test_btc_market_isolation.py","test_btc_adaptive_learning.py"):
+              suite.addTests(unittest.defaultTestLoader.discover("tests",pattern=pattern))
+          if not unittest.TextTestRunner(verbosity=1).run(suite).wasSuccessful():raise SystemExit(1)
+          PY
       - name: Check updated dashboard JavaScript
         run: node --check dashboard.js
       - name: Confirm live execution remains opt-in
