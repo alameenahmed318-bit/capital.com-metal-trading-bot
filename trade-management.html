@@ -142,6 +142,14 @@
  </section>
  <section class="card" id="positionManagement">
   <div class="card-title"><div><span class="eyebrow">إدارة الإضافات</span><h2>التعزيز والتبريد</h2></div><span class="read-only">نفس اتجاه الصفقة الأصلية فقط</span></div>
+  <div class="entry-guard-panel" id="positionManagementDiagnostics">
+   <div class="sl-settings-head">
+    <div><b>تشخيص تنفيذ التعزيز والتبريد</b><small>يفحص حالة مفاتيح السيرفر وMT5 وسبب الانتظار. فحص فقط، لا يرسل أي أمر تداول.</small></div>
+    <button class="refresh" id="refreshPositionManagementDiagnostics" type="button">فحص سبب عدم التنفيذ</button>
+   </div>
+   <pre id="pmDiagnosticResult" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;direction:rtl;font:inherit;line-height:1.9;margin:9px 0">جارٍ التحقق من إعدادات التنفيذ الفعلية...</pre>
+   <p class="section-note">إذا كان InpEnableCentralPositionManagement داخل EA على false فلن يُرسل طلب تنفيذ، حتى لو التعزيز والتبريد ON هنا. وجاهزية القناة لا تعني صدور تصريح لفتح صفقة.</p>
+  </div>
   <div class="pm-mode-row">
    <label for="pmMode">طريقة التحكم</label>
    <select id="pmMode"><option value="AI">AI تلقائي</option><option value="MANUAL">يدوي</option></select>
@@ -196,7 +204,7 @@
  <footer>AL-ZOOL SHADOW SYSTEM <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=recovery-target-20261116-1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=pm-direct-diagnostic-20261122"></script>
 <script src="/numbers-en.js?v=3"></script>
 
 <script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
