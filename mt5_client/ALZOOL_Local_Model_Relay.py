@@ -47,6 +47,8 @@ def credentials(path):
             os.getenv("ALZOOL_OWNER_CONNECTION_ID",""))
     key=str(data.get("InpOwnerPairingKey" if owner_mode else "InpEngineToken") or
             os.getenv("ALZOOL_OWNER_PAIRING_KEY",""))
+    if server != "https://al-zool-meeno-engine.onrender.com":
+        raise ValueError("استخدم ملف ربط البيتكوين الجديد، وليس ملف الذهب")
     if not server.startswith("https://") or not identity or len(key)<32:
         raise ValueError("بيانات الاقتران ناقصة: صدّر ملف ربط المالك الجديد من لوحة AL-ZOOL")
     if any(x in identity for x in "/?&#"):
@@ -146,7 +148,7 @@ def compact_snapshot(context):
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
     snapshot=compact_snapshot(context)
-    instruction=("You are a cautious XAUUSD M1 advisory analyst. Use ONLY actual supplied "
+    instruction=("You are a cautious BTCUSD Bitcoin M1 advisory analyst. Use ONLY actual supplied "
         "closed candles, trends and indicators; central_signal is not an order. "
         "RSI near 58 is NOT overbought; normally overbought RSI starts around 70. "
         "Do not infer any missing indicator. WAIT when evidence is insufficient. "
