@@ -9,7 +9,7 @@
 </style>
 
 
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=full-shadow-20261122-4">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=full-shadow-layout-20261122-5">
 </head>
 <body><div class="shell"><aside class="sidebar">
  <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>SHADOW SYSTEM · BTC</small></span></a>
@@ -59,5 +59,5 @@ async function load(){try{$("historyStatus").innerHTML="<b>جاري تحديث �
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await load()}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("historyStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",load);$("days").addEventListener("change",load);$("search").addEventListener("input",()=>{render();renderEvents()});$("resultFilter").addEventListener("change",render);boot();
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=full-shadow-20261122-4" defer></script>
+<script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
 </body></html>
