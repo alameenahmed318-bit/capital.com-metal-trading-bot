@@ -8,11 +8,11 @@
 .learn-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.learn-stat,.learn-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px}.learn-stat small{display:block;color:var(--muted);font-size:11px}.learn-stat strong{display:block;font-size:23px;margin-top:7px;overflow-wrap:anywhere}.learn-card{margin:14px 0}.learn-card h2{font-size:17px;margin:0 0 12px}.learn-note{font-size:12px;line-height:1.9;color:var(--muted);padding:12px;border:1px solid var(--line);border-radius:11px;margin:12px 0}.learn-table-wrap{overflow:auto}.learn-table{width:100%;border-collapse:collapse;min-width:640px;font-size:12px}.learn-table th,.learn-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.learn-table th{color:var(--muted);font-weight:600}.positive{color:#48c99a}.negative{color:#ff7888}.muted{color:var(--muted)}.learn-actions{display:flex;gap:10px;flex-wrap:wrap}.learn-actions a{display:inline-flex;padding:9px 13px;border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none;font-size:12px}
 @media(max-width:900px){.learn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:500px){.learn-stat strong{font-size:19px}}
 </style><link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=dark-ai-pro-20261114-1">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=shadow-system-20261122">
 <link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
 </head>
 <body><div class="shell"><aside class="sidebar">
- <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>SHADOW SYSTEM · BTC</small></span></a>
  <div class="side-label">الرئيسية</div>
  <div class="nav-group">
   <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
@@ -150,7 +150,7 @@ async function load(){
    $("liveUpdated").textContent=String(live.updated_strategies||0)+" / 200";
    $("liveStatus").textContent=live.closed_positions
     ? "تم تحليل "+live.processed_positions+" مركزًا من أصل "+live.closed_positions+" خلال آخر 30 يومًا. تغطية ربط الصفقات باستراتيجياتها: "+Number(live.coverage_percent||0).toFixed(1)+"%. صفقات اليوم: "+live.daily_processed_positions+" من "+live.daily_closed_positions+". الأوزان لا تتغير إلا بعد 8 صفقات مغلقة منسوبة لاستراتيجية واحدة، مع تقليل تأثير العينات الصغيرة؛ الصافي السلبي لا يزيد الوزن. الصفقات غير المرتبطة باستراتيجية لا تغيّر الأوزان."
-    : "لا توجد صفقات XAUUSD مغلقة تحمل معرّف استراتيجية قابلًا للتحقق بعد. سيظهر التعلم بعد وصول صفقات مغلقة من MT5.";
+    : "لا توجد صفقات BTCUSD مغلقة تحمل معرّف استراتيجية قابلًا للتحقق بعد. سيظهر التعلم بعد وصول صفقات مغلقة من MT5.";
    const liveRows=live.strategies||[];
    $("liveStrategies").innerHTML=liveRows.length
     ? "<table class='learn-table'><thead><tr><th>الاستراتيجية</th><th>الصفقات</th><th>رابحة</th><th>خاسرة</th><th>الصافي</th><th>وزن التعلم المحسوب</th></tr></thead><tbody>"+liveRows.slice(0,20).map(x=>"<tr><td>#"+Number(x.strategy_id)+"</td><td>"+Number(x.trades)+"</td><td class='positive'>"+Number(x.wins)+"</td><td class='negative'>"+Number(x.losses)+"</td><td class='"+(Number(x.net)>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+Number(x.weight||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>"
@@ -203,5 +203,5 @@ $("strategyAuditBtn").addEventListener("click",runStrategyAudit);
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});
 load();setInterval(refreshLearningState,20000);
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
+<script src="/ui-shell.js?v=shadow-system-20261122" defer></script>
 </body></html>
