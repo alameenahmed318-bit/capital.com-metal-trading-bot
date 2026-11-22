@@ -7,11 +7,11 @@
 .th-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.th-stat,.th-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}.th-stat small{display:block;color:var(--muted);font-size:11px}.th-stat strong{display:block;font-size:22px;margin-top:7px;overflow-wrap:anywhere}.th-card{margin:14px 0}.th-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.th-actions input,.th-actions select,.th-actions button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:inherit}.th-table-wrap{overflow:auto}.th-table{width:100%;border-collapse:collapse;min-width:700px;font-size:12px}.th-table th,.th-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.th-table th{color:var(--muted)}.positive{color:#48c99a}.negative{color:#ff7888}
 @media(max-width:850px){.th-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style><link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=dark-ai-pro-20261114-1">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=shadow-system-20261122">
 <link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
 </head>
 <body><div class="shell"><aside class="sidebar">
- <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>GOLD SNIPER · SUPER AI</small></span></a>
+ <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>SHADOW SYSTEM · BTC</small></span></a>
  <div class="side-label">الرئيسية</div>
  <div class="nav-group">
   <a class="nav " href="/dashboard.html" ><span>▦</span><span class="nav-label">لوحة القيادة</span></a>
@@ -57,5 +57,5 @@ function renderEvents(){const names={TRADE_OPENED:"فتح صفقة",TRADE_CLOSED
 async function load(){try{$("historyStatus").innerHTML="<b>جاري تحديث السجل</b><span>يتم جلب الصفقات المغلقة وأحداث MT5.</span>";const d=await api("/api/trade-history?days="+$("days").value+"&limit=5000");trades=d.trades||[];currency=d.currency||"";$("tradeCount").textContent=Number(d.count||0).toLocaleString("en-US");$("winRate").textContent=d.win_rate==null?"—":fmt(d.win_rate)+"%";$("netTotal").textContent=fmt(d.net)+" "+currency;$("netTotal").className=Number(d.net||0)>0?"positive":Number(d.net||0)<0?"negative":"neutral";$("netTotal").dir="ltr";$("dealRows").textContent=Number(d.deal_rows||0).toLocaleString("en-US");try{const ev=await api("/api/opportunities/events?kind=trades&days="+$("days").value+"&limit=300");tradeEvents=ev.events||[]}catch(e){tradeEvents=[]}$("historyStatus").innerHTML="<b>تم تحميل السجل</b><span>الفترة: "+($("days").selectedOptions[0]?.textContent||"")+" · المصدر: MT5 / قاعدة البيانات.</span>";render();renderEvents()}catch(e){$("historyStatus").innerHTML="<b>تعذر تحميل السجل</b><span>"+esc(e.message)+"</span>";$("tradesTable").innerHTML="<div class='th-stat'>"+esc(e.message)+"</div>"}}
 async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الدخول غير مكتملة");const sb=window.supabase.createClient(cfg.supabase_url,cfg.supabase_anon_key),{data}=await sb.auth.getSession();if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");$("serviceState").textContent="تم التحقق من الحساب";await load()}catch(e){$("serviceState").textContent="يتطلب تسجيل الدخول";$("historyStatus").innerHTML="<b>خطأ</b><span>"+esc(e.message)+"</span>"}}
 $("refreshBtn").addEventListener("click",load);$("days").addEventListener("change",load);$("search").addEventListener("input",()=>{render();renderEvents()});$("resultFilter").addEventListener("change",render);boot();
-</script><script src="/numbers-en.js?v=3"></script><script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
+</script><script src="/numbers-en.js?v=3"></script><script src="/ui-shell.js?v=shadow-system-20261122" defer></script>
 </body></html>
