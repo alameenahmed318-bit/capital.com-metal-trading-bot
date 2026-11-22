@@ -34,6 +34,8 @@ def _build_combinations():
         seen.add(members); out.append({"id":len(out)+1,"name":f"AZ Combination {len(out)+1:04d}","members":members})
     return out
 COMBINATIONS=_build_combinations()
+_STRATEGY_BY_ID={s["id"]:s for s in STRATEGIES}
+_COMBO_NAMES={c["id"]:" + ".join(_STRATEGY_BY_ID[i]["name"] for i in c["members"]) for c in COMBINATIONS}
 assert len(STRATEGIES)==200 and len({(s["base_kind"],s["gate_kind"]) for s in STRATEGIES})==200
 assert len(COMBINATIONS)==1000 and len({c["members"] for c in COMBINATIONS})==1000
 # Derived once at startup. Previously recomputed 5,000 member counts on
@@ -92,19 +94,48 @@ def wilder_adx(rates,period=14):
 
 
 
-def _base(rates,s):
+class _CandleFeatures:
+    """One evaluation's immutable OHLC arrays and shared indicator results.
+
+    Never shared across a bar, market or account. Keep the legacy arithmetic
+    and window boundaries so the speed-only profile cannot alter a decision.
+    """
+    def __init__(self,rates):
+        self.close=[float(x["close"]) for x in rates]
+        self.high=[float(x["high"]) for x in rates]
+        self.low=[float(x["low"]) for x in rates]
+        self.open=[float(x["open"]) for x in rates]
+        self.volume=[max(0.,float(x.get("tick_volume",0))) for x in rates]
+        self.memo={}
+    def value(self,key,fn):
+        if key not in self.memo:self.memo[key]=fn()
+        return self.memo[key]
+    def ema(self,p,start=None,end=None):
+        return self.value(("ema",p,start,end),lambda:ema(self.close[start:end],p))
+    def rsi(self,p):
+        return self.value(("rsi",p),lambda:rsi(self.close,p))
+    def range(self,v):
+        return self.value(("range",v),lambda:(
+            max(self.high[-(10+v):-1]),min(self.low[-(10+v):-1]),
+            sum(a-b for a,b in zip(self.high[-(14+v):-1],self.low[-(14+v):-1]))/(14+v)))
+
+def _base(rates,s,features=None):
     if len(rates)<60:return "WAIT","بيانات الشموع غير كافية"
-    c=[float(x["close"]) for x in rates]; h=[float(x["high"]) for x in rates]
-    l=[float(x["low"]) for x in rates]; o=[float(x["open"]) for x in rates]
+    f=features or _CandleFeatures(rates)
+    c,h,l,o=f.close,f.high,f.low,f.open
     v=int(s["variant"]); kind=s["kind"]; close=c[-1]
-    fast=ema(c[-(s["fast"]*4):],s["fast"]); slow=ema(c[-(s["slow"]*4):],s["slow"])
-    mom=rsi(c,s["period"]); rh=max(h[-(10+v):-1]); rl=min(l[-(10+v):-1])
-    ar=sum(a-b for a,b in zip(h[-(14+v):-1],l[-(14+v):-1]))/(14+v)
+    # Only compute an indicator for families that actually use it.
+    fast=slow=mom=None
+    if kind in ("trend","pullback","hybrid","parabolic"):
+        fast=f.ema(s["fast"],-(s["fast"]*4))
+        slow=f.ema(s["slow"],-(s["slow"]*4))
+    if kind in ("rsi","hybrid"):mom=f.rsi(s["period"])
+    if kind in ("breakout","atr","range","vwap"):rh,rl,ar=f.range(v)
     bull=close>o[-1]; bear=close<o[-1]; buy=sell=False; reason="لا توجد إشارة مؤكدة"
     if kind=="trend": buy,sell=fast>slow and close>fast,fast<slow and close<fast; reason="EMA trend alignment"
     elif kind=="rsi": buy,sell=mom is not None and mom>50+v,mom is not None and mom<50-v; reason=f"RSI momentum ({mom:.1f})" if mom is not None else reason
     elif kind=="macd":
-        a,b=ema(c,12+v),ema(c,26+v); buy,sell=a is not None and b is not None and a>b,a is not None and b is not None and a<b; reason="MACD-style EMA momentum"
+        a,b=f.ema(12+v),f.ema(26+v); buy,sell=a is not None and b is not None and a>b,a is not None and b is not None and a<b; reason="MACD-style EMA momentum"
     elif kind=="bb":
         w=c[-(20+v):]; mean=sum(w)/len(w); sd=(sum((x-mean)**2 for x in w)/len(w))**.5
         buy,sell=close<mean-sd*(1.2+v*.05),close>mean+sd*(1.2+v*.05); reason="Bollinger-style mean reversion"
@@ -139,14 +170,14 @@ def _base(rates,s):
         vols=[float(x.get("tick_volume",0)) for x in rates[-(20+v):-1]]; pressure=float(rates[-1].get("tick_volume",0))/max(sum(vols)/max(1,len(vols)),1); buy,sell=pressure>1.15+v*.04 and bull,pressure>1.15+v*.04 and bear; reason=f"Tick-volume expansion ({pressure:.2f}x)"
     return ("BUY",reason) if buy and not sell else ("SELL",reason) if sell and not buy else ("WAIT",reason)
 
-def _confirm(rates,s):
-    c=[float(x["close"]) for x in rates]; h=[float(x["high"]) for x in rates]; l=[float(x["low"]) for x in rates]; o=[float(x["open"]) for x in rates]
-    vols=[max(0.,float(x.get("tick_volume",0))) for x in rates]; gate=s["gate_kind"]; op,hi,lo,cl=o[-1],h[-1],l[-1],c[-1]; buy=sell=False
+def _confirm(rates,s,features=None):
+    f=features or _CandleFeatures(rates)
+    c,h,l,o,vols=f.close,f.high,f.low,f.open,f.volume; gate=s["gate_kind"]; op,hi,lo,cl=o[-1],h[-1],l[-1],c[-1]; buy=sell=False
     if gate=="candle":buy,sell=cl>op,cl<op
     elif gate=="ema_slope":
-        a,b=ema(c[-80:],s["fast"]),ema(c[-90:-10],s["fast"]); buy,sell=a is not None and b is not None and a>b,a is not None and b is not None and a<b
+        a,b=f.ema(s["fast"],-80),f.ema(s["fast"],-90,-10); buy,sell=a is not None and b is not None and a>b,a is not None and b is not None and a<b
     elif gate=="rsi_zone":
-        value=rsi(c,s["period"]); t=s["threshold"]; buy,sell=value is not None and value>t,value is not None and value<100-t
+        value=f.rsi(s["period"]); t=s["threshold"]; buy,sell=value is not None and value>t,value is not None and value<100-t
     elif gate=="volume":
         avg=sum(vols[-21:-1])/max(1,len(vols[-21:-1])); buy,sell=vols[-1]>avg*1.15 and cl>op,vols[-1]>avg*1.15 and cl<op
     elif gate=="range":
@@ -177,12 +208,12 @@ def _arabic_trigger_reason(reason):
     if reason.startswith("RSI momentum ("):return "مؤشر القوة النسبية RSI يوضح زخم الحركة: "+reason.split("(",1)[1].rstrip(")")
     return reason
 
-def calculate_signal(rates,s):
+def calculate_signal(rates,s,features=None):
     if len(rates)<60:return "WAIT","بيانات الشموع غير كافية"
     base=dict(s); base["kind"]=s["base_kind"]
-    trigger,why=_base(rates,base)
+    trigger,why=_base(rates,base,features)
     if trigger=="WAIT":return "WAIT",f"المحفّز لم يكتمل: {_arabic_trigger_reason(why)}"
-    confirm,gatewhy=_confirm(rates,s)
+    confirm,gatewhy=_confirm(rates,s,features)
     return (trigger,f"المحفّز: {_arabic_trigger_reason(why)}؛ {gatewhy}") if confirm==trigger else ("WAIT",f"إشارة المحفّز {trigger} دون تأكيد مستقل؛ {gatewhy}")
 
 def analyze_market_context(rates):
@@ -265,10 +296,11 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     # evidence, never an additional entry veto or a waiting condition.
     pressure=closed_candle_pressure(rates)
     context["last_closed_candle_pressure"]=pressure
+    features=_CandleFeatures(rates)
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
     for s in STRATEGIES:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
-        sig,reason=calculate_signal(rates,tuned); weight=float(weights.get(str(s["id"]),1.)); fam=s["family"]; bonus=1.
+        sig,reason=calculate_signal(rates,tuned,features); weight=float(weights.get(str(s["id"]),1.)); fam=s["family"]; bonus=1.
         if context["regime"].startswith("اتجاه") and fam in ("EMA Trend","EMA Pullback","Hybrid Confluence","MACD Momentum"):bonus=1.2
         elif context["regime"]=="تذبذب جانبي" and fam in ("Bollinger Reversion","Range Reversion","RSI Momentum"):bonus=1.2
         elif context["regime"]=="تقلب مرتفع" and fam in ("Donchian Breakout","ATR Expansion","Candle Momentum"):bonus=1.15
@@ -291,7 +323,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         # masquerade as 1000 independent confirmations.
         independent_weight=combo_weight*_COMBO_INDEPENDENT_BASE[combo["id"]]
         cc[cs]+=1; cc_weighted[cs]+=independent_weight
-        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":" + ".join(m["name"] for m in members),"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
+        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":_COMBO_NAMES[combo["id"]],"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -358,22 +390,28 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     # Compact strategy-backed alternatives allow same-bar AI votes to genuinely
     # change a close BUY/SELL ranking without inventing trades from model text.
     directional_details={}
+    best_combo={}
+    best_combo_key={}
+    for combo in combo_votes:
+        side=combo["signal"]
+        if side not in ("BUY","SELL"):continue
+        key=(combo["confidence"]*combo["weight"],combo["confidence"])
+        if side not in best_combo_key or key>best_combo_key[side]:
+            best_combo[side]=combo
+            best_combo_key[side]=key
     for side in usable:
         pool=sorted(directional_candidates[side],
                     key=lambda x:(x[0],float(weights.get(str(x[1]["id"]),1.))),
                     reverse=True)
         if not pool:continue
         _,best,_,trigger_reason=pool[0]
-        supported_combos=[c for c in combo_votes if c["signal"]==side]
-        supported_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
+        supported_combo=best_combo.get(side)
         directional_details[side]={
             "strategy_id":int(best["id"]),"strategy_name":best["name"],
-            "combination_id":int(supported_combos[0]["id"]) if supported_combos else 0,
+            "combination_id":int(supported_combo["id"]) if supported_combo else 0,
             "reason_ar":trigger_reason}
     sid=int(chosen["id"]) if chosen else 0; name=chosen["name"] if chosen else "AZ MASTER BRAIN — 1000 COMBINATIONS"
-    winning_combos=[c for c in combo_votes if c["signal"]==final and final in ("BUY","SELL")]
-    winning_combos.sort(key=lambda c:(c["confidence"]*c["weight"],c["confidence"]),reverse=True)
-    selected_combo_id=int(winning_combos[0]["id"]) if winning_combos else 0
+    selected_combo_id=int(best_combo[final]["id"]) if final in best_combo else 0
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
     return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
