@@ -12,6 +12,7 @@ from hybrid_decision import fuse_live_decision
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
+from learning_observability import decision_audit_event, live_learning_health
 from position_action_engine import plan_account_actions
 from strategy_experiments import sanitize_profile, compare_profiles
 from strategy_audit import audit_strategies
@@ -1472,6 +1473,23 @@ class Handler(SimpleHTTPRequestHandler):
                 computed["history_error"]=historical.get("error")
                 btc_deals=[d for d in deals if same_market_symbol(d.get("symbol"),symbol)]
                 last_applied=last_decision.get("learning") or {}
+                # A calculated weight is NOT evidence of a recent candle analysis or an executed order.
+                health=live_learning_health(symbol,current,last_decision,profile)
+                persisted_audit=None
+                audit_read_error=None
+                try:
+                    events=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=eq."+
+                        urllib.parse.quote(client_id,safe="")+
+                        "&event_type=eq.LEARNING_DECISION_AUDIT&select=created_at,payload"+
+                        "&order=created_at.desc&limit=80",admin=True)
+                    for record in events if isinstance(events,list) else []:
+                        proof=record.get("payload") if isinstance(record,dict) else None
+                        if isinstance(proof,dict) and same_market_symbol(proof.get("symbol"),symbol):
+                            persisted_audit={"created_at":record.get("created_at"),**proof}
+                            break
+                except Exception as audit_error:
+                    # Read-only observability must never interrupt learning or MT5 decisions.
+                    audit_read_error=type(audit_error).__name__
                 return self.send_json(200,{"status":memory["status"],"memory_count":len(btc_deals),"symbol":symbol,
                     "closed_positions":profile["closed_positions"],
                     "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
@@ -1482,6 +1500,9 @@ class Handler(SimpleHTTPRequestHandler):
                     "wins":profile["wins"],"losses":profile["losses"],
                     "learning_applied":last_applied,
                     "learning_applied_at":last_decision.get("generated_at"),
+                    "live_learning_health":health,
+                    "last_persisted_learning_audit":persisted_audit,
+                    "learning_audit_read_error":audit_read_error,
                     "top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
@@ -2315,6 +2336,13 @@ class Handler(SimpleHTTPRequestHandler):
                                 "execution_ready":False
                             }
                             strategy_last_bar=bar_time
+                            # Persist bounded proof of weight usage in the candle EVALUATOR only.
+                            # Neither this event nor its status grants trading permission.
+                            learning_audit=decision_audit_event(
+                                client_id,active_symbol,data.get("timeframe"),bar_time,
+                                learning_diagnostic)
+                            if learning_audit:
+                                queue_ai_diagnostic_event(learning_audit)
                             if learning_diagnostic.get("status")=="APPLIED":
                                 # Persistent, idempotent proof that adjusted live
                                 # weights actually entered a closed-candle decision.
@@ -2446,7 +2474,7 @@ if __name__=="__main__":
     for pattern in ("test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
-                    "test_live_learning.py","test_post_close_m1.py",
+                    "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
                     "test_recovery_candle_guard.py","test_local_ai_relay_cpu.py",
                     "test_position_action_safety.py",
                     "test_btc_market_gate.py","test_btc_market_symbols.py",
