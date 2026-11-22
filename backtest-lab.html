@@ -265,7 +265,7 @@ async function run(){
     strategy_results:strategyRows,combination_results:comboRows,
     diagnostics:{simulation:{stop_atr:slAtr,target_atr:tpAtr,trailing_atr:trailAtr,max_holding_bars:maxHoldBars,one_position_per_model:true,ohlc_intrabar_rule:"conservative_stop_first",end_of_sample:"close_at_final_candle"},validation_share:0.30,policy_rules:"Only comparable prior runs (same symbol, timeframe, currency, lot and costs) validation metrics can suppress a model; minimum 30 trades, negative net and profit factor below 0.90.",regime_method:"EMA20/EMA50 trend plus historical spread bucket.",warning:"Independent model results are not one combined account portfolio."}};
   const saved=await apiPostLearning(runRecord);
-  $("methodNote").innerHTML+="<br><b>ذاكرة التعلم:</b> تم حفظ الجولة "+esc(runRecord.run_key)+". النصف الأول/70% للتدريب الوصفي وآخر 30% للتحقق؛ الجولة القادمة تستخدم نتائج التحقق السابقة فقط. تم كبح "+suppressedSignals+" إشارة بناءً على سجل سابق سلبي مؤكد.";
+  $("methodNote").innerHTML+="<br><b>ذاكرة التعلم:</b> تم حفظ الجولة "+esc(runRecord.run_key)+". النصف الأول/70% للتدريب الوصفي وآخر 30% للتحقق؛ الجولة القادمة تستخدم نتائج التحقق السابقة فقط. تم كبح "+suppressedSignals+" إشارة بناءً على سجل سابق سلبي مؤكد. <br>تعلم السيرفر المستقل: "+esc(saved.server_learning?.status||"LOADING")+"؛ يعيد تقييم شموع M1 على مكتبة التداول نفسها، ولا ينقل أوزان مكتبة المتصفح المختلفة." ;
   $("progressBar").style.width="100%";setState("اكتمل الاختبار وحُفظت جولة التعلم · "+candles.length+" شمعة · "+tf+" · "+h.symbol);
  }catch(e){setState(e.message);const msg="<div class='lab-state'>"+esc(e.message)+"</div>";$("strategyResults").innerHTML=msg;$("comboResults").innerHTML=msg}
  finally{running=false;btn.disabled=false;btn.textContent="إعادة الاختبار"}
