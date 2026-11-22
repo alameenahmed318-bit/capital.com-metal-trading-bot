@@ -923,7 +923,7 @@ class Handler(SimpleHTTPRequestHandler):
                 requested_limit=int(finite_number((params.get("limit") or ["5000"])[0],5000))
                 row_limit=max(100,min(10000,requested_limit))
                 meta_query=("/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&select=symbol,timeframe&order=uploaded_at.desc")
+                    "&symbol=ilike."+ENGINE_MARKET+"*&select=symbol,timeframe&order=uploaded_at.desc,candle_time.desc,symbol.asc,timeframe.asc")
                 meta_rows=[]; meta_offset=0
                 while len(meta_rows)<10000:
                     meta_page=sb("GET",meta_query+"&limit=1000&offset="+str(meta_offset),admin=True)
@@ -943,6 +943,10 @@ class Handler(SimpleHTTPRequestHandler):
                 symbol=str((params.get("symbol") or [available_symbols[0] if available_symbols else "XAUUSD"])[0])[:40]
                 if timeframe not in available_timeframes: return self.send_json(400,{"error":"الفريم المطلوب غير موجود ضمن البيانات المحفوظة","available_timeframes":available_timeframes})
                 if symbol not in available_symbols: return self.send_json(400,{"error":"الرمز المطلوب غير موجود ضمن البيانات المحفوظة","available_symbols":available_symbols})
+                if (params.get("meta") or ["0"])[0]=="1":
+                    return self.send_json(200,{"symbol":symbol,"timeframe":timeframe,"market":ENGINE_MARKET,
+                        "available_timeframes":available_timeframes,"available_symbols":available_symbols,
+                        "history_source":"MT5 historical rates saved in Supabase"})
                 query="/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")
                 query+="&symbol=eq."+urllib.parse.quote(symbol,safe="")+"&timeframe=eq."+urllib.parse.quote(timeframe,safe="")
                 if days:
