@@ -64,6 +64,12 @@
 <div class="learn-table-wrap" id="learningAppliedChanges">لم تُعرض أوزان مستخدمة بعد.</div>
 <p class="learn-note">يتعلم AL-ZOOL إحصائياً من الصفقات المغلقة المنسوبة لاستراتيجية أو تركيبة. هذه أوزان متغيرة تُستخدم في ترتيب الإشارات، وليست تدريباً جديداً لأوزان Qwen أو DeepSeek. الأوزان التي لا تملك أدلة كافية تبقى محايدة، والتعلم لا يغير إعدادات اللوت أو وقف الخسارة ولا يضيف شرط منع للدخول.</p>
 </section>
+<section class="learn-card" id="strategyComparisonPanel">
+<h2>تطوير الاستراتيجيات والتركيبات — مقارنة حقيقية</h2>
+<p class="learn-note">محرك السرعة مطبق. الترجيح المرن يخضع لمقارنة تاريخية منفصلة لكل سوق، دون تغيير إشارات التنفيذ. القياس هو صحة اتجاه الدقيقة التالية بعد السبريد، لا أرباح صفقات حقيقية.</p>
+<div class="learn-note" id="strategyComparisonStatus">جارٍ التحقق من نتائج المقارنة...</div>
+<div id="strategyComparisonTable" class="learn-table-wrap"></div>
+<button id="strategyComparisonRefresh" type="button" class="refresh">تحديث النتيجة</button></section>
 <section class="learn-card" id="strategyAuditPanel">
  <h2>تدقيق تصويت 200 استراتيجية و1000 تركيبة</h2>
  <p class="learn-note">فحص حسابات حقيقية على شموع تاريخية مغلقة؛ تقسيم زمني تدريب 60% ثم تحقق 40%. لا يعتبر قياس ربح، ولا يُفعّل التداول أو يغير أوزان الاستراتيجيات. التركيبات المتداخلة تخضع لتصحيح تكرار الأعضاء داخل المحرك المركزي.</p>
@@ -210,9 +216,23 @@ async function refreshLearningState(){
      String(live.memory_count??0)+" صفقة، ومراكز منسوبة: "+String(live.processed_positions??0);
  }catch(e){$("learningAppliedState").textContent="تعذر التحقق من الحالة";}
 }
+async function refreshStrategyComparison(){
+ if(!accessToken)return;
+ try{
+ const d=await api("/api/ai/strategy-comparison");
+ $("strategyComparisonStatus").textContent=d.status==="REPLAY_COMPLETE"?
+ d.market+" | "+Number(d.candles)+" شمعة | "+Number(d.windows)+" نافذة | قرارات تغيرت: "+Number(d.changed_decisions)+" | الترجيح الجديد بحثي فقط":
+ d.status==="LOADING"?"جارٍ حساب المقارنة على شموع السوق المختار":d.status==="INSUFFICIENT_HISTORY"?"الشموع المتصلة غير كافية":"تعذرت المقارنة؛ لا تغيير على التداول";
+ if(d.status!=="REPLAY_COMPLETE"){$("strategyComparisonTable").textContent="";return}
+ const row=(label,x)=>"<tr><td>"+label+"</td><td>"+Number(x.signals)+"</td><td>"+Number(x.wait)+"</td><td>"+(x.hit_rate==null?"—":Number(x.hit_rate).toFixed(2)+"%")+"</td><td>"+Number(x.net_per_window).toFixed(4)+"</td></tr>";
+ $("strategyComparisonTable").innerHTML="<table class='learn-table'><thead><tr><th>المحرك</th><th>الإشارات</th><th>انتظار</th><th>صحة الاتجاه بعد السبريد</th><th>نتيجة ATR / نافذة</th></tr></thead><tbody>"+row("الحالي",d.baseline)+row("المرن (بحثياً)",d.candidate)+"</tbody></table>";
+ }catch(e){$("strategyComparisonStatus").textContent="لا تتوفر نتيجة مؤكدة بعد";}
+}
+$("strategyComparisonRefresh").addEventListener("click",refreshStrategyComparison);
+setInterval(refreshStrategyComparison,15000);
 $("strategyAuditBtn").addEventListener("click",runStrategyAudit);
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});
-load();setInterval(refreshLearningState,20000);
+load().then(refreshStrategyComparison);setInterval(refreshLearningState,20000);
 </script><script src="/numbers-en.js?v=3"></script>
 
 <script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
