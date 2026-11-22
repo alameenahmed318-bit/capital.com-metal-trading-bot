@@ -125,6 +125,7 @@ def compact_snapshot(context):
             recent.append({k:row[k] for k in ("time","open","high","low","close")
                            if k in row})
     return {
+        "symbol":context.get("symbol"),
         "bar_time":context.get("bar_time"),
         "central_signal":central_signal(context),
         "central_confidence":context.get("confidence",0),
@@ -148,7 +149,9 @@ def compact_snapshot(context):
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
     snapshot=compact_snapshot(context)
-    instruction=("You are a cautious BTCUSD Bitcoin M1 advisory analyst. Use ONLY actual supplied "
+    symbol=str(context.get("symbol") or "BTCUSD").upper()
+    market="XAUUSD Gold" if symbol.startswith("XAUUSD") else "BTCUSD Bitcoin"
+    instruction=("You are a cautious "+market+" M1 advisory analyst. Use ONLY actual supplied "
         "closed candles, trends and indicators; central_signal is not an order. "
         "RSI near 58 is NOT overbought; normally overbought RSI starts around 70. "
         "Do not infer any missing indicator. WAIT when evidence is insufficient. "
@@ -302,6 +305,7 @@ def main():
                             print(model+" context check error: "+type(exc).__name__,flush=True)
                             continue
                     vote["bar_time"]=bar
+                    vote["symbol"]=context.get("symbol")
                     try:
                         ack=request_json(server+"/v1/local-ai/advice/"+
                             urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
