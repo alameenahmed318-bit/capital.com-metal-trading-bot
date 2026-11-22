@@ -174,6 +174,7 @@ def _event_id(key):
 def _refresh(key,db):
     client,symbol,tf=key
     enc=lambda x:urllib.parse.quote(x,safe="")
+    phase="restore"
     try:
         # Restore a persisted profile only for this exact account/symbol/timeframe.
         with _LOCK: existing=_CACHE.get(key)
@@ -184,15 +185,18 @@ def _refresh(key,db):
                 saved=events[0]["payload"]
                 if saved.get("version")==VERSION and saved.get("symbol")==symbol and saved.get("timeframe")==tf:
                     with _LOCK:_CACHE[key]=saved
+        phase="history_read"
         rows=db("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+enc(client)+
             "&symbol=eq."+enc(symbol)+"&timeframe=eq."+enc(tf)+
             "&select=candle_time,candle_open,candle_high,candle_low,candle_close,tick_volume,spread_points,point_size"+
             "&order=candle_time.desc&limit="+str(_MAX_CANDLES),admin=True)
         by_time={x["time"]:x for row in rows if (x:=_candle(row)) is not None}
         candles=[by_time[t] for t in sorted(by_time)]
+        phase="replay"
         profile=historical_profile(candles,pause=.015)
         profile.update({"version":VERSION,"symbol":symbol,"timeframe":tf,"updated_at":datetime.now(timezone.utc).isoformat()})
         with _LOCK:_CACHE[key]=profile
+        phase="persist"
         db("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
             {"event_id":_event_id(key),"client_id":client,"event_type":"BTC_LEARNING_PROFILE","payload":profile},
             admin=True,prefer="resolution=merge-duplicates,return=minimal")
@@ -203,7 +207,8 @@ def _refresh(key,db):
             if previous and previous.get("status") in ("READY","STALE"):
                 _CACHE[key]={**previous,"status":"STALE","error":type(exc).__name__}
             else:_CACHE[key]={"status":"UNAVAILABLE","error":type(exc).__name__}
-        print("BTC_LEARNING_WARNING:",type(exc).__name__,flush=True)
+        # Identify the failing stage without exposing credentials or account data.
+        print("BTC_LEARNING_WARNING:",phase,type(exc).__name__,str(exc)[:160] if isinstance(exc,ValueError) else "",flush=True)
     finally:
         with _LOCK:_BUSY.discard(key)
 
@@ -212,7 +217,9 @@ def snapshot(client,symbol,tf,db,refresh=False):
     if key is None:return {"status":"UNSUPPORTED_MARKET_OR_TIMEFRAME"}
     with _LOCK:
         now=time.monotonic()
-        due=now-_ATTEMPT.get(key,-_REFRESH)>=_REFRESH
+        state=(_CACHE.get(key) or {}).get("status")
+        interval=60 if state in ("UNAVAILABLE","STALE") else _REFRESH
+        due=now-_ATTEMPT.get(key,-_REFRESH)>=interval
         if (due or refresh) and key not in _BUSY:
             # Global bound avoids a burst of 80 evaluations per client.
             if len(_BUSY)<1:

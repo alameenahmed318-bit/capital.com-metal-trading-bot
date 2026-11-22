@@ -43,7 +43,7 @@
 <main class="main"><header class="topbar"><div><div class="eyebrow">ADAPTIVE STRATEGY MEMORY</div><h1>ذاكرة وتعلّم AI</h1><p>حفظ جولات الاختبار، تشخيص النتائج، وتحسين قرارات النماذج تدريجيًا</p></div><div class="top-actions"><a class="refresh" href="/backtest-lab.html">تشغيل اختبار جديد</a></div></header>
 <section class="learn-grid">
 <article class="learn-stat"><small>جولات الاختبار المحفوظة</small><strong id="runCount">—</strong></article>
-<article class="learn-stat"><small>نماذج تم كبح إشاراتها وفق التحقق السابق</small><strong id="suppressedCount">—</strong></article>
+<article class="learn-stat"><small>نماذج مكبوحة في اختبارات المتصفح فقط</small><strong id="suppressedCount">—</strong></article>
 <article class="learn-stat"><small>الاستراتيجيات المسجلة</small><strong>200</strong></article>
 <article class="learn-stat"><small>التركيبات المسجلة</small><strong>1000</strong></article>
 </section>
@@ -54,11 +54,12 @@
 <article class="learn-stat"><small>استراتيجيات تأثرت أوزانها (آخر 30 يومًا)</small><strong id="liveUpdated">—</strong></article>
 </section>
 <section class="learn-grid" id="liveLearningHealth">
-<article class="learn-stat"><small>هل أوزان الصفقات الحقيقية مستخدمة في الدخول؟</small><strong id="learningAppliedState">جارٍ التحقق</strong></article>
+<article class="learn-stat"><small>حالة التعلم في قرار التداول</small><strong id="learningAppliedState">جارٍ التحقق</strong></article>
 <article class="learn-stat"><small>استراتيجيات تغير وزنها فعلياً</small><strong id="learningAppliedStrategies">—</strong></article>
 <article class="learn-stat"><small>تراكيب تغير وزنها فعلياً</small><strong id="learningAppliedCombinations">—</strong></article>
 <article class="learn-stat"><small>آخر إغلاق منسوب لاستراتيجية</small><strong id="learningLastAttributed">—</strong></article>
 </section>
+<section class="learn-grid"><article class="learn-stat"><small>حالة الذاكرة التاريخية</small><strong id="historyLearningState">جارٍ التحقق</strong></article><article class="learn-stat"><small>عينات الشموع التي تعلّم منها السيرفر</small><strong id="historySamples">—</strong></article><article class="learn-stat"><small>استراتيجيات تغير وزنها — محسوبة</small><strong id="computedStrategies">—</strong></article><article class="learn-stat"><small>تركيبات تغير وزنها — محسوبة</small><strong id="computedCombinations">—</strong></article></section>
 <section class="learn-card" id="liveLearningEvidence"><h2>دليل تطبيق التعلم في قرار التداول</h2>
 <div class="learn-note" id="learningAppliedDetail">جارٍ التحقق من القرار الذي استخدمه المحرك فعلياً.</div>
 <div class="learn-table-wrap" id="learningAppliedChanges">لم تُعرض أوزان مستخدمة بعد.</div>
@@ -113,6 +114,30 @@ function profile(runs){
 function modelTable(rows){if(!rows.length)return "<div class='learn-note'>لا توجد نتائج تحقق كافية بعد. شغّل اختبارًا واحدًا على الأقل.</div>";
  return "<table class='learn-table'><thead><tr><th>النموذج</th><th>صفقات التحقق</th><th>صافي التحقق</th><th>معامل الربح الصافي</th><th>تشخيص الخسارة</th><th>حالة التعلم</th></tr></thead><tbody>"+rows.slice(0,15).map(x=>{const costs=Number(x.spread||0)+Number(x.slippage||0)+Number(x.commission||0);const cause=x.net>=0?"أداء موجب":x.gross<0?"الإشارة عكست حركة السوق":x.gross>0&&costs>0?"تكاليف التداول أكلت الربح": "بيانات التشخيص غير مكتملة";return "<tr><td>"+esc(x.name)+"</td><td>"+x.n+"</td><td class='"+(x.net>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+(x.pf===999?"∞":x.pf.toFixed(2))+"</td><td>"+cause+"</td><td>"+(x.n>=30&&x.net<0&&x.pf<.9?"كبح الإشارة":x.n<30?"عينة غير كافية":"مراقبة")+"</td></tr>"}).join("")+"</tbody></table>";
 }
+function renderEvidence(applied,calculated,stamp,live={}){
+  const a=applied||{},c=calculated||{};
+  const used=a.status==="APPLIED";
+  const computed=c.status==="APPLIED";
+  $("learningAppliedState").textContent=used?"استُخدمت الأوزان في القرار":computed?"أوزان محسوبة — بانتظار قرار MT5":c.history_refreshing?"جارٍ التعلم":"لا يوجد إثبات تطبيق بعد";
+  $("learningAppliedStrategies").textContent=String(a.applied_strategies??0)+" / 200";
+  $("learningAppliedCombinations").textContent=String(a.applied_combinations??0)+" / 1000";
+  const latest=a.last_attributed_at||c.last_attributed_at||live.last_attributed_at;
+  $("learningLastAttributed").textContent=latest?new Date(latest).toLocaleString("en-GB"):"لا توجد صفقة منسوبة";
+  $("historyLearningState").textContent=c.history_refreshing?"جارٍ التعلم":String(c.history_status||"LOADING");
+  $("historySamples").textContent=String(c.historical_samples??0);
+  $("computedStrategies").textContent=String(c.applied_strategies??0)+" / 200";
+  $("computedCombinations").textContent=String(c.applied_combinations??0)+" / 1000";
+  const detail="آخر قرار فعلي: "+(stamp?new Date(stamp).toLocaleString("en-GB"):"لا يوجد قرار MT5 حديث")+
+   " | الصفقات المنسوبة: "+String(c.processed_positions??live.processed_positions??0)+
+   " | الحالة السوقية: "+String(a.regime||c.regime||"غير محدد")+
+   " | عينات تاريخية محتسبة: "+String(c.historical_samples??0)+
+   " | نماذج تأثرت بالتعلم المباشر: "+String(c.live_strategies??0)+" / "+String(c.live_combinations??0);
+  $("learningAppliedDetail").textContent=detail+(c.history_error?" | خطأ الذاكرة: "+String(c.history_error):"");
+  const source=used?a:c, label=used?"الوزن المستخدم فعلياً":"الوزن المحسوب — لم يثبت استخدامه";
+  const changes=[...(source.changed_strategies||[]).map(x=>({...x,kind:"استراتيجية"})),...(source.changed_combinations||[]).map(x=>({...x,kind:"تركيبة"}))];
+  $("learningAppliedChanges").innerHTML=changes.length?
+    "<div class='learn-note'>"+esc(label)+"</div><table class='learn-table'><thead><tr><th>النوع</th><th>الرقم</th><th>صفقات مغلقة</th><th>الوزن الأساسي</th><th>الوزن التاريخي</th><th>معامل التعلم المباشر</th><th>الوزن النهائي</th></tr></thead><tbody>"+changes.map(x=>"<tr><td>"+esc(x.kind)+"</td><td>#"+Number(x.id)+"</td><td>"+Number(x.closed_trades||0)+"</td><td>1.0000</td><td>"+Number(x.base??1).toFixed(4)+"</td><td>"+Number(x.learned??1).toFixed(4)+"</td><td>"+Number(x.effective??1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>":"<div class='learn-note'>لا توجد أوزان متغيرة مثبتة حتى الآن.</div>";
+}
 async function load(){
  try{
   const cfg=await fetch("/api/config").then(r=>r.json());if(!cfg.ready)throw Error("إعدادات الاتصال غير مكتملة");
@@ -120,30 +145,7 @@ async function load(){
   if(!data.session){location.href="/";return}accessToken=data.session.access_token;await api("/api/access/check");
   const d=await api("/api/backtest/learning?limit=100"),runs=d.runs||[],profileData=profile(runs),p=profileData.models,live=d.live||{},
    calculated=d.learning_computed||{},applied=d.learning_applied||{};
-  const appliedNow=applied.status==="APPLIED";
-  $("learningAppliedState").textContent=appliedNow?"مفعّل ويؤثر على الدخول":
-      applied.status==="INSUFFICIENT_EVIDENCE"?"بانتظار أدلة كافية":
-      applied.status==="NEUTRAL_NO_CHANGE"?"محايد حالياً":
-      calculated.status==="APPLIED"?"أوزان محسوبة — بانتظار قرار جديد":"لا يوجد إثبات تطبيق بعد";
-  $("learningAppliedStrategies").textContent=String(applied.applied_strategies??0)+" / 200";
-  $("learningAppliedCombinations").textContent=String(applied.applied_combinations??0)+" / 1000";
-  const latest=applied.last_attributed_at||calculated.last_attributed_at||live.last_attributed_at;
-  $("learningLastAttributed").textContent=latest?new Date(latest).toLocaleString("en-GB"):"لا توجد صفقة منسوبة";
-  const updatedAt=d.learning_applied_at?new Date(d.learning_applied_at).toLocaleString("en-GB"):"لا يوجد";
-  $("learningAppliedDetail").textContent="القرار الفعلي: "+String(applied.status||"لا توجد قراءة بعد")+
-     " | آخر حساب قرار: "+updatedAt+
-     " | آخر شمعة: "+String(d.learning_decision_bar||"—")+
-     " | نسخة الاستراتيجيات الأساسية: "+String(applied.active_version_label||calculated.active_version_label||"DEFAULT")+
-     " | ذاكرة الصفقات: "+String(applied.memory_status||"لم تبدأ")+
-     " | الصفقات المغلقة المنسوبة: "+String(applied.processed_positions??live.processed_positions??0)+
-     " | تغطية النسب: "+String(applied.coverage_percent??live.coverage_percent??0)+"%"+
-     (applied.profile_read_error?" | قراءة الإصدار: "+applied.profile_read_error:"")+learningBreakdown(applied,calculated);
-  const changes=[...(applied.changed_strategies||[]).map(x=>({...x,kind:"استراتيجية"})),
-                 ...(applied.changed_combinations||[]).map(x=>({...x,kind:"تركيبة"}))];
-  $("learningAppliedChanges").innerHTML=changes.length?
-    "<table class='learn-table'><thead><tr><th>النوع</th><th>الرقم</th><th>صفقات مغلقة</th><th>وزن الإصدار</th><th>وزن التعلم المحسوب</th><th>الوزن المستخدم في القرار</th></tr></thead><tbody>"+
-    changes.map(x=>"<tr><td>"+esc(x.kind)+"</td><td>#"+Number(x.id)+"</td><td>"+Number(x.closed_trades||0)+"</td><td>"+Number(x.base||1).toFixed(4)+"</td><td>"+Number(x.learned||1).toFixed(4)+"</td><td>"+Number(x.effective||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>":
-    "<div class='learn-note'>لا توجد أوزان مختلفة استُخدمت في قرار الدخول الأخير حتى الآن. هذا لا يعني توقف حفظ الصفقات؛ راجع عدد الصفقات والحالة أعلاه.</div>";
+  renderEvidence(applied,calculated,d.learning_applied_at,live);
   $("serviceState").textContent="تم التحقق من الحساب";$("runCount").textContent=String(d.count||0);
    $("liveProcessed").textContent=String(live.processed_positions||0)+" / "+String(live.closed_positions||0);
    $("dailyCoverage").textContent=live.daily_closed_positions?Number(live.daily_coverage_percent||0).toFixed(1)+"%":"لا توجد صفقات مغلقة";
@@ -151,7 +153,7 @@ async function load(){
    $("liveUpdated").textContent=String(live.updated_strategies||0)+" / 200";
    $("liveStatus").textContent=live.closed_positions
     ? "تم تحليل "+live.processed_positions+" مركزًا من أصل "+live.closed_positions+" خلال آخر 30 يومًا. تغطية ربط الصفقات باستراتيجياتها: "+Number(live.coverage_percent||0).toFixed(1)+"%. صفقات اليوم: "+live.daily_processed_positions+" من "+live.daily_closed_positions+". تدخل النتائج المنسوبة في التعلم تدريجياً من أول صفقة غير صفرية، مع تقليل تأثير العينات الصغيرة؛ الصافي السلبي لا يزيد الوزن. الصفقات غير المرتبطة باستراتيجية لا تغيّر الأوزان."
-    : "لا توجد صفقات BTCUSD مغلقة تحمل معرّف استراتيجية قابلًا للتحقق بعد. سيظهر التعلم بعد وصول صفقات مغلقة من MT5.";
+    : "لم تظهر نتائج الصفقات المغلقة في هذا التقرير؛ راجع اتصال MT5 وذاكرة الحساب.";
    const liveRows=live.strategies||[];
    $("liveStrategies").innerHTML=liveRows.length
     ? "<table class='learn-table'><thead><tr><th>الاستراتيجية</th><th>الصفقات</th><th>رابحة</th><th>خاسرة</th><th>الصافي</th><th>وزن التعلم المحسوب</th></tr></thead><tbody>"+liveRows.slice(0,20).map(x=>"<tr><td>#"+Number(x.strategy_id)+"</td><td>"+Number(x.trades)+"</td><td class='positive'>"+Number(x.wins)+"</td><td class='negative'>"+Number(x.losses)+"</td><td class='"+(Number(x.net)>=0?"positive":"negative")+"'>"+money(x.net)+"</td><td>"+Number(x.weight||1).toFixed(4)+"</td></tr>").join("")+"</tbody></table>"
@@ -197,17 +199,13 @@ function learningBreakdown(applied,calculated={}){
 async function refreshLearningState(){
  if(!accessToken)return;
  try{
-  const live=await api("/api/ai/learning"),last=live.learning_applied||{};
-  const state=last.status||"NO_RECENT_DECISION";
-  $("learningAppliedState").textContent=state==="APPLIED"?"يؤثر على قرار الدخول":
-   state==="INSUFFICIENT_EVIDENCE"?"تجميع أدلة":"تعلم محايد أو بلا قرار جديد";
-  $("learningAppliedStrategies").textContent=String(last.applied_strategies??0)+" / 200";
-  $("learningAppliedCombinations").textContent=String(last.applied_combinations??0)+" / 1000";
-  const stamp=last.last_attributed_at||live.last_attributed_at;
-  $("learningLastAttributed").textContent=stamp?new Date(stamp).toLocaleString("en-GB"):"لا يوجد إغلاق منسوب";
-  if(last.status)$("learningAppliedDetail").textContent="القرار الفعلي: "+state+" | آخر قرار: "+String(live.learning_applied_at||"—")+learningBreakdown(last,live.learning_computed||{});
-  if(!last.status)$("learningAppliedDetail").textContent="لم يثبت تطبيق أوزان التعلم على قرار شمعة بعد؛ تاريخ الصفقات محفوظ: "+
-     String(live.memory_count??0)+" صفقة، ومراكز منسوبة: "+String(live.processed_positions??0);
+ const d=await api("/api/ai/learning");
+ renderEvidence(d.learning_applied||{},d.learning_computed||{},d.learning_applied_at,d);
+ if(d.status==="READY"){
+ $("liveProcessed").textContent=String(d.processed_positions??0)+" / "+String(d.closed_positions??0);
+ $("liveWinLoss").textContent=String(d.wins??0)+" / "+String(d.losses??0);
+ $("liveUpdated").textContent=String(d.learning_computed?.live_strategies??0)+" / 200";
+ }
  }catch(e){$("learningAppliedState").textContent="تعذر التحقق من الحالة";}
 }
 $("strategyAuditBtn").addEventListener("click",runStrategyAudit);

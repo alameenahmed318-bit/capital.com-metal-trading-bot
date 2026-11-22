@@ -915,26 +915,33 @@ class Handler(SimpleHTTPRequestHandler):
                 rows=sb("GET","/rest/v1/alzool_engine_learning_runs?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                     "&symbol=ilike.BTCUSD*&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
                     "&order=created_at.desc&limit="+str(limit),admin=True)
-                cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
-                history=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
-                    "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.asc&limit=5000",admin=True)
-                deals=[x.get("payload",{}) for x in history if isinstance(x,dict) and isinstance(x.get("payload"),dict)]
-                live=live_learning_profile(deals,symbol=(CONNECTIONS.get(client_id) or {}).get("symbol") or "BTCUSD")
-                try:
-                    # Gold's historical version weights are never imported
-                    # into BTC learning or backtest analytics.
-                    selected=None
-                    profile_error=None
-                except Exception as exc:
-                    selected=None
-                    profile_error=type(exc).__name__
                 current=CONNECTIONS.get(client_id) or {}
                 current_symbol=current.get("symbol") or next((r.get("symbol") for r in rows if btc_market(r.get("symbol"))),"BTCUSD")
                 current_tf=current.get("timeframe") or "PERIOD_M1"
+                cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
+                # Filter BEFORE pagination. Older migrated XAUUSD deals must
+                # never consume PostgREST's row limit on a BTC-only report.
+                query=("/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                    "&"+urllib.parse.quote("payload->>symbol",safe="")+"=eq."+urllib.parse.quote(current_symbol,safe="")+
+                    "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+"&select=payload&order=deal_time.desc,deal_id.desc")
+                deals=[]
+                for offset in range(0,5000,1000):
+                    page=sb("GET",query+"&limit=1000&offset="+str(offset),admin=True)
+                    if not isinstance(page,list):raise ValueError("Invalid BTC deal history")
+                    deals.extend(x["payload"] for x in page if isinstance(x,dict) and isinstance(x.get("payload"),dict))
+                    if len(page)<1000:break
                 live=live_learning_profile(combine_deals(deals,current.get("closed_deals") or []),symbol=current_symbol)
+                profile_error=None
                 history=btc_learning_snapshot(client_id,current_symbol,current_tf,sb)
                 regime=((current.get("strategy_decision") or {}).get("context") or {}).get("regime","غير محدد")
-                computed=btc_learning_weights(history,live,regime)["diagnostics"]
+                effective=btc_learning_weights(history,live,regime)
+                computed=effective["diagnostics"]
+                live_only=btc_learning_weights({},live,regime)
+                live["updated_strategies"]=live_only["diagnostics"]["live_strategies"]
+                for row in live["strategies"]:
+                    row["weight"]=live_only["strategy_weights"].get(str(row["strategy_id"]),1.0)
+                computed["history_refreshing"]=bool(history.get("refreshing"))
+                computed["history_error"]=history.get("error")
                 rows=[r for r in rows if btc_market(r.get("symbol"))]
                 item=CONNECTIONS.get(client_id) or {}
                 recent_decision=item.get("strategy_decision") or {}
@@ -1365,8 +1372,12 @@ class Handler(SimpleHTTPRequestHandler):
                 regime=(last_decision.get("context") or {}).get("regime","غير محدد")
                 historical=btc_learning_snapshot(client_id,symbol,current.get("timeframe") or "PERIOD_M1",sb)
                 computed=btc_learning_weights(historical,profile,regime)["diagnostics"]
+                computed["history_refreshing"]=bool(historical.get("refreshing"))
+                computed["history_error"]=historical.get("error")
+                btc_deals=[d for d in deals if same_market_symbol(d.get("symbol"),symbol)]
                 last_applied=last_decision.get("learning") or {}
-                return self.send_json(200,{"status":memory["status"],"memory_count":memory["count"],
+                return self.send_json(200,{"status":memory["status"],"memory_count":len(btc_deals),
+                    "closed_positions":profile["closed_positions"],
                     "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
                     "last_closed_at":profile["last_closed_at"],"last_attributed_at":profile["last_attributed_at"],
                     "eligible_strategies":computed["eligible_strategies"],
