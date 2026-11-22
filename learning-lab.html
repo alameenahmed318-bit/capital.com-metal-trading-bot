@@ -296,7 +296,7 @@ $("strategyComparisonRefresh").addEventListener("click",refreshStrategyCompariso
 setInterval(refreshStrategyComparison,15000);
 $("strategyAuditBtn").addEventListener("click",runStrategyAudit);
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});
-load().then(()=>{refreshStrategyComparison();refreshStressLearning()});setInterval(refreshLearningState,20000);
+load().then(()=>{refreshLearningState();refreshStrategyComparison();refreshStressLearning()});setInterval(refreshLearningState,20000);
 </script><script src="/numbers-en.js?v=3"></script>
 
 <script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
