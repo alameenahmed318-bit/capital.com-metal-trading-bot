@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - work/alzool-foundation-20261114
+      - deploy/alzool-meeno-btc-demo-20261121
   workflow_dispatch:
 jobs:
   btc-support:
@@ -19,6 +20,8 @@ jobs:
         run: python -m compileall -q marketplace/backend tests
       - name: Check BTCUSD market gates, learning and advisor signals
         run: python -m unittest discover -s tests -p 'test_btc*.py' -v
+      - name: Run full backend policy tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Check updated dashboard JavaScript
         run: node --check dashboard.js
       - name: Confirm live execution remains opt-in
