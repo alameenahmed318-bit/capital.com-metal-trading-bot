@@ -480,6 +480,15 @@ def terminal_request_matches_market(request_url, active_symbol):
     return supported_market_symbol(requested) and same_market_symbol(requested, active_symbol)
 
 
+def learning_archive_symbol(client_id,current_symbol=None):
+    """Exact broker symbol; reports never substitute BTCUSD for BTCUSDm."""
+    if btc_market(current_symbol):return current_symbol
+    rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+
+        urllib.parse.quote(client_id,safe="")+"&symbol=ilike."+ENGINE_MARKET+
+        "*&timeframe=eq.PERIOD_M1&select=symbol&order=candle_time.desc&limit=1",admin=True)
+    symbol=rows[0].get("symbol") if isinstance(rows,list) and rows else None
+    return symbol if btc_market(symbol) else ENGINE_MARKET
+
 def live_learning_profile(deals, symbol="XAUUSD"):
     """Build outcome-based weights only from closed positions on this market symbol."""
     market_symbol = symbol
@@ -651,6 +660,18 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
                 "server_utc":datetime.now(timezone.utc).isoformat(),
                 "trading_enabled_by_health_check":False})
+        if path=="/api/ai/stress-learning":
+            try:
+                u=owner(token_of(self))
+                if banned(u):return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"):
+                    return self.send_json(200,{"market":ENGINE_MARKET,"status":"NO_SAVED_REPORT"})
+                from stress_learning import latest_report
+                result=latest_report(sb,lic["client_id"])
+                return self.send_json(200,{"market":ENGINE_MARKET,**result})
+            except PermissionError:return self.send_json(403,{"error":"هذه الخدمة للمالك فقط"})
+            except Exception:return self.send_json(503,{"error":"تعذر قراءة سجل اختبارات الضغط"})
         if path=="/api/ai/strategy-comparison":
             try:
                 u=owner(token_of(self))
@@ -991,7 +1012,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "&symbol=ilike."+ENGINE_MARKET+"*&select=id,run_key,symbol,timeframe,period_days,candle_count,test_points,validation_points,lot_size,commission_per_lot,slippage_points,account_currency,summary,strategy_results,combination_results,diagnostics,created_at"+
                     "&order=created_at.desc&limit="+str(limit),admin=True)
                 current=CONNECTIONS.get(client_id) or {}
-                current_symbol=current.get("symbol") or next((r.get("symbol") for r in rows if btc_market(r.get("symbol"))),ENGINE_MARKET)
+                current_symbol=learning_archive_symbol(client_id,current.get("symbol"))
                 current_tf=current.get("timeframe") or "PERIOD_M1"
                 cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
                 # Filter BEFORE pagination. Older migrated XAUUSD deals must
@@ -1022,7 +1043,7 @@ class Handler(SimpleHTTPRequestHandler):
                 recent_decision=item.get("strategy_decision") or {}
                 current_application=recent_decision.get("learning") or {}
                 return self.send_json(200,{"runs":rows if isinstance(rows,list) else [],
-                    "count":len(rows) if isinstance(rows,list) else 0,"live":live,
+                    "count":len(rows) if isinstance(rows,list) else 0,"live":live,"symbol":current_symbol,
                     "learning_computed":{**computed,
                        "active_version_label":ENGINE_MARKET+" ADAPTIVE V1",
                        "profile_read_error":profile_error},
@@ -1441,7 +1462,7 @@ class Handler(SimpleHTTPRequestHandler):
                 memory=memory_snapshot(client_id,sb)
                 current=CONNECTIONS.get(client_id) or {}
                 deals=combine_deals(memory["deals"],current.get("closed_deals") or [])
-                symbol=current.get("symbol") or next((d.get("symbol") for d in sorted(deals,key=lambda d:finite_number(d.get("time")),reverse=True) if btc_market(d.get("symbol"))),ENGINE_MARKET)
+                symbol=learning_archive_symbol(client_id,current.get("symbol"))
                 profile=live_learning_profile(deals,symbol=symbol)
                 last_decision=(current.get("strategy_decision") or {})
                 regime=(last_decision.get("context") or {}).get("regime","غير محدد")
@@ -1451,7 +1472,7 @@ class Handler(SimpleHTTPRequestHandler):
                 computed["history_error"]=historical.get("error")
                 btc_deals=[d for d in deals if same_market_symbol(d.get("symbol"),symbol)]
                 last_applied=last_decision.get("learning") or {}
-                return self.send_json(200,{"status":memory["status"],"memory_count":len(btc_deals),
+                return self.send_json(200,{"status":memory["status"],"memory_count":len(btc_deals),"symbol":symbol,
                     "closed_positions":profile["closed_positions"],
                     "processed_positions":profile["processed_positions"],"coverage_percent":profile["coverage_percent"],
                     "last_closed_at":profile["last_closed_at"],"last_attributed_at":profile["last_attributed_at"],
@@ -2307,7 +2328,7 @@ class Handler(SimpleHTTPRequestHandler):
                                     "event_id":event_id,
                                     "client_id":client_id,
                                     "event_type":"LIVE_LEARNING_APPLIED",
-                                    "payload":{"bar_time":bar_time,
+                                    "payload":{"bar_time":bar_time,"symbol":active_symbol,
                                         "last_attributed_at":learning_diagnostic.get("last_attributed_at"),
                                         "processed_positions":learning_diagnostic["processed_positions"],
                                         "applied_strategies":learning_diagnostic["applied_strategies"],
@@ -2315,7 +2336,7 @@ class Handler(SimpleHTTPRequestHandler):
                                         "active_version_label":learning_diagnostic["active_version_label"],
                                         "historical_samples":learning_diagnostic.get("historical_samples",0),
                                         "regime":learning_diagnostic.get("regime"),
-                                        "reason_ar":"تم تطبيق التعلم المتوافق مع محرك البيتكوين على أوزان قرار الشمعة"}}
+                                        "reason_ar":"تم تمرير الأوزان المتعلمة إلى محرك قرار الشمعة "+ENGINE_MARKET}}
                                 )
                         except Exception as engine_error:
                             print("CENTRAL_ENGINE_WARNING:",str(engine_error)[:250],flush=True)
