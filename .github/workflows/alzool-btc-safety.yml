@@ -6,6 +6,7 @@ on:
       - work/alzool-dual-market-20261122
       - work/alzool-fast-strategy-lab-20261122
       - work/alzool-strategy-evidence-20261122
+      - work/backtest-market-selector-20261122
   pull_request:
     branches:
       - work/alzool-foundation-20261114
