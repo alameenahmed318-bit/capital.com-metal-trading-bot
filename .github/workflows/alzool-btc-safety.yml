@@ -4,6 +4,7 @@ on:
     branches:
       - deploy/alzool-meeno-btc-demo-20261121
       - work/alzool-dual-market-20261122
+      - work/alzool-fast-strategy-lab-20261122
   pull_request:
     branches:
       - work/alzool-foundation-20261114
@@ -46,6 +47,10 @@ jobs:
           print("Existing failures:",len(base),"Current failures:",len(new),"New failures:",len(new-base))
           if new-base:raise SystemExit("NEW REGRESSIONS: "+repr(sorted(new-base)))
           PY
+      - name: Exact strategy parity and latency across GOLD and BTC regimes
+        run: |
+          git fetch --depth=1 origin 5ff86e115dd2f4bd93b47d1b1877df954a1e96e3
+          python tests/strategy_speed_replay.py
       - name: Check production startup suite
         run: |
           python - <<'PY'
