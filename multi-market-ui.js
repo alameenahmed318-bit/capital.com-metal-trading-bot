@@ -54,6 +54,13 @@ async function update(){
  try{const {ok,data}=await gateway("/api/multi-market/status");if(ok)draw(data);else showMessage("تعذر التحقق من حالة السوق")}catch{showMessage("بوابة السوق غير متاحة")}
 }
 async function choose(market){
+ // Research pages never change the running trading market.
+ if(location.pathname==="/backtest-lab.html"){
+   const select=document.getElementById("backtestMarket");
+   if(select&&!select.disabled){select.value=market;select.dispatchEvent(new Event("change"))}
+   else showMessage("ألغ الاختبار الحالي أو أكمله لتغيير سوق الاختبار.");
+   return;
+ }
  if(switchBusy)return;switchBusy=true;
  const buttons=[...document.querySelectorAll("#mm-selector button")];buttons.forEach(b=>b.disabled=true);
  try{
