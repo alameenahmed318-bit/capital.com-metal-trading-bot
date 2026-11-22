@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/dashboard.css?v=3"><link rel="stylesheet" href="/ui-shell.css?v=1">
 
 <link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=dark-ai-pro-20261114-1">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=shadow-system-20261122">
 <link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
 <style>#aiMonitorInline[hidden]{display:none!important}#aiMonitorInline .az-ai-council-details{width:100%}#aiMonitorInline .az-model-row{gap:12px}#aiMonitorInline .az-model-row span,#aiMonitorInline .az-model-row strong{overflow-wrap:anywhere;text-align:left;max-width:70%}</style>
 </head>
@@ -28,7 +28,7 @@
   <a class="nav" href="/ai-monitor.html"><span>◎</span><span class="nav-label">مراقبة Hybrid AI</span></a>
   <a class="nav" href="/learning-lab.html"><span>❖</span><span class="nav-label">التعلم والذاكرة</span></a>
   <a class="nav" href="/backtest-lab.html"><span>⌁</span><span class="nav-label">الاختبار التاريخي</span></a>
-  <a class="nav" href="/"><span>⚙</span><span class="nav-label">الإدارة والإعدادات</span></a>
+  <a class="nav" href="/?manage=1"><span>⚙</span><span class="nav-label">الإدارة والإعدادات</span></a>
  </div>
  <div class="side-bottom"><span class="live-dot"></span><span>AL-ZOOL</span><small id="serviceState">جارٍ فحص الخدمة</small></div>
 </aside>
@@ -107,8 +107,8 @@
  <section class="az-user-extras">
   <section class="notice" id="dataNotice"><b>حالة بيانات التداول</b><span>بانتظار تأكيد اتصال MT5 وسجل الصفقات. لا توجد أرقام تجريبية على هذه الصفحة.</span></section>
   <section class="grid-main">
-    <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2 id="marketChartTitle">مخطط الذهب XAUUSD</h2></div><label class="market-tag" for="marketChartSymbol">السوق <select id="marketChartSymbol" aria-label="اختيار السوق"><option value="XAUUSD">XAUUSD · الذهب</option><option value="BTCUSD">BTCUSD · بيتكوين</option></select></label></div>
-      <div class="chart-wrap"><iframe id="marketChartFrame" title="مخطط السوق الخارجي من TradingView" src="https://www.tradingview.com/widgetembed/?frameElementId=tv_gold_chart&symbol=OANDA%3AXAUUSD&interval=15&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=f5f5f7&theme=dark&style=1&timezone=Asia%2FDubai&withdateranges=1&hideideas=1" loading="lazy" allowfullscreen></iframe></div>
+    <article class="card chart-card"><div class="card-title"><div><span class="eyebrow">السوق المباشر</span><h2 id="marketChartTitle">مخطط البيتكوين BTCUSD</h2></div><label class="market-tag" for="marketChartSymbol">السوق <select id="marketChartSymbol" aria-label="اختيار السوق"><option value="BTCUSD">BTCUSD · بيتكوين</option></select></label></div>
+      <div class="chart-wrap"><div id="marketChartFrame" class="az-mini-empty">بانتظار شموع MT5</div></div>
       <p class="chart-foot">المخطط للعرض فقط ولا يرسل أوامر. سعر BTC الخارجي لا يطابق بالضرورة سعر عقد Deriv BTCUSD.</p></article>
     <article class="card status-card"><div class="card-title"><div><h2>حالة MT5 والحماية</h2></div><span class="shield">⬡</span></div>
       <div class="status-row"><div><b>اتصال MT5</b><small id="mt5Meta">جارٍ التحقق من الطرفية</small></div><span id="mt5Status" class="state muted">يفحص</span></div>
@@ -127,6 +127,6 @@
 </main>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/dashboard.js?v=hybrid-monitor-20261116-1"></script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=nav-20261116-hybrid1" defer></script>
+<script src="/dashboard.js?v=shadow-system-20261122"></script><script src="/numbers-en.js?v=3"></script>
+<script src="/ui-shell.js?v=shadow-system-20261122" defer></script>
 </body></html>
