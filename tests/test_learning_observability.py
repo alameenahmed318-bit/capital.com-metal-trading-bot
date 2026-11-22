@@ -75,6 +75,18 @@ class LearningObservabilityTests(unittest.TestCase):
         result = live_learning_health("BTCUSDm", current, decision, self.profile, self.now)
         self.assertFalse(result["decision_current"])
 
+    def test_fresh_heartbeat_does_not_validate_old_weekend_candle(self):
+        old_bar = self.bar - 86400
+        current = {"received_at": self.now, "symbol": "XAUUSD",
+                   "closed_candles": [{"time": old_bar}]}
+        decision = {"bar_time": old_bar, "learning": {"status": "APPLIED"}}
+        result = live_learning_health("XAUUSD", current, decision, self.profile, self.now)
+        self.assertTrue(result["terminal_fresh"])
+        self.assertFalse(result["closed_candle_fresh"])
+        self.assertGreater(result["last_closed_bar_age_seconds"], 180)
+        self.assertFalse(result["decision_current"])
+        self.assertFalse(result["learned_weights_used_in_analysis"])
+
     def test_outdated_decision_cannot_claim_current_weights(self):
         current = {"received_at": self.now, "symbol": "XAUUSD",
                    "closed_candles": [{"time": self.bar}]}
