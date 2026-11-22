@@ -1,8 +1,9 @@
 <!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080b1a"><title>AL-ZOOL | تحليل البيتكوين AI</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/dashboard.css?v=2">
-<link rel="stylesheet" href="/ui-shell.css?v=1"><link rel="stylesheet" href="/alzool-studio.css?v=studio-20261114-1">
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=shadow-system-20261122">
-<link rel="stylesheet" href="/ui-navigation.css?v=nav-20261115-3">
+
+
+
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=full-shadow-20261122-4">
 </head>
 <body><div class="shell">
 <aside class="sidebar">
@@ -119,5 +120,6 @@ function startAutoAnalysis(){if(autoTimer)return;autoEnabled=true;$("autoToggleB
 function stopAutoAnalysis(){autoEnabled=false;if(autoTimer){clearInterval(autoTimer);autoTimer=null}$("autoToggleBtn").textContent="تشغيل التحليل التلقائي";$("aiHelp").textContent="التحليل التلقائي متوقف."}
 $("aiAnalyzeBtn").addEventListener("click",analyze);$("autoToggleBtn").addEventListener("click",()=>autoEnabled?stopAutoAnalysis():startAutoAnalysis());boot();
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=shadow-system-20261122" defer></script>
+
+<script src="/ui-shell.js?v=full-shadow-20261122-4" defer></script>
 </body></html>
