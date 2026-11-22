@@ -651,6 +651,13 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
                 "server_utc":datetime.now(timezone.utc).isoformat(),
                 "trading_enabled_by_health_check":False})
+        if path=="/api/ai/strategy-comparison":
+            try:
+                u=owner(token_of(self))
+                if banned(u):return self.send_json(403,{"error":"الحساب موقوف"})
+                from strategy_research import report
+                return self.send_json(200,{"market":ENGINE_MARKET,**report(ENGINE_MARKET)})
+            except PermissionError:return self.send_json(403,{"error":"هذه الخدمة للمالك فقط"})
         if path=="/api/multi-market/owner-state":
             try:
                 u=owner(token_of(self))
@@ -2449,6 +2456,8 @@ if __name__=="__main__":
         os.environ["ALZOOL_ENABLE_DUAL_PILOT"]="1"
         from dual_market_server import run as run_dual_market
         print("AL-ZOOL DUAL MARKET startup: entry selection OFF",flush=True)
+        from strategy_research import run as run_strategy_research
+        threading.Thread(target=run_strategy_research,args=(sb,OWNER_EMAIL),daemon=True,name="strategy-evidence").start()
         run_dual_market()
     else:
         ThreadingHTTPServer((os.getenv("ALZOOL_BIND_HOST","0.0.0.0"),port),Handler).serve_forever()
