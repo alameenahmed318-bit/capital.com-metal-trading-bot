@@ -381,7 +381,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         elif context["regime"]=="تقلب مرتفع" and fam in ("Donchian Breakout","ATR Expansion","Candle Momentum"):bonus=1.15
         aligned=sum(b==sig for b in mtf_bias.values()) if sig!="WAIT" else 0; opposed=sum(b in ("BUY","SELL") and b!=sig for b in mtf_bias.values()) if sig!="WAIT" else 0
         score=weight*bonus*(1+.06*aligned-.04*opposed)*evidence; counts[sig]+=1
-        vote={"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason,"catalog_version":s.get("version","LEGACY_V1")}
+        vote={"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason}
+        if catalog and s.get("version"):vote["catalog_version"]=s["version"]
         if research_policy:vote["evidence_strength"]=evidence
         votes.append(vote)
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
@@ -400,7 +401,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         # masquerade as 1000 independent confirmations.
         independent_weight=combo_weight*combo_independence[combo["id"]]
         cc[cs]+=1; cc_weighted[cs]+=independent_weight
-        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":combo_names[combo["id"]],"member_ids":list(combo["members"]),"catalog_version":combo.get("version","LEGACY_V1"),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
+        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":combo_names[combo["id"]],"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
+        if catalog and combo.get("version"):combo_votes[-1]["catalog_version"]=combo["version"]
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -502,8 +504,10 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     selected_combo_id=int(best_combo[final]["id"]) if final in best_combo else 0
     council=build_ai_council(rates,votes,context,adaptive);council["direction"]=final
     council["seats"][-1]=(council["seats"][-1][0],{"BUY":"ميل للشراء","SELL":"ميل للبيع","WAIT":"انتظار وعدم استعجال"}[final],"القرار النهائي بعد سياسة AUTO وضوابط السوق")
-    return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"RESEARCH_SOFT_CONFIRMATION_V2" if research_policy else "FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
+    result={"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"RESEARCH_SOFT_CONFIRMATION_V2" if research_policy else "FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
         "directional_scores":{d:round(score[d],6) for d in ("BUY","SELL")},
         "directional_candidates":directional_details,
-        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"catalog_version":catalog["version"] if catalog else "LEGACY_V1","reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
+        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
            "role":"advisory_evidence_no_veto"},"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
+    if catalog:result["catalog_version"]=catalog["version"]
+    return result
