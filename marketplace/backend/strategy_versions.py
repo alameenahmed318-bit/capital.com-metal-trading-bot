@@ -60,8 +60,14 @@ def activate(client_id,version_id,sb):
     client=_query(client_id)
     path="/rest/v1/alzool_engine_strategy_versions?"
     target=sb("GET",path+"id=eq."+str(version_id)+"&client_id=eq."+client+
-        "&select=id,status,profile&limit=1",admin=True)
+        "&select=id,status,profile,test_summary&limit=1",admin=True)
     if not target:raise ValueError("Version does not belong to this owner")
+    # Catalog replacements are NOT weight-only experiments. A research report
+    # cannot be manually promoted by the weight-profile endpoint: it would
+    # incorrectly reuse legacy strategy IDs while MT5 lacks version-tagged fills.
+    summary=target[0].get("test_summary") or {}
+    if isinstance(summary,dict) and summary.get("catalog_version") and summary.get("promotion_approved") is not True:
+        raise ValueError("Candidate catalog is research-only: validation and versioned MT5 attribution required")
     if target[0]["status"]=="ACTIVE":
         return {"id":version_id,"status":"ACTIVE","message":"Already active"}
     if target[0]["status"] not in ("CANDIDATE","ARCHIVED"):
