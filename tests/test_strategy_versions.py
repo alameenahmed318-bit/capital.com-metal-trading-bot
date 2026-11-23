@@ -46,6 +46,14 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(next(r for r in fake.rows if r["id"]==1)["status"],"ARCHIVED")
         activate("owned",1,fake)
         self.assertEqual(next(r for r in fake.rows if r["id"]==1)["status"],"ACTIVE")
+    def test_unvalidated_catalog_candidate_cannot_be_activated(self):
+        fake=FakeStore()
+        fake.rows[1]["test_summary"]={"catalog_version":"AZ-REPLACEMENTS-20261123-V3",
+                                      "promotion_approved":False}
+        with self.assertRaisesRegex(ValueError,"research-only"):
+            activate("owned",2,fake)
+        self.assertEqual(next(x for x in fake.rows if x["id"]==1)["status"],"ACTIVE")
+        self.assertEqual(next(x for x in fake.rows if x["id"]==2)["status"],"CANDIDATE")
     def test_owner_cannot_activate_another_account_version(self):
         with self.assertRaises(ValueError):activate("owned",3,FakeStore())
 
