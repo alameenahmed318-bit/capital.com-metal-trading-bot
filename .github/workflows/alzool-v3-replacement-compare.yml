@@ -20,13 +20,16 @@ jobs:
       - name: Verify candidate isolation and historic decisions unchanged
         run: |
           python -m unittest discover -s tests -p 'test_strategy_replacements.py' -v
+          python -m unittest discover -s tests -p 'test_strategy_replacements_v3.py' -v
           python -m compileall -q marketplace/backend tests
       - name: Offline holdout comparison with spread and stress scenarios
-        run: python tests/replacement_walkforward_compare.py
+        run: |
+          python tests/replacement_walkforward_compare.py
+          python tests/replacement_v3_compare.py
       - name: Upload reproducible research report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: alzool-v2-comparison
-          path: tests/reports/v2_replacements_comparison.json
+          path: tests/reports/*replacements_comparison.json
           if-no-files-found: ignore
