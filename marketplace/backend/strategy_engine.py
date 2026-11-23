@@ -2,6 +2,7 @@
 from __future__ import annotations
 from functools import lru_cache
 import random
+import os
 
 FAMILIES=[
 ("EMA Trend","trend"),("RSI Momentum","rsi"),("MACD Momentum","macd"),
@@ -47,6 +48,12 @@ for _group in COMBINATIONS:
 _COMBO_INDEPENDENT_BASE={
     c["id"]:sum(1/max(1,_MEMBER_FREQUENCY[mid]) for mid in c["members"])/5
     for c in COMBINATIONS
+}
+from strategy_replacements import build_candidates
+# V2 is isolated from V1. Default live mode always uses original definitions.
+_REPLACEMENT_CATALOGS={
+    "BTCUSD":build_candidates(STRATEGIES,COMBINATIONS,"BTCUSD"),
+    "XAUUSD":build_candidates(STRATEGIES,COMBINATIONS,"XAUUSD"),
 }
 
 @lru_cache(maxsize=8192)
@@ -168,6 +175,43 @@ def _base(rates,s,features=None):
         buy=c[-2]<o[-2] and close>o[-1] and o[-1]<=c[-2] and close>=o[-2]; sell=c[-2]>o[-2] and close<o[-1] and o[-1]>=c[-2] and close<=o[-2]; reason="Two-candle engulfing reversal pattern"
     elif kind=="volume":
         vols=[float(x.get("tick_volume",0)) for x in rates[-(20+v):-1]]; pressure=float(rates[-1].get("tick_volume",0))/max(sum(vols)/max(1,len(vols)),1); buy,sell=pressure>1.15+v*.04 and bull,pressure>1.15+v*.04 and bear; reason=f"Tick-volume expansion ({pressure:.2f}x)"
+    # V2 research candidates: each uses only CLOSED candle values, and is
+    # evaluated only when the explicit replacement-candidate profile is active.
+    elif kind=="sweep_reclaim":
+        old_high=max(h[-13:-1]);old_low=min(l[-13:-1])
+        span=max(h[-1]-l[-1],1e-9);body=abs(close-o[-1])/span
+        buy=l[-1]<old_low and close>old_low and bull and body>=.20
+        sell=h[-1]>old_high and close<old_high and bear and body>=.20
+        reason="Liquidity sweep and closing reclaim"
+    elif kind=="failed_breakout":
+        old_high=max(h[-14:-2]);old_low=min(l[-14:-2])
+        buy=l[-2]<old_low and close>old_low and bull and close>c[-2]
+        sell=h[-2]>old_high and close<old_high and bear and close<c[-2]
+        reason="Failed prior-bar breakout and directional reclaim"
+    elif kind=="vwap_reclaim":
+        sample=rates[-19:];vweights=[max(1.,float(x.get("tick_volume",1))) for x in sample]
+        typical=[(float(x["high"])+float(x["low"])+float(x["close"]))/3 for x in sample]
+        vw=sum(a*b for a,b in zip(typical,vweights))/sum(vweights)
+        old_vw=sum(a*b for a,b in zip(typical[:-1],vweights[:-1]))/sum(vweights[:-1])
+        buy=c[-2]<=old_vw and close>vw and bull
+        sell=c[-2]>=old_vw and close<vw and bear
+        reason="Volume-weighted mean reclaimed on closed M1 candle"
+    elif kind=="compression_release":
+        prior_high=max(h[-7:-1]);prior_low=min(l[-7:-1])
+        old_spans=[h[i]-l[i] for i in range(-21,-1)]
+        reference=sum(old_spans)/max(1,len(old_spans))
+        compression=(prior_high-prior_low)<=max(reference*3.5,1e-9)
+        span=max(h[-1]-l[-1],1e-9);body=abs(close-o[-1])/span
+        buy=compression and close>prior_high and bull and body>=.25
+        sell=compression and close<prior_low and bear and body>=.25
+        reason="Six-candle compression release"
+    elif kind=="trend_retest":
+        fast=f.ema(s["fast"],-(s["fast"]*4));slow=f.ema(s["slow"],-(s["slow"]*4))
+        if fast is not None and slow is not None:
+            tol=sum(h[i]-l[i] for i in range(-15,-1))/14*.25
+            buy=fast>slow and l[-2]<=fast+tol and close>fast and bull
+            sell=fast<slow and h[-2]>=fast-tol and close<fast and bear
+        reason="Trend EMA retest and closed directional continuation"
     return ("BUY",reason) if buy and not sell else ("SELL",reason) if sell and not buy else ("WAIT",reason)
 
 def _confirm(rates,s,features=None):
@@ -303,8 +347,17 @@ def build_ai_council(rates,votes=None,context=None,adaptive=None):
 
 from entry_evidence import closed_candle_pressure
 
-def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None,market_symbol="XAUUSD",research_policy=False):
+def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_weights=None,bot_signals=None,market_symbol="XAUUSD",research_policy=False,replacement_candidates=False):
     weights=weights or {}; combination_weights=combination_weights or {}; mtf_bias=mtf_bias or {}; context=analyze_market_context(rates)
+    # Experimental replacements are opt-in. No change to the real account or
+    # live decisions unless the operator explicitly turns on V2.
+    selected_market="BTCUSD" if str(market_symbol).upper().startswith("BTCUSD") else "XAUUSD" if str(market_symbol).upper().startswith("XAUUSD") else ""
+    replacements=(replacement_candidates or os.getenv("ALZOOL_REPLACEMENTS_V2","0")=="1")
+    catalog=_REPLACEMENT_CATALOGS.get(selected_market) if replacements else None
+    strategies=catalog["strategies"] if catalog else STRATEGIES
+    combinations=catalog["combinations"] if catalog else COMBINATIONS
+    combo_names=catalog["combo_names"] if catalog else _COMBO_NAMES
+    combo_independence=catalog["independence"] if catalog else _COMBO_INDEPENDENT_BASE
     # The same rules are reusable, but profile tuning is per market.
     adaptive=(adaptive_bitcoin_parameters(rates,context) if
               str(market_symbol or "").upper().startswith("BTCUSD") else
@@ -315,7 +368,7 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     context["last_closed_candle_pressure"]=pressure
     features=_CandleFeatures(rates)
     votes=[]; counts={"BUY":0,"SELL":0,"WAIT":0}; candidates=[]
-    for s in STRATEGIES:
+    for s in strategies:
         tuned=dict(s); tuned["fast"]=max(5,min(30,adaptive["ema_fast"]+s["fast"]-10)); tuned["slow"]=max(tuned["fast"]+3,min(60,adaptive["ema_slow"]+s["slow"]-26)); tuned["period"]=max(5,min(30,adaptive["rsi_period"]+s["period"]-14))
         if research_policy:
             sig,reason,evidence=candidate_evidence(rates,tuned,features)
@@ -328,14 +381,14 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
         elif context["regime"]=="تقلب مرتفع" and fam in ("Donchian Breakout","ATR Expansion","Candle Momentum"):bonus=1.15
         aligned=sum(b==sig for b in mtf_bias.values()) if sig!="WAIT" else 0; opposed=sum(b in ("BUY","SELL") and b!=sig for b in mtf_bias.values()) if sig!="WAIT" else 0
         score=weight*bonus*(1+.06*aligned-.04*opposed)*evidence; counts[sig]+=1
-        vote={"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason}
+        vote={"id":s["id"],"family":fam,"name":s["name"],"signal":sig,"weight":weight,"adjusted_score":score,"reason":reason,"catalog_version":s.get("version","LEGACY_V1")}
         if research_policy:vote["evidence_strength"]=evidence
         votes.append(vote)
         if sig in ("BUY","SELL"):candidates.append((score,s,sig,reason))
     byid={x["id"]:x for x in votes}; combo_votes=[]; cc={"BUY":0,"SELL":0,"WAIT":0}; cc_weighted={"BUY":0.0,"SELL":0.0,"WAIT":0.0}
     # Repeated members are NOT independent votes. Normalize the entire combination
     # council by the number of appearances of each underlying strategy.
-    for combo in COMBINATIONS:
+    for combo in combinations:
         combo_weight=max(0.85,min(1.15,float(combination_weights.get(str(combo["id"]),1.0))))
         members=[byid[i] for i in combo["members"]]; directional={d:sum(max(.25,m["weight"])*m.get("evidence_strength",1.0) for m in members if m["signal"]==d) for d in ("BUY","SELL")}; active=sum(m["signal"] in ("BUY","SELL") for m in members); total=sum(directional.values())
         if active<2 or total<=0:cs,conf,why="WAIT",0.,"أقل من عضوين لديهما إشارة اتجاهية"
@@ -345,9 +398,9 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
             else:cs,why=win,f"{sum(m['signal']==win for m in members)} من 5 أعضاء يؤيدون الاتجاه"
         # Average inverse-member frequency: even 1000 overlapping groups cannot
         # masquerade as 1000 independent confirmations.
-        independent_weight=combo_weight*_COMBO_INDEPENDENT_BASE[combo["id"]]
+        independent_weight=combo_weight*combo_independence[combo["id"]]
         cc[cs]+=1; cc_weighted[cs]+=independent_weight
-        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":_COMBO_NAMES[combo["id"]],"member_ids":list(combo["members"]),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
+        combo_votes.append({"id":combo["id"],"name":combo["name"],"members":combo_names[combo["id"]],"member_ids":list(combo["members"]),"catalog_version":combo.get("version","LEGACY_V1"),"signal":cs,"confidence":conf,"weight":combo_weight,"effective_weight":round(independent_weight,6),"reason":why})
     fs={f:{"BUY":0.,"SELL":0.} for f,_ in FAMILIES}
     for v in votes:
         if v["signal"] in ("BUY","SELL"):fs[v["family"]][v["signal"]]+=max(.01,v["adjusted_score"])
@@ -452,5 +505,5 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     return {"effective_combination_votes":round(sum(cc_weighted.values()),3),"vote_method":"RESEARCH_SOFT_CONFIRMATION_V2" if research_policy else "FAMILY_20_PLUS_OVERLAP_NORMALIZED_COMBOS",
         "directional_scores":{d:round(score[d],6) for d in ("BUY","SELL")},
         "directional_candidates":directional_details,
-        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
+        "decision":final,"strategy_id":sid,"strategy_name":name,"combination_id":selected_combo_id,"catalog_version":catalog["version"] if catalog else "LEGACY_V1","reason_ar":reason,"confidence":max(0.,min(1.,agreement)),"entry_reference_price":float(rates[-1]["close"]),"entry_atr":float(context.get("atr",0.0)),"context":context,"adaptive":adaptive,"council":council,"votes":votes,"vote_summary":counts,"combination_votes":combo_votes,"combination_summary":cc,"family_votes":fv,"bot_evidence":{"counts":bot_counts,"active":bot_active,
            "role":"advisory_evidence_no_veto"},"mtf_bias":mtf_bias,"strategy_count":200,"combination_count":1000}
