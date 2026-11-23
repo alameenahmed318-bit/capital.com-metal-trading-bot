@@ -1,0 +1,35 @@
+name: AL-ZOOL offline replacement research (no execution)
+on:
+  push:
+    branches:
+      - work/alzool-compare-add-v3-20261123
+  pull_request:
+    branches:
+      - deploy/alzool-meeno-btc-demo-20261121
+  workflow_dispatch:
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify candidate isolation and historic decisions unchanged
+        run: |
+          python -m unittest discover -s tests -p 'test_strategy_replacements.py' -v
+          python -m unittest discover -s tests -p 'test_strategy_replacements_v3.py' -v
+          python -m compileall -q marketplace/backend tests
+      - name: Offline holdout comparison with spread and stress scenarios
+        run: |
+          python tests/replacement_walkforward_compare.py
+          python tests/replacement_v3_compare.py
+      - name: Upload reproducible research report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alzool-v2-comparison
+          path: tests/reports/*replacements_comparison.json
+          if-no-files-found: ignore
