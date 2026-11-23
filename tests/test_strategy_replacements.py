@@ -50,15 +50,15 @@ class StrategyReplacementSafetyTests(unittest.TestCase):
             base=evaluate_market(x,market_symbol="BTCUSDm")
             candidate=evaluate_market(x,market_symbol="BTCUSDm",replacement_candidates=True)
             candidate_gold=evaluate_market(x,market_symbol="XAUUSD",replacement_candidates=True)
-            self.assertEqual(base["catalog_version"],"LEGACY_V1")
+            self.assertNotIn("catalog_version",base)
             self.assertEqual(candidate["catalog_version"],VERSION)
             self.assertEqual(candidate_gold["catalog_version"],VERSION)
             self.assertEqual(len(candidate["votes"]),200)
             self.assertEqual(len(candidate["combination_votes"]),1000)
-            self.assertEqual(base["votes"][11]["catalog_version"],"LEGACY_V1")
+            self.assertNotIn("catalog_version",base["votes"][11])
             self.assertEqual(candidate["votes"][11]["catalog_version"],VERSION)
             self.assertEqual(candidate_gold["votes"][20]["catalog_version"],VERSION)
-            self.assertEqual(candidate["votes"][67]["catalog_version"],"LEGACY_V1")
+            self.assertNotIn("catalog_version",candidate["votes"][67])
         finally:
             if previous is not None:os.environ["ALZOOL_REPLACEMENTS_V2"]=previous
     def test_five_candle_patterns_do_not_look_ahead_or_crash(self):
