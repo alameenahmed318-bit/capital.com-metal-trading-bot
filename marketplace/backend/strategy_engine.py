@@ -50,10 +50,15 @@ _COMBO_INDEPENDENT_BASE={
     for c in COMBINATIONS
 }
 from strategy_replacements import build_candidates
+from strategy_replacements_v3 import build_v3_candidates
 # V2 is isolated from V1. Default live mode always uses original definitions.
 _REPLACEMENT_CATALOGS={
     "BTCUSD":build_candidates(STRATEGIES,COMBINATIONS,"BTCUSD"),
     "XAUUSD":build_candidates(STRATEGIES,COMBINATIONS,"XAUUSD"),
+}
+_REPLACEMENT_CATALOGS_V3={
+    "BTCUSD":build_v3_candidates(STRATEGIES,COMBINATIONS,"BTCUSD"),
+    "XAUUSD":build_v3_candidates(STRATEGIES,COMBINATIONS,"XAUUSD"),
 }
 
 @lru_cache(maxsize=8192)
@@ -212,6 +217,24 @@ def _base(rates,s,features=None):
             buy=fast>slow and l[-2]<=fast+tol and close>fast and bull
             sell=fast<slow and h[-2]>=fast-tol and close<fast and bear
         reason="Trend EMA retest and closed directional continuation"
+    elif kind=="wick_reversal":
+        span=max(h[-1]-l[-1],1e-9)
+        lower_wick=min(o[-1],close)-l[-1];upper_wick=h[-1]-max(o[-1],close)
+        buy=bull and lower_wick/span>=.40 and (close-l[-1])/span>=.65
+        sell=bear and upper_wick/span>=.40 and (h[-1]-close)/span>=.65
+        reason="Closed-candle long-wick rejection"
+    elif kind=="ema_continuation":
+        fast=f.ema(s["fast"],-(s["fast"]*4))
+        slow=f.ema(s["slow"],-(s["slow"]*4))
+        buy=fast is not None and slow is not None and fast>slow and bull and close>max(h[-4:-1])
+        sell=fast is not None and slow is not None and fast<slow and bear and close<min(l[-4:-1])
+        reason="EMA trend and short-range continuation breakout"
+    elif kind=="median_reversion":
+        mid=sum(c[-20:-1])/19
+        atr=sum(h[i]-l[i] for i in range(-15,-1))/14
+        buy=c[-2]<mid-.35*atr and bull and close>c[-2] and close<mid+.2*atr
+        sell=c[-2]>mid+.35*atr and bear and close<c[-2] and close>mid-.2*atr
+        reason="Short-window mean reversion confirmation"
     return ("BUY",reason) if buy and not sell else ("SELL",reason) if sell and not buy else ("WAIT",reason)
 
 def _confirm(rates,s,features=None):
@@ -353,7 +376,8 @@ def evaluate_market(rates,weights=None,mtf_bias=None,mode='AUTO',combination_wei
     # live decisions unless the operator explicitly turns on V2.
     selected_market="BTCUSD" if str(market_symbol).upper().startswith("BTCUSD") else "XAUUSD" if str(market_symbol).upper().startswith("XAUUSD") else ""
     replacements=(replacement_candidates or os.getenv("ALZOOL_REPLACEMENTS_V2","0")=="1")
-    catalog=_REPLACEMENT_CATALOGS.get(selected_market) if replacements else None
+    catalog=(_REPLACEMENT_CATALOGS_V3.get(selected_market) if replacement_candidates=="V3" else
+             _REPLACEMENT_CATALOGS.get(selected_market) if replacements else None)
     strategies=catalog["strategies"] if catalog else STRATEGIES
     combinations=catalog["combinations"] if catalog else COMBINATIONS
     combo_names=catalog["combo_names"] if catalog else _COMBO_NAMES
