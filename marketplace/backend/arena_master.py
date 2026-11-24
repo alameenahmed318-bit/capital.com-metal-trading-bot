@@ -97,7 +97,9 @@ def management(snapshot,decision,plan):
         net=sum(num(p.get("profit"))+num(p.get("swap")) for p in group)
         armed=bool((plan.get("recovery") or {}).get("armed"))
         metrics={a:(r.get("actions") or {}).get(a,{}).get(side) for a in ACTIONS}
+        active=next((v for v in plan.get("actions",[]) if v.get("side")==side and v.get("action")!="HOLD"),None)
+        relevant=(active["action"].replace("_PROPOSAL","") if active else "COOLING" if distance<0 else "ADDON")
         out["sides"][side]={"distance_atr":round(distance,4),"floating_net":round(net,2),"recovery_armed":armed,"scores":metrics,
-          "relevant_action":"RECOVERY" if armed else "COOLING" if distance<0 else "ADDON",
+          "relevant_action":relevant,"recovery_waiting":bool(plan.get("recovery_wait")),
           "note":"Historical scenario proxy, not basket profit or execution authorization"}
     return out
