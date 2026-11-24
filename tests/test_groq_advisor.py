@@ -15,7 +15,7 @@ from multi_model_council import _VOTES, _vote, council_result, _groq_worker
 def sample(now=None):
     ts = int(time.time() if now is None else now)
     return {
-        "decision": "BUY", "confidence": .78, "bar_time": ts-60,
+        "symbol": "XAUUSD", "decision": "BUY", "confidence": .78, "bar_time": ts-60,
         "entry_reference_price": 2620, "strategy_id": 12,
         "context": {"atr": 1.4}, "family_votes": {"trend": "BUY"},
         "combination_summary": {"BUY": 320, "SELL": 80, "WAIT": 600},
@@ -36,6 +36,14 @@ class GroqAdvisoryTests(unittest.TestCase):
         self.assertFalse(g.is_candidate({**d,"bar_time":int(time.time())-1000}))
         self.assertFalse(g.is_candidate({**d,"bar_time":int(time.time())+300}))
         self.assertFalse(g.is_candidate({**d,"context":{"atr":0}}))
+
+    def test_market_identity_is_preserved(self):
+        for symbol,expected in (("BTCUSDm","BTCUSD"),("XAUUSDm","XAUUSD")):
+            d={**sample(),"symbol":symbol}
+            self.assertTrue(g.is_candidate(d))
+            self.assertEqual(g._compact(d)["symbol"],expected)
+        self.assertFalse(g.is_candidate({**sample(),"symbol":"EURUSD"}))
+        self.assertFalse(g.is_candidate({**sample(),"symbol":None}))
 
     def test_snapshot_minimizes_personal_info(self):
         d=sample()
