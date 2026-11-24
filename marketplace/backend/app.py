@@ -12,6 +12,7 @@ from hybrid_decision import fuse_live_decision
 import accuracy_v4
 import feedback_learning
 import master_ai
+import master_entry_review
 import master_v2
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
@@ -1155,6 +1156,11 @@ class Handler(SimpleHTTPRequestHandler):
                 require_local_ai=LOCAL_AI_REQUIRED and not advisory_mode,
                 strategy_first=advisory_mode
             )
+            review_report={}
+            if mode=="MASTER":
+                review_report=master_entry_review.review(decision,item,control_settings,datetime.now(timezone.utc).timestamp())
+                gate=master_entry_review.apply_gate(gate,review_report)
+                decision["master"]={**(decision.get("master") or {}),"entry_review":review_report}
             risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
             direction_limit=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),signal,control_settings)
             # Late model votes must never turn an older closed bar into a new order.
@@ -1194,7 +1200,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "combination_id":int(finite_number(decision.get("combination_id",0))),
                 "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
-                "minimum_confidence":None,
+                "minimum_confidence":None,"entry_review":review_report,
                 "entry_council_mode":mode,"master":decision.get("master",{}),
                 "authorization":gate,
                 "authorization_id":gate.get("authorization_id"),
@@ -1214,7 +1220,7 @@ class Handler(SimpleHTTPRequestHandler):
                     audit_status="AUTHORIZED" if ready else "WAIT"
                     audit_key=hashlib.sha256(json.dumps([client_id,item.get("symbol"),bar_time,
                         strategy_id,full_decision["combination_id"],signal,audit_status,
-                        gate.get("authorization_id") if ready else None],ensure_ascii=False).encode()).hexdigest()
+                        gate.get("authorization_id") if ready else None,review_report.get("state")],ensure_ascii=False).encode()).hexdigest()
                     queue_ai_diagnostic_event({"event_id":"master-audit:"+audit_key,
                         "client_id":client_id,"event_type":"MASTER_DECISION_AUDIT",
                         "payload":{"status":audit_status,"symbol":item.get("symbol"),
@@ -1225,7 +1231,7 @@ class Handler(SimpleHTTPRequestHandler):
                             "reason_ar":full_decision["decision_reason_ar"],
                             "gate_reason_ar":gate.get("reason_ar"),"source":report.get("source"),
                             "models":report.get("models") or [],"scores":report.get("scores") or {},
-                            "calibration_applied":report.get("calibration_applied") is True,
+                            "calibration_applied":report.get("calibration_applied") is True,"entry_review":review_report,
                             "decision_at":datetime.now(timezone.utc).isoformat()}})
                 except Exception as audit_error:
                     print("MASTER_AUDIT_WARNING:",type(audit_error).__name__,flush=True)
@@ -1621,6 +1627,11 @@ class Handler(SimpleHTTPRequestHandler):
                     item.get("received_at"),now,bool(settings.get("trading_enabled")),
                     local_ai_advice=local_advice,require_local_ai=LOCAL_AI_REQUIRED and not advisory,
                     strategy_first=advisory)
+                review_report={}
+                if mode=="MASTER":
+                    review_report=master_entry_review.review(decision,item,settings,now.timestamp())
+                    gate=master_entry_review.apply_gate(gate,review_report)
+                    decision["master"]={**(decision.get("master") or {}),"entry_review":review_report}
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],
                     risk_limits_from_settings(settings))
                 direction=entry_direction_capacity(item.get("positions") or [],item.get("symbol",""),
@@ -1655,7 +1666,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,{
                     "connected":0<=(now-item.get("received_at",now-timedelta(days=1))).total_seconds()<=30,
                     "last_seen":item.get("last_seen"),"symbol":item.get("symbol"),
-                    "timeframe":item.get("timeframe"),"signal":signal,
+                    "timeframe":item.get("timeframe"),"signal":"WAIT" if mode=="MASTER" and not review_report.get("approved") else signal,
+                    "candidate_signal":signal,"entry_review":review_report,
                     "confidence":decision.get("confidence"),"strategy_id":decision.get("strategy_id"),
                     "strategy_name":decision.get("strategy_name"),
                     "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
@@ -2642,7 +2654,7 @@ if __name__=="__main__":
     from pathlib import Path
     test_dir=str(Path(__file__).resolve().parents[2]/"tests")
     recovery_suite=unittest.TestSuite()
-    for pattern in ("test_owner_decisions.py","test_owner_recovery.py",
+    for pattern in ("test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
