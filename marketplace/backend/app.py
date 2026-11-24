@@ -732,6 +732,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not decision:return self.send_json(409,{"error":"التحليل لم يكتمل"})
             context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
             return self.send_json(200,{"client_id":client_id,"symbol":item.get("symbol"),
+                "accuracy_protocol":accuracy_v4.PROTOCOL,
                 "bar_time":int(finite_number(decision.get("bar_time"))),
                 # The local relay consumes 'decision'. Keep 'direction' for legacy relays.
                 "decision":decision.get("decision","WAIT"),
