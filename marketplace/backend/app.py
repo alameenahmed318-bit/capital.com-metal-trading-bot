@@ -2542,7 +2542,11 @@ class Handler(SimpleHTTPRequestHandler):
                                     vote.get("confidence"),now.timestamp(),model=model,analysis_mode="UNIFIED")
                                 if event:queue_ai_diagnostic_event(event)
                         feedback=feedback_learning.snapshot(client_id,active_symbol,sb,closed_deals+action_entry_deals)
-                        if entry_council_mode(cached_settings,terminal_is_owner(client_id))=="MASTER":
+                        # Shadow observes only an already verified cached owner. Never add an auth DB lookup here.
+                        with CACHE_LOCK:
+                            shadow_owner=dict(OWNER_TERMINAL_ID_CACHE.get(client_id) or {})
+                        if (shadow_owner.get("is_owner") is True and shadow_owner.get("until",0)>time.monotonic()
+                                and entry_council_mode(cached_settings,True)=="MASTER"):
                             event=master_v2.observe(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,now.timestamp())
                             if event:queue_ai_diagnostic_event(event)
                     except Exception as feedback_error:
