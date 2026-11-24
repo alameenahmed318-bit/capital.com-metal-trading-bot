@@ -813,6 +813,19 @@ class Handler(SimpleHTTPRequestHandler):
             risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
             proposal=propose_central_action(client_id,item,decision,
                 gate,council,risk,settings,now,council_advisory=advisory_mode)
+            if mode=="MASTER":
+                # Record actual terminal poll diagnostics, not just UI previews.
+                # At most two events per closed bar (WAIT / PROPOSAL).
+                action_bar=int(finite_number(decision.get("bar_time")))
+                if action_bar>0:
+                    diagnostic={"symbol":item.get("symbol"),"bar_time":action_bar,
+                        "execution_ready":bool(proposal.get("execution_ready")),
+                        "action":proposal.get("action","HOLD"),"side":proposal.get("side"),
+                        "lot_cap":proposal.get("lot_cap",0),"reason_ar":proposal.get("reason_ar",""),
+                        "positions":len(item.get("positions") or [])}
+                    state="READY" if diagnostic["execution_ready"] else "WAIT"
+                    queue_ai_diagnostic_event({"event_id":"management-decision:"+hashlib.sha256((client_id+str(action_bar)+state).encode()).hexdigest(),
+                        "client_id":client_id,"event_type":"MASTER_POSITION_ACTION_AUDIT","payload":diagnostic})
             return self.send_json(200,{**proposal,"symbol":item.get("symbol","")})
         if path.startswith("/v1/terminal-control/settings/"):
             client_id=path.rsplit("/",1)[-1]
