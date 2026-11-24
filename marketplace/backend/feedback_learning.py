@@ -147,6 +147,19 @@ def _refresh(key,request,live_deals):
             report["master_v2"]=master_v2.summarize(comparison,symbol)
         except Exception:
             report["master_v2"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE","profiles":{},"lanes":{}}
+        # Preserve V1/V2 availability before the optional V3 research read.
+        with _LOCK:
+            old=_CACHE.get(key)
+            prior=(old[1] if old else {}).get("master_v3")
+            _CACHE[key]=(time.monotonic(),{**report,**({"master_v3":prior} if prior else {})})
+        try:
+            import master_v3
+            q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.MASTER_V3_OUTCOME&payload->>symbol=eq."+urllib.parse.quote(symbol,safe="")+"&select=payload&order=created_at.desc&limit=1000"
+            rows=request("GET",q,admin=True)
+            if not isinstance(rows,list):raise ValueError("v3 outcomes")
+            report["master_v3"]=master_v3.summarize(rows,symbol)
+        except Exception:
+            report["master_v3"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE","lanes":{}}
         with _LOCK:_CACHE[key]=(time.monotonic(),report)
     except Exception:
         with _LOCK:
