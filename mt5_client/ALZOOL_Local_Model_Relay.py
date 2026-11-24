@@ -24,7 +24,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-MODELS=("qwen2.5:1.5b",)  # Lightweight CPU-only live voting; old models remain installed
+MODELS=("qwen2.5:1.5b",)  # Default lightweight mode
+DUAL_MODELS=("qwen2.5:1.5b","deepseek-r1:1.5b")
 OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
 POLL_SECONDS=3
 INDEPENDENT_PROTOCOL="INDEPENDENT_SHADOW_V4"
@@ -235,7 +236,8 @@ def unified_model_vote(model,context,timeout_seconds):
         payload={"model":model,"messages":[{"role":"system","content":instruction},
             {"role":"user","content":json.dumps(snapshot,separators=(",",":"))}],
             "stream":False,"format":schema,"think":False,"keep_alive":"30m",
-            "options":{"temperature":0,"num_predict":80,"num_ctx":1024,"num_thread":4}},
+            "options":{"temperature":0,"num_predict":128 if model.startswith("deepseek") else 80,
+                       "num_ctx":1024,"num_thread":4}},
         timeout=timeout_seconds)
     return validate_unified_response(model,result)
 
@@ -317,9 +319,13 @@ def main():
         help="V4 independent forward-test; never submits a live council vote")
     mode.add_argument("--unified-v4",action="store_true",
         help="One independent inference, live advisory vote and accuracy audit")
+    parser.add_argument("--with-deepseek",action="store_true",
+        help="Run Qwen then DeepSeek sequentially in unified V4, with real votes only")
     parser.add_argument("--auto-pairing",action="store_true",
         help="Find a valid pairing in Downloads without printing keys")
     args=parser.parse_args()
+    if args.with_deepseek and not args.unified_v4:parser.error("--with-deepseek requires --unified-v4")
+    models=DUAL_MODELS if args.with_deepseek else MODELS
     if args.auto_pairing and args.credentials:parser.error("Choose one pairing method")
     if args.auto_pairing:
         server,identity,key=auto_pairing(args.unified_v4,args.independent_shadow)
@@ -329,14 +335,17 @@ def main():
         installed={row.get("name") for row in request_json(OLLAMA_URL+"/api/tags",timeout=8).get("models",[])}
     except Exception as exc:
         raise RuntimeError("Ollama غير متصل على اللابتوب: "+type(exc).__name__) from exc
-    missing=[model for model in MODELS if model not in installed]
+    missing=[model for model in models if model not in installed]
     if missing:
         raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
     print("AL-ZOOL LOCAL AI READY | model=Qwen 2.5 1.5B FAST | heavy models offline | trading execution=OFF",flush=True)
     if args.independent_shadow:
         print("ACCURACY V4 | INDEPENDENT SHADOW | NO LIVE VOTE OR ORDER",flush=True)
     if args.unified_v4:
-        print("AL-ZOOL UNIFIED V4 | ONE MODEL | ONE INFERENCE | LIVE ADVICE + ACCURACY AUDIT",flush=True)
+        if args.with_deepseek:
+            print("AL-ZOOL UNIFIED V4 | QWEN + DEEPSEEK | SEQUENTIAL | LIVE ADVICE + ACCURACY AUDIT",flush=True)
+        else:
+            print("AL-ZOOL UNIFIED V4 | ONE MODEL | ONE INFERENCE | LIVE ADVICE + ACCURACY AUDIT",flush=True)
     last_bar=0
     submitted=set()
     attempts={}
@@ -355,6 +364,9 @@ def main():
                 if context.get("unified_ai_protocol")!=UNIFIED_PROTOCOL:
                     print("UNIFIED V4 protocol unavailable; no vote sent",flush=True)
                     break
+                if args.with_deepseek and "deepseek-r1:1.5b" not in (context.get("unified_ai_models") or []):
+                    print("Server has not advertised unified DeepSeek support; no vote sent",flush=True)
+                    break
                 context=dict(context,_analysis_protocol=UNIFIED_PROTOCOL)
             bar=int(context.get("bar_time",0))
             if bar<=0:
@@ -371,7 +383,7 @@ def main():
             signal=central_signal(context)
             # The central council cannot approve a WAIT decision. Saving CPU
             # here avoids wasting CPU on non-actionable bars.
-            if signal not in ("BUY","SELL") and not args.independent_shadow:
+            if signal not in ("BUY","SELL") and not (args.independent_shadow or args.with_deepseek):
                 if not submitted and not attempts:
                     print("CENTRAL WAIT | no local model vote for this bar",flush=True)
                     attempts["wait_logged"]=1
@@ -381,7 +393,7 @@ def main():
             # Large reasoning models are kept installed for offline research.
             # For a closed M1 bar, the next closed bar is available at bar+120s.
             # Leave 4s for server round-trips so old votes cannot be submitted.
-            pending=[model for model in MODELS
+            pending=[model for model in models
                 if model not in submitted and attempts.get(model,0)<1
                 and time.monotonic()>=model_pause_until.get(model,0.0)]
             if pending:
@@ -394,7 +406,7 @@ def main():
                         attempts[model]=1
                         continue
                     # Do not spend longer than one short CPU inference on a single M1 candle.
-                    limit=18
+                    limit=24 if model.startswith("deepseek") else 18
                     timeout=max(1,min(limit,int(remaining)-2))
                     attempts[model]=1  # No CPU-expensive same-bar retry.
                     started=time.monotonic()
