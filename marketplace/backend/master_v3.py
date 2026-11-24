@@ -134,7 +134,7 @@ def latest(client,symbol):
 
 def summarize(rows,symbol):
     """Persisted same-quote paired evidence; compare chronological holdout."""
-    groups={};seen=set()
+    groups={};seen=set();regimes={};strategies={}
     for row in rows or []:
         p=row.get("payload") or {}
         if p.get("version")!=VERSION or not same_market_symbol(p.get("symbol"),symbol):continue
@@ -152,6 +152,11 @@ def summarize(rows,symbol):
             x=num(pay.get(a));y=num(pay.get(b))
             missed=b=="WAIT" and any(num(pay.get(s))>0 for s in c.get("eligible",[]))
             groups.setdefault((lane,h),[]).append((bar,x,y,a,b,missed))
+            if h==180 and b in SIDES:
+                ex=(o.get("excursion") or {}).get(b) or {}
+                sample=(bar,y,num(ex.get("mae_atr")),num(ex.get("mfe_atr")))
+                regimes.setdefault((str(c.get("regime")),lane),[]).append(sample)
+                strategies.setdefault((str(c.get("strategy_id")),lane),[]).append(sample)
     result={}
     for (lane,h),items in groups.items():
         samples=sorted(items);cut=int(len(samples)*.7);train=samples[:cut];valid=samples[cut:]
@@ -162,5 +167,18 @@ def summarize(rows,symbol):
                 "v3_missed_proxy":sum(x[5] for x in data)}
         result.setdefault(str(lane),{})[str(h)]={"all":stats(samples),"train":stats(train),"validation":stats(valid),
             "enough_for_review":len(train)>=80 and len(valid)>=40}
-    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"live_execution_changed":False,
+    def memory(groups):
+        out=[]
+        for (name,lane),items in groups.items():
+            items=sorted(items);cut=int(len(items)*.7);train=items[:cut];valid=items[cut:]
+            n=len(items)
+            out.append({"name":name,"lane":lane,"samples":n,
+                "mean_net_atr":round(sum(t[1] for t in items)/n,4),
+                "mean_mae_atr":round(sum(t[2] for t in items)/n,4),
+                "mean_mfe_atr":round(sum(t[3] for t in items)/n,4),
+                "training":len(train),"validation":len(valid),
+                "status":"REVIEW_ONLY" if len(train)>=30 and len(valid)>=15 else "INSUFFICIENT"})
+        return sorted(out,key=lambda x:x["samples"],reverse=True)[:30]
+    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"regime_memory":memory(regimes),
+            "strategy_memory":memory(strategies),"live_execution_changed":False,
             "metric":"OBSERVED_QUOTES_COMMON_HORIZON_NOT_BROKER_TRADES"}
