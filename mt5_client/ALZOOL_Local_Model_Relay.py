@@ -211,13 +211,33 @@ def unified_snapshot(context):
 def validate_unified_response(model,result):
     """Translate only the model's actual structured reason code."""
     msg=result.get("message") or {}
+    raw=msg.get("content")
+    if not isinstance(raw,str):return None
+    # R1 versions may embed reasoning in content rather than message.thinking.
+    # Never treat a JSON fragment inside unfinished thoughts as a forecast.
+    if "</think>" in raw:
+        raw=raw.rsplit("</think>",1)[1]
+    if "<think>" in raw:return None
+    raw=raw.strip()
+    if raw.startswith("```"):
+        raw=re.sub(r"^\x60{3}(?:json)?\s*","",raw,flags=re.I)
+        raw=re.sub(r"\s*\x60{3}$","",raw)
     try:
-        obj=json.loads(msg["content"])
-        if not isinstance(obj,dict) or obj.get("reason_code") not in REASON_CODES:return None
-        code=obj["reason_code"]
-        converted={"direction":obj.get("direction"),"confidence":obj.get("confidence"),
-                   "reason_ar":REASON_CODES[code]}
-        return validate_response(model,{"message":{"content":json.dumps(converted,ensure_ascii=False)}})
+        obj=json.loads(raw)
+        if not isinstance(obj,dict):return None
+        code=obj.get("reason_code")
+        if isinstance(code,str) and code in REASON_CODES:
+            reason=REASON_CODES[code]
+            original=None
+        elif model.startswith("deepseek") and isinstance(obj.get("reason"),str) and obj["reason"].strip():
+            original=obj["reason"].strip()[:350]
+            reason=original if re.search(r"[\u0600-\u06FF]",original) else "سبب DeepSeek محفوظ بلغته الأصلية"
+        else:return None
+        if not isinstance(obj.get("confidence"),(int,float)) or isinstance(obj.get("confidence"),bool):return None
+        converted={"direction":obj.get("direction"),"confidence":obj.get("confidence"),"reason_ar":reason}
+        vote=validate_response(model,{"message":{"content":json.dumps(converted,ensure_ascii=False)}})
+        if vote and original and reason!=original:vote["reason_original"]=original
+        return vote
     except (TypeError,ValueError,KeyError):return None
 
 def unified_model_vote(model,context,timeout_seconds):
@@ -232,14 +252,31 @@ def unified_model_vote(model,context,timeout_seconds):
         "all prices are offsets in ATR units from last close (0). Predict rise BUY, "
         "fall SELL, or WAIT if unclear. Use momentum, rejection wicks and levels. "
         "No central forecast. Return JSON only; confidence 0..1, reason_code from schema.")
+    deep=model.startswith("deepseek")
+    if deep:
+        instruction=("Independent M1 analyst. OHLC oldest to newest, prices in ATR units "
+            "from last close. Predict BUY, SELL or WAIT using only these data. "
+            "No chain of thought. Return one JSON object with direction, numeric confidence "
+            "between 0 and 1, and reason_code from "+",".join(REASON_CODES)+
+            ". Alternatively use reason with a short actual explanation. "
+            "Output only the final JSON.")
     result=request_json(OLLAMA_URL+"/api/chat",method="POST",
         payload={"model":model,"messages":[{"role":"system","content":instruction},
             {"role":"user","content":json.dumps(snapshot,separators=(",",":"))}],
-            "stream":False,"format":schema,"think":False,"keep_alive":"30m",
-            "options":{"temperature":0,"num_predict":128 if model.startswith("deepseek") else 80,
+            "stream":False,"format":"json" if deep else schema,"think":False,"keep_alive":"30m",
+            "options":{"temperature":0,"num_predict":352 if deep else 80,
                        "num_ctx":1024,"num_thread":4}},
         timeout=timeout_seconds)
-    return validate_unified_response(model,result)
+    vote=validate_unified_response(model,result)
+    if vote is None:
+        msg=result.get("message") or {}
+        raw=msg.get("content")
+        thinking=msg.get("thinking")
+        print(model+" RESPONSE_DIAG content_chars="+str(len(raw) if isinstance(raw,str) else 0)+
+            " thinking_chars="+str(len(thinking) if isinstance(thinking,str) else 0)+
+            " done="+str(result.get("done_reason","unknown"))[:32]+
+            " tokens="+str(result.get("eval_count","?")),flush=True)
+    return vote
 
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
@@ -300,11 +337,11 @@ def same_live_signal(server,identity,key,bar,signal):
             and central_signal(latest)==signal)
 
 
-def record_model_failure(model,failures,pause_until):
+def record_model_failure(model,failures,pause_until,invalid_output=False):
     """A slow/empty model may not consume every future M1 candle."""
     failures[model]=failures.get(model,0)+1
     if failures[model]>=2:
-        seconds=600 if model.startswith("deepseek") else 300
+        seconds=60 if invalid_output and model.startswith("deepseek") else 600 if model.startswith("deepseek") else 300
         pause_until[model]=time.monotonic()+seconds
         failures[model]=0
         print(model+" CPU_COOLDOWN "+str(seconds)+"s; Fast AI remains active",flush=True)
@@ -338,7 +375,7 @@ def main():
     missing=[model for model in models if model not in installed]
     if missing:
         raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
-    print("AL-ZOOL LOCAL AI READY | model=Qwen 2.5 1.5B FAST | heavy models offline | trading execution=OFF",flush=True)
+    print("AL-ZOOL LOCAL AI READY | models="+", ".join(models)+" | trading execution=OFF",flush=True)
     if args.independent_shadow:
         print("ACCURACY V4 | INDEPENDENT SHADOW | NO LIVE VOTE OR ORDER",flush=True)
     if args.unified_v4:
@@ -422,7 +459,7 @@ def main():
                         continue
                     if vote is None:
                         print(model+" INVALID_OUTPUT (JSON, direction, confidence or empty reason); no vote submitted",flush=True)
-                        record_model_failure(model,model_failures,model_pause_until)
+                        record_model_failure(model,model_failures,model_pause_until,invalid_output=True)
                         continue
                     model_failures[model]=0
                     if vote.get("reason_original"):
