@@ -113,4 +113,44 @@ class UnifiedTests(unittest.TestCase):
         self.assertEqual(a.summarize(out)["groups"][0]["analysis_mode"],"UNIFIED")
         a._PENDING.clear()
 
+    def test_dual_models_run_in_sequence_and_submit_own_votes(self):
+        deep="deepseek-r1:1.5b"
+        calls=[]
+        clock=[BAR+61]
+        def request(url,method="GET",payload=None,token=None,timeout=12):
+            if url.endswith("/api/tags"):return {"models":[{"name":m} for m in (MODEL,deep)]}
+            if "/v1/local-ai/context/" in url:
+                return dict(context(),unified_ai_models=[MODEL,deep])
+            if "/v1/local-ai/unified-v4/" in url:
+                calls.append(("post",payload["model"],payload["direction"]))
+                return {"accepted":True,"unified_v4":True,"accuracy_recorded":True}
+            raise AssertionError(url)
+        def vote(model,ctx,timeout_seconds):
+            calls.append(("infer",model,timeout_seconds))
+            clock[0]+=3
+            return {"model":model,"direction":"BUY" if model==MODEL else "SELL",
+                    "confidence":.65,"reason_ar":"اختبار"}
+        with patch.object(relay,"credentials",return_value=("https://example.com","c","test")), \
+             patch.object(relay,"request_json",side_effect=request), \
+             patch.object(relay,"model_vote",side_effect=vote), \
+             patch.object(relay.time,"time",side_effect=lambda:clock[0]), \
+             patch.object(sys,"argv",["relay","--unified-v4","--with-deepseek","--once"]), \
+             contextlib.redirect_stdout(io.StringIO()):
+            relay.main()
+        self.assertEqual([(x[0],x[1]) for x in calls],
+            [("infer",MODEL),("post",MODEL),("infer",deep),("post",deep)])
+        self.assertEqual(calls[1][2],"BUY")
+        self.assertEqual(calls[3][2],"SELL")
+
+    def test_deepseek_uses_own_validated_response(self):
+        deep="deepseek-r1:1.5b"
+        ctx=dict(context(),_analysis_protocol=relay.UNIFIED_PROTOCOL)
+        with patch.object(relay,"request_json",return_value={"message":{"content":
+            '{"direction":"SELL","confidence":0.64,"reason_code":"DOWN_MOMENTUM"}'}}) as req:
+            vote=relay.model_vote(deep,ctx,24)
+        self.assertEqual(vote["model"],deep)
+        self.assertEqual(vote["direction"],"SELL")
+        self.assertEqual(req.call_args.kwargs["payload"]["model"],deep)
+        self.assertEqual(req.call_args.kwargs["timeout"],24)
+
 if __name__=="__main__":unittest.main()
