@@ -662,6 +662,17 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
                 "server_utc":datetime.now(timezone.utc).isoformat(),
                 "trading_enabled_by_health_check":False})
+        if path=="/api/ai/accuracy-v4":
+            try:
+                u=owner(token_of(self))
+                if banned(u):return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                client_id=(lic or {}).get("client_id","")
+                if not client_id or (lic or {}).get("revoked"):return self.send_json(200,accuracy_v4.summarize([]))
+                query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&event_type=eq.AI_ACCURACY_V4_OUTCOME&select=payload,created_at&order=created_at.desc&limit=500"
+                return self.send_json(200,accuracy_v4.summarize(sb("GET",query,admin=True)))
+            except PermissionError:return self.send_json(403,{"error":"Owner only"})
+            except Exception:return self.send_json(502,{"error":"Accuracy data unavailable"})
         if path=="/api/ai/stress-learning":
             try:
                 u=owner(token_of(self))
