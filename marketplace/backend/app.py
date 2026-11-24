@@ -14,6 +14,7 @@ import feedback_learning
 import master_ai
 import master_entry_review
 import master_v2
+import master_v3
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
@@ -1358,6 +1359,7 @@ class Handler(SimpleHTTPRequestHandler):
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
                     "master_v2":["MASTER_V2_FORECAST","MASTER_V2_COMPARISON"],
+                    "master_v3":["MASTER_V3_FORECAST","MASTER_V3_OUTCOME"],
                     "master":["MASTER_DECISION_AUDIT","AI_COUNCIL_DECISION","AI_COUNCIL_VETO","AI_COUNCIL_WAIT"],
                     "learning":["LIVE_LEARNING_APPLIED","LEARNING_DECISION_AUDIT","AI_ACCURACY_V4_OUTCOME"],
                     "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
@@ -1661,6 +1663,12 @@ class Handler(SimpleHTTPRequestHandler):
                             "candidate":master_v2.candidate(base,council,feedback,"EARLY" if age<20 else "REVIEW") if fresh else {}}
                     except Exception:
                         shadow={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
+                v3_shadow={}
+                if mode=="MASTER":
+                    try:
+                        v3_shadow={"mode":"SHADOW_ONLY","latest":master_v3.latest(cid,item.get("symbol")),
+                            "report":feedback_learning.snapshot(cid,item.get("symbol"),sb).get("master_v3") or {}}
+                    except Exception:v3_shadow={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
                 bot=item.get("bot_report") or {}
                 actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
                 return self.send_json(200,{
@@ -1672,7 +1680,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "strategy_name":decision.get("strategy_name"),
                     "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
                     "bar_time":decision.get("bar_time"),"entry_ready":ready,
-                    "mode":mode,"master":decision.get("master",{}),"master_v2":shadow,
+                    "mode":mode,"master":decision.get("master",{}),"master_v2":shadow,"master_v3":v3_shadow,
                     "trading_enabled":bool(settings.get("trading_enabled")),
                     "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
                     "mt5_position_management_enabled":item.get("mt5_position_management_enabled"),
@@ -2561,6 +2569,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 and entry_council_mode(cached_settings,True)=="MASTER"):
                             event=master_v2.observe(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,now.timestamp())
                             if event:queue_ai_diagnostic_event(event)
+                            master_v3.submit(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,cached_settings,now.timestamp(),queue_ai_diagnostic_event)
                     except Exception as feedback_error:
                         print("FEEDBACK_LEARNING_WARNING:",type(feedback_error).__name__,flush=True)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
@@ -2654,7 +2663,7 @@ if __name__=="__main__":
     from pathlib import Path
     test_dir=str(Path(__file__).resolve().parents[2]/"tests")
     recovery_suite=unittest.TestSuite()
-    for pattern in ("test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
+    for pattern in ("test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
