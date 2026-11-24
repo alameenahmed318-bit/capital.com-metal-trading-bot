@@ -744,6 +744,7 @@ class Handler(SimpleHTTPRequestHandler):
             context=decision.get("context") if isinstance(decision.get("context"),dict) else {}
             return self.send_json(200,{"client_id":client_id,"symbol":item.get("symbol"),
                 "accuracy_protocol":accuracy_v4.PROTOCOL,
+                "unified_ai_protocol":accuracy_v4.UNIFIED_PROTOCOL,
                 "bar_time":int(finite_number(decision.get("bar_time"))),
                 # The local relay consumes 'decision'. Keep 'direction' for legacy relays.
                 "decision":decision.get("decision","WAIT"),
@@ -1684,9 +1685,12 @@ class Handler(SimpleHTTPRequestHandler):
                     item,decision,gate,council,risk,settings,sb,now,
                     council_advisory=advisory_mode)
                 return self.send_json(200 if response.get("execution_authorized") else 409,{**response,"symbol":item.get("symbol","")})
-            if path.startswith(("/v1/local-ai/advice/","/v1/local-ai/shadow-v4/")):
+            if path.startswith(("/v1/local-ai/advice/","/v1/local-ai/shadow-v4/","/v1/local-ai/unified-v4/")):
                 shadow_route=path.startswith("/v1/local-ai/shadow-v4/")
-                if shadow_route!=(data.get("analysis_protocol")==accuracy_v4.PROTOCOL) or (not shadow_route and data.get("analysis_protocol")):
+                unified_route=path.startswith("/v1/local-ai/unified-v4/")
+                expected_protocol=(accuracy_v4.PROTOCOL if shadow_route else
+                    accuracy_v4.UNIFIED_PROTOCOL if unified_route else None)
+                if (data.get("analysis_protocol") or None)!=expected_protocol:
                     return self.send_json(400,{"error":"Invalid V4 route or protocol","execution_authorized":False})
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
@@ -1715,8 +1719,11 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"صيغة تصويت النموذج غير صالحة"})
                 if model not in ("qwen3.5:4b","qwen2.5:1.5b","deepseek-r1:1.5b"):
                     return self.send_json(400,{"error":"موديل AI غير معتمد لهذا الربط"})
-                # V4 independent votes are prospective research only. Never
-                # overwrite an existing live council vote or local AI advice.
+                # Independent shadow votes never overwrite the live council.
+                if unified_route and (not same_market_symbol(data.get("symbol"),item.get("symbol"))
+                    or str(item.get("timeframe","")).upper() not in ("M1","PERIOD_M1")
+                    or model!="qwen2.5:1.5b"):
+                    return self.send_json(409,{"error":"Unified V4 requires matching M1 market and lightweight Qwen"})
                 if shadow_route:
                     if not same_market_symbol(data.get("symbol"),item.get("symbol")):
                         return self.send_json(409,{"error":"V4 market mismatch"})
@@ -1741,6 +1748,17 @@ class Handler(SimpleHTTPRequestHandler):
                     event={"event_id":f"deepseek:{client_id}:{bar_time}","client_id":client_id,
                         "event_type":"AI_DEEPSEEK_VOTE","payload":advice}
                 diagnostic_queued=queue_ai_diagnostic_event(event) if event else False
+                # Reuse the exact accepted prediction for forward measurement.
+                # No second model call, no order authorization, no changed gates.
+                accuracy_recorded=False
+                if unified_route:
+                    try:
+                        forecast=accuracy_v4.record(client_id,item.get("symbol"),item.get("timeframe"),
+                            decision,item.get("tick") or {},"LOCAL_AI",direction,confidence,time.time(),
+                            model,analysis_mode="UNIFIED")
+                        if forecast:accuracy_recorded=queue_ai_diagnostic_event(forecast)
+                    except Exception as exc:
+                        print("UNIFIED_AI_AUDIT_WARNING:",type(exc).__name__,flush=True)
                 # Re-evaluate as soon as either late vote arrives. MT5 still
                 # independently polls /terminal-decision and must pass all gates.
                 updated_council=council_result(client_id,decision)
@@ -1772,6 +1790,7 @@ class Handler(SimpleHTTPRequestHandler):
                                    "reason_ar":updated_council.get("reason_ar",""),
                                    "execution_authorized":False}})
                 return self.send_json(200,{"accepted":True,"diagnostic_queued":diagnostic_queued,
+                    "unified_v4":unified_route,"accuracy_recorded":accuracy_recorded,
                     "bar_time":bar_time,"direction":direction,"model":model,
                     "council_approved":bool(updated_council.get("approved")),
                     "council_reason_ar":updated_council.get("reason_ar",""),
