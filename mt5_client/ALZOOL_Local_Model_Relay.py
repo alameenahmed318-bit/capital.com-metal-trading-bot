@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 MODELS=("qwen2.5:1.5b",)  # Lightweight CPU-only live voting; old models remain installed
 OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
 POLL_SECONDS=3
+INDEPENDENT_PROTOCOL="INDEPENDENT_SHADOW_V4"
 MODEL_TIMEOUT_SECONDS=50
 
 def request_json(url,method="GET",payload=None,token=None,timeout=12):
@@ -146,9 +147,24 @@ def compact_snapshot(context):
     }
 
 
+def independent_snapshot(context):
+    """Blind market features only. No central side, confidence, votes, or model names."""
+    ctx=context.get("context") if isinstance(context.get("context"),dict) else {}
+    candles=context.get("candles") if isinstance(context.get("candles"),list) else []
+    recent=[]
+    for row in candles[:6]:
+        if isinstance(row,dict):
+            recent.append({key:row[key] for key in ("time","open","high","low","close","tick_volume") if key in row})
+    return {"symbol":context.get("symbol"),"bar_time":context.get("bar_time"),
+            "atr":ctx.get("atr"),"atr_ratio":ctx.get("atr_ratio"),
+            "adx":ctx.get("adx"),"vwap":ctx.get("vwap"),
+            "support":ctx.get("support"),"resistance":ctx.get("resistance"),
+            "candles_newest_first":recent}
+
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
-    snapshot=compact_snapshot(context)
+    blind=context.get("_analysis_protocol")==INDEPENDENT_PROTOCOL
+    snapshot=independent_snapshot(context) if blind else compact_snapshot(context)
     symbol=str(context.get("symbol") or "BTCUSD").upper()
     market="XAUUSD Gold" if symbol.startswith("XAUUSD") else "BTCUSD Bitcoin"
     instruction=("You are a cautious "+market+" M1 advisory analyst. Use ONLY actual supplied "
@@ -159,6 +175,13 @@ def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
         "confidence (0..1), reason_ar (short reason written ONLY in Arabic). "
         "The reason_ar MUST contain Arabic script, NOT Chinese or English. "
         "Keep Arabic reason under 10 words, no extra text.")
+    if blind:
+        instruction=("Independent "+market+" analyst. Predict the direction of the current M1 candle "
+            "until it closes, using only the supplied recent CLOSED candles and measured indicators. "
+            "No central forecast is supplied. BUY means price likely rises; SELL means likely falls. "
+            "Choose WAIT if evidence is unclear. Consider wick rejection and support/resistance. "
+            "Do not invent data or claim guaranteed accuracy. Output JSON direction, confidence 0..1, "
+            "and short Arabic reason_ar. Confidence is an estimate, not a calibrated probability.")
     schema={"type":"object","properties":{
         "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
         "confidence":{"type":"number","minimum":0,"maximum":1},
@@ -209,6 +232,8 @@ def main():
     parser=argparse.ArgumentParser(description="AL-ZOOL Qwen and DeepSeek local voting relay")
     parser.add_argument("--credentials",help="Downloaded owner pairing JSON file")
     parser.add_argument("--once",action="store_true",help="Inspect one closed-bar vote cycle")
+    parser.add_argument("--independent-shadow",action="store_true",
+        help="V4 independent forward-test; never submits a live council vote")
     args=parser.parse_args()
     server,identity,key=credentials(args.credentials)
     try:
@@ -219,6 +244,8 @@ def main():
     if missing:
         raise RuntimeError("الموديلات غير مثبتة؛ استخدم: "+", ".join("ollama pull "+m for m in missing))
     print("AL-ZOOL LOCAL AI READY | model=Qwen 2.5 1.5B FAST | heavy models offline | trading execution=OFF",flush=True)
+    if args.independent_shadow:
+        print("ACCURACY V4 | INDEPENDENT SHADOW | NO LIVE VOTE OR ORDER",flush=True)
     last_bar=0
     submitted=set()
     attempts={}
@@ -228,6 +255,11 @@ def main():
         try:
             url=server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe="")
             context=request_json(url,token=key,timeout=12)
+            if args.independent_shadow:
+                if context.get("accuracy_protocol")!=INDEPENDENT_PROTOCOL:
+                    print("V4 protocol unavailable on server; no vote sent",flush=True)
+                    break
+                context=dict(context,_analysis_protocol=INDEPENDENT_PROTOCOL)
             bar=int(context.get("bar_time",0))
             if bar<=0:
                 if args.once:break
@@ -243,7 +275,7 @@ def main():
             signal=central_signal(context)
             # The central council cannot approve a WAIT decision. Saving CPU
             # here avoids wasting CPU on non-actionable bars.
-            if signal not in ("BUY","SELL"):
+            if signal not in ("BUY","SELL") and not args.independent_shadow:
                 if not submitted and not attempts:
                     print("CENTRAL WAIT | no local model vote for this bar",flush=True)
                     attempts["wait_logged"]=1
@@ -306,9 +338,13 @@ def main():
                             continue
                     vote["bar_time"]=bar
                     vote["symbol"]=context.get("symbol")
+                    if args.independent_shadow:
+                        vote["analysis_protocol"]=INDEPENDENT_PROTOCOL
                     try:
                         ack=request_json(server+"/v1/local-ai/advice/"+
                             urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
+                        if args.independent_shadow and ack.get("shadow_only") is not True:
+                            raise RuntimeError("Server does not confirm V4 shadow protocol; stop using V4 until server updated")
                         if ack.get("accepted") is True:
                             submitted.add(model)
                         print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
