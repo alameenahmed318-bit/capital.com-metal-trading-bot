@@ -81,7 +81,15 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 action="HOLD";reason="حجم التعافي تجاوز سقف اللوت الإجمالي الذي حدده المالك"
         if master_mode and action=="RECOVERY_PROPOSAL":
             support=management_support(decision,side)
-            if support<-.20:
+            if recovery.get("direction_mode")=="BIDIRECTIONAL_AI":
+                # The closed M1 candle picks the candidate; require the independent
+                # master ranking to favor that same direction rather than just
+                # being not strongly opposed. No model unanimity requirement.
+                if support<=0:
+                    action="HOLD";reason="التعافي الحر: شمعة التأكيد لا تتوافق مع ترجيح BUY/SELL للعقل المركزي؛ انتظار فرصة أوضح"
+                else:
+                    reason=f"التعافي الحر | {side} | ترجيح العقل {support:+.3f} | "+reason
+            elif support<-.20:
                 action="HOLD";reason="MASTER AI: اتجاه التعافي يعارض الأدلة السوقية الحالية؛ انتظار فرصة أفضل"
             else:reason="MASTER AI: "+reason
         if action!="RECOVERY_PROPOSAL":lot=0.0
