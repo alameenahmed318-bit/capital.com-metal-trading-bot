@@ -3,9 +3,51 @@ const $=id=>document.getElementById(id);
 async function api(path,method="GET",body=null){const headers={"Content-Type":"application/json"};if(session?.access_token)headers.Authorization="Bearer "+session.access_token;const r=await fetch(path,{method,headers,body:body?JSON.stringify(body):null});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"تعذر تنفيذ الطلب");return d}
 function show(id){["loginView","adminView","clientView","resetPasswordView"].forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 function msg(id,value){$(id).textContent=value||""}
-async function boot(){try{const response=await fetch("/api/config",{cache:"no-store"});if(!response.ok)throw Error("تعذر قراءة إعدادات الخادم ("+response.status+")");const c=await response.json();if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error("إعدادات Supabase غير مكتملة على Render"+(missing.length?" — المتغيرات الناقصة: "+missing.join(", "):" — راجع متغيرات البيئة"));}if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase؛ حدّث الصفحة أو تحقق من الاتصال.");if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");sb=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);if(!sb?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");supabaseReady=true;const isRecoveryLink=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery";sb.auth.onAuthStateChange((event,newSession)=>{if(event==="PASSWORD_RECOVERY"){resetFlow=true;session=newSession;show("resetPasswordView");}});const {data,error}=await sb.auth.getSession();if(error)throw error;session=data.session;if(resetFlow||isRecoveryLink)show("resetPasswordView");else if(session)await route();else show("loginView");}catch(e){supabaseReady=false;sb=null;$("connection").textContent="الخدمة تحتاج إعداد";msg("loginError",e.message||"تعذر تهيئة Supabase");show("loginView");}}
+let authInitPromise=null,authInitError="",loginBusy=false;
+async function initializeAuth(){
+ if(supabaseReady&&sb?.auth)return sb;
+ if(authInitPromise)return authInitPromise;
+ authInitPromise=(async()=>{
+  const response=await fetch("/api/config",{cache:"no-store"});
+  const c=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(c.error||"تعذر قراءة إعدادات الخادم ("+response.status+")");
+  if(!c.ready){const missing=Array.isArray(c.missing)?c.missing:[];throw Error(c.error||"إعدادات Supabase غير مكتملة"+(missing.length?" — "+missing.join(", "):""));}
+  if(!window.supabase||typeof window.supabase.createClient!=="function")throw Error("تعذر تحميل مكتبة Supabase من المتصفح. حدّث الصفحة أو تحقق من الاتصال.");
+  if(!c.supabase_url||!c.supabase_anon_key)throw Error("رابط Supabase أو المفتاح العام غير موجود.");
+  const client=window.supabase.createClient(c.supabase_url,c.supabase_anon_key);
+  if(!client?.auth)throw Error("تعذر تهيئة تسجيل الدخول عبر Supabase.");
+  client.auth.onAuthStateChange((event,newSession)=>{if(event==="PASSWORD_RECOVERY"){resetFlow=true;session=newSession;show("resetPasswordView");}});
+  sb=client;supabaseReady=true;authInitError="";return client;
+ })();
+ try{return await authInitPromise}catch(e){authInitError=e.message||"تعذر تهيئة الاتصال";supabaseReady=false;sb=null;throw e}finally{authInitPromise=null}
+}
+async function boot(){
+ try{await initializeAuth()}catch(e){$("connection").textContent="تعذر تهيئة الاتصال";msg("loginError",authInitError);show("loginView");return}
+ try{
+  const isRecoveryLink=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery";
+  const {data,error}=await sb.auth.getSession();if(error)throw error;
+  session=data.session;
+  if(resetFlow||isRecoveryLink)show("resetPasswordView");
+  else if(session)await route();
+  else show("loginView");
+ }catch(e){
+  // A session/API/route failure is not missing Supabase configuration.
+  $("connection").textContent="تعذر استكمال الدخول";msg("loginError",e.message||"تعذر التحقق من الجلسة");show("loginView");
+ }
+}
 async function route(){const a=await api("/api/access/check");if(location.pathname==="/"&&!location.hash&&!new URLSearchParams(location.search).has("manage")){location.replace("/dashboard.html");return;}if(a.role==="owner"){show("adminView");$("ownerLabel").textContent=a.email;await refreshClients();await refreshConnection();await refreshCouncil();await refreshVersions();await refreshResearch();await refreshActionControl();await refreshActions();await refreshAdminOverview();await refreshOwnerReadiness()}else{show("clientView");$("clientLabel").textContent=a.email;await refreshConnection(true);await loadClientBasicSettings();return}}
-$("loginForm").addEventListener("submit",async e=>{e.preventDefault();msg("loginError","");if(!supabaseReady||!sb?.auth){msg("loginError","تسجيل الدخول متوقف لأن إعدادات Supabase لم تكتمل بعد. راجع رسالة إعداد الخادم أعلاه.");return;}try{const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)throw error;session=data.session;await route()}catch(x){msg("loginError",x.message||"تعذر تسجيل الدخول")}});
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();if(loginBusy)return;loginBusy=true;
+ const button=$("loginForm").querySelector('button[type="submit"],button:not([type])');
+ if(button)button.disabled=true;
+ msg("loginError","");
+ try{
+  if(!supabaseReady||!sb?.auth)await initializeAuth();
+  const {data,error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});
+  if(error)throw error;session=data.session;await route();
+ }catch(x){msg("loginError",x.message||authInitError||"تعذر تسجيل الدخول");show("loginView")}
+ finally{loginBusy=false;if(button)button.disabled=false}
+});
 async function logout(){await sb.auth.signOut();session=null;show("loginView")}
 $("logoutBtn").addEventListener("click",logout);$("clientLogoutBtn").addEventListener("click",logout);
 $("resetPasswordForm").addEventListener("submit",async e=>{
