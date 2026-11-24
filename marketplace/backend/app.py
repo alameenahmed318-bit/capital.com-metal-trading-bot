@@ -12,6 +12,7 @@ from hybrid_decision import fuse_live_decision
 import accuracy_v4
 import feedback_learning
 import master_ai
+import master_v2
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
@@ -1350,6 +1351,7 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
+                    "master_v2":["MASTER_V2_FORECAST","MASTER_V2_COMPARISON"],
                     "master":["MASTER_DECISION_AUDIT","AI_COUNCIL_DECISION","AI_COUNCIL_VETO","AI_COUNCIL_WAIT"],
                     "learning":["LIVE_LEARNING_APPLIED","LEARNING_DECISION_AUDIT","AI_ACCURACY_V4_OUTCOME"],
                     "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
@@ -1637,6 +1639,17 @@ class Handler(SimpleHTTPRequestHandler):
                 elif not risk.get("approved"):reason=risk.get("reason_ar","حارس الحساب منع الدخول")
                 elif not direction.get("approved"):reason=direction.get("reason_ar","حد صفقات الاتجاه")
                 else:reason="إشارة جاهزة للعرض على MT5؛ التنفيذ النهائي يتحقق منه EA"
+                shadow={}
+                if mode=="MASTER":
+                    try:
+                        base=item.get("strategy_decision") or {}
+                        feedback=feedback_learning.snapshot(cid,item.get("symbol"),sb)
+                        age=now.timestamp()-finite_number(base.get("bar_time"))-60
+                        shadow={"mode":"SHADOW_ONLY","report":feedback.get("master_v2") or {},
+                            "feedback_status":feedback.get("status"),"action_evidence":feedback.get("actions") or [],
+                            "candidate":master_v2.candidate(base,council,feedback,"EARLY" if age<20 else "REVIEW") if fresh else {}}
+                    except Exception:
+                        shadow={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
                 bot=item.get("bot_report") or {}
                 actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
                 return self.send_json(200,{
@@ -1647,7 +1660,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "strategy_name":decision.get("strategy_name"),
                     "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
                     "bar_time":decision.get("bar_time"),"entry_ready":ready,
-                    "mode":mode,"master":decision.get("master",{}),
+                    "mode":mode,"master":decision.get("master",{}),"master_v2":shadow,
                     "trading_enabled":bool(settings.get("trading_enabled")),
                     "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
                     "mt5_position_management_enabled":item.get("mt5_position_management_enabled"),
@@ -2496,6 +2509,8 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     for event in accuracy_v4.settle(client_id,active_symbol,data.get("timeframe"),candles):
                         queue_ai_diagnostic_event(event)
+                    for event in master_v2.settle(client_id,active_symbol,data.get("timeframe"),candles):
+                        queue_ai_diagnostic_event(event)
                     if (strategy_decision and candles and
                         int(finite_number(strategy_decision.get("bar_time")))==int(finite_number(candles[0].get("time"))) and
                         strategy_last_bar!=previous.get("strategy_last_bar")):
@@ -2526,7 +2541,10 @@ class Handler(SimpleHTTPRequestHandler):
                                     strategy_decision,safe_tick,kind,vote.get("direction"),
                                     vote.get("confidence"),now.timestamp(),model=model,analysis_mode="UNIFIED")
                                 if event:queue_ai_diagnostic_event(event)
-                        feedback_learning.snapshot(client_id,active_symbol,sb,closed_deals+action_entry_deals)
+                        feedback=feedback_learning.snapshot(client_id,active_symbol,sb,closed_deals+action_entry_deals)
+                        if entry_council_mode(cached_settings,terminal_is_owner(client_id))=="MASTER":
+                            event=master_v2.observe(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,now.timestamp())
+                            if event:queue_ai_diagnostic_event(event)
                     except Exception as feedback_error:
                         print("FEEDBACK_LEARNING_WARNING:",type(feedback_error).__name__,flush=True)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
