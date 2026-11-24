@@ -672,7 +672,7 @@ class Handler(SimpleHTTPRequestHandler):
                 cid=lic["client_id"]
                 current=CONNECTIONS.get(cid) or {}
                 symbol=learning_archive_symbol(cid,current.get("symbol"))
-                return self.send_json(200,feedback_learning.snapshot(cid,symbol,sb,current.get("closed_deals")))
+                return self.send_json(200,feedback_learning.snapshot(cid,symbol,sb,(current.get("closed_deals") or [])+(current.get("action_entry_deals") or [])))
             except PermissionError:return self.send_json(403,{"error":"Owner only"})
             except Exception:return self.send_json(502,{"error":"Feedback data unavailable"})
         if path=="/api/ai/accuracy-v4":
@@ -2266,13 +2266,16 @@ class Handler(SimpleHTTPRequestHandler):
                     # Compact heartbeat: the client only resends the historical
                     # archive on a trade event or its periodic refresh.
                     closed_deals=previous.get("closed_deals") or []
+                    action_entry_deals=previous.get("action_entry_deals") or []
                 else:
                     closed_deals=clean_telemetry_rows(data.get("closed_deals"),("ticket","position_id","symbol","type","deal_type","entry","reason","volume","price","profit","commission","swap","fee","magic","comment","strategy_id","strategy_comment","time"),200)
                     # Only BTC chart deals enter BTC memory, even when MT5
                     # history still contains older gold transactions.
                     closed_deals=[d for d in closed_deals if str(d.get("symbol") or "")==active_symbol]
                     # Historical persistence must never block real-time ticks.
-                    queue_closed_deals(client_id,closed_deals,sb)
+                    action_entry_deals=clean_telemetry_rows(data.get("action_entry_deals"),("ticket","position_id","symbol","entry","volume","price","profit","commission","swap","fee","comment","time"),200)
+                    action_entry_deals=[d for d in action_entry_deals if str(d.get("symbol") or "")==active_symbol and d.get("entry")==0 and d.get("position_id")]
+                    queue_closed_deals(client_id,closed_deals+action_entry_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
                 # Two independent ways to learn about *actual* exit fills:
                 # the updated EA's persisted close timestamp, and the deal
@@ -2473,7 +2476,7 @@ class Handler(SimpleHTTPRequestHandler):
                                     strategy_decision,safe_tick,kind,vote.get("direction"),
                                     vote.get("confidence"),now.timestamp(),model=model,analysis_mode="UNIFIED")
                                 if event:queue_ai_diagnostic_event(event)
-                        feedback_learning.snapshot(client_id,active_symbol,sb,closed_deals)
+                        feedback_learning.snapshot(client_id,active_symbol,sb,closed_deals+action_entry_deals)
                     except Exception as feedback_error:
                         print("FEEDBACK_LEARNING_WARNING:",type(feedback_error).__name__,flush=True)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
@@ -2486,7 +2489,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "positions":positions,
                     "recovery_group_net":(finite_number(data["recovery_group_net"]) if
                         data.get("recovery_group_net") is not None else None),
-                    "orders":orders,"closed_deals":closed_deals,"closed_candles":candles,
+                    "orders":orders,"closed_deals":closed_deals,"action_entry_deals":action_entry_deals,"closed_candles":candles,
                     "last_closed_deal_time":recorded_exit,
                     "last_m1_closed_open":m1_closed_open,
                     "forming_candle":forming,"tick":safe_tick,"strategy_decision":strategy_decision,
