@@ -14,7 +14,6 @@ from specialist_market import samples,features,score,LOOKBACK
 from strategy_research import _candle
 from model_arena_api import MODELS
 SERVER="https://al-zool-meeno-engine.onrender.com"
-OLLAMA="http://127.0.0.1:11434"
 MARKETS=("BTCUSD","XAUUSD")
 def request(url,body=None,headers=None,timeout=45):
     h={"Accept":"application/json",**(headers or {})}
@@ -46,7 +45,7 @@ def dataset(bars):
     tr=[s for s in d[:a] if s["end"]<d[a]["time"]]
     va=[s for s in d[a:b] if s["end"]<d[b]["time"]]
     te=d[b:]
-    # All six models use identical deterministic, nonoverlapping sampled
+    # All five models use identical deterministic, nonoverlapping sampled
     # validation and test windows. Full tree training remains chronological.
     def subset(rows,n=24):
         pool=rows[::3]
@@ -77,16 +76,6 @@ def series_context(bars,rows):
     return out
 def pretrained(name,bars,rows,allow_timesfm):
     contexts=series_context(bars,rows)
-    if name=="Qwen 3.5":
-        results=[]
-        for x in contexts:
-            # Numeric outputs only; no prices/account identifiers leave laptop.
-            prompt="Predict the normalized price 3 minutes ahead. Last value 0, unit ATR. Return only JSON with numeric field prediction; no explanation. Past closed M1 series: "+json.dumps([round(v,4) for v in x])
-            r=request(OLLAMA+"/api/generate",{"model":"qwen3.5:4b","prompt":prompt,"stream":False,"format":"json","think":False,"options":{"temperature":0,"num_predict":80}},timeout=120)
-            v=float(json.loads(r["response"])["prediction"])
-            if not math.isfinite(v):raise ValueError("nonfinite Qwen output")
-            results.append(max(-6,min(6,v)))
-        return results,"qwen3.5:4b"
     import numpy as np
     import torch
     torch.set_num_threads(1)
