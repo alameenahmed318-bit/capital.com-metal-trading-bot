@@ -17,6 +17,7 @@ import os
 import pathlib
 import re
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -27,6 +28,7 @@ MODELS=("qwen2.5:1.5b",)  # Lightweight CPU-only live voting; old models remain 
 OLLAMA_URL=os.getenv("ALZOOL_OLLAMA_URL","http://127.0.0.1:11434").rstrip("/")
 POLL_SECONDS=3
 INDEPENDENT_PROTOCOL="INDEPENDENT_SHADOW_V4"
+UNIFIED_PROTOCOL="INDEPENDENT_UNIFIED_V4"
 MODEL_TIMEOUT_SECONDS=50
 
 def request_json(url,method="GET",payload=None,token=None,timeout=12):
@@ -161,8 +163,86 @@ def independent_snapshot(context):
             "support":ctx.get("support"),"resistance":ctx.get("resistance"),
             "candles_newest_first":recent}
 
+REASON_CODES={
+    "UP_MOMENTUM":"زخم صاعد",
+    "DOWN_MOMENTUM":"زخم هابط",
+    "LOW_REJECTION":"رفض سعري من الأسفل",
+    "HIGH_REJECTION":"رفض سعري من الأعلى",
+    "SUPPORT":"دعم سعري",
+    "RESISTANCE":"مقاومة سعرية",
+    "MIXED":"أدلة متعارضة",
+    "UNCLEAR":"أدلة غير كافية",
+}
+
+def unified_snapshot(context):
+    """Compact price-only input, normalized to the last close and ATR.
+
+    No central direction, confidence, strategy votes or textual hints.
+    Candle arrays oldest first; values are measured offsets in ATR units.
+    """
+    c=context.get("context") or {}
+    rows=(context.get("candles") or [])[:5]
+    try:
+        atr=float(c["atr"])
+        base=float(rows[0]["close"])
+        if not math.isfinite(atr) or atr<=0 or not math.isfinite(base) or base<=0:return None
+        bars=[]
+        for row in reversed(rows):
+            values=[float(row[k]) for k in ("open","high","low","close")]
+            if not all(math.isfinite(x) and x>0 for x in values):return None
+            o,h,l,cl=values
+            if not l<=min(o,cl)<=max(o,cl)<=h:return None
+            bars.append([round((v-base)/atr,3) for v in values])
+        if len(bars)<3:return None
+        out={"market":str(context.get("symbol") or "")[:32],"ohlc":bars}
+        for key in ("support","resistance","vwap"):
+            v=c.get(key)
+            if isinstance(v,(int,float)) and math.isfinite(v) and v>0:
+                out[key]=round((v-base)/atr,3)
+        for key in ("adx","atr_ratio"):
+            v=c.get(key)
+            if isinstance(v,(int,float)) and math.isfinite(v):
+                out[key]=round(v,2)
+        return out
+    except (ValueError,TypeError,KeyError,IndexError,OverflowError):
+        return None
+
+def validate_unified_response(model,result):
+    """Translate only the model's actual structured reason code."""
+    msg=result.get("message") or {}
+    try:
+        obj=json.loads(msg["content"])
+        if not isinstance(obj,dict) or obj.get("reason_code") not in REASON_CODES:return None
+        code=obj["reason_code"]
+        converted={"direction":obj.get("direction"),"confidence":obj.get("confidence"),
+                   "reason_ar":REASON_CODES[code]}
+        return validate_response(model,{"message":{"content":json.dumps(converted,ensure_ascii=False)}})
+    except (TypeError,ValueError,KeyError):return None
+
+def unified_model_vote(model,context,timeout_seconds):
+    snapshot=unified_snapshot(context)
+    if snapshot is None:return None
+    schema={"type":"object","properties":{
+        "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
+        "confidence":{"type":"number","minimum":0,"maximum":1},
+        "reason_code":{"type":"string","enum":list(REASON_CODES)}},
+        "required":["direction","confidence","reason_code"]}
+    instruction=("Independent M1 price analyst. OHLC arrays oldest to newest, "
+        "all prices are offsets in ATR units from last close (0). Predict rise BUY, "
+        "fall SELL, or WAIT if unclear. Use momentum, rejection wicks and levels. "
+        "No central forecast. Return JSON only; confidence 0..1, reason_code from schema.")
+    result=request_json(OLLAMA_URL+"/api/chat",method="POST",
+        payload={"model":model,"messages":[{"role":"system","content":instruction},
+            {"role":"user","content":json.dumps(snapshot,separators=(",",":"))}],
+            "stream":False,"format":schema,"think":False,"keep_alive":"30m",
+            "options":{"temperature":0,"num_predict":80,"num_ctx":1024,"num_thread":4}},
+        timeout=timeout_seconds)
+    return validate_unified_response(model,result)
+
 def model_vote(model,context,timeout_seconds=MODEL_TIMEOUT_SECONDS):
     """Use chat content, not generate reasoning; never turn model thoughts into a vote."""
+    if context.get("_analysis_protocol")==UNIFIED_PROTOCOL:
+        return unified_model_vote(model,context,timeout_seconds)
     blind=context.get("_analysis_protocol")==INDEPENDENT_PROTOCOL
     snapshot=independent_snapshot(context) if blind else compact_snapshot(context)
     symbol=str(context.get("symbol") or "BTCUSD").upper()
@@ -232,10 +312,19 @@ def main():
     parser=argparse.ArgumentParser(description="AL-ZOOL Qwen and DeepSeek local voting relay")
     parser.add_argument("--credentials",help="Downloaded owner pairing JSON file")
     parser.add_argument("--once",action="store_true",help="Inspect one closed-bar vote cycle")
-    parser.add_argument("--independent-shadow",action="store_true",
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument("--independent-shadow",action="store_true",
         help="V4 independent forward-test; never submits a live council vote")
+    mode.add_argument("--unified-v4",action="store_true",
+        help="One independent inference, live advisory vote and accuracy audit")
+    parser.add_argument("--auto-pairing",action="store_true",
+        help="Find a valid pairing in Downloads without printing keys")
     args=parser.parse_args()
-    server,identity,key=credentials(args.credentials)
+    if args.auto_pairing and args.credentials:parser.error("Choose one pairing method")
+    if args.auto_pairing:
+        server,identity,key=auto_pairing(args.unified_v4,args.independent_shadow)
+    else:
+        server,identity,key=credentials(args.credentials)
     try:
         installed={row.get("name") for row in request_json(OLLAMA_URL+"/api/tags",timeout=8).get("models",[])}
     except Exception as exc:
@@ -246,6 +335,8 @@ def main():
     print("AL-ZOOL LOCAL AI READY | model=Qwen 2.5 1.5B FAST | heavy models offline | trading execution=OFF",flush=True)
     if args.independent_shadow:
         print("ACCURACY V4 | INDEPENDENT SHADOW | NO LIVE VOTE OR ORDER",flush=True)
+    if args.unified_v4:
+        print("AL-ZOOL UNIFIED V4 | ONE MODEL | ONE INFERENCE | LIVE ADVICE + ACCURACY AUDIT",flush=True)
     last_bar=0
     submitted=set()
     attempts={}
@@ -260,6 +351,11 @@ def main():
                     print("V4 protocol unavailable on server; no vote sent",flush=True)
                     break
                 context=dict(context,_analysis_protocol=INDEPENDENT_PROTOCOL)
+            elif args.unified_v4:
+                if context.get("unified_ai_protocol")!=UNIFIED_PROTOCOL:
+                    print("UNIFIED V4 protocol unavailable; no vote sent",flush=True)
+                    break
+                context=dict(context,_analysis_protocol=UNIFIED_PROTOCOL)
             bar=int(context.get("bar_time",0))
             if bar<=0:
                 if args.once:break
@@ -340,18 +436,24 @@ def main():
                     vote["symbol"]=context.get("symbol")
                     if args.independent_shadow:
                         vote["analysis_protocol"]=INDEPENDENT_PROTOCOL
+                    elif args.unified_v4:
+                        vote["analysis_protocol"]=UNIFIED_PROTOCOL
                     try:
-                        endpoint="/v1/local-ai/shadow-v4/" if args.independent_shadow else "/v1/local-ai/advice/"
+                        endpoint=("/v1/local-ai/unified-v4/" if args.unified_v4 else
+                            "/v1/local-ai/shadow-v4/" if args.independent_shadow else "/v1/local-ai/advice/")
                         ack=request_json(server+endpoint+
                             urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
                         if args.independent_shadow and ack.get("shadow_only") is not True:
                             raise RuntimeError("Server does not confirm V4 shadow protocol; stop using V4 until server updated")
+                        if args.unified_v4 and ack.get("unified_v4") is not True:
+                            raise RuntimeError("Server did not confirm unified V4 protocol")
                         if ack.get("accepted") is True:
                             submitted.add(model)
                         print(model+" "+vote["direction"]+" "+str(round(vote["confidence"]*100))+
                             "% | accepted="+str(ack.get("accepted",False))+
                             " | council="+("APPROVED" if ack.get("council_approved") is True
-                                           else "WAIT"),flush=True)
+                                           else "WAIT")+
+                            (" | accuracy_recorded="+str(ack.get("accuracy_recorded",False)) if args.unified_v4 else ""),flush=True)
                     except urllib.error.HTTPError as exc:
                         if exc.code==409:
                             print(model+" STALE_BAR; central rejected old vote",flush=True)
@@ -368,8 +470,41 @@ def main():
             if args.once:raise
         time.sleep(POLL_SECONDS)
 
+def auto_pairing(unified=False,shadow=False):
+    for path in sorted((pathlib.Path.home()/"Downloads").glob("AL-ZOOL-Owner-MT5-Pairing*.json"),
+                       key=lambda p:p.stat().st_mtime,reverse=True):
+        try:
+            server,identity,key=credentials(str(path))
+            ctx=request_json(server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe=""),
+                             token=key,timeout=8)
+            if unified and ctx.get("unified_ai_protocol")!=UNIFIED_PROTOCOL:continue
+            if shadow and ctx.get("accuracy_protocol")!=INDEPENDENT_PROTOCOL:continue
+            print("VALID FILE: "+path.name,flush=True)
+            return server,identity,key
+        except (ValueError,OSError,KeyError,TypeError):continue
+    raise RuntimeError("NO VALID PAIRING FILE / CURRENT MT5 DATA; no keys changed")
+
+def single_instance():
+    """OS-level process lock; automatically released on exit or crash."""
+    lock= open(pathlib.Path(tempfile.gettempdir())/"ALZOOL_LOCAL_QWEN_RELAY.lock","a+b")
+    try:
+        if os.name=="nt":
+            import msvcrt
+            lock.seek(0,2)
+            if lock.tell()==0:lock.write(b"0");lock.flush()
+            lock.seek(0)
+            msvcrt.locking(lock.fileno(),msvcrt.LK_NBLCK,1)
+        else:
+            import fcntl
+            fcntl.flock(lock.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        raise RuntimeError("AL-ZOOL relay already running. Stop the other relay first.")
+    return lock
+
 if __name__=="__main__":
-    try:main()
+    try:
+        with single_instance():main()
     except (ValueError,RuntimeError) as exc:
         print(str(exc),file=sys.stderr)
         sys.exit(1)
