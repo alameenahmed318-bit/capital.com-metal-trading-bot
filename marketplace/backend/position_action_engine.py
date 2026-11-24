@@ -58,6 +58,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     if recovery.get("active_cycle"):
         result["reason_ar"]=recovery["reason_ar"]
         return result
+    recovery_wait=None
     if recovery["armed"]:
         action=recovery.get("action")
         side=recovery.get("side")
@@ -98,7 +99,13 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             "candle_reason_ar":confirmation.get("reason_ar",reason),
             "reason_ar":reason,"execution_authorized":False}]
         result["reason_ar"]=reason
-        return result
+        # An OPEN recovery cycle remains exclusive. An ARMED but waiting
+        # recovery is only a candidate, not a global lock on AI management.
+        if action=="RECOVERY_PROPOSAL" or str(pm.get("mode","AI")).upper()!="AI":
+            return result
+        recovery_wait=result["actions"][0]
+        result["recovery_wait"]=dict(recovery_wait)
+        result["actions"]=[]
     sides={}
     for position in positions:
         if not isinstance(position,dict):continue
@@ -187,6 +194,28 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             elif (point>0 and pm.get("addon_enabled") is True and addon_available and
                   favorable/point>=num(pm.get("addon_distance_points"),1)>0):
                 action="ADDON_PROPOSAL";reason="تحققت مسافة التعزيز اليدوي المختارة"
+        # During an armed recovery, never turn an adverse price move into
+        # automatic averaging just because the recovery candidate is waiting.
+        # Require independent same-side support. Fresh specialist evidence
+        # can advise caution, but does not independently authorize an order.
+        specialist_score=None
+        if master_mode:
+            evidence=(decision.get("master") or {}).get("arena_shadow") or {}
+            if (evidence.get("status")=="SHADOW_READY" and
+                evidence.get("symbol")==symbol and
+                evidence.get("bar_time")==decision.get("bar_time")):
+                kind="ADDON" if action=="ADDON_PROPOSAL" else "COOLING" if action=="COOLING_PROPOSAL" else None
+                value=((evidence.get("actions") or {}).get(kind,{}) or {}).get(side)
+                if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value):
+                    specialist_score=float(value)
+        if recovery_wait is not None and action in ("ADDON_PROPOSAL","COOLING_PROPOSAL"):
+            direction_support=management_support(decision,side) if master_mode else (1.0 if signal==side else 0.0)
+            if direction_support<=0:
+                action="HOLD";reason="تم تقييم الإضافة بصورة مستقلة؛ لا يوجد تأييد حالي لاتجاه المركز أثناء انتظار التعافي"
+            elif specialist_score is not None and specialist_score<0:
+                action="HOLD";reason="تم تقييم الإضافة بصورة مستقلة؛ النموذج المتخصص يحذر من الإضافة أثناء انتظار التعافي"
+            else:
+                reason="فرصة إدارة مستقلة أثناء انتظار التعافي | "+reason
         sizing={}
         if action in ("ADDON_PROPOSAL","COOLING_PROPOSAL"):
             sizing=next_action_lot(group,action,pm,tick)
@@ -217,7 +246,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             "broker_volume_step":sizing.get("volume_step"),
             "recovery_armed":bool(recovery.get("armed")),
             "atr_distance":round(progress,3),"floating_net":round(net,2),
-            "reason_ar":reason,"ai_advice":advice_summary,"execution_authorized":False})
+            "reason_ar":reason,"ai_advice":advice_summary,"specialist_score":specialist_score,"execution_authorized":False})
     # One-use central claim authorizes one action per bar. Prioritize the
     # largest ATR movement when both sides qualify rather than vetoing both.
     proposals=[a for a in result["actions"] if a["action"]!="HOLD" and a["lot_cap"]>0]
@@ -232,4 +261,10 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     active=[a for a in result["actions"] if a["action"]!="HOLD"]
     result["reason_ar"]=(active[0]["reason_ar"] if active else
         " | ".join(f"{a['side']}: {a['reason_ar']}" for a in result["actions"]))
+    if recovery_wait is not None:
+        result["independent_evaluations"]=[dict(a) for a in result["actions"]]
+        result["reason_ar"]="التعافي: "+recovery_wait["reason_ar"]+" | الإدارة المستقلة: "+result["reason_ar"]
+        if not active:
+            # Preserve the old HOLD representation for existing clients.
+            result["actions"]=[recovery_wait]+result["actions"]
     return result
