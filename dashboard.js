@@ -202,12 +202,12 @@ async function azRefreshAiCouncil(){
   const grStatus=String(groq.status||"NOT_CONFIGURED");
   put("azGroqVote",grStatus+(groq.status==="READY"?" · "+String(groq.direction||"WAIT")+
     " · "+Math.round(Number(groq.confidence||0)*100)+"%":"")+(groq.reason_ar?" · "+groq.reason_ar:""));
-  const hybrid=d.mode==="HYBRID";
+  const hybrid=d.mode==="HYBRID"||d.mode==="MASTER";
   const councilReady=hybrid?(signal==="BUY"||signal==="SELL"):c.approved===true;
   const allowed=councilReady&&risk.approved===true;
-  badge("azCouncilState",councilReady,hybrid?"HYBRID":(c.approved===true?"APPROVED":"WAIT"));
+  badge("azCouncilState",councilReady,hybrid?d.mode:(c.approved===true?"APPROVED":"WAIT"));
   badge("azRiskState",risk.approved===true,risk.approved===true?"PASS":"BLOCK");
-  put("azAiCouncilStatus",hybrid?(allowed?"HYBRID · "+signal:"HYBRID · WAIT"):(allowed?"APPROVED":"WAIT"));
+  put("azAiCouncilStatus",hybrid?(allowed?d.mode+" · "+signal:d.mode+" · WAIT"):(allowed?"APPROVED":"WAIT"));
   put("azEngineSignal",signal);
   put("azRiskVote",risk.approved===true?"PASS":"BLOCK");
   put("azCouncilReason",String(hybrid?(d.hybrid?.reason_ar||"نتائج AI تؤثر في الترجيح دون إجماع إلزامي"):(c.reason_ar||"المجلس ينتظر بيانات تصويت حديثة")));
@@ -310,7 +310,7 @@ async function refreshInlineMonitor(){
   put("azMonitorAiReason",h.reason_ar||"لا توجد مساهمة AI جديدة لهذه الشمعة");
   put("azMonitorReady",d.entry_ready?"جاهز للإرسال إلى MT5":"غير جاهز");
   put("azMonitorReason",d.reason_ar||"بانتظار بيانات القرار");
-  put("azMonitorMode",d.mode==="ADVISORY"?"Hybrid AI الفعّال":d.mode||"—");
+  put("azMonitorMode",d.mode==="MASTER"?"MASTER AI · العقل المركزي":d.mode==="ADVISORY"?"Hybrid AI الفعّال":d.mode||"—");
  }catch(e){
   const node=$("azMonitorReason");if(node)node.textContent="تعذر تحميل التشخيص: "+(e.message||"خطأ اتصال");
  }
