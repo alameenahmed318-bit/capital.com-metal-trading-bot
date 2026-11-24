@@ -269,19 +269,25 @@ def balanced_deepseek_snapshot(context):
             snapshot[key]=round(v,2)
     return snapshot
 
+# A single model-selected assessment encodes both direction and reason.
+# No separate generated fields can contradict one another. This mapping is
+# semantic decoding only; no market heuristic overrides the model selection.
+DEEP_ASSESSMENTS={direction+"_"+code:(direction,code)
+    for direction,codes in DEEP_REASONS.items() for code in codes}
+
 def validate_balanced_deepseek(model,result):
-    """Only accept the final complete JSON and its own internally coherent reason."""
+    """Decode only an explicit valid final assessment; never repair a bad vote."""
     if result.get("done_reason")!="stop" or result.get("done") is not True:return None
     raw=result.get("response")
     if not isinstance(raw,str):return None
     try:
         obj=json.loads(raw)
-        if not isinstance(obj,dict) or set(obj)!={"direction","confidence","reason_code"}:return None
-        direction=obj.get("direction")
-        code=obj.get("reason_code")
-        if not isinstance(direction,str) or direction not in DEEP_REASONS or code not in DEEP_REASONS[direction]:
-            return None
-        vote=validate_unified_response(model,{"message":{"content":raw}})
+        if not isinstance(obj,dict) or set(obj)!={"assessment","confidence"}:return None
+        choice=obj.get("assessment")
+        if not isinstance(choice,str) or choice not in DEEP_ASSESSMENTS:return None
+        direction,code=DEEP_ASSESSMENTS[choice]
+        vote=validate_unified_response(model,{"message":{"content":json.dumps({
+            "direction":direction,"confidence":obj.get("confidence"),"reason_code":code})}})
         return vote
     except (ValueError,TypeError,KeyError):return None
 
@@ -289,19 +295,18 @@ def balanced_deepseek_vote(model,context,timeout_seconds):
     snapshot=balanced_deepseek_snapshot(context)
     if snapshot is None:return None
     schema={"type":"object","properties":{
-        "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
-        "confidence":{"type":"number","minimum":0,"maximum":1},
-        "reason_code":{"type":"string","enum":list(REASON_CODES)}},
-        "required":["direction","confidence","reason_code"],"additionalProperties":False}
-    instruction=("Predict the next M1 close direction from actual OHLC and measured indicators. "
+        "assessment":{"type":"string","enum":list(DEEP_ASSESSMENTS)},
+        "confidence":{"type":"number","minimum":0,"maximum":1}},
+        "required":["assessment","confidence"],"additionalProperties":False}
+    instruction=("Predict the next M1 close using only measured market data. "
         "OHLC order: open high low close, oldest first, offsets in ATR from last close=0. "
         "Consider momentum, candle bodies, wicks, levels, trend efficiency and RSI if present. "
         "A reversal may be valid; do not extrapolate trend blindly. Missing indicators are unknown. "
-        "BUY means rise, reasons UP_MOMENTUM/LOW_REJECTION/SUPPORT; "
-        "SELL means fall, reasons DOWN_MOMENTUM/HIGH_REJECTION/RESISTANCE; "
-        "WAIT means uncertain, reasons MIXED/UNCLEAR. "
-        "Confidence 0 to 1 is an estimate, not a guaranteed probability. "
-        "Return final JSON only: direction, confidence, reason_code. No free-text explanation.")
+        "Choose exactly one assessment: "+", ".join(DEEP_ASSESSMENTS)+". "
+        "BUY means expected rise; SELL means expected fall; WAIT means mixed or insufficient evidence. "
+        "If evidence is mixed choose WAIT_MIXED; if unclear choose WAIT_UNCLEAR. "
+        "Confidence is your own estimate from 0 to 1, not guaranteed. "
+        "Output only a JSON object with assessment and confidence. No separate direction or reason.")
     # The tested R1 raw template avoids spending the entire M1 window on hidden
     # reasoning. Use the full measured input, not a forced directional heuristic.
     prompt="<｜User｜>"+instruction+"\n"+json.dumps(snapshot,ensure_ascii=False,separators=(",",":"))+"<｜Assistant｜><think></think>"
@@ -316,6 +321,9 @@ def balanced_deepseek_vote(model,context,timeout_seconds):
     print(model+" BALANCED_RAW | seconds="+str(seconds)+" | tokens="+str(result.get("eval_count","?"))+
         " | final="+str(result.get("done_reason","unknown"))[:32]+
         " | validation="+("OK" if vote else "REJECTED"),flush=True)
+    if not vote:
+        raw=result.get("response")
+        print(model+" REJECTED_FINAL "+repr(raw[:240] if isinstance(raw,str) else None),flush=True)
     return vote
 
 def unified_model_vote(model,context,timeout_seconds):
