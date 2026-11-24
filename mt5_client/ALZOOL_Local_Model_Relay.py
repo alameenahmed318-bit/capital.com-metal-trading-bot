@@ -341,7 +341,8 @@ def main():
                     if args.independent_shadow:
                         vote["analysis_protocol"]=INDEPENDENT_PROTOCOL
                     try:
-                        ack=request_json(server+"/v1/local-ai/advice/"+
+                        endpoint="/v1/local-ai/shadow-v4/" if args.independent_shadow else "/v1/local-ai/advice/"
+                        ack=request_json(server+endpoint+
                             urllib.parse.quote(identity,safe=""),"POST",vote,key,timeout=12)
                         if args.independent_shadow and ack.get("shadow_only") is not True:
                             raise RuntimeError("Server does not confirm V4 shadow protocol; stop using V4 until server updated")
