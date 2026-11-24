@@ -60,7 +60,7 @@ def observe_recovery_arm(snapshot,settings,now=None):
         fresh=0<=current-seen<=15
     else:fresh=False
     net=account_recovery_net(snapshot)
-    active=any(str(p.get("comment") or "").upper().startswith("ALZOOL-RECOVERY")
+    active=(snapshot.get("recovery_cycle_active") is True and bool(positions)) or any(str(p.get("comment") or "").upper().startswith("ALZOOL-RECOVERY")
                for p in positions if isinstance(p,dict))
     with _ARM_LOCK:
         if not enabled or trigger<=0 or not positions or net>-trigger or active:
@@ -94,7 +94,7 @@ def recovery_m1_confirmation(snapshot,decision,eligible_sides):
     base["eligible_at"]=eligible_at
     if str((snapshot or {}).get("timeframe") or "").upper() not in ("M1","PERIOD_M1"):
         return {**base,"state":"WAIT_TIMEFRAME",
-                "reason_ar":"التعافي ينتظر شموع M1 المغلقة من MT5؛ اربط EA بشارت الذهب M1"}
+                "reason_ar":"التعافي ينتظر شموع M1 المغلقة من MT5؛ اربط EA بشارت السوق الحالي M1"}
     if not candles or not isinstance(candles[0],dict):
         return {**base,"state":"WAIT_M1_DATA",
                 "reason_ar":"لا توجد شمعة M1 مغلقة حديثة لتأكيد التعافي"}
@@ -124,7 +124,7 @@ def recovery_m1_confirmation(snapshot,decision,eligible_sides):
     base["candle_side"]=candle_side
     if candle_side not in sides:
         return {**base,"state":"WAIT_DIRECTION",
-                "reason_ar":f"آخر شمعة M1 تؤيد {candle_side} لكن لا توجد مجموعة ذهب خاسرة بهذا الاتجاه؛ انتظار شمعة انعكاس مناسبة"}
+                "reason_ar":f"آخر شمعة M1 تؤيد {candle_side} لكن لا توجد مجموعة خاسرة بهذا الاتجاه؛ انتظار شمعة انعكاس مناسبة"}
     body_ratio=abs(closing-opening)/span
     close_strength=(closing-low)/span if candle_side=="BUY" else (high-closing)/span
     fused_side=str(decision.get("decision","WAIT")).upper()
