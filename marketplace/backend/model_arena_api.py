@@ -1,7 +1,7 @@
 """Owner-only arena persistence. Research reports never authorize trading."""
 import math, re, urllib.parse, hashlib, json
 from datetime import datetime,timezone
-MODELS=("LightGBM","XGBoost","CatBoost","TimesFM-3","Chronos-2")
+MODELS=("LightGBM","XGBoost","CatBoost","TimesFM-2.5","Chronos-2")
 VERSION="ARENA_V1"
 STATUSES=("RUNNING","TESTED","UNAVAILABLE","INSUFFICIENT_HISTORY","LICENSE_REVIEW","ERROR")
 def enc(x):return urllib.parse.quote(str(x),safe="")
