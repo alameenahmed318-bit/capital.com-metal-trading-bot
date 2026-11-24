@@ -1350,6 +1350,8 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
+                    "master":["MASTER_DECISION_AUDIT","AI_COUNCIL_DECISION","AI_COUNCIL_VETO","AI_COUNCIL_WAIT"],
+                    "learning":["LIVE_LEARNING_APPLIED","LEARNING_DECISION_AUDIT","AI_ACCURACY_V4_OUTCOME"],
                     "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
                     "trades":["TRADE_OPENED","TRADE_CLOSED","ORDER_SENT","ADDON_OPENED","COOLING_OPENED","PROTECTION","BLOCKED","CENTRAL_ACTION_CLAIM","RECOVERY_ARMED","RECOVERY_WAITING","RECOVERY_OPENED","RECOVERY_BLOCKED","RECOVERY_REJECTED","RECOVERY_CLOSED","RECOVERY_CLOSE_RETRY"]
                 }.get(kind)
@@ -1402,10 +1404,16 @@ class Handler(SimpleHTTPRequestHandler):
                     deal_type=int(finite_number(deal.get("deal_type",deal.get("type",-1)),-1))
                     volume=finite_number(deal.get("volume"))
                     if entry==0:
+                        row["has_entry_deal"]=True
+                        row["entry_comment"]=str(deal.get("comment") or "")[:120]
+                        if deal.get("time"):row["opened_at"]=int(finite_number(deal.get("time")))
                         row["side"]="شراء" if deal_type==0 else "بيع" if deal_type==1 else row["side"]
                         row["side_priority"]=2
                         row["open_volume"]+=volume
                     elif entry in (1,3):
+                        row["has_exit_deal"]=True
+                        if deal.get("strategy_comment"):row["entry_comment"]=str(deal["strategy_comment"])[:120]
+                        if deal.get("strategy_id"):row["strategy_id"]=int(finite_number(deal["strategy_id"]))
                         if row["side_priority"]<2:
                             row["side"]="شراء" if deal_type==1 else "بيع" if deal_type==0 else row["side"]
                             row["side_priority"]=1
