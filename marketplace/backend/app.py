@@ -2751,7 +2751,7 @@ if __name__=="__main__":
     from pathlib import Path
     test_dir=str(Path(__file__).resolve().parents[2]/"tests")
     recovery_suite=unittest.TestSuite()
-    for pattern in ("test_arena_master.py","test_specialist_market.py","test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
+    for pattern in ("test_close_groups.py","test_arena_master.py","test_specialist_market.py","test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
