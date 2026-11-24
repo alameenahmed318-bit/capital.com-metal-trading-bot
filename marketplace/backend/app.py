@@ -2668,6 +2668,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "mt5_central_trading_enabled":(data.get("mt5_central_trading_enabled")
                         if isinstance(data.get("mt5_central_trading_enabled"),bool) else None),
                     "positions":positions,
+                    "recovery_bidirectional_capable":data.get("recovery_bidirectional_capable") is True,
+                    "recovery_cycle_active":data.get("recovery_cycle_active") is True,
                     "recovery_group_net":(finite_number(data["recovery_group_net"]) if
                         data.get("recovery_group_net") is not None else None),
                     "orders":orders,"closed_deals":closed_deals,"action_entry_deals":action_entry_deals,"closed_candles":candles,
