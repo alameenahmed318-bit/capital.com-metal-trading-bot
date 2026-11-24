@@ -15,6 +15,7 @@ import master_ai
 import master_entry_review
 import master_v2
 import master_v3
+import arena_master
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
@@ -383,7 +384,9 @@ def resolve_owner_decision(client_id,decision,council,mode):
     if mode=="MASTER":
         # Bounded background cache: no network/model wait on the order path.
         feedback=feedback_learning.snapshot(client_id,decision.get("symbol"),sb)
-        return master_ai.decide(decision,council,feedback)
+        result=master_ai.decide(decision,council,feedback)
+        result["master"]["arena_shadow"]=arena_master.evidence(client_id,decision)
+        return result
     return fuse_live_decision(decision,council) if mode=="ADVISORY" else decision
 
 def _store_trade_settings(client_id,settings):
@@ -1588,6 +1591,17 @@ class Handler(SimpleHTTPRequestHandler):
                     "top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/arena/live-context":
+            try:
+                u=owner(token_of(self))
+                from model_arena_api import ids
+                for cid in ids(sb,u["id"],ENGINE_MARKET):
+                    item=CONNECTIONS.get(cid) or {}
+                    ctx=arena_master.context(cid,item)
+                    if ctx.get("status")=="READY":return self.send_json(200,ctx)
+                return self.send_json(200,{"status":"NO_CURRENT_M1"})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception:return self.send_json(502,{"error":"arena_context_unavailable"})
         if path in ("/api/ai/arena","/api/ai/arena/history"):
             try:
                 u=owner(token_of(self))
@@ -1687,6 +1701,7 @@ class Handler(SimpleHTTPRequestHandler):
                     except Exception:v3_shadow={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
                 bot=item.get("bot_report") or {}
                 actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
+                actions["specialist_shadow"]=arena_master.management(item,decision,actions)
                 return self.send_json(200,{
                     "connected":0<=(now-item.get("received_at",now-timedelta(days=1))).total_seconds()<=30,
                     "last_seen":item.get("last_seen"),"symbol":item.get("symbol"),
@@ -1766,6 +1781,13 @@ class Handler(SimpleHTTPRequestHandler):
             path=urllib.parse.urlparse(self.path).path
             if path in OWNER_WRITE_ENDPOINTS:
                 owner(token)
+            if path=="/api/ai/arena/live-forecast":
+                u=owner(token)
+                from model_arena_api import ids
+                cid=data.get("client")
+                if cid not in ids(sb,u["id"],ENGINE_MARKET):return self.send_json(403,{"error":"invalid owner client"})
+                result=arena_master.accept(cid,CONNECTIONS.get(cid) or {},data)
+                return self.send_json(200,result)
             if path=="/api/ai/arena/report":
                 u=owner(token)
                 import model_arena_api as arena
