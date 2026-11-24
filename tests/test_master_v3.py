@@ -1,0 +1,62 @@
+"""Offline tests, no broker/network. Uses actual V1/V2/review modules."""
+import sys
+import unittest
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"marketplace"/"backend"))
+import master_v3 as v3
+BAR=1700000100
+def base(symbol="BTCUSDm"):
+    return {"symbol":symbol,"bar_time":BAR,"decision":"BUY","strategy_id":11,
+        "confidence":.98,"directional_scores":{"BUY":.98,"SELL":.02},
+        "directional_candidates":{"BUY":{"strategy_id":11,"combination_id":13}},
+        "entry_reference_price":100,"entry_atr":2,
+        "context":{"atr":2,"buy_quality":100,"sell_quality":0,"regime":"اتجاه صاعد"}}
+def vote(model,side="BUY",status="READY"):
+    return {"model":model,"direction":side,"status":status,"confidence":.99}
+def council(q=True,d=True):
+    return {"bar_time":BAR,"votes":{"Fast AI":vote("Fast AI"),
+        "Qwen":vote("Qwen") if q else vote("Qwen","WAIT","AWAITING_LOCAL_VOTE"),
+        "DeepSeek":vote("DeepSeek") if d else vote("DeepSeek","WAIT","AWAITING_LOCAL_VOTE")},
+        "groq_advisory":vote("GPT-OSS 120B","WAIT","PENDING")}
+def tick(bid=100,ask=100.1):return {"bid":bid,"ask":ask}
+class V3Tests(unittest.TestCase):
+    def setUp(self):v3._PENDING.clear();v3._LATEST.clear();self.events=[]
+    def test_lanes(self):
+        self.assertIsNone(v3.lane_for(4));self.assertEqual(v3.lane_for(5),5)
+        self.assertEqual(v3.lane_for(19),10);self.assertEqual(v3.lane_for(34),20)
+        self.assertEqual(v3.lane_for(59),35);self.assertIsNone(v3.lane_for(60))
+    def test_strong_early_candidate_never_authorizes(self):
+        r=v3.evaluate(base(),council(),{},tick(),{},BAR+70)
+        self.assertEqual(r["current"],"WAIT");self.assertEqual(r["challenger"],"BUY")
+        self.assertTrue(r["early_candidate"]);self.assertFalse(r["execution_authorized"])
+    def test_single_vote_cannot_release_early(self):
+        r=v3.evaluate(base(),council(d=False),{},tick(),{},BAR+70)
+        self.assertEqual(r["challenger"],"WAIT")
+    def test_price_guard_remains(self):
+        r=v3.evaluate(base(),council(),{},tick(105,105.1),{},BAR+70)
+        self.assertEqual(r["challenger"],"WAIT")
+    def test_payoffs_include_both_quotes(self):
+        self.assertAlmostEqual(v3.quote_payoff("BUY",100,101,103,104,2),1)
+        self.assertAlmostEqual(v3.quote_payoff("SELL",100,101,96,97,2),1.5)
+    def send(self,age,client="owner",symbol="BTCUSDm",b=None,t=None):
+        v3.process(client,symbol,base(symbol) if b is None else b,council(),{},t or tick(),{},BAR+60+age,self.events.append)
+    def test_dedup_and_isolation(self):
+        self.send(5);self.send(6);self.send(6,"other")
+        self.assertEqual(len(self.events),2);self.assertEqual(len(v3._PENDING),2)
+        self.assertEqual(v3.latest("owner","BTCUSDm")["lane"],5)
+        self.assertEqual(v3.latest("owner","XAUUSD"),{})
+    def test_common_horizons_and_missing_quotes(self):
+        self.send(5)
+        self.send(60,b={},t=tick(101,101.1))
+        self.send(190,b={})
+        self.send(300,b={},t=tick(102,102.1))
+        p=self.events[-1]["payload"]
+        self.assertEqual(self.events[-1]["event_type"],"MASTER_V3_OUTCOME")
+        self.assertIsNone(p["outcomes"]["180"])
+        self.assertAlmostEqual(p["outcomes"]["60"]["payoffs"]["BUY"],.45)
+        self.assertFalse(p["actual_trade_proven"])
+        self.assertEqual(v3.summarize([{"payload":p}],"BTCUSDm")["lanes"]["5"]["60"]["all"]["n"],1)
+    def test_wrong_bar_no_sample(self):
+        b=base();b["bar_time"]+=60
+        self.send(5,b=b);self.assertFalse(self.events)
+if __name__=="__main__":unittest.main()
