@@ -9,6 +9,7 @@ from btc_adaptive_learning import snapshot as btc_learning_snapshot, effective_w
 from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, build_qwen_vote_event, build_council_event, closed_bar_execution_fresh, entry_council_mode
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from hybrid_decision import fuse_live_decision
+import accuracy_v4
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
@@ -1699,6 +1700,18 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"صيغة تصويت النموذج غير صالحة"})
                 if model not in ("qwen3.5:4b","qwen2.5:1.5b","deepseek-r1:1.5b"):
                     return self.send_json(400,{"error":"موديل AI غير معتمد لهذا الربط"})
+                # V4 independent votes are prospective research only. Never
+                # overwrite an existing live council vote or local AI advice.
+                if data.get("analysis_protocol")==accuracy_v4.PROTOCOL:
+                    if not same_market_symbol(data.get("symbol"),item.get("symbol")):
+                        return self.send_json(409,{"error":"V4 market mismatch"})
+                    event=accuracy_v4.record(client_id,item.get("symbol"),item.get("timeframe"),
+                        decision,item.get("tick") or {},"LOCAL_AI",direction,confidence,time.time(),model)
+                    if event:queue_ai_diagnostic_event(event)
+                    return self.send_json(200,{"accepted":bool(event),"shadow_only":True,
+                        "analysis_protocol":accuracy_v4.PROTOCOL,"execution_authorized":False,
+                        "bar_time":bar_time,"direction":direction,
+                        "reason_ar":"V4: تقييم مستقل فقط؛ لا يغير قرارات التداول"})
                 advice={"bar_time":bar_time,"direction":direction,
                     "confidence":confidence,"model":model,"reason_ar":reason,
                     "received_at_unix":time.time()}
@@ -2380,6 +2393,23 @@ class Handler(SimpleHTTPRequestHandler):
                             int(finite_number(bot_report.get("bar_time",0))) else "WAIT"))
                     bot_history=update_history(bot_history,bot_events)
                     bot_dispatch_count=sum(bool(queue_ai_diagnostic_event(e)) for e in bot_events)
+                # V4 research is entirely separate from execution authorization.
+                # A small bounded in-memory computation and existing async event
+                # queue avoid additional database calls on the heartbeat path.
+                try:
+                    for event in accuracy_v4.settle(client_id,active_symbol,data.get("timeframe"),candles):
+                        queue_ai_diagnostic_event(event)
+                    if (strategy_decision and candles and
+                        int(finite_number(strategy_decision.get("bar_time")))==int(finite_number(candles[0].get("time"))) and
+                        strategy_last_bar!=previous.get("strategy_last_bar")):
+                        v4=accuracy_v4.shadow_rank(strategy_decision,list(reversed(candles)))
+                        event=accuracy_v4.record(client_id,active_symbol,data.get("timeframe"),
+                            strategy_decision,safe_tick,"QUANT",v4["direction"],None,now.timestamp())
+                        if event:
+                            event["payload"]["research_ranking"]=v4
+                            queue_ai_diagnostic_event(event)
+                except Exception as exc:
+                    print("ACCURACY_V4_SHADOW_WARNING:",type(exc).__name__,flush=True)
                 if strategy_decision:
                     update_council(client_id,strategy_decision,safe)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
