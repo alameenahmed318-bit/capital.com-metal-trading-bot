@@ -29,6 +29,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_strategy_research.py -v
       - name: Check stress learning and chronological validation
         run: python -m unittest discover -s tests -p test_stress_learning.py -v
+      - name: Check unified independent AI and outcome audit
+        run: |
+          python -m unittest discover -s tests -p 'test_unified_v4.py' -v
+          python -m unittest discover -s tests -p 'test_accuracy_v4.py' -v
       - name: Check backend syntax
         run: python -m compileall -q marketplace/backend tests
       - name: Check BTCUSD market gates, learning and advisor signals
