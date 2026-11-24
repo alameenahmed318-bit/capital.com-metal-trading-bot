@@ -34,3 +34,29 @@ class ArenaMasterTest(unittest.TestCase):
         self.assertEqual(r["sides"]["BUY"]["relevant_action"],"RECOVERY")
         self.assertEqual(r["sides"]["BUY"]["scores"]["RECOVERY"],-.8)
         self.assertFalse(r["execution_authorized"])
+
+    def test_partial_forecasts_preserve_all_management_scores(self):
+        body={"symbol":"XAUUSD","bar_time":self.bar}
+        actions={"ADDON":{"BUY":.5,"SELL":-.4},"COOLING":{"BUY":-.3,"SELL":.6},"RECOVERY":{"BUY":-.8,"SELL":.2}}
+        self.assertTrue(a.accept("owner",self.item,{**body,"models":{"LightGBM":.1,"XGBoost":.2,"CatBoost":.3},"actions":actions})["accepted"])
+        for name in ("Chronos-2","TimesFM-2.5"):
+            self.assertTrue(a.accept("owner",self.item,{**body,"models":{name:.4},"actions":{}})["accepted"])
+        r=a.evidence("owner",self.item["strategy_decision"])
+        self.assertEqual(r["actions"],actions)
+        self.assertEqual(len(r["models"]),5)
+        self.assertFalse(r["execution_authorized"])
+        self.assertTrue(a.accept("owner",self.item,{**body,"actions":{"COOLING":{"BUY":.9,"SELL":"invalid"},"RECOVERY":{}}})["accepted"])
+        r=a.evidence("owner",self.item["strategy_decision"])
+        self.assertEqual(r["actions"],{**actions,"COOLING":{"BUY":.9,"SELL":.6}})
+        self.assertFalse(a.accept("owner",self.item,{**body,"actions":{"COOLING":{}}})["accepted"])
+    def test_action_scores_do_not_cross_bars(self):
+        body={"symbol":"XAUUSD","bar_time":self.bar}
+        a.accept("owner",self.item,{**body,"actions":{"ADDON":{"BUY":.5}}})
+        with patch("arena_master.time.time",return_value=self.now+60):
+            self.item["received_at"]=datetime.fromtimestamp(self.now+60,timezone.utc)
+            self.item["strategy_decision"]["bar_time"]=self.bar+60
+            self.item["closed_candles"]=[{**v,"time":v["time"]+60} for v in self.item["closed_candles"]]
+            a.accept("owner",self.item,{**body,"bar_time":self.bar+60,"models":{"Chronos-2":.4},"actions":{}})
+            r=a.evidence("owner",self.item["strategy_decision"])
+            self.assertEqual(r["actions"],{})
+            self.assertEqual(r["models"],{"Chronos-2":.4})
