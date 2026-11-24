@@ -10,6 +10,7 @@ from decision_guard import evaluate_entry_gate, retain_current_local_ai_advice, 
 from multi_model_council import update_council, council_result, risk_guardian, risk_limits_from_settings, accept_local_model_vote
 from hybrid_decision import fuse_live_decision
 import accuracy_v4
+import feedback_learning
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
@@ -662,6 +663,18 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200,{"status":"UP","service":"AL-ZOOL central engine",
                 "server_utc":datetime.now(timezone.utc).isoformat(),
                 "trading_enabled_by_health_check":False})
+        if path=="/api/ai/feedback-learning":
+            try:
+                u=owner(token_of(self))
+                if banned(u):return self.send_json(403,{"error":"الحساب موقوف"})
+                lic=license_for_user(u["id"])
+                if not lic or lic.get("revoked"):return self.send_json(200,{"status":"NO_CONNECTION"})
+                cid=lic["client_id"]
+                current=CONNECTIONS.get(cid) or {}
+                symbol=learning_archive_symbol(cid,current.get("symbol"))
+                return self.send_json(200,feedback_learning.snapshot(cid,symbol,sb,current.get("closed_deals")))
+            except PermissionError:return self.send_json(403,{"error":"Owner only"})
+            except Exception:return self.send_json(502,{"error":"Feedback data unavailable"})
         if path=="/api/ai/accuracy-v4":
             try:
                 u=owner(token_of(self))
@@ -2447,6 +2460,22 @@ class Handler(SimpleHTTPRequestHandler):
                     print("ACCURACY_V4_SHADOW_WARNING:",type(exc).__name__,flush=True)
                 if strategy_decision:
                     update_council(client_id,strategy_decision,safe)
+                    try:
+                        # Observe the actual returned vote and current quote, not
+                        # a retroactive quote from the start of the candle.
+                        votes=council_result(client_id,strategy_decision)
+                        if votes.get("bar_time")==strategy_decision.get("bar_time"):
+                            for kind,model,vote in (
+                                ("FAST_AI","Fast AI",(votes.get("votes") or {}).get("Fast AI") or {}),
+                                ("CLOUD_AI","GPT-OSS 120B",votes.get("groq_advisory") or {})):
+                                if vote.get("status")!="READY":continue
+                                event=accuracy_v4.record(client_id,active_symbol,data.get("timeframe"),
+                                    strategy_decision,safe_tick,kind,vote.get("direction"),
+                                    vote.get("confidence"),now.timestamp(),model=model,analysis_mode="UNIFIED")
+                                if event:queue_ai_diagnostic_event(event)
+                        feedback_learning.snapshot(client_id,active_symbol,sb,closed_deals)
+                    except Exception as feedback_error:
+                        print("FEEDBACK_LEARNING_WARNING:",type(feedback_error).__name__,flush=True)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
                     "symbol":str(data.get("symbol",""))[:40],"timeframe":str(data.get("timeframe",""))[:20],
                     "terminal_build":int(finite_number(data.get("terminal_build",0))),
