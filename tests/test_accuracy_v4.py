@@ -65,4 +65,16 @@ class V4AccuracyTests(unittest.TestCase):
         self.assertEqual(self.decision,saved)
         self.assertLessEqual(abs(res["adjustment"]),.08)
 
+    def test_summary_measures_not_assumes_confidence(self):
+        a.record("c","BTCUSDm","M1",self.decision,self.tick,"LOCAL_AI","SELL",.8,BAR+65,"qwen2.5:1.5b")
+        rows=a.settle("c","BTCUSDm","M1",[{"time":BAR+60,"close":97}])
+        report=a.summarize(rows+rows)
+        self.assertEqual(report["sample_count"],1)
+        group=report["groups"][0]
+        self.assertEqual(group["hit_rate"],1)
+        self.assertEqual(group["baseline_paired_hit_rate"],0)
+        self.assertEqual(group["mean_reported_confidence"],.8)
+        self.assertEqual(group["brier_score"],.04)
+        self.assertFalse(report["execution_authorized"])
+
 if __name__=="__main__":unittest.main()
