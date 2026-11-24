@@ -51,8 +51,9 @@ def credentials(path):
             os.getenv("ALZOOL_OWNER_CONNECTION_ID",""))
     key=str(data.get("InpOwnerPairingKey" if owner_mode else "InpEngineToken") or
             os.getenv("ALZOOL_OWNER_PAIRING_KEY",""))
-    if server != "https://al-zool-meeno-engine.onrender.com":
-        raise ValueError("استخدم ملف ربط البيتكوين الجديد، وليس ملف الذهب")
+    if server not in ("https://al-zool-meeno-engine.onrender.com",
+                      "https://al-zool-meeno-engine.onrender.com/market/XAUUSD"):
+        raise ValueError("استخدم ملف ربط الذهب أو البيتكوين من مشروع Meeno")
     if not server.startswith("https://") or not identity or len(key)<32:
         raise ValueError("بيانات الاقتران ناقصة: صدّر ملف ربط المالك الجديد من لوحة AL-ZOOL")
     if any(x in identity for x in "/?&#"):
@@ -439,14 +440,17 @@ def main():
         help="Run Qwen then DeepSeek sequentially in unified V4, with real votes only")
     parser.add_argument("--auto-pairing",action="store_true",
         help="Find a valid pairing in Downloads without printing keys")
+    parser.add_argument("--market",choices=("BTCUSD","XAUUSD"),help="Explicit market lane")
     args=parser.parse_args()
     if args.with_deepseek and not args.unified_v4:parser.error("--with-deepseek requires --unified-v4")
     models=DUAL_MODELS if args.with_deepseek else MODELS
     if args.auto_pairing and args.credentials:parser.error("Choose one pairing method")
     if args.auto_pairing:
-        server,identity,key=auto_pairing(args.unified_v4,args.independent_shadow)
+        server,identity,key=auto_pairing(args.unified_v4,args.independent_shadow,args.market)
     else:
         server,identity,key=credentials(args.credentials)
+        if args.market and (server.endswith("/market/XAUUSD") != (args.market=="XAUUSD")):
+            raise ValueError("Pairing market does not match --market")
     try:
         installed={row.get("name") for row in request_json(OLLAMA_URL+"/api/tags",timeout=8).get("models",[])}
     except Exception as exc:
@@ -598,11 +602,12 @@ def main():
             if args.once:raise
         time.sleep(POLL_SECONDS)
 
-def auto_pairing(unified=False,shadow=False):
+def auto_pairing(unified=False,shadow=False,market=None):
     for path in sorted((pathlib.Path.home()/"Downloads").glob("AL-ZOOL-Owner-MT5-Pairing*.json"),
                        key=lambda p:p.stat().st_mtime,reverse=True):
         try:
             server,identity,key=credentials(str(path))
+            if market and (server.endswith("/market/XAUUSD") != (market=="XAUUSD")):continue
             ctx=request_json(server+"/v1/local-ai/context/"+urllib.parse.quote(identity,safe=""),
                              token=key,timeout=8)
             if unified and ctx.get("unified_ai_protocol")!=UNIFIED_PROTOCOL:continue
