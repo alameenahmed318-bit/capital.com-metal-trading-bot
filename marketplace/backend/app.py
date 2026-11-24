@@ -1588,6 +1588,14 @@ class Handler(SimpleHTTPRequestHandler):
                     "top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/specialist":
+            try:
+                owner(token_of(self))
+                from specialist_market import report
+                data=report(ENGINE_MARKET)
+                return self.send_json(200,data.get("report",{"status":"LOADING","execution_authorized":False}))
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception:return self.send_json(502,{"error":"specialist_unavailable"})
         if path=="/api/ai/monitor/details":
             # Large strategy/combination evidence is loaded only on demand.
             try:
@@ -2663,7 +2671,7 @@ if __name__=="__main__":
     from pathlib import Path
     test_dir=str(Path(__file__).resolve().parents[2]/"tests")
     recovery_suite=unittest.TestSuite()
-    for pattern in ("test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
+    for pattern in ("test_specialist_market.py","test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
@@ -2703,6 +2711,8 @@ if __name__=="__main__":
         print("AL-ZOOL DUAL MARKET startup: entry selection OFF",flush=True)
         from strategy_research import run as run_strategy_research
         threading.Thread(target=run_strategy_research,args=(sb,OWNER_EMAIL),daemon=True,name="strategy-evidence").start()
+        from specialist_market import run as run_specialist
+        threading.Thread(target=run_specialist,args=(sb,OWNER_EMAIL),daemon=True,name="specialist-research").start()
         run_dual_market()
     else:
         ThreadingHTTPServer((os.getenv("ALZOOL_BIND_HOST","0.0.0.0"),port),Handler).serve_forever()
