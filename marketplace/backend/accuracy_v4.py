@@ -79,7 +79,7 @@ def record(client,symbol,timeframe,decision,tick,kind,direction,confidence,now,m
     bid,ask=num(tick.get("bid")),num(tick.get("ask"))
     if not 0<bid<=ask:return None
     if direction not in ("BUY","SELL","WAIT"):return None
-    if kind not in ("QUANT","LOCAL_AI"):return None
+    if kind not in ("QUANT","LOCAL_AI","FAST_AI","CLOUD_AI"):return None
     baseline=str(decision.get("decision","WAIT")).upper()
     if baseline not in ("BUY","SELL","WAIT"):return None
     key=(str(client),str(symbol).upper(),bar,kind,str(model)[:80])
@@ -149,7 +149,7 @@ def summarize(rows):
         if not isinstance(p,dict) or p.get("version")!=VERSION:continue
         market=market_family(p.get("symbol"))
         kind=p.get("kind")
-        if not market or kind not in ("QUANT","LOCAL_AI"):continue
+        if not market or kind not in ("QUANT","LOCAL_AI","FAST_AI","CLOUD_AI"):continue
         identity=(market,kind,str(p.get("model") or ""),str(p.get("bar_time")),str(p.get("symbol")))
         if identity in seen:continue
         seen.add(identity)

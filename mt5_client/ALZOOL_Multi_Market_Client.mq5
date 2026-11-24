@@ -1249,8 +1249,65 @@ bool SendLiveSnapshot()
          deals_sent++;
       }
       historyJson+="]";
+      // Separate read-only action-entry evidence. The existing exit feed and
+      // order execution remain unchanged. Include every entry for tagged
+      // positions so mixed or partial netting positions can be rejected.
+      long action_ids[];
+      int action_id_count=0;
+      for(int h=total_deals-1;h>=0 && action_id_count<200;h--)
+      {
+         ulong t=HistoryDealGetTicket(h);
+         if(t==0 || HistoryDealGetInteger(t,DEAL_ENTRY)!=DEAL_ENTRY_IN)continue;
+         if(HistoryDealGetString(t,DEAL_SYMBOL)!=_Symbol)continue;
+         string tag=HistoryDealGetString(t,DEAL_COMMENT);
+         if(StringLen(tag)==0)
+         {
+            ulong ord=(ulong)HistoryDealGetInteger(t,DEAL_ORDER);
+            if(ord>0)tag=HistoryOrderGetString(ord,ORDER_COMMENT);
+         }
+         if(StringFind(tag,"ALZOOL-ADD")!=0 && StringFind(tag,"ALZOOL-COOL")!=0 &&
+            StringFind(tag,"ALZOOL-RECOVERY")!=0)continue;
+         long pid=HistoryDealGetInteger(t,DEAL_POSITION_ID);
+         if(pid<=0)continue;
+         bool known=false;
+         for(int k=0;k<action_id_count;k++)if(action_ids[k]==pid){known=true;break;}
+         if(known)continue;
+         ArrayResize(action_ids,action_id_count+1);
+         action_ids[action_id_count++]=pid;
+      }
+      historyJson+=",\"action_entry_deals\":[";
+      int action_sent=0;
+      for(int h=total_deals-1;h>=0 && action_sent<200;h--)
+      {
+         ulong t=HistoryDealGetTicket(h);
+         if(t==0 || HistoryDealGetInteger(t,DEAL_ENTRY)!=DEAL_ENTRY_IN)continue;
+         if(HistoryDealGetString(t,DEAL_SYMBOL)!=_Symbol)continue;
+         long pid=HistoryDealGetInteger(t,DEAL_POSITION_ID);
+         bool known=false;
+         for(int k=0;k<action_id_count;k++)if(action_ids[k]==pid){known=true;break;}
+         if(!known)continue;
+         string tag=HistoryDealGetString(t,DEAL_COMMENT);
+         if(StringLen(tag)==0)
+         {
+            ulong ord=(ulong)HistoryDealGetInteger(t,DEAL_ORDER);
+            if(ord>0)tag=HistoryOrderGetString(ord,ORDER_COMMENT);
+         }
+         if(action_sent>0)historyJson+=",";
+         historyJson+="{\"ticket\":\""+(string)t+"\",\"position_id\":\""+(string)pid+"\"";
+         historyJson+=",\"symbol\":\""+JsonEscape(_Symbol)+"\",\"entry\":0";
+         historyJson+=",\"volume\":"+JNum(HistoryDealGetDouble(t,DEAL_VOLUME),8);
+         historyJson+=",\"price\":"+JNum(HistoryDealGetDouble(t,DEAL_PRICE),_Digits);
+         historyJson+=",\"profit\":"+JNum(HistoryDealGetDouble(t,DEAL_PROFIT));
+         historyJson+=",\"commission\":"+JNum(HistoryDealGetDouble(t,DEAL_COMMISSION));
+         historyJson+=",\"swap\":"+JNum(HistoryDealGetDouble(t,DEAL_SWAP));
+         historyJson+=",\"fee\":"+JNum(HistoryDealGetDouble(t,DEAL_FEE));
+         historyJson+=",\"comment\":\""+JsonEscape(tag)+"\"";
+         historyJson+=",\"time\":"+IntegerToString((long)HistoryDealGetInteger(t,DEAL_TIME))+"}";
+         action_sent++;
+      }
+      historyJson+="]";
    }
-   else historyJson+=",\"closed_deals\":[]";
+   else historyJson+=",\"closed_deals\":[],\"action_entry_deals\":[]";
 
       g_cachedClosedDealsJson=historyJson;
       g_lastClosedDealsBuildMs=historyNow;

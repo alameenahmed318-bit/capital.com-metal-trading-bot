@@ -41,6 +41,12 @@
  <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
 </aside>
 <main class="main"><header class="topbar"><div><div class="eyebrow">ADAPTIVE STRATEGY MEMORY</div><h1>ذاكرة وتعلّم AI</h1><p>حفظ جولات الاختبار، تشخيص النتائج، وتحسين قرارات النماذج تدريجيًا</p></div><div class="top-actions"><a class="refresh" href="/backtest-lab.html">تشغيل اختبار جديد</a></div></header>
+<section class="learn-card" id="feedbackLearningPanel"><h2>تعلم الذكاء وإدارة الصفقات — تقييم تلقائي</h2>
+<div id="feedbackLearningState" class="learn-note">جارٍ تحميل الأدلة...</div>
+<div id="feedbackModelTable" class="learn-table-wrap"></div>
+<div id="feedbackActionTable" class="learn-table-wrap"></div>
+<p class="learn-note">تُختبر معايرة الثقة على نتائج لاحقة لم تدخل التدريب. أوزان مرشحة بحثياً فقط؛ لا تغيير على اللوت أو التصاريح. نتائج إدارة الصفقات لا تشمل إلا المراكز المرتبطة بدخول وإغلاق مثبتين.</p>
+</section>
 <section class="learn-grid">
 <article class="learn-stat"><small>جولات الاختبار المحفوظة</small><strong id="runCount">—</strong></article>
 <article class="learn-stat"><small>نماذج تم كبح إشاراتها وفق التحقق السابق</small><strong id="suppressedCount">—</strong></article>
@@ -296,7 +302,22 @@ $("strategyComparisonRefresh").addEventListener("click",refreshStrategyCompariso
 setInterval(refreshStrategyComparison,15000);
 $("strategyAuditBtn").addEventListener("click",runStrategyAudit);
 $("reloadBtn").addEventListener("click",e=>{e.preventDefault();load()});
-load().then(()=>{refreshLearningState();refreshStrategyComparison();refreshStressLearning()});setInterval(refreshLearningState,20000);
+async function refreshFeedbackLearning(){
+ if(!accessToken)return;
+ try{
+  const d=await api("/api/ai/feedback-learning");
+  $("feedbackLearningState").textContent=(d.symbol||"—")+" | "+(d.status==="RESEARCH_ONLY"?"تقييم بحثي تلقائي":d.status==="LOADING"?"جارٍ جمع النتائج":"لا توجد نتيجة حديثة")+
+   (d.updated_at_unix?" | "+new Date(d.updated_at_unix*1000).toLocaleString("en-GB"):"")+" | لم تتغير أوزان التنفيذ";
+  const fixed=(x,n)=>x==null?"—":Number(x).toFixed(n);
+  const labels={CALIBRATION_CANDIDATE:"مرشح للمعايرة",NOT_VALIDATED:"لم يثبت التحسن",INSUFFICIENT_EVIDENCE:"عينة غير كافية",OUTCOME_EVIDENCE_ONLY:"نتائج موثقة فقط"};
+  $("feedbackModelTable").innerHTML="<table class='learn-table'><thead><tr><th>النموذج</th><th>نتائج اتجاهية</th><th>إيجابية</th><th>معامل ثقة مرشح</th><th>خطأ الثقة قبل / بعد</th><th>الحالة</th></tr></thead><tbody>"+
+   (d.models||[]).map(x=>"<tr><td>"+esc(x.model)+"</td><td>"+Number(x.samples)+"</td><td>"+Number(x.positive)+"</td><td>"+fixed(x.candidate_confidence_factor,3)+"</td><td>"+fixed(x.baseline_brier,4)+" / "+fixed(x.candidate_brier,4)+"</td><td>"+esc(labels[x.status]||x.status)+"</td></tr>").join("")+"</tbody></table>";
+  const actions={ADDON:"التعزيز",COOLING:"التبريد",RECOVERY:"التعافي"};
+  $("feedbackActionTable").innerHTML="<table class='learn-table'><thead><tr><th>الإجراء</th><th>مراكز مكتملة موثقة</th><th>إيجابية</th><th>صافي مسجل</th><th>مراكز ناقصة</th><th>الحالة</th></tr></thead><tbody>"+
+   (d.actions||[]).map(x=>"<tr><td>"+esc(actions[x.action]||x.action)+"</td><td>"+Number(x.complete_positions)+"</td><td>"+Number(x.positive)+"</td><td>"+fixed(x.net,2)+"</td><td>"+Number(x.incomplete_positions)+"</td><td>"+esc(labels[x.status]||x.status)+"</td></tr>").join("")+"</tbody></table>";
+ }catch(e){$("feedbackLearningState").textContent="تعذر التحقق من التعلم الجديد";}
+}
+load().then(()=>{refreshLearningState();refreshStrategyComparison();refreshStressLearning();refreshFeedbackLearning()});setInterval(refreshLearningState,20000);setInterval(refreshFeedbackLearning,30000);
 </script><script src="/numbers-en.js?v=3"></script>
 
 <script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
