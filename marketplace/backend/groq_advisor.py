@@ -13,6 +13,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from market_symbols import market_family
 
 MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
 KEY = os.getenv("GROQ_API_KEY", "").strip()
@@ -33,6 +34,8 @@ def is_candidate(decision, now=None):
     if not isinstance(decision, dict):
         return False
     try:
+        if not market_family(decision.get("symbol")):
+            return False
         bar = int(decision.get("bar_time", 0))
         confidence = float(decision.get("confidence", 0))
         age = (time.time() if now is None else now) - bar
@@ -83,7 +86,7 @@ def _compact(decision):
     bot_data = decision.get("advisory_bots") if isinstance(decision.get("advisory_bots"), dict) else {}
     bots = bot_data.get("advisors") if bot_data.get("status") == "READY" and bot_data.get("bar_time") == decision.get("bar_time") else []
     return {
-        "symbol": "XAUUSD",
+        "symbol": market_family(decision.get("symbol")),
         "signal": str(decision.get("decision", "WAIT"))[:4],
         "bar_time": int(decision.get("bar_time", 0)),
         "confidence": _finite_number(decision.get("confidence"), 0, 1),
@@ -101,7 +104,7 @@ def _compact(decision):
 
 def _call_groq(snapshot, *, api_key=None, timeout=None):
     prompt = (
-        "You are a READ-ONLY XAUUSD reviewer of a deterministic trading system. "
+        "You are a READ-ONLY reviewer of a deterministic trading system. Use the supplied symbol, BTCUSD or XAUUSD, without mixing markets. "
         "Do not invent market information or imply that an order was placed. "
         "Assess only the supplied closed-bar indicators and votes, including conflicting signals. "
         'Return JSON only: {"direction":"BUY|SELL|WAIT","confidence":0.0,"reason_ar":"short Arabic reason"}. '
