@@ -1591,6 +1591,15 @@ class Handler(SimpleHTTPRequestHandler):
                     "top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path=="/api/ai/arena/action-report":
+            try:
+                u=owner(token_of(self))
+                from model_arena_api import ids,enc
+                owned=ids(sb,u["id"],ENGINE_MARKET)
+                rows=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=in.("+",".join(enc(x) for x in owned)+")&event_type=eq.ARENA_ACTION_TRAINING&order=created_at.desc&limit=1&select=payload,created_at",admin=True) if owned else []
+                return self.send_json(200,rows[0] if rows else {"status":"NO_TRAINING"})
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception:return self.send_json(502,{"error":"action_report_unavailable"})
         if path=="/api/ai/arena/live-context":
             try:
                 u=owner(token_of(self))
@@ -1781,6 +1790,18 @@ class Handler(SimpleHTTPRequestHandler):
             path=urllib.parse.urlparse(self.path).path
             if path in OWNER_WRITE_ENDPOINTS:
                 owner(token)
+            if path=="/api/ai/arena/action-training":
+                u=owner(token)
+                from model_arena_api import ids
+                cid=data.get("client")
+                if cid not in ids(sb,u["id"],ENGINE_MARKET):return self.send_json(403,{"error":"invalid owner client"})
+                report={}
+                for key,row in (data.get("reports") or {}).items():
+                    if key not in tuple(a+":"+s for a in arena_master.ACTIONS for s in ("BUY","SELL")) or not isinstance(row,dict):continue
+                    report[key]={k:arena_master.num(row.get(k)) for k in ("train","test","signals","positive","net_proxy")}
+                queue_ai_diagnostic_event({"event_id":"action-ai:"+hashlib.sha256((cid+str(int(time.time()//3600))).encode()).hexdigest(),
+                    "client_id":cid,"event_type":"ARENA_ACTION_TRAINING","payload":{"market":ENGINE_MARKET,"candles":int(arena_master.num(data.get("candles"))),"reports":report,"metric":"HISTORICAL_PATH_PROXY_NOT_BASKET_PROFIT","execution_authorized":False}})
+                return self.send_json(200,{"accepted":True})
             if path=="/api/ai/arena/live-forecast":
                 u=owner(token)
                 from model_arena_api import ids
