@@ -11,6 +11,7 @@ from market_symbols import market_family
 
 VERSION="AZ_ACCURACY_V4"
 PROTOCOL="INDEPENDENT_SHADOW_V4"
+UNIFIED_PROTOCOL="INDEPENDENT_UNIFIED_V4"
 _LOCK=threading.RLock()
 _PENDING={}
 _MAX_PENDING=512
@@ -66,7 +67,7 @@ def shadow_rank(decision,rates):
             "scores":{k:round(v,6) for k,v in ranking.items()},
             "execution_authorized":False}
 
-def record(client,symbol,timeframe,decision,tick,kind,direction,confidence,now,model=""):
+def record(client,symbol,timeframe,decision,tick,kind,direction,confidence,now,model="",analysis_mode="SHADOW"):
     """Record once per client, symbol, bar, forecast type. First quote wins."""
     if not client or not market_family(symbol) or str(timeframe).upper() not in ("M1","PERIOD_M1"):
         return None
@@ -85,6 +86,7 @@ def record(client,symbol,timeframe,decision,tick,kind,direction,confidence,now,m
     event_id="accuracy-v4:"+":".join(map(str,key))
     confidence=num(confidence,-1)
     forecast={"version":VERSION,"kind":kind,"model":str(model)[:80],
+        "analysis_mode":analysis_mode if analysis_mode=="UNIFIED" else "SHADOW",
         "symbol":str(symbol),"market":market_family(symbol),"timeframe":"M1",
         "bar_time":bar,"forecast_time_unix":round(now,3),
         "direction":direction,"baseline_direction":baseline,
@@ -151,8 +153,9 @@ def summarize(rows):
         identity=(market,kind,str(p.get("model") or ""),str(p.get("bar_time")),str(p.get("symbol")))
         if identity in seen:continue
         seen.add(identity)
-        key=identity[:3]
-        g=groups.setdefault(key,{"market":market,"kind":kind,"model":key[2],"settled":0,
+        mode="UNIFIED" if p.get("analysis_mode")=="UNIFIED" else "SHADOW"
+        key=identity[:3]+(mode,)
+        g=groups.setdefault(key,{"market":market,"kind":kind,"model":key[2],"analysis_mode":mode,"settled":0,
              "directional":0,"wins":0,"wait":0,"paired":0,"paired_wins":0,"baseline_wins":0,
              "confidence_count":0,"confidence_sum":0.0,"brier_sum":0.0,"atr_sum":0.0,"atr_count":0})
         g["settled"]+=1
