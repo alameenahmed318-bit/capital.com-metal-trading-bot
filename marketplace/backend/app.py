@@ -745,6 +745,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(200,{"client_id":client_id,"symbol":item.get("symbol"),
                 "accuracy_protocol":accuracy_v4.PROTOCOL,
                 "unified_ai_protocol":accuracy_v4.UNIFIED_PROTOCOL,
+                "unified_ai_models":["qwen2.5:1.5b","deepseek-r1:1.5b"],
                 "bar_time":int(finite_number(decision.get("bar_time"))),
                 # The local relay consumes 'decision'. Keep 'direction' for legacy relays.
                 "decision":decision.get("decision","WAIT"),
@@ -1722,8 +1723,8 @@ class Handler(SimpleHTTPRequestHandler):
                 # Independent shadow votes never overwrite the live council.
                 if unified_route and (not same_market_symbol(data.get("symbol"),item.get("symbol"))
                     or str(item.get("timeframe","")).upper() not in ("M1","PERIOD_M1")
-                    or model!="qwen2.5:1.5b"):
-                    return self.send_json(409,{"error":"Unified V4 requires matching M1 market and lightweight Qwen"})
+                    or model not in ("qwen2.5:1.5b","deepseek-r1:1.5b")):
+                    return self.send_json(409,{"error":"Unified V4 requires matching M1 market and supported local model"})
                 if shadow_route:
                     if not same_market_symbol(data.get("symbol"),item.get("symbol")):
                         return self.send_json(409,{"error":"V4 market mismatch"})
