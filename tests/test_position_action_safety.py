@@ -103,7 +103,9 @@ class PositionActionSafety(unittest.TestCase):
         self.assertIn('InpBlockOppositePositions = true;',source)
         self.assertNotIn('if(!InpBlockOppositePositions) return true;',source)
         self.assertIn('if(!IsAccountDirectionAllowed(direction))',source)
-        self.assertIn('!IsAccountDirectionAllowed(side)',source)
+        self.assertIn('if(action!="RECOVERY_PROPOSAL") return IsAccountDirectionAllowed(side);',source)
+        self.assertIn('!IsCentralActionDirectionAllowed(side,action)',source)
+        self.assertIn('ACCOUNT_MARGIN_MODE_RETAIL_HEDGING',source)
 
     def test_group_close_retry_blocks_new_entry_and_survives_restart(self):
         source=(Path(__file__).resolve().parents[1]/"mt5_client"/"ALZOOL_Central_Client.mq5").read_text(encoding="utf-8")
