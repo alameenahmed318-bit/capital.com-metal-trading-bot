@@ -153,7 +153,7 @@ def entry_council_mode(settings, is_owner=False):
     selected=str(pm.get("entry_council_mode","ADVISORY" if is_owner else "STRICT")).upper()
     if is_owner and not pm.get("entry_council_mode_user_selected"):
         return "ADVISORY"
-    return "ADVISORY" if is_owner and selected=="ADVISORY" else "STRICT"
+    return selected if is_owner and selected in ("ADVISORY","MASTER") else "STRICT"
 
 
 def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_enabled,
