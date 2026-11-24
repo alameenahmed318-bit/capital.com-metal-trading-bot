@@ -2479,7 +2479,9 @@ class Handler(SimpleHTTPRequestHandler):
                 if strategy_decision:
                     cached_settings=(TRADE_SETTINGS_CACHE.get(client_id) or {}).get("settings") or {}
                     update_council(client_id,strategy_decision,safe,
-                        master_review=entry_council_mode(cached_settings,terminal_is_owner(client_id))=="MASTER")
+                        master_review=(strategy_last_bar!=previous.get("strategy_last_bar") and
+                            (cached_settings.get("position_management") or {}).get("entry_council_mode")=="MASTER" and
+                            terminal_is_owner(client_id)))
                     try:
                         # Observe the actual returned vote and current quote, not
                         # a retroactive quote from the start of the candle.
