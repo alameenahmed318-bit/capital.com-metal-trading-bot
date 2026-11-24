@@ -20,7 +20,7 @@ def _num(value,default=0.0):
         return default
 
 
-def fuse_live_decision(base,council):
+def fuse_live_decision(base,council,model_weights=None):
     """Merge available, authenticated, same-closed-bar AI votes with strategy evidence.
 
     Requires a real quant strategy for the final side. Never infers trades from
@@ -56,7 +56,7 @@ def fuse_live_decision(base,council):
     raw_votes=(council.get("votes") or {}) if same_bar else {}
     contributions=[]
     active_weight=0.0
-    for model,weight in MODEL_WEIGHTS.items():
+    for model,weight in (MODEL_WEIGHTS if model_weights is None else model_weights).items():
         v=raw_votes.get(model) or {}
         status=str(v.get("status","UNAVAILABLE"))
         side=str(v.get("direction","WAIT")).upper()
@@ -85,7 +85,7 @@ def fuse_live_decision(base,council):
     else:
         winner=ranking[0]
         why=("ترجيح هجين من الاستراتيجيات والتراكيب والبوتات مع أصوات "
-             "Fast AI وQwen وDeepSeek المتاحة لهذه الشمعة")
+             "النماذج المتاحة لهذه الشمعة")
     if winner in DIRECTIONS:
         chosen=eligible[winner]
         result["decision"]=winner

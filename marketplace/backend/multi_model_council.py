@@ -183,26 +183,38 @@ def _worker(client_id,bar,decision,account):
         deepseek=deepseek_future.result()
     with _LOCK:
         item=_VOTES.get(client_id)
-        if item and item["bar_time"]==bar:
+        if item and item["bar_time"]==bar and item.get("symbol")==decision.get("symbol"):
             item.update({"qwen":qwen,"deepseek":deepseek,"status":"READY",
                          "updated_at":time.time()})
 
-def _groq_worker(client_id,bar,decision):
+def _groq_worker(client_id,bar,decision,master_review=False):
     # Optional reviewer: no trading permissions and no effect on three-vote approval.
+    if master_review:
+        # Give local models a small asynchronous collection window. Never
+        # stall the master controller or ask after the prediction horizon.
+        deadline=min(time.time()+10,bar+105)
+        while time.time()<deadline:
+            current=council_result(client_id,decision)
+            votes=current.get("votes") or {}
+            if all((votes.get(n) or {}).get("status")=="READY" for n in ("Qwen","DeepSeek")):break
+            time.sleep(.25)
+        current=council_result(client_id,decision)
+        if current.get("bar_time")!=bar or time.time()>=bar+112:return
+        decision={**decision,"master_review_votes":current.get("votes") or {}}
     result=groq_advisor.review(decision)
     with _LOCK:
         current=_VOTES.get(client_id)
-        if current and current.get("bar_time")==bar:
+        if current and current.get("bar_time")==bar and (current.get("symbol") is None or current.get("symbol")==decision.get("symbol")):
             current["groq_advisory"]=result
             current["updated_at"]=time.time()
 
-def update_council(client_id,decision,account):
+def update_council(client_id,decision,account,master_review=False):
     """Schedule at most once per closed bar, without blocking MT5 telemetry."""
     bar=int(_num(decision.get("bar_time")))
     if bar<=0:return
     with _LOCK:
         previous=_VOTES.get(client_id)
-        if previous and previous["bar_time"]==bar:return
+        if previous and previous["bar_time"]==bar and previous.get("symbol")==decision.get("symbol"):return
         if len(_VOTES)>=_MAX_ENTRIES:
             oldest=min(_VOTES,key=lambda k:_VOTES[k].get("updated_at",0))
             _VOTES.pop(oldest,None)
@@ -210,7 +222,7 @@ def update_council(client_id,decision,account):
         remote_deepseek=bool(_DEEPSEEK_KEY or _DEEPSEEK_LOCAL_URL)
         groq_ready=groq_advisor.configured()
         groq_candidate=groq_advisor.is_candidate(decision)
-        _VOTES[client_id]={"bar_time":bar,
+        _VOTES[client_id]={"bar_time":bar,"symbol":decision.get("symbol"),
             "status":"PENDING" if remote_qwen or remote_deepseek else "AWAITING_LOCAL_VOTES",
             "fast":fast_ai(decision,account),
             "bots":(decision.get("advisory_bots") or {}),
@@ -228,7 +240,7 @@ def update_council(client_id,decision,account):
         threading.Thread(target=_worker,args=(client_id,bar,dict(decision),dict(account)),
                          daemon=True,name="alzool-council").start()
     if groq_ready and groq_candidate:
-        threading.Thread(target=_groq_worker,args=(client_id,bar,dict(decision)),
+        threading.Thread(target=_groq_worker,args=(client_id,bar,dict(decision),master_review),
                          daemon=True,name="alzool-groq-advisor").start()
 
 def accept_local_model_vote(client_id,advice,decision):
@@ -245,7 +257,7 @@ def accept_local_model_vote(client_id,advice,decision):
     name,key=identity
     with _LOCK:
         state=_VOTES.get(client_id)
-        if not state or state.get("bar_time")!=bar:return False
+        if not state or state.get("bar_time")!=bar or (state.get("symbol") is not None and state.get("symbol")!=decision.get("symbol")):return False
         vote=_vote(name,"READY",direction,confidence,advice.get("reason_ar",""))
         vote["model_id"]=model_id
         state[key]=vote
@@ -261,7 +273,7 @@ def council_result(client_id,decision):
     bar=int(_num(decision.get("bar_time")))
     with _LOCK:
         v=dict(_VOTES.get(client_id) or {})
-    if not v or v.get("bar_time")!=bar:
+    if not v or v.get("bar_time")!=bar or (v.get("symbol") is not None and v.get("symbol")!=decision.get("symbol")):
         return {"approved":False,"status":"WAIT","reason_ar":"المجلس لم يصوّت على الشمعة الحالية","votes":v}
     qwen_local=v.get("local_qwen") if time.time()-v.get("local_qwen_time",0)<=30 else None
     deepseek_local=v.get("local_deepseek") if time.time()-v.get("local_deepseek_time",0)<=30 else None

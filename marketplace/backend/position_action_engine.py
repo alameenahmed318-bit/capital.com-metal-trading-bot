@@ -9,6 +9,7 @@ import math
 from recovery_logic import recovery_intent
 from recovery_candle_guard import observe_recovery_arm
 from position_sizing import count_action, next_action_lot
+from master_ai import management_support
 
 def num(value,default=0.0):
     try:
@@ -25,6 +26,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
     atr=num(decision.get("entry_atr") or (decision.get("context") or {}).get("atr"))
     tick=snapshot.get("tick") or {}
     signal=str(decision.get("decision","WAIT")).upper()
+    master_mode=(decision.get("master") or {}).get("mode")=="MASTER" and str(pm.get("mode","AI")).upper()=="AI"
     result={"mode":"DIAGNOSTIC_ONLY","execution_authorized":False,
             "bar_time":int(num(decision.get("bar_time"))),"buy":"HOLD","sell":"HOLD",
             "actions":[],"reason_ar":"لا يوجد قرار إدارة صالح"}
@@ -76,6 +78,11 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 action="HOLD";reason="حجم التعافي ×3 تجاوز حد لوت التعافي الذي حدده المالك"
             elif raw_total_cap is not None and total_open+lot>num(raw_total_cap)+1e-8:
                 action="HOLD";reason="حجم التعافي تجاوز سقف اللوت الإجمالي الذي حدده المالك"
+        if master_mode and action=="RECOVERY_PROPOSAL":
+            support=management_support(decision,side)
+            if support<-.20:
+                action="HOLD";reason="MASTER AI: اتجاه التعافي يعارض الأدلة السوقية الحالية؛ انتظار فرصة أفضل"
+            else:reason="MASTER AI: "+reason
         if action!="RECOVERY_PROPOSAL":lot=0.0
         result[side.lower() if side in ("BUY","SELL") else "buy"]=action
         confirmation=recovery.get("candle_confirmation") or {}
@@ -131,6 +138,10 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
         strategy_bias=(0.12 if signal==side else -0.12 if signal in ("BUY","SELL") else 0.0)
         advice_summary=(f"Qwen/DeepSeek {len(advisory)} READY; model_bias={advisory_bias:.3f} ATR; "
                         f"entry_signal={signal}; strategy_bias={strategy_bias:+.2f} ATR")
+        if master_mode:
+            advisory_bias=.15*management_support(decision,side)
+            strategy_bias=0.0
+            advice_summary=f"MASTER AI | support={management_support(decision,side):+.3f} | bias={advisory_bias:+.3f} ATR"
         action="HOLD";reason="حركة السعر لا تؤيد زيادة المخاطرة"
         candidate_lot=0.0
         addons=count_action(group,"ADDON_PROPOSAL")
@@ -196,6 +207,7 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
             # Do not convert an exact x3 recovery into a smaller, falsely
             # labeled x3 order. Block and explain insufficient risk budget.
             action="HOLD";reason="حجم الإجراء المطلوب يتجاوز سقف اللوت أو التعرض"
+        if master_mode:reason="MASTER AI | "+reason
         if action=="HOLD":candidate_lot=0.0
         result[side.lower()]=action
         result["actions"].append({"side":side,"action":action,"lot_cap":round(candidate_lot,8),

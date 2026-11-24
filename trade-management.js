@@ -18,8 +18,8 @@ async function loadCloseSettings(){
  updateStopLossHelp();
  const pm=s.position_management||{};
  if($("ownerEntryMode")){
-  $("ownerEntryMode").value=pm.entry_council_mode==="ADVISORY"?"ADVISORY":"STRICT";
-  $("ownerEntryModeMessage").textContent="الوضع الحالي: "+(pm.entry_council_mode==="ADVISORY"?"Hybrid AI فعّال — Qwen وDeepSeek يشاركان في ترجيح BUY/SELL دون اشتراط الإجماع":"المجلس الصارم — إجماع 3 نماذج");
+  $("ownerEntryMode").value=["MASTER","ADVISORY","STRICT"].includes(pm.entry_council_mode)?pm.entry_council_mode:"STRICT";
+  $("ownerEntryModeMessage").textContent="الوضع الحالي: "+(pm.entry_council_mode==="MASTER"?"MASTER AI — قرار موحد دون إجماع":pm.entry_council_mode==="ADVISORY"?"Hybrid AI فعّال — Qwen وDeepSeek يشاركان في ترجيح BUY/SELL دون اشتراط الإجماع":"المجلس الصارم — إجماع 3 نماذج");
  }
  $("entryGuardEnabled").checked=pm.entry_guard_enabled!==false;
  $("entryMaxDelayBars").value=Number(pm.entry_max_delay_bars??1);
@@ -49,13 +49,13 @@ async function loadCloseSettings(){
 }
 async function saveOwnerEntryMode(){
  const mode=$("ownerEntryMode").value;
- if(mode!=="STRICT"&&mode!=="ADVISORY")return;
- if(mode==="ADVISORY"&&!window.confirm("Hybrid AI: Qwen وDeepSeek يشاركان فعلياً في ترجيح قرار BUY/SELL عند وصول تصويتهما على الشمعة الحالية، ولا يتوقف المحرك لانتظار الإجماع. قد يؤدي هذا إلى أوامر حقيقية إذا كان التداول مفعّلاً، ووقف الخسارة يبقى حسب إعدادك. هل تريد تطبيق الوضع؟"))return;
+ if(!["STRICT","ADVISORY","MASTER"].includes(mode))return;
+ if(mode!=="STRICT"&&!window.confirm("Hybrid AI: Qwen وDeepSeek يشاركان فعلياً في ترجيح قرار BUY/SELL عند وصول تصويتهما على الشمعة الحالية، ولا يتوقف المحرك لانتظار الإجماع. قد يؤدي هذا إلى أوامر حقيقية إذا كان التداول مفعّلاً، ووقف الخسارة يبقى حسب إعدادك. هل تريد تطبيق الوضع؟"))return;
  const button=$("saveOwnerEntryMode"),label=$("ownerEntryModeMessage");
  button.disabled=true;label.textContent="جارٍ حفظ سياسة الدخول…";
  try{
   const response=await api("/api/owner/entry-policy",{method:"POST",headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({mode,confirmed_risk:mode==="ADVISORY"})});
+   body:JSON.stringify({mode,confirmed_risk:mode!=="STRICT"})});
   label.textContent=response.message||"تم حفظ سياسة الدخول";
  }catch(e){label.textContent="تعذّر تطبيق السياسة: "+e.message;}
  finally{button.disabled=false;}

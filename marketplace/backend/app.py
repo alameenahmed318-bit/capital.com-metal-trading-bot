@@ -11,6 +11,7 @@ from multi_model_council import update_council, council_result, risk_guardian, r
 from hybrid_decision import fuse_live_decision
 import accuracy_v4
 import feedback_learning
+import master_ai
 from learning_memory import memory_snapshot, combine_deals
 from post_close_confirmation import post_close_m1_confirmation,last_exit_from_deals
 from live_weight_overlay import apply_live_learning, conservative_outcome_weight
@@ -374,6 +375,13 @@ def _fetch_trade_settings(client_id):
     settings["position_management"]=pm
     settings["trading_enabled"]=False if (clients and clients[0].get("trading_enabled",False)==False) else bool(clients and clients[0].get("trading_enabled",False))
     return settings
+
+def resolve_owner_decision(client_id,decision,council,mode):
+    if mode=="MASTER":
+        # Bounded background cache: no network/model wait on the order path.
+        feedback=feedback_learning.snapshot(client_id,decision.get("symbol"),sb)
+        return master_ai.decide(decision,council,feedback)
+    return fuse_live_decision(decision,council) if mode=="ADVISORY" else decision
 
 def _store_trade_settings(client_id,settings):
     snapshot=dict(settings)
@@ -785,9 +793,10 @@ class Handler(SimpleHTTPRequestHandler):
             decision=item.get("strategy_decision") or {}
             settings=get_trade_settings(client_id) or {}
             now=datetime.now(timezone.utc)
-            advisory_mode=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+            mode=entry_council_mode(settings,terminal_is_owner(client_id))
+            advisory_mode=mode!="STRICT"
             council=council_result(client_id,decision)
-            if advisory_mode: decision=fuse_live_decision(decision,council)
+            if advisory_mode: decision=resolve_owner_decision(client_id,decision,council,mode)
             gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
                 item.get("received_at"),now,bool(settings.get("trading_enabled")),
                 local_ai_advice=(dict(item["local_ai_advice"],
@@ -1122,10 +1131,11 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 item["trade_settings_cache"]=control_settings
             trading_enabled=bool(control_settings.get("trading_enabled",False))
-            advisory_mode=(entry_council_mode(control_settings,terminal_is_owner(client_id))=="ADVISORY")
+            mode=entry_council_mode(control_settings,terminal_is_owner(client_id))
+            advisory_mode=mode!="STRICT"
             ai_council=council_result(client_id,decision)
             if advisory_mode:
-                decision=fuse_live_decision(decision,ai_council)
+                decision=resolve_owner_decision(client_id,decision,ai_council,mode)
                 confidence=finite_number(decision.get("confidence",0.0))
                 signal=str(decision.get("decision","WAIT"))
                 strategy_id=int(finite_number(decision.get("strategy_id",0)))
@@ -1184,7 +1194,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "bar_time":bar_time,"entry_reference_price":finite_number(decision.get("entry_reference_price",0.0)),
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
                 "minimum_confidence":None,
-                "entry_council_mode":"ADVISORY" if advisory_mode else "STRICT",
+                "entry_council_mode":mode,"master":decision.get("master",{}),
                 "authorization":gate,
                 "authorization_id":gate.get("authorization_id"),
                 "authorization_expires_at":gate.get("expires_at_unix",0),
@@ -1446,8 +1456,9 @@ class Handler(SimpleHTTPRequestHandler):
                 decision=item.get("strategy_decision") or {}
                 council=council_result(client_id,decision)
                 settings=get_trade_settings(client_id) or {}
-                advisory=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
-                if advisory:decision=fuse_live_decision(decision,council)
+                mode=entry_council_mode(settings,terminal_is_owner(client_id))
+                advisory=mode!="STRICT"
+                if advisory:decision=resolve_owner_decision(client_id,decision,council,mode)
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(settings))
                 result=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
                 result["position_management_status"]=position_management_status(item,settings)
@@ -1565,9 +1576,10 @@ class Handler(SimpleHTTPRequestHandler):
                 now=datetime.now(timezone.utc)
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(cid) or {}
-                advisory=(entry_council_mode(settings,True)=="ADVISORY")
+                mode=entry_council_mode(settings,True)
+                advisory=mode!="STRICT"
                 council=council_result(cid,decision)
-                if advisory: decision=fuse_live_decision(decision,council)
+                if advisory: decision=resolve_owner_decision(cid,decision,council,mode)
                 signal=str(decision.get("decision","WAIT")).upper()
                 local=item.get("local_ai_advice")
                 local_advice=({**local,"age_seconds":now.timestamp()-finite_number(local.get("received_at_unix",0))}
@@ -1604,7 +1616,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "strategy_name":decision.get("strategy_name"),
                     "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
                     "bar_time":decision.get("bar_time"),"entry_ready":ready,
-                    "mode":"ADVISORY" if advisory else "STRICT",
+                    "mode":mode,"master":decision.get("master",{}),
                     "trading_enabled":bool(settings.get("trading_enabled")),
                     "central_actions_enabled":(settings.get("position_management") or {}).get("central_actions_enabled") is True,
                     "mt5_position_management_enabled":item.get("mt5_position_management_enabled"),
@@ -1630,12 +1642,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if not item: return self.send_json(200,{"connected":False,"status":"WAIT","reason_ar":"MT5 غير متصل"})
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(client_id) or {}
-                is_hybrid=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                mode=entry_council_mode(settings,terminal_is_owner(client_id))
+                is_hybrid=mode!="STRICT"
                 council=council_result(client_id,decision)
-                if is_hybrid:decision=fuse_live_decision(decision,council)
+                if is_hybrid:decision=resolve_owner_decision(client_id,decision,council,mode)
                 return self.send_json(200,{"connected":True,"client_id":client_id,
                     "bar_time":decision.get("bar_time"),"signal":decision.get("decision","WAIT"),
-                    "mode":"HYBRID" if is_hybrid else "STRICT",
+                    "mode":"MASTER" if mode=="MASTER" else "HYBRID" if is_hybrid else "STRICT",
+                    "master":decision.get("master",{}),
                     "hybrid":decision.get("hybrid",{}),"council":council,
                     "risk_guardian":risk_guardian(item.get("account") or {},item.get("positions") or [],
                         risk_limits_from_settings(settings))})
@@ -1684,9 +1698,10 @@ class Handler(SimpleHTTPRequestHandler):
                 decision=item.get("strategy_decision") or {}
                 settings=get_trade_settings(client_id) or {}
                 now=datetime.now(timezone.utc)
-                advisory_mode=(entry_council_mode(settings,terminal_is_owner(client_id))=="ADVISORY")
+                mode=entry_council_mode(settings,terminal_is_owner(client_id))
+                advisory_mode=mode!="STRICT"
                 council=council_result(client_id,decision)
-                if advisory_mode: decision=fuse_live_decision(decision,council)
+                if advisory_mode: decision=resolve_owner_decision(client_id,decision,council,mode)
                 gate=evaluate_entry_gate(decision,item.get("account") or {},item.get("symbol",""),
                     item.get("received_at"),now,bool(settings.get("trading_enabled")),
                     local_ai_advice=(dict(item["local_ai_advice"],
@@ -1941,7 +1956,7 @@ class Handler(SimpleHTTPRequestHandler):
                 if mode not in ("AI","MANUAL"):
                     return self.send_json(400,{"error":"اختر وضع AI أو يدوي"})
                 clean_pm={"mode":mode,
-                          "entry_council_mode":("STRICT" if str(pm.get("entry_council_mode",prior_pm.get("entry_council_mode","ADVISORY"))).upper()=="STRICT" else "ADVISORY"),
+                          "entry_council_mode":(prior_pm.get("entry_council_mode","ADVISORY") if prior_pm.get("entry_council_mode") in ("STRICT","ADVISORY","MASTER") else "ADVISORY"),
                           "entry_council_mode_user_selected":prior_pm.get("entry_council_mode_user_selected") is True,
                           "stop_loss_user_configured":stop_loss_user_configured,
                           "optional_limits_user_selected":(
@@ -2115,9 +2130,9 @@ class Handler(SimpleHTTPRequestHandler):
                 identity=license_for_user(u["id"])
                 if not identity:return self.send_json(409,{"error":"حساب المالك غير مرتبط بمحرك MT5"})
                 requested=str(data.get("mode","")).upper()
-                if requested not in ("STRICT","ADVISORY"):
+                if requested not in ("STRICT","ADVISORY","MASTER"):
                     return self.send_json(400,{"error":"وضع الدخول غير معروف"})
-                if requested=="ADVISORY" and data.get("confirmed_risk") is not True:
+                if requested in ("ADVISORY","MASTER") and data.get("confirmed_risk") is not True:
                     return self.send_json(400,{"error":"يجب تأكيد مخاطر التنفيذ التلقائي أولاً"})
                 cid=urllib.parse.quote(identity["client_id"],safe="")
                 rows=sb("GET","/rest/v1/alzool_btc_trade_settings?client_id=eq."+cid+
@@ -2145,7 +2160,7 @@ class Handler(SimpleHTTPRequestHandler):
                          if prior.get("stop_loss_enabled") is False else "")
                 return self.send_json(200,{"mode":requested,
                     "message":("تم تفعيل Hybrid AI — أصوات Fast AI وQwen وDeepSeek الحديثة تشارك في ترجيح BUY وSELL دون اشتراط الإجماع"
-                               if requested=="ADVISORY" else "تم تفعيل المجلس الصارم — إجماع 3 نماذج")+warning})
+                               if requested=="ADVISORY" else "تم تفعيل MASTER AI — قرار موحد بلا إجماع إجباري" if requested=="MASTER" else "تم تفعيل المجلس الصارم — إجماع 3 نماذج")+warning})
             if path=="/api/ai/versions/test":
                 return self.send_json(409,{"error":"اختبار إصدارات الذهب غير متاح في محرك BTC؛ استخدم بيانات BTC وخزنه المستقل"})
                 u=owner(token)
@@ -2462,7 +2477,11 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as exc:
                     print("ACCURACY_V4_SHADOW_WARNING:",type(exc).__name__,flush=True)
                 if strategy_decision:
-                    update_council(client_id,strategy_decision,safe)
+                    cached_settings=(TRADE_SETTINGS_CACHE.get(client_id) or {}).get("settings") or {}
+                    update_council(client_id,strategy_decision,safe,
+                        master_review=(strategy_last_bar!=previous.get("strategy_last_bar") and
+                            (cached_settings.get("position_management") or {}).get("entry_council_mode")=="MASTER" and
+                            terminal_is_owner(client_id)))
                     try:
                         # Observe the actual returned vote and current quote, not
                         # a retroactive quote from the start of the candle.
