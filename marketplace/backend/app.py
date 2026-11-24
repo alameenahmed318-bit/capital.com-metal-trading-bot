@@ -1461,6 +1461,12 @@ class Handler(SimpleHTTPRequestHandler):
                     currency_rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                         "&select=account_currency&order=uploaded_at.desc&limit=1",admin=True)
                     currency=currency_rows[0].get("account_currency","") if currency_rows else ""
+                if (params.get("view") or [""])[0]=="groups":
+                    from closure_groups import closure_groups
+                    groups=closure_groups(records[:5000],btc_market)
+                    return self.send_json(200,{"groups":groups,"currency":currency,"days":days,
+                        "market":ENGINE_MARKET,"grouping_window_seconds":5,"limit_reached":len(records)>=5000,
+                        "metric":"RECORDED_EXIT_DEAL_NET_ONLY"})
                 wins=sum(1 for x in trades if x["net"]>0)
                 return self.send_json(200,{"trades":trades,"count":len(trades),"deal_rows":len(records),
                     "win_rate":(wins/len(trades)*100) if trades else None,
