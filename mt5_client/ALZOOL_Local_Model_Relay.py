@@ -240,7 +240,87 @@ def validate_unified_response(model,result):
         return vote
     except (TypeError,ValueError,KeyError):return None
 
+# Reasons constrain semantic consistency, not the direction of market movement.
+# A reversal may be valid even when preceding prices were rising.
+DEEP_REASONS={
+    "BUY":("UP_MOMENTUM","LOW_REJECTION","SUPPORT"),
+    "SELL":("DOWN_MOMENTUM","HIGH_REJECTION","RESISTANCE"),
+    "WAIT":("MIXED","UNCLEAR"),
+}
+
+def balanced_deepseek_snapshot(context):
+    """Retain real OHLC and add measured context; no central vote or trade advice."""
+    snapshot=unified_snapshot(context)
+    if snapshot is None:return None
+    bars=snapshot["ohlc"]
+    closes=[b[3] for b in bars]
+    moves=[b-a for a,b in zip(closes,closes[1:])]
+    travel=sum(abs(v) for v in moves)
+    o,h,l,c=bars[-1]
+    snapshot["net_move_atr"]=round(closes[-1]-closes[0],3)
+    snapshot["trend_efficiency"]=round(abs(closes[-1]-closes[0])/travel,3) if travel else 0.0
+    snapshot["last_body_atr"]=round(c-o,3)
+    snapshot["last_upper_wick_atr"]=round(h-max(o,c),3)
+    snapshot["last_lower_wick_atr"]=round(min(o,c)-l,3)
+    indicators=context.get("context") or {}
+    for key in ("rsi","rsi7","rsi14"):
+        v=indicators.get(key)
+        if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) and 0<=v<=100:
+            snapshot[key]=round(v,2)
+    return snapshot
+
+def validate_balanced_deepseek(model,result):
+    """Only accept the final complete JSON and its own internally coherent reason."""
+    if result.get("done_reason")!="stop" or result.get("done") is not True:return None
+    raw=result.get("response")
+    if not isinstance(raw,str):return None
+    try:
+        obj=json.loads(raw)
+        if not isinstance(obj,dict) or set(obj)!={"direction","confidence","reason_code"}:return None
+        direction=obj.get("direction")
+        code=obj.get("reason_code")
+        if not isinstance(direction,str) or direction not in DEEP_REASONS or code not in DEEP_REASONS[direction]:
+            return None
+        vote=validate_unified_response(model,{"message":{"content":raw}})
+        return vote
+    except (ValueError,TypeError,KeyError):return None
+
+def balanced_deepseek_vote(model,context,timeout_seconds):
+    snapshot=balanced_deepseek_snapshot(context)
+    if snapshot is None:return None
+    schema={"type":"object","properties":{
+        "direction":{"type":"string","enum":["BUY","SELL","WAIT"]},
+        "confidence":{"type":"number","minimum":0,"maximum":1},
+        "reason_code":{"type":"string","enum":list(REASON_CODES)}},
+        "required":["direction","confidence","reason_code"],"additionalProperties":False}
+    instruction=("Predict the next M1 close direction from actual OHLC and measured indicators. "
+        "OHLC order: open high low close, oldest first, offsets in ATR from last close=0. "
+        "Consider momentum, candle bodies, wicks, levels, trend efficiency and RSI if present. "
+        "A reversal may be valid; do not extrapolate trend blindly. Missing indicators are unknown. "
+        "BUY means rise, reasons UP_MOMENTUM/LOW_REJECTION/SUPPORT; "
+        "SELL means fall, reasons DOWN_MOMENTUM/HIGH_REJECTION/RESISTANCE; "
+        "WAIT means uncertain, reasons MIXED/UNCLEAR. "
+        "Confidence 0 to 1 is an estimate, not a guaranteed probability. "
+        "Return final JSON only: direction, confidence, reason_code. No free-text explanation.")
+    # The tested R1 raw template avoids spending the entire M1 window on hidden
+    # reasoning. Use the full measured input, not a forced directional heuristic.
+    prompt="<｜User｜>"+instruction+"\n"+json.dumps(snapshot,ensure_ascii=False,separators=(",",":"))+"<｜Assistant｜><think></think>"
+    result=request_json(OLLAMA_URL+"/api/generate",method="POST",
+        payload={"model":model,"prompt":prompt,"raw":True,"stream":False,"think":False,
+            "format":schema,"keep_alive":"30m",
+            "options":{"temperature":0,"num_predict":128,"num_ctx":1024,"num_thread":4}},
+        timeout=timeout_seconds)
+    vote=validate_balanced_deepseek(model,result)
+    duration=result.get("total_duration")
+    seconds=round(duration/1e9,2) if isinstance(duration,(int,float)) and math.isfinite(duration) else "?"
+    print(model+" BALANCED_RAW | seconds="+str(seconds)+" | tokens="+str(result.get("eval_count","?"))+
+        " | final="+str(result.get("done_reason","unknown"))[:32]+
+        " | validation="+("OK" if vote else "REJECTED"),flush=True)
+    return vote
+
 def unified_model_vote(model,context,timeout_seconds):
+    if model.startswith("deepseek"):
+        return balanced_deepseek_vote(model,context,timeout_seconds)
     snapshot=unified_snapshot(context)
     if snapshot is None:return None
     schema={"type":"object","properties":{
@@ -252,20 +332,11 @@ def unified_model_vote(model,context,timeout_seconds):
         "all prices are offsets in ATR units from last close (0). Predict rise BUY, "
         "fall SELL, or WAIT if unclear. Use momentum, rejection wicks and levels. "
         "No central forecast. Return JSON only; confidence 0..1, reason_code from schema.")
-    deep=model.startswith("deepseek")
-    if deep:
-        instruction=("Independent M1 analyst. OHLC oldest to newest, prices in ATR units "
-            "from last close. Predict BUY, SELL or WAIT using only these data. "
-            "No chain of thought. Return one JSON object with direction, numeric confidence "
-            "between 0 and 1, and reason_code from "+",".join(REASON_CODES)+
-            ". Alternatively use reason with a short actual explanation. "
-            "Output only the final JSON.")
     result=request_json(OLLAMA_URL+"/api/chat",method="POST",
         payload={"model":model,"messages":[{"role":"system","content":instruction},
             {"role":"user","content":json.dumps(snapshot,separators=(",",":"))}],
-            "stream":False,"format":"json" if deep else schema,"think":False,"keep_alive":"30m",
-            "options":{"temperature":0,"num_predict":352 if deep else 80,
-                       "num_ctx":1024,"num_thread":4}},
+            "stream":False,"format":schema,"think":False,"keep_alive":"30m",
+            "options":{"temperature":0,"num_predict":80,"num_ctx":1024,"num_thread":4}},
         timeout=timeout_seconds)
     vote=validate_unified_response(model,result)
     if vote is None:
