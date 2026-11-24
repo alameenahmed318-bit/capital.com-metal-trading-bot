@@ -63,6 +63,19 @@ def evidence(cid,decision):
     vals=list(r["models"].values())
     avg=sum(vals)/len(vals) if vals else None
     return {**r,"direction":"BUY" if avg is not None and avg>.05 else "SELL" if avg is not None and avg<-.05 else "WAIT","mean_atr":round(avg,4) if avg is not None else None}
+def fused_shadow(cid,decision,base):
+    r=evidence(cid,decision)
+    if r.get("status")!="SHADOW_READY":return r
+    scores=(base.get("master") or {}).get("scores") or {}
+    buy=num(scores.get("BUY"));sell=num(scores.get("SELL"))
+    # Bounded independent research blend, never a new entry permission.
+    margin=(buy-sell)/max(1,abs(buy)+abs(sell))
+    avg=r.get("mean_atr")
+    delta=.15*max(-1,min(1,num(avg))) if avg is not None else 0.0
+    combined=margin+delta
+    candidate="BUY" if combined>.03 else "SELL" if combined<-.03 else "WAIT"
+    return {**r,"master_direction":base.get("decision","WAIT"),"candidate_direction":candidate,
+        "master_margin":round(margin,4),"arena_delta":round(delta,4),"combined_margin":round(combined,4)}
 def management(snapshot,decision,plan):
     r=(decision.get("master") or {}).get("arena_shadow") or {}
     out={"status":r.get("status","NO_FRESH_EVIDENCE"),"mode":"SHADOW_ONLY","execution_authorized":False,"sides":{}}
