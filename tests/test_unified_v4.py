@@ -153,4 +153,47 @@ class UnifiedTests(unittest.TestCase):
         self.assertEqual(req.call_args.kwargs["payload"]["model"],deep)
         self.assertEqual(req.call_args.kwargs["timeout"],24)
 
+    def test_deepseek_final_json_only_not_reasoning(self):
+        deep="deepseek-r1:1.5b"
+        final='{"direction":"SELL","confidence":0.64,"reason_code":"DOWN_MOMENTUM"}'
+        hidden='{"direction":"BUY","confidence":0.99,"reason_code":"UP_MOMENTUM"}'
+        for raw in (final, "<think>"+hidden+"</think>"+final, "```json\n"+final+"\n```"):
+            self.assertEqual(relay.validate_unified_response(deep,{"message":{"content":raw}})["direction"],"SELL")
+        self.assertIsNone(relay.validate_unified_response(deep,{"message":{"content":"<think>"+hidden}}))
+        self.assertIsNone(relay.validate_unified_response(deep,{"message":{"content":"","thinking":hidden}}))
+        self.assertIsNone(relay.validate_unified_response(deep,{"message":{"content":'{"direction":"BUY","confidence":true,"reason_code":"UP_MOMENTUM"}'}}))
+        self.assertIsNone(relay.validate_unified_response(deep,{"message":{"content":'{"direction":"BUY","confidence":0.9}'}}))
+
+    def test_deepseek_actual_free_text_reason_preserved(self):
+        deep="deepseek-r1:1.5b"
+        result={"message":{"content":'{"direction":"SELL","confidence":0.64,"reason":"Upper wick rejection"}'}}
+        vote=relay.validate_unified_response(deep,result)
+        self.assertEqual(vote["direction"],"SELL")
+        self.assertEqual(vote["reason_original"],"Upper wick rejection")
+
+    def test_deepseek_json_mode_and_token_budget(self):
+        deep="deepseek-r1:1.5b"
+        ctx=dict(context(),_analysis_protocol=relay.UNIFIED_PROTOCOL)
+        with patch.object(relay,"request_json",return_value={"message":{"content":
+            '{"direction":"SELL","confidence":0.64,"reason_code":"DOWN_MOMENTUM"}'}}) as req:
+            vote=relay.model_vote(deep,ctx,24)
+        self.assertEqual(vote["model"],deep)
+        payload=req.call_args.kwargs["payload"]
+        self.assertEqual(payload["format"],"json")
+        self.assertEqual(payload["options"]["num_predict"],352)
+        self.assertFalse(payload["think"])
+        self.assertEqual(req.call_args.kwargs["timeout"],24)
+
+    def test_invalid_deepseek_output_shorter_cooldown(self):
+        deep="deepseek-r1:1.5b"
+        failures={};pause={}
+        with patch.object(relay.time,"monotonic",return_value=100),contextlib.redirect_stdout(io.StringIO()):
+            relay.record_model_failure(deep,failures,pause,invalid_output=True)
+            relay.record_model_failure(deep,failures,pause,invalid_output=True)
+        self.assertEqual(pause[deep],160)
+        with patch.object(relay.time,"monotonic",return_value=100),contextlib.redirect_stdout(io.StringIO()):
+            relay.record_model_failure(deep,failures,pause)
+            relay.record_model_failure(deep,failures,pause)
+        self.assertEqual(pause[deep],700)
+
 if __name__=="__main__":unittest.main()
