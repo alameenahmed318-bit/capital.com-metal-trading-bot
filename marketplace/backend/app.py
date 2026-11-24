@@ -1588,6 +1588,14 @@ class Handler(SimpleHTTPRequestHandler):
                     "top_strategies":profile["strategies"][:10]})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception as e:return self.send_json(502,{"error":str(e)[:180]})
+        if path in ("/api/ai/arena","/api/ai/arena/history"):
+            try:
+                u=owner(token_of(self))
+                import model_arena_api as arena
+                result=arena.report(sb,u["id"],ENGINE_MARKET) if path=="/api/ai/arena" else arena.query(sb,u["id"],ENGINE_MARKET,urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query))
+                return self.send_json(200,result)
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception:return self.send_json(502,{"error":"arena_unavailable"})
         if path=="/api/ai/specialist":
             try:
                 owner(token_of(self))
@@ -1758,6 +1766,10 @@ class Handler(SimpleHTTPRequestHandler):
             path=urllib.parse.urlparse(self.path).path
             if path in OWNER_WRITE_ENDPOINTS:
                 owner(token)
+            if path=="/api/ai/arena/report":
+                u=owner(token)
+                import model_arena_api as arena
+                return self.send_json(200,arena.save(sb,u["id"],ENGINE_MARKET,data))
             if path.startswith("/v1/terminal-action-claim/"):
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
