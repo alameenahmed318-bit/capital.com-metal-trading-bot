@@ -8,6 +8,7 @@ used only with sufficient chronological validation, not as profit proof.
 from hybrid_decision import fuse_live_decision
 from market_symbols import supported_market_symbol, same_market_symbol
 import math
+import time
 
 MODEL_NAMES={"Fast AI":"Fast AI","Qwen":"qwen2.5:1.5b",
              "DeepSeek":"deepseek-r1:1.5b","GPT-OSS 120B":"GPT-OSS 120B"}
@@ -21,7 +22,8 @@ def num(value,default=0.0):
 
 def learned_factors(feedback,symbol):
     if (not isinstance(feedback,dict) or feedback.get("status")!="RESEARCH_ONLY"
-        or not same_market_symbol(feedback.get("symbol"),symbol)):
+        or not same_market_symbol(feedback.get("symbol"),symbol)
+        or not 0<=time.time()-num(feedback.get("updated_at_unix"))<=600):
         return {}
     result={}
     for row in feedback.get("models") or []:
@@ -51,7 +53,7 @@ def decide(base,council,feedback=None):
     for label,model in MODEL_NAMES.items():
         vote=dict(votes.get(label) or {})
         original[label]=vote.get("confidence")
-        factor=factors.get(model,1.0)
+        factor=factors.get(model,1.0) if label not in ("Qwen","DeepSeek") or vote.get("model_id")==model else 1.0
         raw=num(vote.get("confidence"),-1)
         if 0<=raw<=1:vote["confidence"]=raw*factor
         adjusted[label]=vote
@@ -61,7 +63,8 @@ def decide(base,council,feedback=None):
     for row in inputs:
         label=row["model"]
         row["original_confidence"]=original.get(label)
-        row["calibration_factor"]=factors.get(MODEL_NAMES[label],1.0)
+        raw=num(original.get(label),-1)
+        row["calibration_factor"]=round(num(adjusted[label].get("confidence"))/raw,4) if raw>0 else 1.0
     cloud_used=any(x["used"] and x["model"]=="GPT-OSS 120B" for x in inputs)
     result["reason_ar"]="MASTER AI | "+str(result.get("reason_ar",""))
     result["master"]={
