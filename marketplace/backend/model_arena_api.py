@@ -32,11 +32,11 @@ def query(sb,uid,market,params):
 def report(sb,uid,market):
     owned=ids(sb,uid,market)
     out={}
-    for name in MODELS:
-        if not owned:continue
-        # Fixed server-side names and owner client filter; no arbitrary queries.
-        rows=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=in.("+",".join(enc(x) for x in owned)+")&event_type=eq.ARENA_MODEL_REPORT&payload->>model=eq."+enc(name)+"&payload->>market=eq."+market+"&select=payload,created_at&order=created_at.desc&limit=1",admin=True)
-        if rows:out[name]={**rows[0]["payload"],"recorded_at":rows[0]["created_at"]}
+    if owned:
+        rows=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=in.("+",".join(enc(x) for x in owned)+")&event_type=eq.ARENA_MODEL_REPORT&payload->>market=eq."+market+"&select=payload,created_at&order=created_at.desc&limit=200",admin=True)
+        for row in rows or []:
+            p=row.get("payload") or {};name=p.get("model")
+            if name in MODELS and name not in out:out[name]={**p,"recorded_at":row["created_at"]}
     return {"version":VERSION,"market":market,"models":[out.get(n,{"model":n,"status":"WORKER_NOT_CONNECTED","market":market}) for n in MODELS],"execution_authorized":False}
 def save(sb,uid,market,data):
     if not isinstance(data,dict) or len(json.dumps(data))>20000:raise ValueError("invalid report")
