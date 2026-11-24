@@ -2477,7 +2477,9 @@ class Handler(SimpleHTTPRequestHandler):
                 except Exception as exc:
                     print("ACCURACY_V4_SHADOW_WARNING:",type(exc).__name__,flush=True)
                 if strategy_decision:
-                    update_council(client_id,strategy_decision,safe)
+                    cached_settings=(TRADE_SETTINGS_CACHE.get(client_id) or {}).get("settings") or {}
+                    update_council(client_id,strategy_decision,safe,
+                        master_review=entry_council_mode(cached_settings,terminal_is_owner(client_id))=="MASTER")
                     try:
                         # Observe the actual returned vote and current quote, not
                         # a retroactive quote from the start of the candle.
