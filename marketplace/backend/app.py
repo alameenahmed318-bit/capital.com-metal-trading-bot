@@ -1205,6 +1205,29 @@ class Handler(SimpleHTTPRequestHandler):
                 "local_ai_required":LOCAL_AI_REQUIRED,
                 "local_ai_vote":({k:item["local_ai_advice"].get(k) for k in ("direction","confidence","reason_ar","model","bar_time")} if isinstance(item.get("local_ai_advice"),dict) else None),
                 "message":gate.get("reason_ar","بانتظار قرار المجلس والحماية")}
+            # Read-only owner audit: capture the actual response prepared for MT5.
+            # This is an authorization record, never a broker execution receipt.
+            if mode=="MASTER" and bar_time>0:
+                try:
+                    report=decision.get("master") or {}
+                    audit_status="AUTHORIZED" if ready else "WAIT"
+                    audit_key=hashlib.sha256(json.dumps([client_id,item.get("symbol"),bar_time,
+                        strategy_id,full_decision["combination_id"],signal,audit_status,
+                        gate.get("authorization_id") if ready else None],ensure_ascii=False).encode()).hexdigest()
+                    queue_ai_diagnostic_event({"event_id":"master-audit:"+audit_key,
+                        "client_id":client_id,"event_type":"MASTER_DECISION_AUDIT",
+                        "payload":{"status":audit_status,"symbol":item.get("symbol"),
+                            "timeframe":item.get("timeframe"),"bar_time":bar_time,
+                            "direction":signal,"signal":output_signal,"confidence":confidence,
+                            "strategy_id":strategy_id,"strategy_name":full_decision["strategy_name"],
+                            "combination_id":full_decision["combination_id"],
+                            "reason_ar":full_decision["decision_reason_ar"],
+                            "gate_reason_ar":gate.get("reason_ar"),"source":report.get("source"),
+                            "models":report.get("models") or [],"scores":report.get("scores") or {},
+                            "calibration_applied":report.get("calibration_applied") is True,
+                            "decision_at":datetime.now(timezone.utc).isoformat()}})
+                except Exception as audit_error:
+                    print("MASTER_AUDIT_WARNING:",type(audit_error).__name__,flush=True)
             return self.send_json(200,full_decision if terminal_is_owner(client_id)
                                   else minimal_terminal_decision(full_decision))
         if path=="/api/market/context":
