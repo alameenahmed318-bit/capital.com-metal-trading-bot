@@ -132,6 +132,15 @@ def _refresh(key,request,live_deals):
             "market":market_family(symbol),"updated_at_unix":time.time(),
             "models":model_feedback(rows,symbol),"actions":action_feedback(combine_deals(memory["deals"],live_deals),symbol),
             "memory_status":memory["status"],"live_weights_changed":False,"execution_authorized":False}
+        # Separate research query; failures do not alter V1 feedback.
+        try:
+            import master_v2
+            q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.MASTER_V2_COMPARISON&select=payload&order=created_at.desc&limit=1000"
+            comparison=request("GET",q,admin=True)
+            if not isinstance(comparison,list):raise ValueError("comparison")
+            report["master_v2"]=master_v2.summarize(comparison,symbol)
+        except Exception:
+            report["master_v2"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE","profiles":{},"lanes":{}}
         with _LOCK:_CACHE[key]=(time.monotonic(),report)
     except Exception:
         with _LOCK:
