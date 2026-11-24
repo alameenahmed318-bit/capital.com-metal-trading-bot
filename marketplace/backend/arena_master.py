@@ -40,17 +40,22 @@ def accept(cid,item,body):
     for action in ACTIONS:
         sides=(body.get("actions") or {}).get(action,{})
         if not isinstance(sides,dict):continue
-        actions[action]={}
+        valid={}
         for side in ("BUY","SELL"):
             v=sides.get(side)
             if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
-                actions[action][side]=round(max(-6,min(6,v)),5)
+                valid[side]=round(max(-6,min(6,v)),5)
+        if valid:actions[action]=valid
     if not models and not any(actions.values()):return {"accepted":False,"reason":"NO_PREDICTIONS"}
     key=(cid,ctx["symbol"],ctx["bar_time"])
     with LOCK:
         previous=CACHE.get(key,{})
         merged={**previous.get("models",{}),**models}
-        merged_actions={**previous.get("actions",{}),**actions}
+        # Partial model reports must never erase action evidence for this bar.
+        # Merge by action AND side; empty or invalid updates are no-ops.
+        merged_actions={action:dict(sides) for action,sides in previous.get("actions",{}).items()}
+        for action,sides in actions.items():
+            merged_actions[action]={**merged_actions.get(action,{}),**sides}
         CACHE[key]={"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
         CACHE.move_to_end(key)
         while len(CACHE)>128:CACHE.popitem(last=False)
