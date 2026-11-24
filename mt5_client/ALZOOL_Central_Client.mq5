@@ -7,7 +7,7 @@
 #include <Trade/Trade.mqh>
 
 CTrade g_trade;
-#property version "2.40"
+#property version "2.41"
 #property description "AL-ZOOL central AI voting and single-use action authorization"
 
 input group "بيانات الاتصال بالخادم"
@@ -347,7 +347,7 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
    if(action!="ADDON_PROPOSAL" && action!="COOLING_PROPOSAL" && action!="RECOVERY_PROPOSAL")
       return false;
    if(!IsSupportedMarketSymbol(_Symbol) || !IsSafeBitcoinAccount() || barTime<=0) return false;
-   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side))
+   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsCentralActionDirectionAllowed(side,action))
       return false;
    if(requestedLots<=0.0 || (InpMaxCentralActionLots>0 && requestedLots>InpMaxCentralActionLots+1e-8))
       return false;
@@ -369,6 +369,11 @@ bool ExecuteOneCentralAction(const string side,const string action,const double 
    }
    if(action=="RECOVERY_PROPOSAL")
    {
+      double recoveryLots=0.0;int recoveryCount=0;
+      double recoveryNet=RecoveryGroupNet(recoveryLots,recoveryCount);
+      if(!g_recoveryEnabled || g_recoveryLossTrigger<=0.0 || recoveryCount<=0 ||
+         recoveryNet>-g_recoveryLossTrigger || MathAbs(requestedLots-3.0*recoveryLots)>1e-8)
+         return false;
       // Second, local check on the broker's actual closed M1 candle. The
       // server already verified threshold arming, candle strength and timing.
       datetime candleOpen=iTime(_Symbol,PERIOD_M1,1);
@@ -497,7 +502,7 @@ bool PollCentralActions()
    if(StringLen(nonce)<20 || bar<=0 || expires<=now || expires-now>30) return false;
    string key="AZ_CENTRAL_PM_"+IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN))+"_"+_Symbol;
    if(GlobalVariableCheck(key) && (long)GlobalVariableGet(key)==bar) return false;
-   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsAccountDirectionAllowed(side) ||
+   if((InpMaxOpenPositions>0 && PositionsTotal()>=InpMaxOpenPositions) || !IsCentralActionDirectionAllowed(side,action) ||
       lots<=0.0 || (InpMaxCentralActionLots>0 && lots>InpMaxCentralActionLots+1e-8)) return false;
    // Claim the unique central authorization before submitting any broker order.
    string body="{\"authorization_id\":\""+JsonEscape(nonce)+"\",\"symbol\":\""+JsonEscape(_Symbol)+"\"}";
@@ -639,7 +644,7 @@ void GetAccountDirectionCounts(int &buyPositions,int &sellPositions)
 bool IsAccountDirectionAllowed(const string direction)
 {
    // Never add an opposite position on this chart, even with older Inputs=false.
-   // This applies to entry, add-on, cooling, and smart recovery.
+   // This applies to entry, add-on and cooling; recovery has its own guarded exception.
    int buys=0,sells=0;
    GetAccountDirectionCounts(buys,sells);
    // If both sides already exist, fail closed: do not add any new exposure.
@@ -648,11 +653,24 @@ bool IsAccountDirectionAllowed(const string direction)
    if(direction=="SELL") return (buys==0);
    return false;
 }
+bool IsCentralActionDirectionAllowed(const string side,const string action)
+{
+   if(g_recoveryCycleActive || RecoveryHasOpenTrade()) return false;
+   if(action!="RECOVERY_PROPOSAL") return IsAccountDirectionAllowed(side);
+   if(side!="BUY" && side!="SELL") return false;
+   if(!g_recoveryEnabled || g_recoveryLossTrigger<=0.0) return false;
+   if(IsAccountDirectionAllowed(side)) return PositionsTotal()>0;
+   if(AccountInfoInteger(ACCOUNT_MARGIN_MODE)!=ACCOUNT_MARGIN_MODE_RETAIL_HEDGING || g_pmMode!="AI") return false;
+   int buys=0,sells=0;
+   GetAccountDirectionCounts(buys,sells);
+   return ((buys>0 && sells==0)||(sells>0 && buys==0));
+}
 void ExecuteCentralEntry(const string direction,const long decisionBar,const double confidence,
                          const int strategyId,const int combinationId,const double referencePrice,
                          const double signalATR,const string reason)
 {
    if(g_groupClosePending) return; // Never reopen exposure during group closure.
+   if(g_recoveryCycleActive || RecoveryHasOpenTrade()) return;
    if(!IsSupportedMarketSymbol(_Symbol) || !IsSafeBitcoinAccount())
    { g_status="رمز غير مدعوم أو حساب البيتكوين يحتوي صفقات من رموز أخرى"; return; }
    if(!FreshM1ConfirmedAfterClose(decisionBar)) return;
@@ -1088,6 +1106,8 @@ bool SendLiveSnapshot()
    body+=",\"last_m1_closed_open\":"+IntegerToString((long)iTime(_Symbol,PERIOD_M1,1));
    body+=",\"mt5_position_management_enabled\":"+(InpEnableCentralPositionManagement?"true":"false");
    body+=",\"mt5_central_trading_enabled\":"+(InpEnableCentralTrading?"true":"false");
+   body+=",\"recovery_bidirectional_capable\":"+((AccountInfoInteger(ACCOUNT_MARGIN_MODE)==ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)?"true":"false");
+   body+=",\"recovery_cycle_active\":"+((g_recoveryCycleActive || RecoveryHasOpenTrade())?"true":"false");
    // Match the exact account-wide recovery net used by this EA (including
    // position commissions and fees from deal history) with the server planner.
    if(g_recoveryEnabled && PositionsTotal()>0)
