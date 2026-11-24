@@ -385,7 +385,7 @@ def resolve_owner_decision(client_id,decision,council,mode):
         # Bounded background cache: no network/model wait on the order path.
         feedback=feedback_learning.snapshot(client_id,decision.get("symbol"),sb)
         result=master_ai.decide(decision,council,feedback)
-        result["master"]["arena_shadow"]=arena_master.evidence(client_id,decision)
+        result["master"]["arena_shadow"]=arena_master.fused_shadow(client_id,decision,result)
         return result
     return fuse_live_decision(decision,council) if mode=="ADVISORY" else decision
 
@@ -1807,7 +1807,13 @@ class Handler(SimpleHTTPRequestHandler):
                 from model_arena_api import ids
                 cid=data.get("client")
                 if cid not in ids(sb,u["id"],ENGINE_MARKET):return self.send_json(403,{"error":"invalid owner client"})
-                result=arena_master.accept(cid,CONNECTIONS.get(cid) or {},data)
+                item=CONNECTIONS.get(cid) or {}
+                result=arena_master.accept(cid,item,data)
+                if result.get("accepted"):
+                    evidence=arena_master.evidence(cid,item.get("strategy_decision") or {})
+                    digest=hashlib.sha256(json.dumps({"models":evidence.get("models"),"actions":evidence.get("actions")},sort_keys=True).encode()).hexdigest()[:16]
+                    queue_ai_diagnostic_event({"event_id":"arena-live:"+hashlib.sha256((cid+str(data.get("bar_time"))+digest).encode()).hexdigest(),
+                        "client_id":cid,"event_type":"ARENA_LIVE_FORECAST","payload":{**evidence,"market":ENGINE_MARKET}})
                 return self.send_json(200,result)
             if path=="/api/ai/arena/report":
                 u=owner(token)
