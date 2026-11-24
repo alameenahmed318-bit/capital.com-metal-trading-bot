@@ -7,10 +7,9 @@ From the repo on Windows (Python 3.11+ recommended):
 ```powershell
 py -3.11 -m venv .arena-venv
 .\.arena-venv\Scripts\python.exe -m pip install lightgbm==4.6.0 xgboost==3.0.2 catboost==1.2.8 "chronos-forecasting>=2,<3"
-ollama pull qwen3.5:4b
 .\.arena-venv\Scripts\python.exe research\model_arena_worker.py
 ```
-Enter owner email/password locally when prompted. Keep the worker process running; it repeats after each completed round plus one hour. Use --once for one round; --models LightGBM XGBoost CatBoost to test trees only. Ollama must already be running. If a library/checkpoint fails, the UI shows the failure rather than fabricated predictions. The heavier Chronos/Qwen tests can take significant time on CPU. Pin resolved optional dependency versions before any production use.
+Enter owner email/password locally when prompted. Keep the worker process running; it repeats after each completed round plus one hour. Use --once for one round; --models LightGBM XGBoost CatBoost to test trees only. If a library/checkpoint fails, the UI shows the failure rather than fabricated predictions. The heavier Chronos/TimesFM tests can take significant time on CPU. Pin resolved optional dependency versions before any production use.
 
 TimesFM-3 official pretrained weights are licensed for non-commercial, non-production use. Default status is LICENSE_REVIEW. Only where permitted, install the official TimesFM 3 package supporting timesfm3 and run the worker with --timesfm-research. Do not use these weights for live or commercial trading without a suitable license. The official source and model cards are https://github.com/google-research/timesfm and https://huggingface.co/google/timesfm-3.0-pytorch.
 
