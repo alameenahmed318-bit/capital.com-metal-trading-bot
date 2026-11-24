@@ -132,6 +132,12 @@ def _refresh(key,request,live_deals):
             "market":market_family(symbol),"updated_at_unix":time.time(),
             "models":model_feedback(rows,symbol),"actions":action_feedback(combine_deals(memory["deals"],live_deals),symbol),
             "memory_status":memory["status"],"live_weights_changed":False,"execution_authorized":False}
+        # Publish live V1 feedback before the extra research query.
+        # A slow comparison database must not delay V1 cache availability.
+        with _LOCK:
+            previous=_CACHE.get(key)
+            prior=(previous[1] if previous else {}).get("master_v2")
+            _CACHE[key]=(time.monotonic(),{**report,**({"master_v2":prior} if prior else {})})
         # Separate research query; failures do not alter V1 feedback.
         try:
             import master_v2
