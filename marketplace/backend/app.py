@@ -1673,7 +1673,10 @@ class Handler(SimpleHTTPRequestHandler):
                     item,decision,gate,council,risk,settings,sb,now,
                     council_advisory=advisory_mode)
                 return self.send_json(200 if response.get("execution_authorized") else 409,{**response,"symbol":item.get("symbol","")})
-            if path.startswith("/v1/local-ai/advice/"):
+            if path.startswith(("/v1/local-ai/advice/","/v1/local-ai/shadow-v4/")):
+                shadow_route=path.startswith("/v1/local-ai/shadow-v4/")
+                if shadow_route!=(data.get("analysis_protocol")==accuracy_v4.PROTOCOL) or (not shadow_route and data.get("analysis_protocol")):
+                    return self.send_json(400,{"error":"Invalid V4 route or protocol","execution_authorized":False})
                 client_id=path.rsplit("/",1)[-1]
                 if not validate_license(client_id,token):
                     return self.send_json(403,{"error":"ترخيص الاتصال غير صالح أو منتهي"})
@@ -1703,7 +1706,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.send_json(400,{"error":"موديل AI غير معتمد لهذا الربط"})
                 # V4 independent votes are prospective research only. Never
                 # overwrite an existing live council vote or local AI advice.
-                if data.get("analysis_protocol")==accuracy_v4.PROTOCOL:
+                if shadow_route:
                     if not same_market_symbol(data.get("symbol"),item.get("symbol")):
                         return self.send_json(409,{"error":"V4 market mismatch"})
                     event=accuracy_v4.record(client_id,item.get("symbol"),item.get("timeframe"),
