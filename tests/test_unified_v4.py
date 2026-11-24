@@ -146,7 +146,7 @@ class UnifiedTests(unittest.TestCase):
         deep="deepseek-r1:1.5b"
         ctx=dict(context(),_analysis_protocol=relay.UNIFIED_PROTOCOL)
         with patch.object(relay,"request_json",return_value={"done":True,"done_reason":"stop","response":
-            '{"direction":"SELL","confidence":0.64,"reason_code":"DOWN_MOMENTUM"}'}) as req:
+            '{"assessment":"SELL_DOWN_MOMENTUM","confidence":0.64}'}) as req:
             vote=relay.model_vote(deep,ctx,24)
         self.assertEqual(vote["model"],deep)
         self.assertEqual(vote["direction"],"SELL")
@@ -175,13 +175,13 @@ class UnifiedTests(unittest.TestCase):
         deep="deepseek-r1:1.5b"
         ctx=dict(context(),_analysis_protocol=relay.UNIFIED_PROTOCOL)
         with patch.object(relay,"request_json",return_value={"done":True,"done_reason":"stop","response":
-            '{"direction":"SELL","confidence":0.64,"reason_code":"HIGH_REJECTION"}'}) as req:
+            '{"assessment":"SELL_HIGH_REJECTION","confidence":0.64}'}) as req:
             vote=relay.model_vote(deep,ctx,24)
         self.assertEqual(vote["model"],deep)
         payload=req.call_args.kwargs["payload"]
         self.assertTrue(req.call_args.args[0].endswith("/api/generate"))
         self.assertTrue(payload["raw"])
-        self.assertEqual(payload["format"]["required"],["direction","confidence","reason_code"])
+        self.assertEqual(payload["format"]["required"],["assessment","confidence"])
         self.assertEqual(payload["options"]["num_predict"],128)
         self.assertFalse(payload["think"])
         self.assertEqual(req.call_args.kwargs["timeout"],24)
@@ -192,17 +192,21 @@ class UnifiedTests(unittest.TestCase):
 
     def test_balanced_deepseek_rejects_contradiction_and_truncation(self):
         deep="deepseek-r1:1.5b"
-        def vote(direction,code,done_reason="stop",confidence=.65):
+        def vote(assessment,done_reason="stop",confidence=.65):
             return relay.validate_balanced_deepseek(deep,{"done":True,"done_reason":done_reason,
-                "response":json.dumps({"direction":direction,"confidence":confidence,"reason_code":code})})
-        self.assertIsNone(vote("SELL","UP_MOMENTUM"))
-        self.assertIsNone(vote("BUY","DOWN_MOMENTUM"))
-        self.assertIsNone(vote("WAIT","SUPPORT"))
-        self.assertIsNone(vote("BUY","SUPPORT","length"))
-        self.assertIsNone(vote("BUY","SUPPORT",confidence=1.5))
-        self.assertEqual(vote("SELL","HIGH_REJECTION")["direction"],"SELL")
-        self.assertEqual(vote("BUY","LOW_REJECTION")["direction"],"BUY")
-        self.assertEqual(vote("WAIT","MIXED")["direction"],"WAIT")
+                "response":json.dumps({"assessment":assessment,"confidence":confidence})})
+        self.assertIsNone(vote("SELL_UP_MOMENTUM"))
+        self.assertIsNone(vote("BUY_MIXED"))
+        self.assertIsNone(vote("WAIT_SUPPORT"))
+        self.assertIsNone(vote("BUY_SUPPORT","length"))
+        self.assertIsNone(vote("BUY_SUPPORT",confidence=1.5))
+        self.assertEqual(vote("SELL_HIGH_REJECTION")["direction"],"SELL")
+        self.assertEqual(vote("BUY_LOW_REJECTION")["direction"],"BUY")
+        self.assertEqual(vote("WAIT_MIXED",confidence=.3)["direction"],"WAIT")
+        self.assertEqual(vote("WAIT_MIXED",confidence=.3)["confidence"],.3)
+        self.assertEqual(vote("BUY_SUPPORT",confidence=.3)["confidence"],.3)
+        self.assertIsNone(relay.validate_balanced_deepseek(deep,{"done":True,"done_reason":"stop",
+            "response":'{"direction":"BUY","confidence":0.3,"reason_code":"MIXED"}'}))
 
     def test_balanced_snapshot_preserves_measured_evidence(self):
         ctx=context()
