@@ -84,11 +84,13 @@ def pretrained(name,bars,rows,allow_timesfm):
         m=Chronos2Pipeline.from_pretrained("amazon/chronos-2",device_map="cpu")
         q,_=m.predict_quantiles([torch.tensor(x,dtype=torch.float32) for x in contexts],prediction_length=3,quantile_levels=[0.5],batch_size=4)
         return [float(a[0,2,0]) if a.ndim==3 else float(a[2,0]) for a in q],"amazon/chronos-2"
-    if not allow_timesfm:raise PermissionError("TimesFM-3 weights require non-commercial non-production research license")
-    from timesfm3 import TimesFM3Evaluator,ModelConfig
-    m=TimesFM3Evaluator(ModelConfig(checkpoint_path="google/timesfm-3.0-pytorch",per_core_batch_size=2,device="cpu"))
-    out=list(m.predict_batch([np.asarray(x,dtype=np.float32) for x in contexts],horizon=3,return_quantiles=True,use_symmetric_averaging=False))
-    return [float(x.forecast[2]) for x in out],"google/timesfm-3.0-pytorch"
+    if name!="TimesFM-2.5":raise ValueError("unknown pretrained model")
+    import timesfm
+    m=timesfm.TimesFM_2p5_200M_torch.from_pretrained("google/timesfm-2.5-200m-pytorch",torch_compile=False)
+    m.compile(timesfm.ForecastConfig(max_context=128,max_horizon=128,normalize_inputs=True,per_core_batch_size=2,infer_is_positive=False))
+    point,_=m.forecast(horizon=3,inputs=[np.asarray(x,dtype=np.float32) for x in contexts])
+    return [float(x[2]) for x in point],"google/timesfm-2.5-200m-pytorch"
+
 def evaluate(name,bars,parts,allow_timesfm):
     tr,va,te=parts
     supervised=name in ("LightGBM","XGBoost","CatBoost")
@@ -119,9 +121,7 @@ def run(email,password,names,allow_timesfm):
                     # Fresh token before writing even if inference took minutes.
                     api(market,"report",login(email,password),{**common,"model":name,**result})
                 try:
-                    if name=="TimesFM-3" and not allow_timesfm:
-                        result={"status":"LICENSE_REVIEW","detail":"Non-commercial, non-production weights; explicit research-only opt-in required."}
-                    elif parts is None:result={"status":"INSUFFICIENT_HISTORY"}
+                    if parts is None:result={"status":"INSUFFICIENT_HISTORY"}
                     else:
                         publish({"status":"RUNNING"})
                         result=evaluate(name,bars,parts,allow_timesfm)
@@ -133,10 +133,10 @@ def run(email,password,names,allow_timesfm):
                 gc.collect()
         except Exception as exc:print(market,"WORKER_ERROR",type(exc).__name__,flush=True)
 def main():
-    p=argparse.ArgumentParser();p.add_argument("--once",action="store_true");p.add_argument("--models",nargs="+",choices=MODELS,default=list(MODELS));p.add_argument("--timesfm-research",action="store_true",help="Only for permitted non-commercial, non-production research.");args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument("--once",action="store_true");p.add_argument("--models",nargs="+",choices=MODELS,default=list(MODELS));args=p.parse_args()
     email=input("Owner email: ").strip();password=getpass.getpass("Owner password: ")
     while True:
-        run(email,password,args.models,args.timesfm_research)
+        run(email,password,args.models,False)
         if args.once:return
         time.sleep(3600)
 if __name__=="__main__":main()
