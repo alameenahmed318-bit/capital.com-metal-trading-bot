@@ -136,3 +136,52 @@ def settle(client,symbol,timeframe,candles):
                     "baseline_positive":base_net>0 if base_net is not None else None,
                     "actual_trade_proven":False}})
     return events
+
+
+def summarize(rows):
+    """Observed directional hit rate and confidence reliability, not trade P&L."""
+    groups={}
+    seen=set()
+    for row in rows if isinstance(rows,list) else []:
+        p=row.get("payload") if isinstance(row,dict) else None
+        if not isinstance(p,dict) or p.get("version")!=VERSION:continue
+        market=market_family(p.get("symbol"))
+        kind=p.get("kind")
+        if not market or kind not in ("QUANT","LOCAL_AI"):continue
+        identity=(market,kind,str(p.get("model") or ""),str(p.get("bar_time")),str(p.get("symbol")))
+        if identity in seen:continue
+        seen.add(identity)
+        key=identity[:3]
+        g=groups.setdefault(key,{"market":market,"kind":kind,"model":key[2],"settled":0,
+             "directional":0,"wins":0,"wait":0,"paired":0,"paired_wins":0,"baseline_wins":0,
+             "confidence_count":0,"confidence_sum":0.0,"brier_sum":0.0,"atr_sum":0.0,"atr_count":0})
+        g["settled"]+=1
+        outcome=p.get("model_positive")
+        if not isinstance(outcome,bool):
+            g["wait"]+=1
+            continue
+        g["directional"]+=1
+        g["wins"]+=int(outcome)
+        base=p.get("baseline_positive")
+        if isinstance(base,bool):
+            g["paired"]+=1;g["paired_wins"]+=int(outcome);g["baseline_wins"]+=int(base)
+        confidence=num(p.get("reported_confidence"),-1)
+        if 0<=confidence<=1:
+            g["confidence_count"]+=1;g["confidence_sum"]+=confidence
+            g["brier_sum"]+=(confidence-int(outcome))**2
+        atr=num(p.get("model_net_atr"),float("nan"))
+        if math.isfinite(atr):g["atr_sum"]+=atr;g["atr_count"]+=1
+    result=[]
+    for g in groups.values():
+        n=g["directional"];c=g["confidence_count"];p=g["paired"]
+        def ratio(a,b):return round(a/b,4) if b else None
+        result.append({k:v for k,v in g.items() if not k.endswith("_sum")} | {
+            "hit_rate":ratio(g["wins"],n),
+            "baseline_paired_hit_rate":ratio(g["baseline_wins"],p),
+            "model_paired_hit_rate":ratio(g["paired_wins"],p),
+            "mean_reported_confidence":ratio(g["confidence_sum"],c),
+            "brier_score":ratio(g["brier_sum"],c),
+            "mean_net_atr_proxy":ratio(g["atr_sum"],g["atr_count"])})
+    return {"version":VERSION,"groups":result,"sample_count":sum(g["settled"] for g in result),
+            "status":"COLLECTING_FORWARD_EVIDENCE","metric":"NEXT_CLOSE_QUOTE_PROXY_NOT_BROKER_FILL",
+            "execution_authorized":False}
