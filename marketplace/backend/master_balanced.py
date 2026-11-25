@@ -148,3 +148,30 @@ def select_demo(d,item,settings,now):
         out.update(decision="WAIT",confidence=0.,strategy_id=0,combination_id=0,strategy_name="",
                    reason_ar="MASTER AI FIRST: "+trial["reason"])
     return out
+
+
+DIRECT_TIMING_VERSION="MASTER_AI_DIRECT_TIMING_SHADOW_V1"
+
+def direct_timing_shadow(trial):
+    """Research only: replace absent strategy evidence with observed timing.
+    Never assigns a strategy ID or authorizes execution. All other V3 checks stay.
+    """
+    side=trial.get("model_direction","WAIT")
+    detail=(trial.get("scores") or {}).get(side,{})
+    parts=detail.get("components") or {}
+    baseline=trial.get("direction","WAIT")
+    score=None;direction="WAIT";reason="NO_DIRECT_OPPORTUNITY"
+    if trial.get("version")==VERSION:
+        if baseline in SIDES and trial.get("approved") is True:
+            direction=baseline;score=detail.get("score");reason="BASELINE_READY"
+        elif side in SIDES and trial.get("used_models") and detail.get("failed_checks")==["strategy"]:
+            timing=clamp(num(parts.get("live_move_atr"))/.35)
+            score=.60*clamp(num(parts.get("models")))+.25*timing+.15*clamp(num(parts.get("market")))
+            if score>=THRESHOLD:
+                direction=side;reason="AI_TIMING_CANDIDATE"
+            else:reason="TIMING_SCORE_LOW"
+    return {"version":DIRECT_TIMING_VERSION,"mode":"SHADOW_ONLY","execution_authorized":False,
+            "direction":direction,"baseline_direction":baseline,"baseline_version":VERSION,
+            "model_direction":side,"score":score,"threshold":THRESHOLD,"reason":reason,
+            "additional_signal":direction in SIDES and baseline=="WAIT",
+            "used_models":list(trial.get("used_models") or [])}

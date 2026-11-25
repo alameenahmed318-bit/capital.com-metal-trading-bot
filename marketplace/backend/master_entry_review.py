@@ -222,12 +222,13 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         return {**base,**extra,"state":state,"reason_ar":reason,"approved":approved}
     balanced=report.get("balanced_entry")
     if live_arena and frame=="M1" and direct_demo_enabled(item) and isinstance(balanced,dict):
-        from master_balanced import evaluate, VERSION
+        from master_balanced import evaluate, VERSION, direct_timing_shadow
         # Recompute using the current quote and freshness, never trust a cached approval.
         trial=evaluate(d,item,settings,now_unix)
         selected=trial["selected"]
         detail=trial["scores"].get(selected,{})
         base.update(policy=VERSION,route="DIRECT_DEMO",balanced_entry=trial,
+                    direct_timing_shadow=direct_timing_shadow(trial),
                     quality=detail.get("score"),quality_threshold=trial["threshold"],
                     collection_limit_sec=0.,legacy_pending_optional=True,
                     price_deviation_atr=detail.get("price_deviation_atr"))

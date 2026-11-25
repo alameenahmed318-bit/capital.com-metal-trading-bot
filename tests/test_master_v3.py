@@ -95,4 +95,8 @@ class V3Tests(unittest.TestCase):
         self.assertFalse(trial["execution_authorized"])
         self.assertIn(trial["baseline_direction"],("BUY","SELL","WAIT"))
         self.assertFalse(v3.summarize([],"BTCUSDm")["balanced_demo_validation"]["auto_promoted"])
+        direct=result["direct_timing_comparison"]
+        self.assertFalse(direct["execution_authorized"])
+        self.assertEqual(direct["baseline_direction"],trial["direction"])
+        self.assertFalse(v3.summarize([],"BTCUSDm")["direct_timing_validation"]["auto_promoted"])
 if __name__=="__main__":unittest.main()

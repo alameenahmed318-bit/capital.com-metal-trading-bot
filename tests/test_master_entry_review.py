@@ -305,6 +305,32 @@ class BalancedDemoTests(unittest.TestCase):
                 d["master"]["arena_shadow"]["models"]={"LightGBM":sign}
                 del d["directional_candidates"][side]
                 self.assertEqual(evaluate(d,snap,{},BAR+62)["reason"],"AI_SIDE_NOT_ELIGIBLE")
+    def test_direct_timing_is_shadow_only(self):
+        from master_balanced import evaluate,select_demo,direct_timing_shadow,MODELS
+        for sym in ("XAUUSD","BTCUSDm"):
+            for sign in (1.,-1.):
+                side="BUY" if sign>0 else "SELL"
+                d,snap=self.fixture(sym,{n:sign for n in MODELS})
+                snap["tick"]={"bid":100.3,"ask":100.4} if sign>0 else {"bid":99.6,"ask":99.7}
+                del d["directional_candidates"][side]
+                t=evaluate(d,snap,{},BAR+62)
+                x=direct_timing_shadow(t)
+                self.assertEqual(x["direction"],side)
+                self.assertTrue(x["additional_signal"])
+                self.assertFalse(x["execution_authorized"])
+                self.assertNotIn("strategy_id",x)
+                actual=select_demo(d,snap,{},BAR+62)
+                self.assertEqual(actual["decision"],"WAIT")
+                rv=review(actual,snap,{},BAR+62,live_arena=True)
+                self.assertFalse(rv["approved"])
+                self.assertEqual(rv["direct_timing_shadow"]["direction"],side)
+                self.assertEqual(direct_timing_shadow(evaluate(d,snap,{},BAR+120))["direction"],"WAIT")
+                self.assertEqual(direct_timing_shadow(evaluate(d,snap,{"position_management":{"entry_max_deviation_atr":.01}},BAR+62))["direction"],"WAIT")
+                d["context"][side.lower()+"_trap"]=True
+                self.assertEqual(direct_timing_shadow(evaluate(d,snap,{},BAR+62))["direction"],"WAIT")
+                d["context"][side.lower()+"_trap"]=False
+                d["master"]["arena_shadow"]["models"]={}
+                self.assertEqual(direct_timing_shadow(evaluate(d,snap,{},BAR+62))["direction"],"WAIT")
     def test_rank_both_eligible_and_never_model_only(self):
         from master_balanced import evaluate,MODELS
         d,snap=self.fixture(forecasts={n:-1. for n in MODELS})
