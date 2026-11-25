@@ -57,7 +57,8 @@
   <a href="#positions">الصفقات المفتوحة</a><a href="#protection">الحماية ووقف الخسارة</a><a href="#entryPolicy">قرار الدخول</a><a href="#positionManagement">التعزيز والتبريد</a><a href="#smartRecovery">التعافي الذكي</a><a href="#pending">الأوامر المعلقة</a>
  </nav>
  <section class="card" id="autoClose">
-  <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>أهداف الإغلاق التلقائي</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
+  <div class="card-title"><div><span class="eyebrow">تنفيذ محلي داخل MT5</span><h2>جني الربح</h2></div><span class="read-only" id="closeEngineState">إعدادات محفوظة · التنفيذ ينتظر تحديث عميل MT5</span></div>
+  <div class="sl-settings-panel"><label for="profitCloseMode">طريقة جني الربح<select id="profitCloseMode"><option value="FIXED">ثابت — نفس النظام الحالي</option><option value="SMART">ذكي — MASTER AI</option></select></label><p id="smartProfitHelp" class="section-note"></p></div>
   <div class="close-grid">
    <article class="close-option">
     <div class="close-option-head"><div><b>الخيار الأول · الصفقة الفردية</b><small>يغلق الصفقة التي تصل وحدها إلى هدف الربح المحدد</small></div><label class="switch"><input type="checkbox" id="singleEnabled"><span></span></label></div>
@@ -205,7 +206,7 @@
  <footer>AL-ZOOL SHADOW SYSTEM <span>•</span> بيانات مباشرة من MT5 · لا تُعرض أرقام تقديرية</footer>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=pm-direct-diagnostic-20261122"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/trade-management.js?v=smart-profit-20261125"></script>
 <script src="/numbers-en.js?v=3"></script>
 
 <script src="/ui-shell.js?v=pm-direct-diagnostic-20261122" defer></script>
