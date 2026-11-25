@@ -12,7 +12,8 @@ os.environ.setdefault("OMP_NUM_THREADS","1")
 os.environ.setdefault("MKL_NUM_THREADS","1")
 from specialist_market import samples,features,score,LOOKBACK
 from strategy_research import _candle
-from model_arena_api import MODELS
+from model_arena_api import MODELS,REPORT_MODELS
+from challenger_forecasts import LOCAL,CLOUD,forecast_local,cloud_forecast
 SERVER="https://al-zool-meeno-engine.onrender.com"
 MARKETS=("BTCUSD","XAUUSD")
 def request(url,body=None,headers=None,timeout=45):
@@ -76,6 +77,7 @@ def series_context(bars,rows):
     return out
 def pretrained(name,bars,rows,allow_timesfm):
     contexts=series_context(bars,rows)
+    if name in LOCAL:return forecast_local(name,contexts)
     import numpy as np
     import torch
     torch.set_num_threads(1)
@@ -91,22 +93,34 @@ def pretrained(name,bars,rows,allow_timesfm):
     point,_=m.forecast(horizon=3,inputs=[np.asarray(x,dtype=np.float32) for x in contexts])
     return [float(x[2]) for x in point],"google/timesfm-2.5-200m-pytorch"
 
-def evaluate(name,bars,parts,allow_timesfm):
+def stress(data,forecasts,threshold,extra=.10):
+    adjusted=[{**s,"buy":s["buy"]-extra,"sell":s["sell"]-extra} for s in data]
+    out=score(adjusted,forecasts,threshold)
+    equity=peak=drawdown=0.
+    for s,v in zip(adjusted,forecasts):
+        side="buy" if v>threshold else "sell" if v< -threshold else None
+        if side:equity+=s[side]
+        peak=max(peak,equity);drawdown=max(drawdown,peak-equity)
+    return {**out,"max_drawdown_atr":round(drawdown,5)}
+
+def evaluate(name,bars,parts,allow_timesfm,cloud_key=None):
     tr,va,te=parts
     supervised=name in ("LightGBM","XGBoost","CatBoost")
-    p,version=tree(name,tr,va,te) if supervised else pretrained(name,bars,va+te,allow_timesfm)
+    if name in CLOUD:p,version=cloud_forecast(name,series_context(bars,va+te),cloud_key)
+    else:p,version=tree(name,tr,va,te) if supervised else pretrained(name,bars,va+te,allow_timesfm)
     if len(p)!=len(va)+len(te) or not all(math.isfinite(v) for v in p):raise ValueError("invalid model predictions")
     opts=(0,.05,.10,.20,.35,.50,1e9)
     pv,pt=p[:len(va)],p[len(va):]
     threshold=max(opts,key=lambda t:score(va,pv,t)["net_atr"])
     bv=[s["x"][1] for s in va];bt=[s["x"][1] for s in te]
     baseline=max(opts,key=lambda t:score(va,bv,t)["net_atr"])
-    return {"status":"TESTED","method":"SUPERVISED" if supervised else "PRETRAINED_ZERO_SHOT",
+    return {"status":"TESTED","method":"SUPERVISED" if supervised else "CLOUD_RESEARCH" if name in CLOUD else "PRETRAINED_ZERO_SHOT",
        "model_version":version,"train_windows":len(tr) if supervised else 0,
        "validation_windows":len(va),"test_windows":len(te),"threshold":threshold,
        "validation":score(va,pv,threshold),"test":score(te,pt,threshold),"baseline_test":score(te,bt,baseline),
+       "stress_test":stress(te,pt,threshold),"stress_baseline":stress(te,bt,baseline),
        "test_id":hashlib.sha256(json.dumps([s["time"] for s in te]).encode()).hexdigest()}
-def run(email,password,names,allow_timesfm):
+def run(email,password,names,allow_timesfm,cloud_key=None):
     for market in MARKETS:
         try:
             token=login(email,password);cid,bars=archive(market,token)
@@ -124,7 +138,7 @@ def run(email,password,names,allow_timesfm):
                     if parts is None:result={"status":"INSUFFICIENT_HISTORY"}
                     else:
                         publish({"status":"RUNNING"})
-                        result=evaluate(name,bars,parts,allow_timesfm)
+                        result=evaluate(name,bars,parts,allow_timesfm,cloud_key)
                 except (ImportError,ModuleNotFoundError) as exc:result={"status":"UNAVAILABLE","detail":"Missing package: "+str(exc.name or type(exc).__name__)}
                 except Exception as exc:result={"status":"ERROR","detail":type(exc).__name__}
                 publish({**result,"sample_seconds":round(time.monotonic()-t,2)})
@@ -133,10 +147,13 @@ def run(email,password,names,allow_timesfm):
                 gc.collect()
         except Exception as exc:print(market,"WORKER_ERROR",type(exc).__name__,flush=True)
 def main():
-    p=argparse.ArgumentParser();p.add_argument("--once",action="store_true");p.add_argument("--models",nargs="+",choices=MODELS,default=list(MODELS));args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument("--once",action="store_true");p.add_argument("--models",nargs="+",choices=REPORT_MODELS,default=list(MODELS));p.add_argument("--cloud",action="store_true",help="Explicit bounded paid API research; requires --once");args=p.parse_args()
+    cloud_selected=any(n in CLOUD for n in args.models)
+    if cloud_selected and (not args.cloud or not args.once):p.error("Cloud model tests require --cloud --once; API charges may apply.")
+    cloud_key=getpass.getpass("Groq API key (local only): ") if cloud_selected else None
     email=input("Owner email: ").strip();password=getpass.getpass("Owner password: ")
     while True:
-        run(email,password,args.models,False)
+        run(email,password,args.models,False,cloud_key)
         if args.once:return
         time.sleep(3600)
 if __name__=="__main__":main()
