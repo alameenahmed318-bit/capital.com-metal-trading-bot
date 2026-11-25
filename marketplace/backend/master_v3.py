@@ -4,6 +4,7 @@ import queue
 import threading
 import time
 import hashlib
+import json
 import master_ai
 import master_v2
 import master_entry_review
@@ -127,13 +128,37 @@ def process(client,symbol,base,council,feedback,tick,settings,now,emit,arena=Non
     atr=num((base.get("context") or {}).get("atr"))
     if atr<=0:return
     key=(client,symbol,bar,lane)
-    if key in _PENDING:return
+    # First observation remains the paired outcome baseline. Record changed
+    # evidence separately; never attribute a late vote to an earlier quote.
+    raw_votes={**(council.get("votes") or {}),"GPT-OSS 120B":council.get("groq_advisory") or {}}
+    evidence={"votes":{str(n):{k:v.get(k) for k in ("status","direction","confidence","model_id")}
+                       for n,v in raw_votes.items() if isinstance(v,dict)},
+              "arena":{k:(arena or {}).get(k) for k in ("status","bar_time","symbol","models")},
+              "strategy_id":base.get("strategy_id"),"combination_id":base.get("combination_id"),
+              "direction":base.get("decision")}
+    digest=hashlib.sha256(json.dumps(evidence,sort_keys=True,default=str).encode()).hexdigest()
+    existing=_PENDING.get(key)
+    if existing is not None:
+        if digest==existing.get("last_evidence_hash") or existing.get("evidence_changes",0)>=8:return
+        candidate=evaluate(base,council,feedback,tick,settings,now,arena,positions)
+        revision=existing.get("evidence_changes",0)+1
+        existing["last_evidence_hash"]=digest
+        existing["evidence_changes"]=revision
+        emit({"event_id":existing["event_id"]+":evidence:"+str(revision),
+              "client_id":client,"event_type":"MASTER_V3_EVIDENCE_CHANGE",
+              "payload":{"version":VERSION,"symbol":symbol,"bar_time":bar,"lane":lane,
+                         "observed_at":now,"bid":bid,"ask":ask,"revision":revision,
+                         "baseline_event_id":existing["event_id"],"evidence":evidence,
+                         "candidate":candidate,"execution_authorized":False,
+                         "actual_trade_proven":False}})
+        return
     candidate=evaluate(base,council,feedback,tick,settings,now,arena,positions)
     eid="master-v3:"+hashlib.sha256(repr(key).encode()).hexdigest()
     initial={s:quote_payoff(s,bid,ask,bid,ask,atr) for s in SIDES}
     p={"version":VERSION,"event_id":eid,"symbol":symbol,"bar_time":bar,"lane":lane,
        "observed_at":now,"delay_sec":round(age,3),"bid":bid,"ask":ask,"atr":atr,
        "candidate":candidate,"last_seen":now,"max_gap_sec":0.0,"outcomes":{},
+       "last_evidence_hash":digest,"evidence_changes":0,
        "excursion":{s:{"mae_atr":min(0,initial[s]),"mfe_atr":max(0,initial[s])} for s in SIDES},
        "execution_authorized":False}
     if len(_PENDING)>=MAX_PENDING:_PENDING.pop(next(iter(_PENDING)),None)
