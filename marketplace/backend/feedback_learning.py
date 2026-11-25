@@ -165,17 +165,32 @@ def _refresh(key,request,live_deals):
             rows=request("GET",q,admin=True)
             if not isinstance(rows,list):raise ValueError("v3 outcomes")
             report["master_v3"]=master_v3.summarize(rows,symbol)
-            import master_adaptive
-            report["master_adaptive"]=master_adaptive.summarize(rows,symbol,time.time())
+
         except Exception:
             report["master_v3"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE","lanes":{}}
-            report["master_adaptive"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
+
         try:
             q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.CENTRAL_ACTION_CLAIM&select=payload&order=created_at.desc&limit=200"
             claims=request("GET",q,admin=True)
             report["recovery_baskets"]=recovery_basket_memory.summarize(claims if isinstance(claims,list) else [],deals,symbol)
         except Exception:
             report["recovery_baskets"]={"mode":"RESEARCH_ONLY","status":"UNAVAILABLE","execution_authorized":False}
+        try:
+            import master_adaptive
+            old_adaptive=(previous[1] if previous else {}).get("master_adaptive") or {}
+            if 0<=time.time()-number(old_adaptive.get("updated_at_unix"),0)<900:
+                report["master_adaptive"]={**old_adaptive}
+            else:
+                q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.MASTER_V3_OUTCOME&payload->>symbol=eq."+urllib.parse.quote(symbol,safe="")+"&payload->candidate->adaptive->>version=eq."+master_adaptive.VERSION+"&select=payload&order=created_at.desc,id.desc"
+                adaptive_rows=[]
+                for offset in range(0,4000,1000):
+                    page=request("GET",q+"&limit=1000&offset="+str(offset),admin=True)
+                    if not isinstance(page,list):raise ValueError("adaptive outcomes")
+                    adaptive_rows.extend(page)
+                    if len(page)<1000:break
+                report["master_adaptive"]=master_adaptive.summarize(adaptive_rows,symbol,time.time())
+        except Exception:
+            report["master_adaptive"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
         try:
             import master_adaptive
             q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.MASTER_DECISION_AUDIT&payload->>status=eq.AUTHORIZED&select=payload&order=created_at.desc&limit=500"
