@@ -19,6 +19,53 @@ def number(v,default=0.0):
 def clamp(v):
     return min(1.0,max(0.0,v))
 
+UNIFIED_SCORE_VERSION="MASTER_WEIGHTED_M1_V1"
+UNIFIED_SCORE_THRESHOLD=.75
+
+def unified_score(d,item,side,age,arena_rows,settings):
+    """Research candidate: one weighted score, not a calibrated probability.
+    No order authority. Missing/stale models do not count as agreement.
+    Only an eligible strategy, valid fresh price and no explicit trap are
+    prerequisites; market quality and forecast magnitude are soft evidence.
+    """
+    opposite="SELL" if side=="BUY" else "BUY"
+    if side not in ("BUY","SELL"):return {"version":UNIFIED_SCORE_VERSION,"direction":"WAIT","reason":"NO_DIRECTION","execution_authorized":False}
+    c=d.get("context") or {}; m=d.get("master") or {}
+    scores=m.get("scores") or {}
+    own=number(scores.get(side)); other=number(scores.get(opposite))
+    margin=clamp((own-other)/max(abs(own)+abs(other),1e-9))
+    quality=clamp(number(c.get(side.lower()+"_quality"))/100.)
+    strength=clamp(number(d.get("confidence")))
+    groups={}
+    for row in arena_rows:
+        family=ARENA_FAMILIES.get(row.get("model"))
+        if family:
+            groups.setdefault(family,[]).append(clamp(number(row.get("confidence")))*(1 if row.get("direction")==side else -1))
+    family_strength={k:sum(v)/len(v) for k,v in groups.items() if v}
+    mass=sum(family_strength.values())/len(family_strength) if family_strength else 0.
+    score=.40*strength+.20*margin+.25*quality+.15*(.5+.5*mass)
+    candidate=(d.get("directional_candidates") or {}).get(side)
+    tick=item.get("tick") or {}
+    bid=number(tick.get("bid"));ask=number(tick.get("ask"))
+    ref=number(d.get("entry_reference_price"));atr=number(d.get("entry_atr") or c.get("atr"))
+    price=ask if side=="BUY" else bid
+    deviation=abs(price-ref)/atr if 0<bid<=ask and ref>0 and atr>0 else None
+    pm=(settings or {}).get("position_management") or {}
+    cap=number(pm.get("entry_max_deviation_atr"),.5)
+    # Retain existing owner price guard; the replay uses the same guard.
+    checks={"strategy":isinstance(candidate,dict) and 1<=number(candidate.get("strategy_id"))<=200 and number(candidate.get("strategy_id"))==number(d.get("strategy_id")),
+        "fresh":5<=age<60,"symbol":bool(d.get("symbol")) and d.get("symbol")==item.get("symbol"),
+        "no_trap":c.get(side.lower()+"_trap") is False,"price":deviation is not None and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap),
+        "fresh_forecast":bool(family_strength)}
+    failures=[k for k,v in checks.items() if not v]
+    if score<UNIFIED_SCORE_THRESHOLD:failures.append("weighted_score")
+    return {"version":UNIFIED_SCORE_VERSION,"mode":"SHADOW_ONLY","score":round(score,6),
+        "threshold":UNIFIED_SCORE_THRESHOLD,"candidate_direction":side,
+        "direction":side if not failures else "WAIT","failed_checks":failures,
+        "components":{"strategy_strength":strength,"direction_margin":margin,"market_quality":quality,"forecast_family_strength":family_strength,"forecast_mass":mass},
+        "price_deviation_atr":round(deviation,6) if deviation is not None else None,
+        "execution_authorized":False}
+
 def local_continuation(d,item,side,age,arena_rows,language_rows):
     """Strict, price-confirmed M1 route; no dependency on model availability.
 
@@ -123,6 +170,8 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
         return result("STALE_BAR","نافذة الشمعة غير صالحة")
+    if live_arena and frame=="M1":
+        base["unified_score"]=unified_score(d,item,side,age,extra,settings)
     local=local_continuation(d,item,side,age,extra,[r for r in votes if r.get("model") in INDEPENDENT]) if live_arena and frame=="M1" else {"eligible":False}
     if live_arena:
         base["local_continuation"]=local

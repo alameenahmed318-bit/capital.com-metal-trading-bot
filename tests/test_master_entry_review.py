@@ -164,4 +164,30 @@ class LocalContinuationTests(unittest.TestCase):
     def test_local_price_cap_preserved(self):
         self.assertEqual(self.check_local(cap=.05)["state"],"PRICE_MOVED")
 
+class UnifiedScoreTests(unittest.TestCase):
+    def test_weak_forecasts_are_soft_and_strong_opposition_reduces_score(self):
+        from master_entry_review import unified_score
+        for side in ("BUY","SELL"):
+            other="SELL" if side=="BUY" else "BUY"
+            for sym in ("XAUUSD","BTCUSDm"):
+                d=decision([],confidence=.99)
+                d.update(decision=side,symbol=sym,strategy_id=12,combination_id=21,
+                    directional_candidates={side:{"strategy_id":12,"combination_id":21}})
+                d["context"].update({side.lower()+"_quality":65,side.lower()+"_trap":False})
+                d["master"]["scores"]={side:1.0,other:0.}
+                item={"symbol":sym,"timeframe":"M1","tick":{"bid":100.05,"ask":100.1}}
+                votes=[{"model":n,"direction":other,"confidence":.10} for n in ("LightGBM","Chronos-2")]
+                r=unified_score(d,item,side,10,votes,{})
+                strong=unified_score(d,item,side,10,[{**v,"confidence":.95} for v in votes],{})
+                self.assertGreater(r["score"],strong["score"])
+                self.assertEqual(r["direction"],side)
+                self.assertFalse(r["execution_authorized"])
+                self.assertEqual(r["mode"],"SHADOW_ONLY")
+                self.assertEqual(unified_score(d,item,side,10,[],{})["direction"],"WAIT")
+                self.assertEqual(unified_score(d,item,side,60,votes,{})["direction"],"WAIT")
+                self.assertEqual(unified_score(d,{**item,"symbol":"OTHER"},side,10,votes,{})["direction"],"WAIT")
+                self.assertEqual(unified_score(d,item,side,10,votes,{"position_management":{"entry_max_deviation_atr":.01}})["direction"],"WAIT")
+                d["context"][side.lower()+"_trap"]=True
+                self.assertEqual(unified_score(d,item,side,10,votes,{})["direction"],"WAIT")
+
 if __name__=="__main__":unittest.main()
