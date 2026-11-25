@@ -44,6 +44,63 @@ def train_actions(bars):
             reports[action+":"+side]={"train":len(train),"test":len(test),"signals":len(take),"positive":sum(v>0 for v in take),"net_proxy":round(sum(take),4)}
             fitted[(action,side)]=model
     return fitted,reports
+class ValidatedDirection:
+    """Suppress weak forecasts using the model's validation-selected cutoff."""
+    def __init__(self,model,threshold):
+        self.model=model
+        self.threshold=threshold
+    def predict(self,rows):
+        values=self.model.predict(rows)
+        return [float(v) if math.isfinite(float(v)) and abs(float(v))>self.threshold else 0.0 for v in values]
+
+def direction_payoffs(rows,forecasts,threshold):
+    return [r["buy"] if float(v)>0 else r["sell"] for r,v in zip(rows,forecasts)
+            if math.isfinite(float(v)) and abs(float(v))>threshold]
+
+def gold_direction(bars):
+    """Gold-only chronological 60/20/20 calibration; final test is never tuned."""
+    data=samples(bars)
+    n=len(data)
+    if n<600:return {}
+    a=int(n*.6);b=int(n*.8)
+    train=[v for v in data[:a] if v["end"]<data[a]["time"]]
+    validation=[v for v in data[a:b] if v["end"]<data[b]["time"]]
+    test=data[b:]
+    if len(train)<350 or min(len(validation),len(test))<100:return {}
+    fitted={}
+    for name in ("LightGBM","XGBoost","CatBoost"):
+        try:
+            if name=="LightGBM":m=estimator()
+            elif name=="XGBoost":
+                from xgboost import XGBRegressor
+                m=XGBRegressor(n_estimators=80,max_depth=3,n_jobs=1,learning_rate=.05,random_state=42)
+            else:
+                from catboost import CatBoostRegressor
+                m=CatBoostRegressor(iterations=80,depth=4,thread_count=1,learning_rate=.05,verbose=False,allow_writing_files=False,random_seed=42)
+            m.fit([v["x"] for v in train],[max(-6,min(6,v["y"])) for v in train])
+            pv=m.predict([v["x"] for v in validation])
+            options=[]
+            for threshold in (.05,.10,.15,.20,.30,.40,.50,.75,1.0):
+                pay=direction_payoffs(validation,pv,threshold)
+                if len(pay)>=30 and sum(pay)>0:
+                    options.append((sum(pay),threshold,len(pay)))
+            if not options:
+                print("XAUUSD",name,"VALIDATION_REJECTED","no positive cutoff with 30 signals",flush=True)
+                continue
+            val_net,threshold,val_signals=max(options,key=lambda x:x[0])
+            pt=m.predict([v["x"] for v in test])
+            pay=direction_payoffs(test,pt,threshold)
+            approved=len(pay)>=30 and sum(pay)>0
+            print("XAUUSD",name,"HOLDOUT","threshold",threshold,
+                  "validation_signals",val_signals,"validation_net",round(val_net,5),
+                  "test_signals",len(pay),"net_proxy",round(sum(pay),5),
+                  "APPROVED" if approved else "REJECTED",flush=True)
+            # Keep the exact tested model; a refit would change its calibrated scores.
+            if approved:fitted[name]=ValidatedDirection(m,threshold)
+        except Exception as exc:
+            print("XAUUSD",name,"FIT_ERROR",type(exc).__name__,str(exc),flush=True)
+    return fitted
+
 def train_direction(bars):
     d=samples(bars)
     if len(d)<600:return {}
@@ -154,15 +211,14 @@ def live(email,password):
                     with lock:auth=state["token"]
                     cid,bars=arena.archive(market,auth)
                     if not cid:continue
-                    direction=train_direction(bars)
+                    direction=gold_direction(bars) if market=="XAUUSD" else train_direction(bars)
                     # Publish validated gold direction models immediately;
                     # the slower action fit must not delay their availability.
-                    if market=="XAUUSD" and direction:
+                    if market=="XAUUSD":
                         with lock:
                             old=cache.get(market)
-                            prev_direction=old[1] if old and old[0]==cid else {}
                             prev_actions=old[2] if old and old[0]==cid else {}
-                            cache[market]=(cid,{**prev_direction,**direction},prev_actions)
+                            cache[market]=(cid,direction,prev_actions)
                     try:actions,reports=train_actions(bars)
                     except Exception as exc:
                         actions,reports={},{}
@@ -170,7 +226,7 @@ def live(email,password):
                     with lock:
                         old=cache.get(market)
                         if old and old[0]==cid:
-                            direction={**old[1],**direction};actions={**old[2],**actions}
+                            direction=direction if market=="XAUUSD" else {**old[1],**direction};actions={**old[2],**actions}
                         cache[market]=(cid,direction,actions)
                     print(market,"FIT",len(bars),"direction",list(direction),"actions",reports,flush=True)
                     arena.api(market,"action-training",auth,{"client":cid,"candles":len(bars),"reports":reports})
