@@ -66,6 +66,60 @@ def unified_score(d,item,side,age,arena_rows,settings):
         "price_deviation_atr":round(deviation,6) if deviation is not None else None,
         "execution_authorized":False}
 
+DIRECT_DEMO_VERSION="MASTER_DIRECT_DEMO_V1"
+DIRECT_DEMO_THRESHOLD=.72
+
+def direct_demo_enabled(item):
+    # Only an explicitly versioned terminal reporting the native MT5 demo
+    # account enumeration can use the pilot. Unknown/contest/real keep V2.
+    return (item.get("master_direct_demo_capable") is True
+            and (item.get("account") or {}).get("trade_mode")=="DEMO")
+
+def direct_demo_score(d,item,side,age,arena_rows,language_rows,settings):
+    """Single score for the explicitly demo-only pilot, not a probability.
+    No count, unanimity, or model collection wait. Missing votes are neutral.
+    Keep the same closed-bar, real strategy and owner price requirements.
+    """
+    other="SELL" if side=="BUY" else "BUY"; sign=1 if side=="BUY" else -1
+    ctx=d.get("context") or {}
+    qs=d.get("directional_scores") or {}
+    raw=number(qs.get(side)); opp=number(qs.get(other))
+    strength=clamp(raw)
+    margin=clamp((raw-opp)/max(abs(raw)+abs(opp),1e-9))
+    quality=clamp(number(ctx.get(side.lower()+"_quality"))/100.)
+    tick=item.get("tick") or {}; bid=number(tick.get("bid"));ask=number(tick.get("ask"))
+    ref=number(d.get("entry_reference_price"));atr=number(d.get("entry_atr") or ctx.get("atr"))
+    valid_price=0<bid<=ask and ref>0 and atr>0
+    move=sign*((bid+ask)*.5-ref)/atr if valid_price else 0.
+    momentum=.5+.5*max(-1.,min(1.,move/.35))
+    groups={}
+    for row in list(arena_rows)+list(language_rows):
+        family=ARENA_FAMILIES.get(row.get("model"))
+        if family is None and row.get("model") in INDEPENDENT:family="LANGUAGE"
+        if family and row.get("direction") in ("BUY","SELL"):
+            groups.setdefault(family,[]).append(clamp(number(row.get("confidence")))*(1 if row.get("direction")==side else -1))
+    mass={k:sum(v)/len(v) for k,v in groups.items() if v}
+    # Each known family gets an equal share; absent evidence is neutral,
+    # not agreement and not an increased weight on the remaining models.
+    advice=sum(mass.values())/3.
+    score=.40*strength+.20*margin+.20*quality+.10*(.5+.5*advice)+.10*momentum
+    candidate=(d.get("directional_candidates") or {}).get(side)
+    pm=(settings or {}).get("position_management") or {}
+    deviation=abs((ask if side=="BUY" else bid)-ref)/atr if valid_price else None
+    cap=number(pm.get("entry_max_deviation_atr"),.5)
+    checks={"demo":direct_demo_enabled(item),"fresh":0<=age<60,
+        "symbol":bool(d.get("symbol")) and d.get("symbol")==item.get("symbol"),
+        "strategy":isinstance(candidate,dict) and 1<=number(candidate.get("strategy_id"))<=200 and number(candidate.get("strategy_id"))==number(d.get("strategy_id")),
+        "no_trap":ctx.get(side.lower()+"_trap") is False,
+        "price":valid_price and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap)}
+    failed=[k for k,v in checks.items() if not v]
+    if score<DIRECT_DEMO_THRESHOLD:failed.append("weighted_score")
+    return {"version":DIRECT_DEMO_VERSION,"mode":"DEMO_ONLY","score":round(score,6),
+        "threshold":DIRECT_DEMO_THRESHOLD,"approved":not failed,"failed_checks":failed,
+        "components":{"strategy_strength":strength,"direction_margin":margin,"market_quality":quality,
+            "live_momentum":momentum,"live_move_atr":move,"forecast_family_strength":mass,"advice":advice},
+        "price_deviation_atr":round(deviation,6) if deviation is not None else None}
+
 def local_continuation(d,item,side,age,arena_rows,language_rows):
     """Strict, price-confirmed M1 route; no dependency on model availability.
 
@@ -172,6 +226,15 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         return result("STALE_BAR","نافذة الشمعة غير صالحة")
     if live_arena and frame=="M1":
         base["unified_score"]=unified_score(d,item,side,age,extra,settings)
+    if live_arena and frame=="M1" and direct_demo_enabled(item):
+        trial=direct_demo_score(d,item,side,age,extra,[r for r in votes if r.get("model") in INDEPENDENT],settings)
+        base.update(policy=DIRECT_DEMO_VERSION,route="DIRECT_DEMO",direct_demo=trial,
+                    quality=trial["score"],quality_threshold=trial["threshold"],collection_limit_sec=0.0,
+                    legacy_pending_optional=True,price_deviation_atr=trial["price_deviation_atr"])
+        if trial["approved"]:
+            return result("REVIEWED","MASTER التجريبي: تقييم موحد للأدلة والسعر دون انتظار النماذج",True)
+        return result("PRICE_MOVED" if "price" in trial["failed_checks"] else "WEAK_EVIDENCE",
+                      "MASTER التجريبي: التقييم الموحد لم يكتمل — "+", ".join(trial["failed_checks"]))
     local=local_continuation(d,item,side,age,extra,[r for r in votes if r.get("model") in INDEPENDENT]) if live_arena and frame=="M1" else {"eligible":False}
     if live_arena:
         base["local_continuation"]=local
