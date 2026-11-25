@@ -30,3 +30,5 @@ jobs:
       - run: python -m unittest discover -s tests -p test_challenger_forecasts.py -v
 
       - run: PYTHONPATH=marketplace/backend python -m unittest discover -s tests -p test_arena_master.py -v
+
+      - run: python -m unittest discover -s tests -p test_master_adaptive.py -v
