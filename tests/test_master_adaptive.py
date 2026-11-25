@@ -83,7 +83,18 @@ class AdaptiveTests(unittest.TestCase):
     def test_v3_adaptive_same_snapshot(self):
         with patch("master_ai.time.time",return_value=NOW):
             r=master_v3.evaluate(base(),{"bar_time":BAR,"votes":{}},{},{"bid":100,"ask":100.1},{},NOW,evidence(),[])
-        self.assertEqual(r["adaptive_baseline"],"WAIT")
+        # The corrected comparison must not use the obsolete legacy-only
+        # review gate as its baseline. Both policies see the same live evidence.
+        self.assertEqual(r["adaptive_baseline"],"BUY")
+        self.assertTrue(r["adaptive_baseline_review"]["approved"])
+        self.assertEqual(r["adaptive_baseline_review"]["policy"],"MASTER_REVIEW_V2")
+        self.assertEqual(r["adaptive_baseline_review"]["supporting_families"],2)
         self.assertEqual(r["adaptive"]["direction"],"BUY")
         self.assertFalse(r["adaptive"]["execution_authorized"])
+        with patch("master_ai.time.time",return_value=NOW):
+            blocked=master_v3.evaluate(base(),{"bar_time":BAR,"votes":{}},{},
+                {"bid":105,"ask":105.1},{},NOW,evidence(),[])
+        self.assertEqual(blocked["adaptive_baseline"],"WAIT")
+        self.assertEqual(blocked["adaptive_baseline_review"]["state"],"PRICE_MOVED")
+        self.assertEqual(blocked["adaptive"]["direction"],"WAIT")
 if __name__=="__main__":unittest.main()
