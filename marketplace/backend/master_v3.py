@@ -7,6 +7,7 @@ import hashlib
 import master_ai
 import master_v2
 import master_entry_review
+import master_adaptive
 from market_symbols import same_market_symbol
 
 VERSION="MASTER_V3_SHADOW"
@@ -52,7 +53,7 @@ def speed_trap_candidate(proposed,snapshot,settings,now,review):
     approved=trial.get("approved") is True and risk<.50
     return {"direction":side if approved else "WAIT","reason":"RESEARCH_CANDIDATE" if approved else "TRAP_RISK" if risk>=.50 else trial.get("state","WAIT"),"trap_risk":round(risk,4),"flagged":flagged,"pressure":round(pressure,4),"execution_authorized":False}
 
-def evaluate(base,council,feedback,tick,settings,now):
+def evaluate(base,council,feedback,tick,settings,now,arena=None,positions=None):
     """Research only: compare current review against adaptive challenger."""
     age=now-num(base.get("bar_time"))-60
     current=master_ai.decide(base,council,feedback)
@@ -77,7 +78,13 @@ def evaluate(base,council,feedback,tick,settings,now):
         trial=master_entry_review.review({**proposed,"master":{"models":softened,"scores":scores}},snapshot,settings,now)
         if trial["approved"] and trial["independent_votes"]>=2 and num(trial["quality"])>=.75 and num(trial.get("independent_support"))>=.65:
             review=trial;early=True
-    return {"current":current["decision"] if old["approved"] else "WAIT",
+    live=master_ai.decide(base,council,feedback,arena_evidence=arena)
+    live_review=master_entry_review.review(live,snapshot,settings,now)
+    adaptive=master_adaptive.evaluate(base,live,arena,feedback,tick,settings,now)
+    adaptive["management"]=master_adaptive.management(adaptive,arena,positions,base.get("symbol"))
+    return {"adaptive":adaptive,"adaptive_baseline":live["decision"] if live_review["approved"] else "WAIT",
+        "adaptive_baseline_review":live_review,
+        "current":current["decision"] if old["approved"] else "WAIT",
         "challenger":direction if review["approved"] else "WAIT",
         "candidate_direction":direction,"current_review":old,"review":review,
         "speed_trap_shadow":speed_trap,
@@ -90,7 +97,7 @@ def quote_payoff(side,bid,ask,exit_bid,exit_ask,atr):
     if side=="SELL":return (bid-exit_ask)/atr
     return 0.0
 
-def process(client,symbol,base,council,feedback,tick,settings,now,emit):
+def process(client,symbol,base,council,feedback,tick,settings,now,emit,arena=None,positions=None):
     """Worker-owned state; only observed quotes, no imputed intrabar fills."""
     bid,ask=num(tick.get("bid")),num(tick.get("ask"))
     if not 0<bid<=ask:return
@@ -113,13 +120,15 @@ def process(client,symbol,base,council,feedback,tick,settings,now,emit):
             _PENDING.pop(key,None)
             payload={**p,"actual_trade_proven":False}
             emit({"event_id":p["event_id"]+":outcome","client_id":client,"event_type":"MASTER_V3_OUTCOME","payload":payload})
-    bar=int(num(base.get("bar_time")));age=now-bar-60;lane=lane_for(age)
+    bar=int(num(base.get("bar_time")));age=now-bar-60
+    # Preserve legacy lane_for and summary; add 2s/15s samples for adaptive research.
+    lane=max((x for x in (2,5,10,15,20,35) if x<=age<60),default=None)
     if not bar or lane is None or num(council.get("bar_time"))!=bar:return
     atr=num((base.get("context") or {}).get("atr"))
     if atr<=0:return
     key=(client,symbol,bar,lane)
     if key in _PENDING:return
-    candidate=evaluate(base,council,feedback,tick,settings,now)
+    candidate=evaluate(base,council,feedback,tick,settings,now,arena,positions)
     eid="master-v3:"+hashlib.sha256(repr(key).encode()).hexdigest()
     initial={s:quote_payoff(s,bid,ask,bid,ask,atr) for s in SIDES}
     p={"version":VERSION,"event_id":eid,"symbol":symbol,"bar_time":bar,"lane":lane,
@@ -142,7 +151,7 @@ def _run():
         except Exception as exc:print("MASTER_V3_RESEARCH_WARNING:",type(exc).__name__,flush=True)
         finally:JOBS.task_done()
 
-def submit(client,symbol,timeframe,base,council,feedback,tick,settings,now,emit):
+def submit(client,symbol,timeframe,base,council,feedback,tick,settings,now,emit,arena=None,positions=None):
     """Bounded nonblocking enqueue; queue full means skip research."""
     global _WORKER
     if str(timeframe).upper() not in ("M1","PERIOD_M1"):return False
@@ -151,7 +160,7 @@ def submit(client,symbol,timeframe,base,council,feedback,tick,settings,now,emit)
             _WORKER=threading.Thread(target=_run,daemon=True,name="alzool-master-v3")
             _WORKER.start()
     # Decisions, council and feedback snapshots are read-only in this worker.
-    try:JOBS.put_nowait((str(client),str(symbol),base,council,feedback,dict(tick),settings,now,emit));return True
+    try:JOBS.put_nowait((str(client),str(symbol),base,council,feedback,dict(tick),settings,now,emit,arena,list(positions or [])));return True
     except queue.Full:return False
 
 def latest(client,symbol):
