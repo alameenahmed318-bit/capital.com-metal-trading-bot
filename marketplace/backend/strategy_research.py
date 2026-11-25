@@ -119,17 +119,27 @@ def run(sb,owner_email):
                       "changed_combinations","verdict","persisted","reused_same_archive")},ensure_ascii=False),flush=True)
             except Exception as exc:
                 print("STRESS_LEARNING_ERROR",market,type(exc).__name__,flush=True)
-    stress_cycle()
-    for market in MARKETS:
-        try:
-            rows=load_history(sb,uid,market)
-            result=replay(rows,market)
-        except Exception as exc:
-            result={"status":"UNAVAILABLE","policy":"RESEARCH_ONLY","error":type(exc).__name__}
-        result["evaluated_at"]=datetime.now(timezone.utc).isoformat()
-        reports[market]=result
-        _publish(reports)
-        print("STRATEGY_REPLAY_V2",market,json.dumps(result,ensure_ascii=False),flush=True)
+    def replay_cycle():
+        for market in MARKETS:
+            try:
+                rows=load_history(sb,uid,market)
+                result=replay(rows,market)
+                # Require improvement in both chronological blocks, not
+                # just the overall score. Promotion still needs fill validation.
+                blocks=result.get("segments") or []
+                valid=len(blocks)==2 and all(
+                    b["candidate"]["signals"]>=20 and b["baseline"]["signals"]>=20
+                    and b["candidate"]["net_per_window"]>b["baseline"]["net_per_window"]
+                    and b["candidate"]["net"]>0 for b in blocks)
+                result["replacement_review"]="VALIDATED_PROXY_CANDIDATE" if valid else "INSUFFICIENT_OR_NEGATIVE_EVIDENCE"
+                result["auto_promoted"]=False
+            except Exception as exc:
+                result={"status":"UNAVAILABLE","policy":"RESEARCH_ONLY","error":type(exc).__name__}
+            result["evaluated_at"]=datetime.now(timezone.utc).isoformat()
+            reports[market]=result
+            _publish(reports)
+            print("STRATEGY_REPLAY_V2",market,json.dumps(result,ensure_ascii=False),flush=True)
     while True:
-        time.sleep(1800)
         stress_cycle()
+        replay_cycle()
+        time.sleep(1800)
