@@ -60,3 +60,39 @@ class ArenaMasterTest(unittest.TestCase):
             r=a.evidence("owner",self.item["strategy_decision"])
             self.assertEqual(r["actions"],{})
             self.assertEqual(r["models"],{"Chronos-2":.4})
+
+
+    def test_seven_local_advisers_and_no_cloud_arena(self):
+        from model_arena_api import LIVE_MODELS,CLOUD_CHALLENGERS
+        body={"symbol":"XAUUSD","bar_time":self.bar,"models":{n:.5 for n in LIVE_MODELS+CLOUD_CHALLENGERS}}
+        self.assertTrue(a.accept("owner",self.item,body)["accepted"])
+        self.assertEqual(set(a.evidence("owner",self.item["strategy_decision"])["models"]),set(LIVE_MODELS))
+        self.assertEqual(len(LIVE_MODELS),7)
+
+    def test_master_uses_fresh_local_advice_without_permission(self):
+        import master_ai as m
+        from model_arena_api import LIVE_MODELS
+        base={"symbol":"XAUUSD","bar_time":self.bar,"decision":"BUY","strategy_id":1,
+              "directional_candidates":{"BUY":{"strategy_id":1},"SELL":{"strategy_id":2}},
+              "directional_scores":{"BUY":.51,"SELL":.50}}
+        a.accept("owner",self.item,{"symbol":"XAUUSD","bar_time":self.bar,"models":{n:-.9 for n in LIVE_MODELS}})
+        result=m.decide(base,{"bar_time":self.bar,"votes":{}},arena_evidence=a.evidence("owner",base))
+        self.assertEqual(result["decision"],"SELL")
+        self.assertEqual(result["strategy_id"],2)
+        self.assertEqual(len(result["master"]["arena_advisory"]["used"]),7)
+        self.assertLessEqual(result["master"]["arena_advisory"]["total_points"],.14)
+        self.assertFalse(result["master"]["execution_authorized"])
+        self.assertEqual(m.decide(base,{},arena_evidence={})["decision"],"BUY")
+        stale={**a.evidence("owner",base),"bar_time":self.bar-60}
+        self.assertEqual(m.decide(base,{},arena_evidence=stale)["decision"],"BUY")
+        no_strategy={**base,"decision":"WAIT","strategy_id":0,"directional_candidates":{}}
+        self.assertEqual(m.decide(no_strategy,{},arena_evidence=a.evidence("owner",base))["decision"],"WAIT")
+
+    def test_advice_never_revives_stale_council_votes(self):
+        import master_ai as m
+        base={"symbol":"XAUUSD","bar_time":self.bar,"decision":"BUY","strategy_id":1,"confidence":.7}
+        a.accept("owner",self.item,{"symbol":"XAUUSD","bar_time":self.bar,"models":{"TiRex-2":.8}})
+        result=m.decide(base,{"bar_time":self.bar-60,"votes":{"Qwen":{"status":"READY","direction":"BUY","confidence":1.0}}},arena_evidence=a.evidence("owner",base))
+        rows={x["model"]:x for x in result["master"]["models"]}
+        self.assertTrue(rows["TiRex-2"]["used"])
+        self.assertFalse(rows["Qwen"]["used"])
