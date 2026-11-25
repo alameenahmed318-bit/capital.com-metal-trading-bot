@@ -17,6 +17,10 @@ async function loadCloseSettings(){
  $("protectionSettingsMessage").textContent="إعدادات وقف الخسارة الحالية محفوظة.";
  updateStopLossHelp();
  const pm=s.position_management||{};
+ $("profitCloseMode").value=pm.profit_close_mode==="SMART"?"SMART":"FIXED";
+ $("profitCloseMode").dataset.capable=d.smart_profit_capable===true?"yes":"no";
+ updateSmartProfitHelp();
+ $("profitCloseMode").onchange=updateSmartProfitHelp;
  if($("ownerEntryMode")){
   $("ownerEntryMode").value=["MASTER","ADVISORY","STRICT"].includes(pm.entry_council_mode)?pm.entry_council_mode:"STRICT";
   $("ownerEntryModeMessage").textContent="الوضع الحالي: "+(pm.entry_council_mode==="MASTER"?"MASTER AI — قرار موحد دون إجماع":pm.entry_council_mode==="ADVISORY"?"Hybrid AI فعّال — Qwen وDeepSeek يشاركان في ترجيح BUY/SELL دون اشتراط الإجماع":"المجلس الصارم — إجماع 3 نماذج");
@@ -84,14 +88,28 @@ async function saveProtectionSettings(){
  }catch(e){$("protectionSettingsMessage").textContent="تعذر الحفظ: "+e.message;}
  finally{$("saveProtectionSettings").disabled=false;}
 }
+function updateSmartProfitHelp(){
+ const smart=$("profitCloseMode").value==="SMART";
+ $("smartProfitHelp").textContent=smart
+ ? "الذكاء يراقب صافي ربح كل اتجاه فور أن يصبح موجباً، ويختار الإغلاق أو الاستمرار وفق MASTER والسعر. القيم الثابتة محفوظة لكنها لا تُستخدم في الوضع الذكي. يلزم EA V3.03 وMASTER AI؛ لا ضمان للربح عند التنفيذ."
+ : "الإغلاق الثابت يعمل بنفس طريقة الحساب الحالية، عند تحقق مبلغ الهدف.";
+ $("singleTarget").disabled=smart;
+ $("groupTarget").disabled=smart;
+}
 async function saveCloseSettings(){
+ const profitMode=$("profitCloseMode").value;
+ if(profitMode==="SMART"){
+  if($("profitCloseMode").dataset.capable!=="yes"){$("closeSettingsMessage").textContent="اربط EA V3.03 ثم حدّث الصفحة قبل اختيار الذكي.";return;}
+  if(!window.confirm("جني الربح الذكي يغيّر توقيت الإغلاق وقد يعيد جزءاً من الربح للسوق. لا يضمن ربحاً عند التنفيذ. هل تريد تفعيله؟"))return;
+ }
  const single=Number($("singleTarget").value),group=Number($("groupTarget").value);
  if(!Number.isFinite(single)||single<=0||!Number.isFinite(group)||group<=0){$("closeSettingsMessage").textContent="أدخل هدفَي ربح موجبين.";return;}
  $("saveCloseSettings").disabled=true;$("closeSettingsMessage").textContent="جارٍ حفظ الإعدادات…";
  try{
   const d=await api("/api/trade-management/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
    single_enabled:$("singleEnabled").checked,single_profit_target:single,
-   group_enabled:$("groupEnabled").checked,group_profit_target:group
+   group_enabled:$("groupEnabled").checked,group_profit_target:group,
+   profit_close_mode:profitMode,confirm_smart_profit:profitMode==="SMART"
   })});
   $("closeSettingsMessage").textContent="تم حفظ الإعدادات بنجاح. ستصل إلى MT5 عند اتصال عميل MT5 المحدّث.";
   $("closeEngineState").textContent="الإعدادات محفوظة على الخادم";
