@@ -36,5 +36,34 @@ class MasterFixTests(unittest.TestCase):
         self.assertEqual(report["reports"][1]["status"],"OVERLAPPING_BASKET_NOT_COUNTED")
         self.assertEqual(baskets.summarize([claim],deals,"BTCUSD")["complete_baskets"],0)
 
+
+    def test_cooling_and_closure_feedback_market_side(self):
+        from datetime import datetime, timezone
+        from smart_profit_advice import closure_feedback
+        t=1700000000
+        snapshot={"symbol":"XAUUSD","positions":[
+            {"symbol":"XAUUSD","position_id":"11","volume":.01,"type":0},
+            {"symbol":"XAUUSD","position_id":"12","volume":.01,"type":1},
+            {"symbol":"BTCUSD","position_id":"13","volume":.01,"type":0}]}
+        members=baskets.claim_members(snapshot,only_side="BUY")
+        self.assertEqual([m["position_id"] for m in members],["11"])
+        claim={"payload":{"action":"COOLING_PROPOSAL","symbol":"XAUUSD",
+               "claimed_at":datetime.fromtimestamp(t,timezone.utc).isoformat(),
+               "lot_cap":.02,"side":"BUY","basket_members":members}}
+        def deal(ticket,pid,entry,volume,stamp,profit,comment=""):
+            return {"ticket":str(ticket),"position_id":str(pid),"entry":entry,"volume":volume,
+                    "time":stamp,"profit":profit,"swap":0,"commission":-.1,"fee":0,
+                    "type":0 if entry==0 else 1,"comment":comment,"symbol":"XAUUSD"}
+        deals=[deal(1,11,0,.01,t-60,0),deal(2,14,0,.02,t+1,0,"ALZOOL-COOL"),
+               deal(3,11,1,.01,t+120,-2),deal(4,14,1,.02,t+120,3)]
+        report=baskets.summarize([claim],deals,"XAUUSD",action="COOLING_PROPOSAL")
+        self.assertEqual(report["complete_baskets"],1)
+        self.assertAlmostEqual(report["net"],.6)
+        result=closure_feedback(deals,"XAUUSD")
+        self.assertEqual(result["sides"]["BUY"]["all"]["positions"],2)
+        self.assertAlmostEqual(result["sides"]["BUY"]["all"]["net"],.6)
+        self.assertEqual(result["sides"]["SELL"]["all"]["positions"],0)
+        self.assertEqual(closure_feedback(deals,"BTCUSD")["sides"]["BUY"]["all"]["positions"],0)
+
 if __name__=="__main__":
     unittest.main()
