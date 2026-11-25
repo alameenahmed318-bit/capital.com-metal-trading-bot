@@ -140,9 +140,11 @@ def run(email,password,names,allow_timesfm,cloud_key=None):
                         publish({"status":"RUNNING"})
                         result=evaluate(name,bars,parts,allow_timesfm,cloud_key)
                 except (ImportError,ModuleNotFoundError) as exc:result={"status":"UNAVAILABLE","detail":"Missing package: "+str(exc.name or type(exc).__name__)}
-                except Exception as exc:result={"status":"ERROR","detail":type(exc).__name__}
+                except Exception as exc:
+                    status=getattr(exc,"status_code",None)
+                    result={"status":"ERROR","detail":type(exc).__name__+(f" HTTP {status}" if isinstance(status,int) else "")}
                 publish({**result,"sample_seconds":round(time.monotonic()-t,2)})
-                print(market,name,result["status"],flush=True)
+                print(market,name,result["status"],result.get("detail",""),flush=True)
                 import gc
                 gc.collect()
         except Exception as exc:print(market,"WORKER_ERROR",type(exc).__name__,flush=True)
