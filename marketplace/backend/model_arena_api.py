@@ -2,6 +2,8 @@
 import math, re, urllib.parse, hashlib, json
 from datetime import datetime,timezone
 MODELS=("LightGBM","XGBoost","CatBoost","TimesFM-2.5","Chronos-2")
+CHALLENGERS=("TiRex-2","Chronos-Bolt Tiny")
+REPORT_MODELS=MODELS+CHALLENGERS
 VERSION="ARENA_V1"
 STATUSES=("RUNNING","TESTED","UNAVAILABLE","INSUFFICIENT_HISTORY","LICENSE_REVIEW","ERROR")
 def enc(x):return urllib.parse.quote(str(x),safe="")
@@ -36,13 +38,13 @@ def report(sb,uid,market):
         rows=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=in.("+",".join(enc(x) for x in owned)+")&event_type=eq.ARENA_MODEL_REPORT&payload->>market=eq."+market+"&select=payload,created_at&order=created_at.desc&limit=200",admin=True)
         for row in rows or []:
             p=row.get("payload") or {};name=p.get("model")
-            if name in MODELS and name not in out:out[name]={**p,"recorded_at":row["created_at"]}
-    return {"version":VERSION,"market":market,"models":[out.get(n,{"model":n,"status":"WORKER_NOT_CONNECTED","market":market}) for n in MODELS],"execution_authorized":False}
+            if name in REPORT_MODELS and name not in out:out[name]={**p,"recorded_at":row["created_at"]}
+    return {"version":VERSION,"market":market,"models":[out.get(n,{"model":n,"status":"WORKER_NOT_CONNECTED","market":market}) for n in REPORT_MODELS],"execution_authorized":False}
 def save(sb,uid,market,data):
     if not isinstance(data,dict) or len(json.dumps(data))>20000:raise ValueError("invalid report")
     name=data.get("model");status=data.get("status")
     cid=data.get("client")
-    if name not in MODELS or status not in STATUSES or cid not in ids(sb,uid,market):raise ValueError("invalid model or client")
+    if name not in REPORT_MODELS or status not in STATUSES or cid not in ids(sb,uid,market):raise ValueError("invalid model or client")
     def score(x):
         if not isinstance(x,dict):return None
         out={}
