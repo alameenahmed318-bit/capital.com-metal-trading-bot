@@ -2,7 +2,7 @@
 import math,time,threading
 from collections import OrderedDict
 from market_symbols import supported_market_symbol
-from model_arena_api import MODELS
+from model_arena_api import LIVE_MODELS
 ACTIONS=("ADDON","COOLING","RECOVERY")
 LOCK=threading.Lock()
 CACHE=OrderedDict()
@@ -34,7 +34,7 @@ def accept(cid,item,body):
         return {"accepted":False,"reason":"STALE_OR_WRONG_BAR"}
     models={}
     for name,v in (body.get("models") or {}).items():
-        if name in MODELS and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
+        if name in LIVE_MODELS and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
             models[name]=round(max(-6,min(6,v)),5)
     actions={}
     for action in ACTIONS:
