@@ -10,6 +10,21 @@ from market_symbols import supported_market_symbol, same_market_symbol
 import math
 import time
 import adaptive_memory
+from model_arena_api import LIVE_MODELS
+
+# Equal, deliberately small initial weights; pilot results are not proof.
+ARENA_WEIGHTS={name:.02 for name in LIVE_MODELS}
+
+def arena_votes(base,evidence):
+    if not isinstance(evidence,dict) or evidence.get('status')!='SHADOW_READY':return {}
+    if evidence.get('symbol')!=base.get('symbol') or evidence.get('bar_time')!=base.get('bar_time'):return {}
+    if not 60<=time.time()-num(base.get('bar_time'))<=120 or not 0<=time.time()-num(evidence.get('received_at'))<=60:return {}
+    out={}
+    for name,v in (evidence.get('models') or {}).items():
+        if name not in ARENA_WEIGHTS or isinstance(v,bool) or not isinstance(v,(float,int)) or not math.isfinite(v) or abs(v)<=.05:continue
+        out[name]={'status':'READY','direction':'BUY' if v>0 else 'SELL','confidence':min(1.,abs(v)),'reason_ar':'توقع حركة 3 دقائق بوحدة ATR؛ قوة الإشارة وليست احتمال ربح'}
+    return out
+
 
 MODEL_NAMES={"Fast AI":"Fast AI","Qwen":"qwen2.5:1.5b",
              "DeepSeek":"deepseek-r1:1.5b","GPT-OSS 120B":"GPT-OSS 120B"}
@@ -37,7 +52,7 @@ def learned_factors(feedback,symbol):
             result[row.get("model")]=factor
     return result
 
-def decide(base,council,feedback=None):
+def decide(base,council,feedback=None,arena_evidence=None):
     symbol=(base or {}).get("symbol")
     if not supported_market_symbol(symbol):
         return {**(base or {}),"decision":"WAIT","confidence":0.0,
@@ -58,14 +73,21 @@ def decide(base,council,feedback=None):
         raw=num(vote.get("confidence"),-1)
         if 0<=raw<=1:vote["confidence"]=raw*factor
         adjusted[label]=vote
-    result=fuse_live_decision(base,{**council,"votes":adjusted},model_weights=WEIGHTS)
+    extra=arena_votes(base,arena_evidence)
+    fusion_council={**council,"votes":adjusted}
+    if extra:
+        same_bar=num(council.get("bar_time"))==num(base.get("bar_time"))
+        fusion_council={**council,"bar_time":base.get("bar_time"),"votes":{**(adjusted if same_bar else {}),**extra}}
+    live_weights={**WEIGHTS,**{n:ARENA_WEIGHTS[n] for n in extra}}
+    result=fuse_live_decision(base,fusion_council,model_weights=live_weights)
     fusion=result.get("hybrid") or {}
     inputs=fusion.get("model_contributions") or []
     for row in inputs:
         label=row["model"]
         row["original_confidence"]=original.get(label)
         raw=num(original.get(label),-1)
-        row["calibration_factor"]=round(num(adjusted[label].get("confidence"))/raw,4) if raw>0 else 1.0
+        row["calibration_factor"]=round(num(adjusted.get(label,{}).get("confidence"))/raw,4) if raw>0 else 1.0
+        if label in extra:row["original_confidence"]=extra[label]["confidence"]
     cloud_used=any(x["used"] and x["model"]=="GPT-OSS 120B" for x in inputs)
     result["reason_ar"]="MASTER AI | "+str(result.get("reason_ar",""))
     result["master"]={
@@ -78,6 +100,7 @@ def decide(base,council,feedback=None):
         "strategy_id":result.get("strategy_id"),"combination_id":result.get("combination_id"),
         "confidence":result.get("confidence"),"bar_time":result.get("bar_time"),
         "calibration_applied":any(x["used"] and x["calibration_factor"]<1 for x in inputs),
+        "arena_advisory":{"mode":"BOUNDED_LIVE_ADVICE","configured":list(LIVE_MODELS),"received":list((arena_evidence or {}).get("models",{})) if isinstance(arena_evidence,dict) else [],"used":[x["model"] for x in inputs if x["model"] in extra and x["used"]],"total_points":round(sum(x["points"] for x in inputs if x["model"] in extra),6),"max_weight":sum(ARENA_WEIGHTS.values()),"execution_authorized":False},
         "execution_authorized":False}
     # Research comparison only: never replace live decision, confidence or lot.
     if (isinstance(feedback,dict) and feedback.get("status")=="RESEARCH_ONLY"
@@ -86,7 +109,7 @@ def decide(base,council,feedback=None):
         performance=(feedback.get("adaptive_memory") or {}).get("model_performance") or {}
         weights=adaptive_memory.candidate_weights(WEIGHTS,performance,votes)
         changed=any(abs(weights[k]-WEIGHTS[k])>1e-8 for k in WEIGHTS)
-        shadow=fuse_live_decision(base,{**council,"votes":adjusted},model_weights=weights) if changed else result
+        shadow=fuse_live_decision(base,fusion_council,model_weights={**weights,**{n:ARENA_WEIGHTS[n] for n in extra}}) if changed else result
         result["master"]["adaptive_shadow"]={"mode":"SHADOW_ONLY","version":adaptive_memory.VERSION,
             "weights":weights,"candidate_direction":shadow.get("decision"),
             "candidate_confidence":shadow.get("confidence"),"changed":changed,
