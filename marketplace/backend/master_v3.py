@@ -256,6 +256,48 @@ def summarize(rows,symbol):
                     "candidate_signals":sum(x[4] in SIDES for x in data)}
         speed_report.setdefault(str(lane),{})[str(h)]={"train":paired(items[:cut]),
             "validation":paired(items[cut:]),"enough_for_review":cut>=80 and len(items)-cut>=40}
-    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"speed_trap_shadow":speed_report,"regime_memory":memory(regimes),
+    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"speed_trap_shadow":speed_report,"unified_score_validation":summarize_unified(rows,symbol),"regime_memory":memory(regimes),
             "strategy_memory":memory(strategies),"live_execution_changed":False,
             "metric":"OBSERVED_QUOTES_COMMON_HORIZON_NOT_BROKER_TRADES"}
+
+
+def summarize_unified(rows,symbol):
+    """Same observed quote, chronological split and nonoverlapping 180s
+    outcome windows. Never auto-promote a research candidate."""
+    samples={}
+    for row in rows or []:
+        p=row.get("payload") or {}
+        if p.get("version")!=VERSION or not same_market_symbol(p.get("symbol"),symbol) or p.get("lane")!=10:continue
+        c=p.get("candidate") or {}
+        review=c.get("adaptive_baseline_review") or {}
+        trial=review.get("unified_score") or {}
+        if trial.get("version")!=master_entry_review.UNIFIED_SCORE_VERSION or trial.get("execution_authorized") is not False:continue
+        o=(p.get("outcomes") or {}).get("180")
+        if not isinstance(o,dict) or num(o.get("max_gap_sec"),999)>20:continue
+        pay=o.get("payoffs") or {}
+        if not all(s in pay and math.isfinite(num(pay[s],float("nan"))) for s in SIDES):continue
+        bar=p.get("bar_time")
+        if not isinstance(bar,int):continue
+        a=c.get("adaptive_baseline","WAIT");b=trial.get("direction","WAIT")
+        if a not in (*SIDES,"WAIT") or b not in (*SIDES,"WAIT"):continue
+        observed=num(p.get("observed_at"));end=num(o.get("quote_time"))
+        if not 0<observed<end:continue
+        samples.setdefault(bar,(observed,end,a,b,num(pay.get(a)),num(pay.get(b))))
+    distinct=[];end=0.
+    for _,v in sorted(samples.items()):
+        if v[0]<=end:continue
+        distinct.append(v);end=v[1]
+    cut=int(len(distinct)*.7)
+    def stats(part):
+        return {"windows":len(part),"baseline_signals":sum(x[2] in SIDES for x in part),
+            "candidate_signals":sum(x[3] in SIDES for x in part),
+            "baseline_net_atr":round(sum(x[4] for x in part),4),
+            "candidate_net_atr":round(sum(x[5] for x in part),4),
+            "candidate_positive":sum(x[3] in SIDES and x[5]>0 for x in part),
+            "baseline_positive":sum(x[2] in SIDES and x[4]>0 for x in part)}
+    train=stats(distinct[:cut]);valid=stats(distinct[cut:])
+    enough=train["windows"]>=80 and valid["windows"]>=40 and train["candidate_signals"]>=30 and valid["candidate_signals"]>=20
+    improves=enough and all(x["candidate_net_atr"]>max(0.,x["baseline_net_atr"]) for x in (train,valid))
+    return {"version":master_entry_review.UNIFIED_SCORE_VERSION,"mode":"SHADOW_ONLY","lane":10,"horizon":180,
+        "train":train,"validation":valid,"enough_for_review":enough,"candidate_improves_proxy":improves,
+        "auto_promoted":False,"execution_authorized":False,"metric":"OBSERVED_QUOTES_NOT_BROKER_TRADES"}
