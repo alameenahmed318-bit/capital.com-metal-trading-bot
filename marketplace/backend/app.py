@@ -1238,9 +1238,17 @@ class Handler(SimpleHTTPRequestHandler):
                 try:
                     report=decision.get("master") or {}
                     audit_status="AUTHORIZED" if ready else "WAIT"
+                    # Include model evidence in the idempotency key so a new
+                    # adviser response within the same bar is not silently lost.
+                    evidence_key=sorted([(str(m.get("model")),str(m.get("status")),
+                        str(m.get("direction")),bool(m.get("used")),
+                        round(finite_number(m.get("confidence")),2),
+                        round(finite_number(m.get("points")),3))
+                        for m in report.get("models") or [] if isinstance(m,dict)])
                     audit_key=hashlib.sha256(json.dumps([client_id,item.get("symbol"),bar_time,
                         strategy_id,full_decision["combination_id"],signal,audit_status,
-                        gate.get("authorization_id") if ready else None,review_report.get("state")],ensure_ascii=False).encode()).hexdigest()
+                        gate.get("authorization_id") if ready else None,review_report.get("state"),
+                        evidence_key,round(confidence,2),gate.get("reason_ar")],ensure_ascii=False).encode()).hexdigest()
                     queue_ai_diagnostic_event({"event_id":"master-audit:"+audit_key,
                         "client_id":client_id,"event_type":"MASTER_DECISION_AUDIT",
                         "payload":{"status":audit_status,"symbol":item.get("symbol"),
@@ -1380,7 +1388,7 @@ class Handler(SimpleHTTPRequestHandler):
                 kind=str((params.get("kind") or ["opportunities"])[0])
                 event_types={
                     "master_v2":["MASTER_V2_FORECAST","MASTER_V2_COMPARISON"],
-                    "master_v3":["MASTER_V3_FORECAST","MASTER_V3_OUTCOME"],
+                    "master_v3":["MASTER_V3_FORECAST","MASTER_V3_OUTCOME","MASTER_V3_EVIDENCE_CHANGE"],
                     "master":["MASTER_DECISION_AUDIT","AI_COUNCIL_DECISION","AI_COUNCIL_VETO","AI_COUNCIL_WAIT"],
                     "learning":["LIVE_LEARNING_APPLIED","LEARNING_DECISION_AUDIT","AI_ACCURACY_V4_OUTCOME"],
                     "opportunities":["SIGNAL_CREATED","WAIT","BLOCKED","AI_QWEN_VOTE","AI_COUNCIL_DECISION","AI_COUNCIL_WAIT","AI_COUNCIL_VETO"],
