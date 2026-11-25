@@ -14,6 +14,7 @@ import threading
 import time
 from datetime import datetime,timezone
 from position_action_engine import plan_account_actions
+from recovery_basket_memory import claim_members
 
 _LOCK=threading.RLock()
 _PENDING={}
@@ -122,6 +123,9 @@ def claim(client_id,nonce,snapshot,decision,gate,council,risk,settings,db,now,co
         "payload":{"side":verified["side"],"action":verified["action"],
             "bar_time":verified["bar_time"],"lot_cap":verified["lot_cap"],
             "account_fingerprint":verified["fingerprint"],"claimed_at":now.isoformat()}}
+    if verified["action"]=="RECOVERY_PROPOSAL":
+        row["payload"]["symbol"]=snapshot.get("symbol")
+        row["payload"]["basket_members"]=claim_members(snapshot)
     try:
         inserted=db("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
             row,admin=True,prefer="resolution=ignore-duplicates,return=representation")
