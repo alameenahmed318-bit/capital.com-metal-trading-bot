@@ -1730,7 +1730,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if mode=="MASTER":
                     try:
                         v3_shadow={"mode":"SHADOW_ONLY","latest":master_v3.latest(cid,item.get("symbol")),
-                            "report":feedback_learning.snapshot(cid,item.get("symbol"),sb).get("master_v3") or {}}
+                            "report":feedback_learning.snapshot(cid,item.get("symbol"),sb).get("master_v3") or {},
+                            "adaptive_report":feedback_learning.snapshot(cid,item.get("symbol"),sb).get("master_adaptive") or {}}
                     except Exception:v3_shadow={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
                 bot=item.get("bot_report") or {}
                 actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
@@ -2674,7 +2675,7 @@ class Handler(SimpleHTTPRequestHandler):
                                 and entry_council_mode(cached_settings,True)=="MASTER"):
                             event=master_v2.observe(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,now.timestamp())
                             if event:queue_ai_diagnostic_event(event)
-                            master_v3.submit(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,cached_settings,now.timestamp(),queue_ai_diagnostic_event)
+                            master_v3.submit(client_id,active_symbol,data.get("timeframe"),strategy_decision,votes,feedback,safe_tick,cached_settings,now.timestamp(),queue_ai_diagnostic_event,arena=arena_master.evidence(client_id,strategy_decision),positions=positions)
                     except Exception as feedback_error:
                         print("FEEDBACK_LEARNING_WARNING:",type(feedback_error).__name__,flush=True)
                 CONNECTIONS[client_id]={"client_id":client_id,"account":safe,"connected":True,
