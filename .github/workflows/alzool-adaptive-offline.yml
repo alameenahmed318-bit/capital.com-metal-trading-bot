@@ -18,3 +18,7 @@ jobs:
       - run: python -m unittest discover -s tests -p test_adaptive_memory.py -v
       - run: python -m unittest discover -s tests -p test_hybrid_decision.py -v
       - run: python -m unittest discover -s tests -p test_recovery_candle_guard.py -v
+
+      - run: python -m unittest discover -s tests -p test_recovery_basket_speed.py -v
+      - run: python -m unittest discover -s tests -p test_master_v3.py -v
+      - run: python -m unittest discover -s tests -p test_recovery_action_protocol.py -v
