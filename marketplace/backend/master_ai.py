@@ -9,6 +9,7 @@ from hybrid_decision import fuse_live_decision
 from market_symbols import supported_market_symbol, same_market_symbol
 import math
 import time
+import adaptive_memory
 
 MODEL_NAMES={"Fast AI":"Fast AI","Qwen":"qwen2.5:1.5b",
              "DeepSeek":"deepseek-r1:1.5b","GPT-OSS 120B":"GPT-OSS 120B"}
@@ -78,6 +79,18 @@ def decide(base,council,feedback=None):
         "confidence":result.get("confidence"),"bar_time":result.get("bar_time"),
         "calibration_applied":any(x["used"] and x["calibration_factor"]<1 for x in inputs),
         "execution_authorized":False}
+    # Research comparison only: never replace live decision, confidence or lot.
+    if (isinstance(feedback,dict) and feedback.get("status")=="RESEARCH_ONLY"
+        and same_market_symbol(feedback.get("symbol"),symbol)
+        and 0<=time.time()-num(feedback.get("updated_at_unix"))<=600):
+        performance=(feedback.get("adaptive_memory") or {}).get("model_performance") or {}
+        weights=adaptive_memory.candidate_weights(WEIGHTS,performance,votes)
+        changed=any(abs(weights[k]-WEIGHTS[k])>1e-8 for k in WEIGHTS)
+        shadow=fuse_live_decision(base,{**council,"votes":adjusted},model_weights=weights) if changed else result
+        result["master"]["adaptive_shadow"]={"mode":"SHADOW_ONLY","version":adaptive_memory.VERSION,
+            "weights":weights,"candidate_direction":shadow.get("decision"),
+            "candidate_confidence":shadow.get("confidence"),"changed":changed,
+            "execution_authorized":False}
     return result
 
 def management_support(decision,side):
