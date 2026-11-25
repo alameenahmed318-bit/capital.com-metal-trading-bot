@@ -1249,6 +1249,7 @@ class Handler(SimpleHTTPRequestHandler):
                             "gate_reason_ar":gate.get("reason_ar"),"source":report.get("source"),
                             "models":report.get("models") or [],"scores":report.get("scores") or {},
                             "calibration_applied":report.get("calibration_applied") is True,"entry_review":review_report,
+                            "adaptive_shadow":report.get("adaptive_shadow") or {},
                             "decision_at":datetime.now(timezone.utc).isoformat()}})
                 except Exception as audit_error:
                     print("MASTER_AUDIT_WARNING:",type(audit_error).__name__,flush=True)
@@ -2753,7 +2754,7 @@ if __name__=="__main__":
     from pathlib import Path
     test_dir=str(Path(__file__).resolve().parents[2]/"tests")
     recovery_suite=unittest.TestSuite()
-    for pattern in ("test_close_groups.py","test_arena_master.py","test_specialist_market.py","test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
+    for pattern in ("test_adaptive_memory.py","test_close_groups.py","test_arena_master.py","test_specialist_market.py","test_master_v3.py","test_master_entry_review.py","test_owner_decisions.py","test_owner_recovery.py",
                     "test_recovery_action_protocol.py","test_hybrid_decision.py",
                     "test_position_sizing.py","test_entry_quality.py",
                     "test_live_learning.py","test_learning_observability.py","test_post_close_m1.py",
