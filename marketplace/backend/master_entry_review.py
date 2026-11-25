@@ -220,6 +220,20 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
           "legacy_pending_optional":bool(adaptive or (live_arena and votes))}
     def result(state,reason,approved=False,**extra):
         return {**base,**extra,"state":state,"reason_ar":reason,"approved":approved}
+    balanced=report.get("balanced_entry")
+    if live_arena and frame=="M1" and direct_demo_enabled(item) and isinstance(balanced,dict):
+        from master_balanced import evaluate, VERSION
+        # Recompute using the current quote and freshness, never trust a cached approval.
+        trial=evaluate(d,item,settings,now_unix)
+        selected=trial["selected"]
+        detail=trial["scores"].get(selected,{})
+        base.update(policy=VERSION,route="DIRECT_DEMO",balanced_entry=trial,
+                    quality=detail.get("score"),quality_threshold=trial["threshold"],
+                    collection_limit_sec=0.,legacy_pending_optional=True,
+                    price_deviation_atr=detail.get("price_deviation_atr"))
+        if trial["approved"] and selected==side and detail.get("strategy_id")==d.get("strategy_id"):
+            return result("REVIEWED","MASTER التجريبي 40/40/20: تقييم موحد دون انتظار النماذج",True)
+        return result("WEAK_EVIDENCE","MASTER التجريبي 40/40/20: "+trial["reason"])
     if side not in ("BUY","SELL"):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
