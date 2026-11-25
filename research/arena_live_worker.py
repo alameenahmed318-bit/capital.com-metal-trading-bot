@@ -48,7 +48,12 @@ def train_actions(bars):
 def train_direction(bars):
     d=samples(bars)
     if len(d)<600:return {}
-    # These are live prediction fits; Arena holdout reports remain separate.
+    # Purge future-label overlap at the chronological split, evaluate using
+    # recorded side-specific costs, and only refit a validated tree.
+    cut=int(len(d)*.8)
+    holdout=d[cut:]
+    train=[v for v in d[:cut] if v["end"]<holdout[0]["time"]]
+    if len(train)<400 or len(holdout)<100:return {}
     models={}
     for name in ("LightGBM","XGBoost","CatBoost"):
         try:
@@ -59,7 +64,15 @@ def train_direction(bars):
             else:
                 from catboost import CatBoostRegressor
                 m=CatBoostRegressor(iterations=80,depth=4,thread_count=1,learning_rate=.05,verbose=False,allow_writing_files=False,random_seed=42)
-            m.fit([v["x"] for v in d],[max(-6,min(6,v["y"])) for v in d]);models[name]=m
+            m.fit([v["x"] for v in train],[max(-6,min(6,v["y"])) for v in train])
+            pred=m.predict([v["x"] for v in holdout])
+            selected=[v["buy"] if p>0 else v["sell"] for p,v in zip(pred,holdout)
+                      if math.isfinite(float(p)) and abs(p)>.05]
+            print(name,"HOLDOUT",len(train),len(holdout),"signals",len(selected),
+                  "net_proxy",round(sum(selected),5),flush=True)
+            if len(selected)<30 or sum(selected)<=0:continue
+            m.fit([v["x"] for v in d],[max(-6,min(6,v["y"])) for v in d])
+            models[name]=m
         except Exception as e:print(name,"FIT_ERROR",type(e).__name__,flush=True)
     return models
 PRETRAINED=("TiRex-2","Chronos-Bolt Tiny","Chronos-2","TimesFM-2.5")

@@ -67,6 +67,30 @@ class LiveArenaReviewTests(unittest.TestCase):
         self.assertTrue(r["legacy_pending_optional"])
     def test_no_instant_early_entry(self):
         self.assertEqual(self.run_review(age=2)["state"],"COLLECTING")
+    def test_exceptional_three_families_only_at_two_seconds(self):
+        d=decision([model("LightGBM",points=.02),model("TiRex-2",points=.02),
+                    model("GPT-OSS 120B",points=.3),pending()],confidence=.99,buy=1.5,sell=.01)
+        d["symbol"]="XAUUSD";d["context"]["last_closed_candle_pressure"]=.8
+        def at(age,ask=100.1):
+            now=BAR+60+age
+            d["master"]["arena_shadow"]={"status":"SHADOW_READY","symbol":"XAUUSD","bar_time":BAR,
+                "received_at":now-1,"models":{"LightGBM":.9,"TiRex-2":.9}}
+            d["master"]["arena_advisory"]={"used":["LightGBM","TiRex-2"]}
+            return review(d,{**item(ask),"symbol":"XAUUSD"},{},now,live_arena=True)
+        self.assertEqual(at(1)["state"],"COLLECTING")
+        self.assertTrue(at(2)["approved"])
+        self.assertTrue(at(2)["exceptional_early_candidate"])
+        self.assertEqual(at(2,103)["state"],"PRICE_MOVED")
+        d["context"]["last_closed_candle_pressure"]=.3
+        self.assertEqual(at(2)["state"],"COLLECTING")
+        d["context"]["buy_trap"]=True
+        self.assertEqual(at(20)["state"],"WEAK_EVIDENCE")
+    def test_early_legacy_candidate_requires_directional_quality(self):
+        d=decision([model("GPT-OSS 120B"),pending()],confidence=.95,buy=1.2,sell=.1)
+        self.assertEqual(review(d,item(),{},BAR+62,live_arena=True)["state"],"COLLECTING")
+        self.assertTrue(review(d,item(),{},BAR+65,live_arena=True)["approved"])
+        d["master"]["models"][0]["direction"]="SELL"
+        self.assertEqual(review(d,item(),{},BAR+65,live_arena=True)["state"],"COLLECTING")
     def test_correlated_models_wait_until_later(self):
         self.assertEqual(self.run_review(names=("LightGBM","XGBoost","CatBoost"),age=10)["state"],"COLLECTING")
         r=self.run_review(names=("LightGBM","XGBoost","CatBoost"),age=15)

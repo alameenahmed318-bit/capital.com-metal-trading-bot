@@ -123,9 +123,10 @@ def claim(client_id,nonce,snapshot,decision,gate,council,risk,settings,db,now,co
         "payload":{"side":verified["side"],"action":verified["action"],
             "bar_time":verified["bar_time"],"lot_cap":verified["lot_cap"],
             "account_fingerprint":verified["fingerprint"],"claimed_at":now.isoformat()}}
-    if verified["action"]=="RECOVERY_PROPOSAL":
+    if verified["action"] in ("RECOVERY_PROPOSAL","COOLING_PROPOSAL"):
         row["payload"]["symbol"]=snapshot.get("symbol")
-        row["payload"]["basket_members"]=claim_members(snapshot)
+        row["payload"]["basket_members"]=claim_members(snapshot,
+            only_side=verified["side"] if verified["action"]=="COOLING_PROPOSAL" else None)
     try:
         inserted=db("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
             row,admin=True,prefer="resolution=ignore-duplicates,return=representation")

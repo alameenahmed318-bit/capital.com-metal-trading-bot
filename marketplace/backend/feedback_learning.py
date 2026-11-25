@@ -10,6 +10,7 @@ from market_symbols import market_family, same_market_symbol
 from learning_memory import memory_snapshot, combine_deals
 import adaptive_memory
 import recovery_basket_memory
+from smart_profit_advice import closure_feedback
 
 VERSION="FEEDBACK_V1"
 MODELS={"LOCAL_AI":{"qwen2.5:1.5b","deepseek-r1:1.5b"},
@@ -134,6 +135,7 @@ def _refresh(key,request,live_deals):
         report={"version":VERSION,"status":"RESEARCH_ONLY","symbol":symbol,
             "market":market_family(symbol),"updated_at_unix":time.time(),
             "models":model_feedback(rows,symbol),"actions":action_feedback(deals,symbol),
+            "profit_closure_feedback":closure_feedback(deals,symbol),
             "adaptive_memory":{"version":adaptive_memory.VERSION,"mode":"SHADOW_ONLY",
                 "model_performance":adaptive_memory.performance_factors(rows,symbol),
                 "action_sides":adaptive_memory.action_side_memory(deals,symbol,action_feedback),
@@ -173,8 +175,10 @@ def _refresh(key,request,live_deals):
             q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.CENTRAL_ACTION_CLAIM&select=payload&order=created_at.desc&limit=200"
             claims=request("GET",q,admin=True)
             report["recovery_baskets"]=recovery_basket_memory.summarize(claims if isinstance(claims,list) else [],deals,symbol)
+            report["cooling_baskets"]=recovery_basket_memory.summarize(claims if isinstance(claims,list) else [],deals,symbol,action="COOLING_PROPOSAL")
         except Exception:
             report["recovery_baskets"]={"mode":"RESEARCH_ONLY","status":"UNAVAILABLE","execution_authorized":False}
+            report["cooling_baskets"]={"mode":"RESEARCH_ONLY","status":"UNAVAILABLE","execution_authorized":False}
         try:
             import master_adaptive
             old_adaptive=(previous[1] if previous else {}).get("master_adaptive") or {}

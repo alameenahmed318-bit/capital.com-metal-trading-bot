@@ -63,14 +63,17 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
           "independent_votes":len(votes),"pending":pending,"statuses":statuses,
           "candidate_direction":side,"quality_threshold":MIN_QUALITY,
           "quality":None,"unanimity_required":False,"arena_models_used":[r["model"] for r in extra],
-          "legacy_pending_optional":adaptive}
+          "legacy_pending_optional":bool(adaptive or (live_arena and votes))}
     def result(state,reason,approved=False,**extra):
         return {**base,**extra,"state":state,"reason_ar":reason,"approved":approved}
     if side not in ("BUY","SELL"):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
         return result("STALE_BAR","نافذة الشمعة غير صالحة")
-    if not adaptive and age<MAX_COLLECTION_SECONDS and pending:
+    # Legacy local advisers are optional in the live path. Do not hold a
+    # valid independent vote hostage to a missing Qwen/DeepSeek response.
+    # Preserve the existing quality, independent-evidence and price checks.
+    if not adaptive and age<MAX_COLLECTION_SECONDS and pending and (not live_arena or not votes):
         return result("COLLECTING","جارٍ جمع تحليلات النماذج المستقلة للشمعة الحالية")
     if not votes:
         return result("NO_INDEPENDENT_EVIDENCE","لا دخول اعتماداً على Fast AI وحده؛ لا يوجد تحليل اتجاهي مستقل صالح")
@@ -108,13 +111,28 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         strong=quality>=.80 and support>=.75 and supporting>=2 and pressure>=.25 and not trap
         medium=quality>=.68 and support>=.65 and supporting>=2 and not trap
         single=quality>=.70 and support>=.75 and supporting>=1 and margin>=.35 and market_quality>=.35 and not trap
-        target=5.0 if strong else 10.0 if medium else 15.0
+        # Only exceptionally strong, diverse evidence may accelerate the
+        # existing five-second lane. Keep all normal quality thresholds.
+        exceptional=(strong and supporting>=3 and all(v>=.75 for v in family_support.values())
+                     and quality>=.90 and margin>=.60 and market_quality>=.70 and pressure>=.50)
+        target=2.0 if exceptional else 5.0 if strong else 10.0 if medium else 15.0
         detail.update(evidence_families=family_support,supporting_families=supporting,
-                      collection_limit_sec=target,quality_threshold=.80 if strong else .68 if medium else .70)
+                      exceptional_early_candidate=exceptional,
+                      collection_limit_sec=target,quality_threshold=.90 if exceptional else .80 if strong else .68 if medium else .70)
         if not (strong or medium or single):
             return result("WEAK_EVIDENCE","أدلة النماذج المتاحة أو اتجاه السوق غير كافية؛ انتظار فرصة أوضح",**detail)
         if age<target:
             return result("COLLECTING","مراجعة ديناميكية للأدلة المتاحة؛ لا انتظار إجباري للنماذج القديمة",**detail)
+    # When accelerating a legacy-only candidate, require at least the same
+    # single-family quality and directional support used for arena evidence.
+    # The normal post-collection policy is unchanged.
+    if live_arena and not adaptive and pending and age<MAX_COLLECTION_SECONDS:
+        early_ok=(quality>=.70 and support>=.75 and margin>=.35 and market_quality>=.35 and not trap)
+        detail.update(early_legacy_quality_threshold=.70,early_legacy_eligible=early_ok)
+        if not early_ok:
+            return result("COLLECTING","الأدلة الحالية لا تحقق جودة الدخول المبكر؛ مراجعة عند وصول دليل إضافي",**detail)
+        if age<5:
+            return result("COLLECTING","مراجعة مبكرة للسعر والأدلة المستقلة",**detail)
     if quality<MIN_QUALITY:
         return result("WEAK_EVIDENCE","جودة الأدلة المجمعة ضعيفة؛ انتظار فرصة أفضل",**detail)
     tick=item.get("tick") or {}

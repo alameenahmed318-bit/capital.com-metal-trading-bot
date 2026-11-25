@@ -18,7 +18,7 @@ def timestamp(x):
         return d.timestamp() if d.tzinfo else None
     except (ValueError,TypeError,OverflowError): return None
 
-def claim_members(snapshot):
+def claim_members(snapshot, only_side=None):
     result=[]
     seen=set()
     symbol=snapshot.get("symbol")
@@ -26,6 +26,8 @@ def claim_members(snapshot):
         pid=str(p.get("position_id") or "")
         lot=num(p.get("volume"))
         side=num(p.get("type"))
+        if not same_market_symbol(p.get("symbol"),symbol):continue
+        if only_side is not None and side in (0,1) and ("BUY" if side==0 else "SELL")!=only_side:continue
         if (not pid.isdigit() or int(pid)<=0 or pid in seen or
             not same_market_symbol(p.get("symbol"),symbol) or
             lot is None or lot<=0 or side not in (0,1)):
@@ -34,7 +36,9 @@ def claim_members(snapshot):
         result.append({"position_id":pid,"volume":lot,"side":"BUY" if side==0 else "SELL"})
     return result
 
-def summarize(claims,deals,symbol):
+def summarize(claims,deals,symbol,action="RECOVERY_PROPOSAL"):
+    prefix={"RECOVERY_PROPOSAL":"ALZOOL-RECOVERY","COOLING_PROPOSAL":"ALZOOL-COOL"}.get(action)
+    if prefix is None:raise ValueError("unsupported basket action")
     by_id={};seen=set();ambiguous=set()
     for d in deals or []:
         if not isinstance(d,dict) or not same_market_symbol(d.get("symbol"),symbol):continue
@@ -42,9 +46,15 @@ def summarize(claims,deals,symbol):
         if not pid or not ticket or ticket in seen:continue
         seen.add(ticket);by_id.setdefault(pid,[]).append(d)
     reports=[]
-    for row in claims or []:
+    counted_positions=set()
+    # Latest complete basket is authoritative; never count overlapping broker
+    # positions twice across successive recovery claims.
+    ordered=sorted((row for row in claims or [] if isinstance(row,dict)),
+                   key=lambda row: timestamp((row.get('payload') or {}).get('claimed_at')) or 0,
+                   reverse=True)
+    for row in ordered:
         p=row.get("payload") or {}
-        if p.get("action")!="RECOVERY_PROPOSAL" or not same_market_symbol(p.get("symbol"),symbol):continue
+        if p.get("action")!=action or not same_market_symbol(p.get("symbol"),symbol):continue
         t=timestamp(p.get("claimed_at"));lot=num(p.get("lot_cap"));members=p.get("basket_members") or []
         side=p.get("side"); expected_side=0 if side=="BUY" else 1 if side=="SELL" else None
         if t is None or not members or lot is None or lot<=0 or expected_side is None:continue
@@ -57,7 +67,7 @@ def summarize(claims,deals,symbol):
             if pid in ids:continue
             for d in ds:
                 stamp=num(d.get("time"));vol=num(d.get("volume"))
-                if (num(d.get("entry"))==0 and str(d.get("comment") or "").startswith("ALZOOL-RECOVERY")
+                if (num(d.get("entry"))==0 and str(d.get("comment") or "").startswith(prefix)
                     and num(d.get("type",d.get("deal_type")))==expected_side
                     and stamp is not None and t-1<=stamp<=t+15 and vol is not None and abs(vol-lot)<1e-7):
                     candidates.append(pid)
@@ -89,9 +99,13 @@ def summarize(claims,deals,symbol):
         if exit_complete:
             report.update(status="EXIT_EVIDENCE_ONLY",exit_net=round(exit_net,4))
         if complete and exit_complete:
-            report.update(status="COMPLETE_LINKED_BASKET",full_net=round(full_net,4))
+            if counted_positions.intersection(ids):
+                report.update(status="OVERLAPPING_BASKET_NOT_COUNTED",full_net=None)
+            else:
+                counted_positions.update(ids)
+                report.update(status="COMPLETE_LINKED_BASKET",full_net=round(full_net,4))
         reports.append(report)
     full=[r["full_net"] for r in reports if r["full_net"] is not None]
     return {"mode":"RESEARCH_ONLY","metric":"EXACT_POSITION_LINKS_NOT_COUNTERFACTUAL",
-            "complete_baskets":len(full),"positive":sum(x>0 for x in full),
+            "action":action,"complete_baskets":len(full),"positive":sum(x>0 for x in full),
             "net":round(sum(full),4),"reports":reports[:30],"execution_authorized":False}

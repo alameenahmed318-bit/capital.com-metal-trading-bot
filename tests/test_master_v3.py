@@ -29,6 +29,17 @@ class V3Tests(unittest.TestCase):
         r=v3.evaluate(base(),council(),{},tick(),{},BAR+70)
         self.assertEqual(r["current"],"WAIT");self.assertEqual(r["challenger"],"BUY")
         self.assertTrue(r["early_candidate"]);self.assertFalse(r["execution_authorized"])
+    def test_adaptive_baseline_receives_live_arena_policy(self):
+        from unittest.mock import patch
+        now=BAR+70
+        arena={"status":"SHADOW_READY","symbol":"BTCUSDm","bar_time":BAR,
+               "received_at":now-1,"models":{"LightGBM":.9,"TiRex-2":.9}}
+        with patch("master_ai.time.time",return_value=now):
+            result=v3.evaluate(base(),council(q=False,d=False),{},tick(),{},now,arena)
+        review=result["adaptive_baseline_review"]
+        self.assertEqual(review["policy"],"MASTER_REVIEW_V2")
+        self.assertEqual(set(review["arena_models_used"]),{"LightGBM","TiRex-2"})
+        self.assertFalse(result["execution_authorized"])
     def test_single_vote_cannot_release_early(self):
         r=v3.evaluate(base(),council(d=False),{},tick(),{},BAR+70)
         self.assertEqual(r["challenger"],"WAIT")
