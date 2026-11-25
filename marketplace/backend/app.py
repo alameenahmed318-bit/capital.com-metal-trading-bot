@@ -2419,7 +2419,7 @@ class Handler(SimpleHTTPRequestHandler):
                       "balance":finite_number(account.get("balance")),"equity":finite_number(account.get("equity")),
                       "margin":finite_number(account.get("margin")),"free_margin":finite_number(account.get("free_margin")),
                       "profit":finite_number(account.get("profit"))}
-                positions=clean_telemetry_rows(data.get("positions"),("ticket","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
+                positions=clean_telemetry_rows(data.get("positions"),("ticket","position_id","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
                 # A BTC profit basket cannot coexist safely with other symbols
                 # while the legacy MT5 closer uses account-wide bookkeeping.
@@ -2441,7 +2441,7 @@ class Handler(SimpleHTTPRequestHandler):
                     # history still contains older gold transactions.
                     closed_deals=[d for d in closed_deals if str(d.get("symbol") or "")==active_symbol]
                     # Historical persistence must never block real-time ticks.
-                    action_entry_deals=clean_telemetry_rows(data.get("action_entry_deals"),("ticket","position_id","symbol","entry","volume","price","profit","commission","swap","fee","comment","time"),200)
+                    action_entry_deals=clean_telemetry_rows(data.get("action_entry_deals"),("ticket","position_id","symbol","type","deal_type","entry","volume","price","profit","commission","swap","fee","comment","time"),200)
                     action_entry_deals=[d for d in action_entry_deals if str(d.get("symbol") or "")==active_symbol and d.get("entry")==0 and d.get("position_id")]
                     queue_closed_deals(client_id,closed_deals+action_entry_deals,sb)
                 candles=clean_telemetry_rows(data.get("closed_candles"),("time","open","high","low","close","tick_volume"),120)
