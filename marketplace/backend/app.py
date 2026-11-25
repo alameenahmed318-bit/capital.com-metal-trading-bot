@@ -1223,6 +1223,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
                 **master_bias(decision,bar_fresh),"minimum_confidence":None,"entry_review":review_report,
                 "entry_council_mode":mode,"master":decision.get("master",{}),
+                "master_direct_demo":review_report.get("route")=="DIRECT_DEMO",
                 "authorization":gate,
                 "authorization_id":gate.get("authorization_id"),
                 "authorization_expires_at":gate.get("expires_at_unix",0),
@@ -2446,7 +2447,8 @@ class Handler(SimpleHTTPRequestHandler):
                       "leverage":int(finite_number(account.get("leverage",0))),
                       "balance":finite_number(account.get("balance")),"equity":finite_number(account.get("equity")),
                       "margin":finite_number(account.get("margin")),"free_margin":finite_number(account.get("free_margin")),
-                      "profit":finite_number(account.get("profit"))}
+                      "profit":finite_number(account.get("profit")),
+                      "trade_mode":account.get("trade_mode") if account.get("trade_mode") in ("DEMO","REAL","CONTEST") else "UNKNOWN"}
                 positions=clean_telemetry_rows(data.get("positions"),("ticket","position_id","symbol","type","volume","open_price","price_current","sl","tp","profit","swap","magic","comment","time"))
                 orders=clean_telemetry_rows(data.get("orders"),("ticket","symbol","type","state","volume","price","sl","tp","magic","comment","time_setup"))
                 # A BTC profit basket cannot coexist safely with other symbols
@@ -2697,6 +2699,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "mt5_central_trading_enabled":(data.get("mt5_central_trading_enabled")
                         if isinstance(data.get("mt5_central_trading_enabled"),bool) else None),
                     "positions":positions,
+                    "master_direct_demo_capable":data.get("master_direct_demo_capable") is True,
                     "smart_profit_capable":data.get("smart_profit_capable") is True,
                     "smart_profit_runner_version":304 if data.get("smart_profit_runner_version")==304 else None,
                     "recovery_bidirectional_capable":data.get("recovery_bidirectional_capable") is True,

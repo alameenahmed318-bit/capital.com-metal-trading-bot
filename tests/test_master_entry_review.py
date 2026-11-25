@@ -210,4 +210,41 @@ class EntryExecutionStatusTests(unittest.TestCase):
         self.assertEqual(entry_execution_status({**item,"received_at":now-timedelta(seconds=31)},True,now)["state"],"UNKNOWN")
         self.assertIsNone(entry_execution_status(None,True,now)["open_count"])
 
+class DirectDemoReviewTests(unittest.TestCase):
+    def test_direct_demo_without_models_both_markets_and_sides(self):
+        from master_entry_review import DIRECT_DEMO_VERSION
+        for sym in ("XAUUSD","BTCUSDm"):
+            for side in ("BUY","SELL"):
+                other="SELL" if side=="BUY" else "BUY"
+                d=decision([pending()],confidence=.99)
+                d.update(symbol=sym,decision=side,strategy_id=12,combination_id=21,
+                    directional_candidates={side:{"strategy_id":12,"combination_id":21}},
+                    directional_scores={side:.98,other:.02})
+                d["context"].update({side.lower()+"_quality":80,side.lower()+"_trap":False})
+                snap={"timeframe":"M1","symbol":sym,"account":{"trade_mode":"DEMO"},
+                    "master_direct_demo_capable":True,"tick":{"bid":99.95,"ask":100.05}}
+                r=review(d,snap,{},BAR+61,live_arena=True)
+                self.assertTrue(r["approved"])
+                self.assertEqual(r["policy"],DIRECT_DEMO_VERSION)
+                self.assertEqual(r["collection_limit_sec"],0)
+                for mode in ("REAL","CONTEST","UNKNOWN"):
+                    old=review(d,{**snap,"account":{"trade_mode":mode}},{},BAR+61,live_arena=True)
+                    self.assertFalse(old["approved"])
+                    self.assertNotEqual(old["policy"],DIRECT_DEMO_VERSION)
+                self.assertFalse(review(d,{**snap,"master_direct_demo_capable":False},{},BAR+61,live_arena=True)["approved"])
+                self.assertFalse(review(d,{**snap,"symbol":"OTHER"},{},BAR+61,live_arena=True)["approved"])
+                self.assertFalse(review(d,snap,{},BAR+120,live_arena=True)["approved"])
+                self.assertFalse(review(d,snap,{"position_management":{"entry_max_deviation_atr":.001}},BAR+61,live_arena=True)["approved"])
+                weak={**d,"directional_scores":{side:.2,other:.19}}
+                self.assertFalse(review(weak,snap,{},BAR+61,live_arena=True)["approved"])
+                blocked={**d,"context":{**d["context"],side.lower()+"_trap":True}}
+                self.assertFalse(review(blocked,snap,{},BAR+61,live_arena=True)["approved"])
+                self.assertFalse(apply_gate({"approved":False,"reason_ar":"owner control"},r)["approved"])
+    def test_native_demo_guard_in_client(self):
+        path=Path(__file__).resolve().parents[1]/"mt5_client"/"ALZOOL_Multi_Market_Client_V305.mq5"
+        source=path.read_text(encoding="utf-8")
+        self.assertIn('AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO',source)
+        self.assertIn('JsonBool(response,"master_direct_demo")',source)
+        self.assertIn('master_direct_demo_capable',source)
+
 if __name__=="__main__":unittest.main()
