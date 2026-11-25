@@ -62,5 +62,21 @@ class OwnerDecisionTests(unittest.TestCase):
         self.assertEqual(report["buy"], "ADDON_PROPOSAL", report)
 
 
+    def test_report_cache_backoff_does_not_requery_database(self):
+        from unittest.mock import patch
+        import app
+        q="/rest/v1/alzool_engine_signal_events?client_id=eq.test"
+        with patch.object(app,"HISTORY_CACHE",{}),patch.object(app,"HISTORY_BUSY",set()),patch.object(app,"HISTORY_FAILURE_UNTIL",0.),patch.object(app,"sb") as read:
+            read.return_value=[{"event_type":"WAIT"}]
+            self.assertEqual(app.report_events_read(q),read.return_value)
+            self.assertEqual(app.report_events_read(q),read.return_value)
+            self.assertEqual(read.call_count,1)
+            read.side_effect=TimeoutError("database")
+            with self.assertRaises(TimeoutError):app.report_events_read(q+"2")
+            with self.assertRaises(RuntimeError):app.report_events_read(q+"3")
+            self.assertEqual(read.call_count,2)
+            self.assertEqual(app.HISTORY_BUSY,set())
+
+
 if __name__ == "__main__":
     unittest.main()

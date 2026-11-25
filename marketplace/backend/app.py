@@ -73,6 +73,32 @@ AI_EVENT_CACHE={}
 CACHE_LOCK=threading.RLock()
 LICENSE_CACHE_TTL_SECONDS=60.0
 SETTINGS_CACHE_REFRESH_SECONDS=2.0
+# Report-only cache; never used for authentication, entry, settings or telemetry.
+HISTORY_CACHE={}
+HISTORY_LOCK=threading.Lock()
+HISTORY_BUSY=set()
+HISTORY_FAILURE_UNTIL=0.
+
+def report_events_read(query):
+    global HISTORY_FAILURE_UNTIL
+    now=time.monotonic()
+    with HISTORY_LOCK:
+        cached=HISTORY_CACHE.get(query)
+        if cached and now-cached[0]<60:return cached[1]
+        if now<HISTORY_FAILURE_UNTIL or HISTORY_BUSY:raise RuntimeError("سجل التقارير مؤجل مؤقتاً لتخفيف ضغط قاعدة البيانات")
+        HISTORY_BUSY.add(query)
+    try:
+        rows=sb("GET",query,admin=True)
+        with HISTORY_LOCK:
+            if len(HISTORY_CACHE)>=64 and query not in HISTORY_CACHE:HISTORY_CACHE.pop(min(HISTORY_CACHE,key=lambda k:HISTORY_CACHE[k][0]),None)
+            HISTORY_CACHE[query]=(time.monotonic(),rows)
+        return rows
+    except Exception:
+        with HISTORY_LOCK:HISTORY_FAILURE_UNTIL=time.monotonic()+120
+        raise
+    finally:
+        with HISTORY_LOCK:HISTORY_BUSY.discard(query)
+
 
 def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
     if DUAL_MARKET_MODE:
@@ -1403,10 +1429,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if event_types:
                     query+="&event_type=in."+urllib.parse.quote("("+",".join(event_types)+")",safe=",()")
                 if days:
-                    cutoff=(datetime.now(timezone.utc)-timedelta(days=days)).isoformat()
+                    cutoff=(datetime.now(timezone.utc).replace(second=0,microsecond=0)-timedelta(days=days)).isoformat()
                     query+="&created_at=gte."+urllib.parse.quote(cutoff,safe="")
                 query+="&select=event_id,event_type,payload,created_at&order=created_at.desc&limit="+str(limit)
-                rows=sb("GET",query,admin=True)
+                rows=report_events_read(query)
                 return self.send_json(200,{"events":rows if isinstance(rows,list) else [],
                     "count":len(rows) if isinstance(rows,list) else 0,"client_id":client_id,"days":days,"kind":kind})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
