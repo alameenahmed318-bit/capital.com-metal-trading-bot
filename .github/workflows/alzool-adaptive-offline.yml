@@ -34,3 +34,5 @@ jobs:
       - run: python -m unittest discover -s tests -p test_master_adaptive.py -v
 
       - run: python -m unittest discover -s tests -p test_master_entry_review.py -v
+
+      - run: PYTHONPATH=marketplace/backend python -m unittest discover -s marketplace/backend -p test_master_six_regressions.py -v
