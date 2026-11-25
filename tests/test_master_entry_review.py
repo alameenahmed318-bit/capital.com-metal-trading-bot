@@ -190,4 +190,24 @@ class UnifiedScoreTests(unittest.TestCase):
                 d["context"][side.lower()+"_trap"]=True
                 self.assertEqual(unified_score(d,item,side,10,votes,{})["direction"],"WAIT")
 
+class EntryExecutionStatusTests(unittest.TestCase):
+    def test_reports_broker_positions_not_signal(self):
+        from datetime import datetime,timezone,timedelta
+        from system_readiness import entry_execution_status
+        now=datetime.now(timezone.utc)
+        p={"symbol":"XAUUSD","type":0,"position_id":"123","time":1700000100,"comment":"ALZOOL-S3-C526"}
+        item={"symbol":"XAUUSD","received_at":now,"positions":[],"action_entry_deals":[{**p,"entry":0}]}
+        x=entry_execution_status(item,True,now)
+        self.assertEqual(x["state"],"READY_NOT_CONFIRMED")
+        self.assertFalse(x["confirmed"])
+        self.assertFalse(x["last_entry"]["still_open"])
+        x=entry_execution_status({**item,"positions":[p,{**p,"symbol":"BTCUSDm","type":1}]},False,now)
+        self.assertEqual(x["state"],"OPEN")
+        self.assertEqual((x["buy_count"],x["sell_count"],x["open_count"]),(1,0,1))
+        self.assertTrue(x["last_entry"]["still_open"])
+        self.assertEqual(x["last_entry"]["origin"],"ALZOOL_ENTRY")
+        self.assertEqual(entry_execution_status(item,False,now)["state"],"NO_OPEN_POSITION")
+        self.assertEqual(entry_execution_status({**item,"received_at":now-timedelta(seconds=31)},True,now)["state"],"UNKNOWN")
+        self.assertIsNone(entry_execution_status(None,True,now)["open_count"])
+
 if __name__=="__main__":unittest.main()

@@ -27,7 +27,7 @@ from strategy_versions import versions as strategy_versions, get_active as get_a
 from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
 from telemetry_persistence import queue_closed_deals
-from system_readiness import owner_readiness, position_management_status
+from system_readiness import owner_readiness, position_management_status, entry_execution_status
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
 from offline_m1_smoke import run as run_offline_m1_smoke
@@ -1751,6 +1751,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "last_seen":item.get("last_seen"),"symbol":item.get("symbol"),
                     "timeframe":item.get("timeframe"),"signal":"WAIT" if mode=="MASTER" and not review_report.get("approved") else signal,
                     "candidate_signal":signal,"entry_review":review_report,
+                    "entry_execution":entry_execution_status(item,ready,now),
                     "confidence":decision.get("confidence"),"strategy_id":decision.get("strategy_id"),
                     "strategy_name":decision.get("strategy_name"),
                     "reason_ar":reason,"decision_reason_ar":decision.get("reason_ar"),
