@@ -36,7 +36,7 @@ from client_access import (PUBLIC_UI_ASSETS, PROTECTED_OWNER_ASSETS, OWNER_READ_
                            OWNER_WRITE_ENDPOINTS, public_static, minimal_terminal_decision,
                            basic_settings)
 from groq_advisor import verify_credentials as verify_groq_credentials
-from smart_profit_advice import master_bias
+from smart_profit_advice import master_bias, profit_settings_for_terminal
 
 ROOT=Path(__file__).resolve().parents[2]
 SUPABASE_URL=os.getenv("SUPABASE_URL","").rstrip("/")
@@ -836,11 +836,11 @@ class Handler(SimpleHTTPRequestHandler):
                 settings=get_trade_settings(client_id)
                 if settings is None:
                     return self.send_json(503,{"error":"إعدادات التداول قيد التهيئة"})
-                return self.send_json(200,settings)
+                return self.send_json(200,profit_settings_for_terminal(settings,CONNECTIONS.get(client_id)))
             except Exception as e:
                 cached=TRADE_SETTINGS_CACHE.get(client_id)
                 if cached:
-                    return self.send_json(200,cached["settings"])
+                    return self.send_json(200,profit_settings_for_terminal(cached["settings"],CONNECTIONS.get(client_id)))
                 return self.send_json(503,{"error":"تعذر تحديث إعدادات التداول مؤقتاً"})
         if path=="/api/bot-advisors":
             # Owner/client authenticated read-only strategy assistants.
