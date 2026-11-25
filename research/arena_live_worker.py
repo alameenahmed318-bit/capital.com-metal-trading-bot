@@ -147,7 +147,8 @@ def live(email,password):
     # new fit is available. Never replace a good fit with an empty result.
     def train_loop():
         while True:
-            for market in arena.MARKETS:
+            # Prioritize gold's first fit, then retain the normal BTC cycle.
+            for market in ("XAUUSD", *[m for m in arena.MARKETS if m!="XAUUSD"]):
                 if time.monotonic()<next_fit.get(market,0):continue
                 next_fit[market]=time.monotonic()+3600
                 try:
@@ -155,6 +156,14 @@ def live(email,password):
                     cid,bars=arena.archive(market,auth)
                     if not cid:continue
                     direction=train_direction(bars)
+                    # Publish validated gold direction models immediately;
+                    # the slower action fit must not delay their availability.
+                    if market=="XAUUSD" and direction:
+                        with lock:
+                            old=cache.get(market)
+                            prev_direction=old[1] if old and old[0]==cid else {}
+                            prev_actions=old[2] if old and old[0]==cid else {}
+                            cache[market]=(cid,{**prev_direction,**direction},prev_actions)
                     try:actions,reports=train_actions(bars)
                     except Exception as exc:
                         actions,reports={},{}
