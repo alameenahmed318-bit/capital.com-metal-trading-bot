@@ -232,8 +232,12 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
                     collection_limit_sec=0.,legacy_pending_optional=True,
                     price_deviation_atr=detail.get("price_deviation_atr"))
         if trial["approved"] and selected==side and detail.get("strategy_id")==d.get("strategy_id"):
-            return result("REVIEWED","MASTER التجريبي 40/40/20: تقييم موحد دون انتظار النماذج",True)
-        return result("WEAK_EVIDENCE","MASTER التجريبي 40/40/20: "+trial["reason"])
+            return result("REVIEWED","MASTER التجريبي 60/25/15: الاتجاه بقيادة الذكاء دون انتظار اكتمال النماذج",True)
+        reasons={"NO_FRESH_AI_EVIDENCE":"لم يصل تحليل ذكاء حديث صالح",
+                 "AI_DIRECTION_UNCLEAR":"ترجيح الذكاء غير حاسم",
+                 "AI_SIDE_NOT_ELIGIBLE":"اتجاه الذكاء لا يملك استراتيجية أو سعر دخول صالح",
+                 "WEIGHTED_SCORE":"درجة الدخول الموحدة غير كافية"}
+        return result("WEAK_EVIDENCE","MASTER 60/25/15: "+reasons.get(trial["reason"],trial["reason"]))
     if side not in ("BUY","SELL"):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
