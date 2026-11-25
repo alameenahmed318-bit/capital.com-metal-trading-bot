@@ -88,7 +88,7 @@ def pretrained(name):
         def predict(series):
             x=torch.tensor(np.stack(series),dtype=torch.float32)[:,:,None]
             with torch.inference_mode():
-                out=model(past_values=x).prediction_outputs
+                out=model(past_values=x,freq_token=torch.full((x.shape[0],),1,dtype=torch.long,device=x.device)).prediction_outputs
             if out.ndim!=3 or out.shape[1]<3:raise ValueError("Unexpected Granite output shape")
             return out[:,2,0].cpu().numpy()
     else:
