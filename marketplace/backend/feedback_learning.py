@@ -9,6 +9,7 @@ import urllib.parse
 from market_symbols import market_family, same_market_symbol
 from learning_memory import memory_snapshot, combine_deals
 import adaptive_memory
+import recovery_basket_memory
 
 VERSION="FEEDBACK_V1"
 MODELS={"LOCAL_AI":{"qwen2.5:1.5b","deepseek-r1:1.5b"},
@@ -166,6 +167,12 @@ def _refresh(key,request,live_deals):
             report["master_v3"]=master_v3.summarize(rows,symbol)
         except Exception:
             report["master_v3"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE","lanes":{}}
+        try:
+            q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.CENTRAL_ACTION_CLAIM&select=payload&order=created_at.desc&limit=200"
+            claims=request("GET",q,admin=True)
+            report["recovery_baskets"]=recovery_basket_memory.summarize(claims if isinstance(claims,list) else [],deals,symbol)
+        except Exception:
+            report["recovery_baskets"]={"mode":"RESEARCH_ONLY","status":"UNAVAILABLE","execution_authorized":False}
         with _LOCK:_CACHE[key]=(time.monotonic(),report)
     except Exception:
         with _LOCK:
