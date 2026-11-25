@@ -63,14 +63,17 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
           "independent_votes":len(votes),"pending":pending,"statuses":statuses,
           "candidate_direction":side,"quality_threshold":MIN_QUALITY,
           "quality":None,"unanimity_required":False,"arena_models_used":[r["model"] for r in extra],
-          "legacy_pending_optional":adaptive}
+          "legacy_pending_optional":bool(adaptive or (live_arena and votes))}
     def result(state,reason,approved=False,**extra):
         return {**base,**extra,"state":state,"reason_ar":reason,"approved":approved}
     if side not in ("BUY","SELL"):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
         return result("STALE_BAR","نافذة الشمعة غير صالحة")
-    if not adaptive and age<MAX_COLLECTION_SECONDS and pending:
+    # Legacy local advisers are optional in the live path. Do not hold a
+    # valid independent vote hostage to a missing Qwen/DeepSeek response.
+    # Preserve the existing quality, independent-evidence and price checks.
+    if not adaptive and age<MAX_COLLECTION_SECONDS and pending and (not live_arena or not votes):
         return result("COLLECTING","جارٍ جمع تحليلات النماذج المستقلة للشمعة الحالية")
     if not votes:
         return result("NO_INDEPENDENT_EVIDENCE","لا دخول اعتماداً على Fast AI وحده؛ لا يوجد تحليل اتجاهي مستقل صالح")
