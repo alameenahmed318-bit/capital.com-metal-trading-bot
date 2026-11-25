@@ -80,7 +80,11 @@ def evaluate(base,council,feedback,tick,settings,now,arena=None,positions=None):
         if trial["approved"] and trial["independent_votes"]>=2 and num(trial["quality"])>=.75 and num(trial.get("independent_support"))>=.65:
             review=trial;early=True
     live=master_ai.decide(base,council,feedback,arena_evidence=arena)
-    live_review=master_entry_review.review(live,snapshot,settings,now)
+    # Mirror the actual live entry-review inputs; comparing against a legacy
+    # language-only gate would exaggerate the adaptive challenger's benefit.
+    live["master"]={**(live.get("master") or {}),"arena_shadow":arena or {}}
+    live_review=master_entry_review.review(live,{**snapshot,"symbol":base.get("symbol")},
+                                          settings,now,live_arena=True)
     adaptive=master_adaptive.evaluate(base,live,arena,feedback,tick,settings,now)
     adaptive["management"]=master_adaptive.management(adaptive,arena,positions,base.get("symbol"))
     return {"adaptive":adaptive,"adaptive_baseline":live["decision"] if live_review["approved"] else "WAIT",
