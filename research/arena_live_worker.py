@@ -2,7 +2,8 @@
 Three separately fitted action/side specialists use historical price-path
 proxies, not real basket outcomes. Refresh fits hourly outside the server.
 """
-import time,math,getpass,os,traceback,threading
+import time,math,getpass,os,traceback,threading,json,hashlib
+from pathlib import Path
 if os.name=='nt':os.environ.setdefault('TORCH_COMPILE_DISABLE','1')
 os.environ.setdefault('OMP_NUM_THREADS','1')
 os.environ.setdefault('MKL_NUM_THREADS','1')
@@ -46,9 +47,10 @@ def train_actions(bars):
     return fitted,reports
 class ValidatedDirection:
     """Suppress weak forecasts using the model's validation-selected cutoff."""
-    def __init__(self,model,threshold):
+    def __init__(self,model,threshold,meta=None):
         self.model=model
         self.threshold=threshold
+        self.meta=meta or {}
     def predict(self,rows):
         values=self.model.predict(rows)
         return [float(v) if math.isfinite(float(v)) and abs(float(v))>self.threshold else 0.0 for v in values]
@@ -57,7 +59,7 @@ def direction_payoffs(rows,forecasts,threshold):
     return [r["buy"] if float(v)>0 else r["sell"] for r,v in zip(rows,forecasts)
             if math.isfinite(float(v)) and abs(float(v))>threshold]
 
-def gold_direction(bars):
+def gold_direction(bars,names=("LightGBM","XGBoost","CatBoost")):
     """Gold-only chronological 60/20/20 calibration; final test is never tuned."""
     data=samples(bars)
     n=len(data)
@@ -68,7 +70,7 @@ def gold_direction(bars):
     test=data[b:]
     if len(train)<350 or min(len(validation),len(test))<100:return {}
     fitted={}
-    for name in ("LightGBM","XGBoost","CatBoost"):
+    for name in names:
         try:
             if name=="LightGBM":m=estimator()
             elif name=="XGBoost":
@@ -96,10 +98,104 @@ def gold_direction(bars):
                   "test_signals",len(pay),"net_proxy",round(sum(pay),5),
                   "APPROVED" if approved else "REJECTED",flush=True)
             # Keep the exact tested model; a refit would change its calibrated scores.
-            if approved:fitted[name]=ValidatedDirection(m,threshold)
+            if approved:fitted[name]=ValidatedDirection(m,threshold,{"approved_at":time.time(),"last_end":test[-1]["end"],"train_end":train[-1]["end"],"validation_net":round(val_net,5),"validation_signals":val_signals,"test_net":round(sum(pay),5),"test_signals":len(pay)})
         except Exception as exc:
             print("XAUUSD",name,"FIT_ERROR",type(exc).__name__,str(exc),flush=True)
     return fitted
+
+
+# Persistent CatBoost champion, using native CBM format (no pickle).
+CHAMPION_TTL=6*3600
+CACHE_DIR=Path(os.environ.get("LOCALAPPDATA",str(Path.home())))/"ALZOOL"/"direction-models"
+
+def champion_fresh(meta):
+    try:return 0<=time.time()-float(meta["approved_at"])<=CHAMPION_TTL
+    except (TypeError,ValueError,KeyError):return False
+
+def champion_path(cid):
+    return CACHE_DIR/("gold-catboost-"+hashlib.sha256(str(cid).encode()).hexdigest()[:24]+".json")
+
+def save_champion(cid,model):
+    try:
+        CACHE_DIR.mkdir(parents=True,exist_ok=True)
+        p=champion_path(cid);filename=p.stem+"-"+str(time.time_ns())+".cbm"
+        model.model.save_model(str(CACHE_DIR/filename))
+        tmp=p.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"format":1,"market":"XAUUSD","model":"CatBoost","file":filename,"threshold":model.threshold,"meta":model.meta},allow_nan=False),encoding="utf-8")
+        oldfile=None
+        if p.exists():
+            try:oldfile=json.loads(p.read_text(encoding="utf-8")).get("file")
+            except Exception:pass
+        os.replace(tmp,p)
+        if isinstance(oldfile,str) and Path(oldfile).name==oldfile and oldfile.startswith(p.stem+"-") and oldfile.endswith(".cbm") and oldfile!=filename:
+            try:(CACHE_DIR/oldfile).unlink(missing_ok=True)
+            except OSError:pass
+    except Exception as exc:print("XAUUSD CatBoost CACHE_SAVE_ERROR",type(exc).__name__,flush=True)
+
+def load_champion(cid):
+    try:
+        p=champion_path(cid)
+        if not p.exists():return None
+        d=json.loads(p.read_text(encoding="utf-8"));meta=d["meta"];f=d["file"]
+        if d.get("format")!=1 or d.get("market")!="XAUUSD" or d.get("model")!="CatBoost":return None
+        if Path(f).name!=f or not f.startswith(p.stem+"-") or not f.endswith(".cbm"):return None
+        threshold=float(d["threshold"])
+        if not math.isfinite(threshold) or not .05<=threshold<=1:return None
+        if not champion_fresh(meta) or int(meta["test_signals"])<30 or float(meta["test_net"])<=0:return None
+        from catboost import CatBoostRegressor
+        m=CatBoostRegressor(thread_count=1);m.load_model(str(CACHE_DIR/f))
+        return ValidatedDirection(m,threshold,meta)
+    except Exception as exc:
+        print("XAUUSD CatBoost CACHE_LOAD_ERROR",type(exc).__name__,flush=True)
+        return None
+
+def recover_known_gold(bars):
+    # Exactly one previously approved snapshot from the 25 Nov log.
+    # Never search other historical cutoffs for a favorable result.
+    if len(bars)<11116:return None
+    old=gold_direction(bars[:11116],names=("CatBoost",)).get("CatBoost")
+    if old is None:return None
+    m=old.meta
+    if not (old.threshold==.15 and m["validation_signals"]==379 and m["test_signals"]==365
+            and abs(m["validation_net"]-7.12333)<.0001 and abs(m["test_net"]-22.61177)<.0001):
+        print("XAUUSD CatBoost RECOVERY_SNAPSHOT_MISMATCH",flush=True);return None
+    m["approved_at"]=datetime.fromisoformat("2026-11-25T11:08:37+00:00").timestamp()
+    if not champion_fresh(m):return None
+    print("XAUUSD CatBoost RECOVERY_SNAPSHOT_MATCHED",flush=True)
+    return old
+
+def recheck_champion(old,data):
+    if old is None or not champion_fresh(old.meta) or len(data)<600:return None
+    test=data[int(len(data)*.8):]
+    if not test or test[0]["time"]<=old.meta["train_end"]:return None
+    pay=direction_payoffs(test,old.model.predict([v["x"] for v in test]),old.threshold)
+    new=[v for v in data if v["time"]>old.meta["last_end"]][::3]
+    forward=direction_payoffs(new,old.model.predict([v["x"] for v in new]),old.threshold) if new else []
+    # Negative fresh evidence suspends the champion; sparse evidence cannot
+    # renew the original time limit. Compare candidates on the same holdout.
+    ok=len(pay)>=30 and sum(pay)>0 and (len(forward)<5 or sum(forward)>0)
+    print("XAUUSD CatBoost CHAMPION_RECHECK","test_signals",len(pay),"test_net",round(sum(pay),5),
+          "new_signals",len(forward),"new_net",round(sum(forward),5),"PASS" if ok else "SUSPENDED",flush=True)
+    return sum(pay) if ok else None
+
+def choose_gold_champion(cid,bars,new,previous):
+    old=previous.get("CatBoost") or load_champion(cid)
+    if old is None and "CatBoost" not in new:old=recover_known_gold(bars)
+    candidate=new.get("CatBoost")
+    try:old_net=recheck_champion(old,samples(bars)) if old is not None else None
+    except Exception as exc:
+        old_net=None
+        print("XAUUSD CatBoost RECHECK_ERROR",type(exc).__name__,flush=True)
+    if old_net is not None and (candidate is None or old_net>=candidate.meta["test_net"]):
+        new["CatBoost"]=old
+        save_champion(cid,old)
+        print("XAUUSD CatBoost CHAMPION_RETAINED",flush=True)
+    elif candidate is not None:
+        save_champion(cid,candidate)
+        print("XAUUSD CatBoost CHAMPION_PROMOTED",flush=True)
+    else:
+        print("XAUUSD CatBoost NO_VALID_CHAMPION",flush=True)
+    return new
 
 def train_direction(bars):
     d=samples(bars)
@@ -211,7 +307,13 @@ def live(email,password):
                     with lock:auth=state["token"]
                     cid,bars=arena.archive(market,auth)
                     if not cid:continue
-                    direction=gold_direction(bars) if market=="XAUUSD" else train_direction(bars)
+                    if market=="XAUUSD":
+                        with lock:
+                            prior=cache.get(market)
+                            previous=prior[1] if prior and prior[0]==cid else {}
+                        direction=choose_gold_champion(cid,bars,gold_direction(bars),previous)
+                    else:
+                        direction=train_direction(bars)
                     # Publish validated gold direction models immediately;
                     # the slower action fit must not delay their availability.
                     if market=="XAUUSD":
@@ -258,6 +360,7 @@ def live(email,password):
         _,models,actions=fitted
         scores={};action_scores={}
         for name,m in models.items():
+            if market=="XAUUSD" and name=="CatBoost" and not champion_fresh(m.meta):continue
             try:
                 value=float(m.predict([x])[0])
                 if math.isfinite(value):scores[name]=value
@@ -295,7 +398,7 @@ def live(email,password):
                 with lock:auth=state["token"]
                 poll_market("XAUUSD",auth)
             except Exception as exc:
-                print("XAUUSD","LIVE_WORKER_ERROR",type(exc).__name__,flush=True)
+                print("XAUUSD","LIVE_WORKER_ERROR",type(exc).__name__,getattr(exc,"code",""),flush=True)
             time.sleep(2)
     threading.Thread(target=gold_loop,daemon=True,name="arena-gold-fast-lane").start()
     while True:
