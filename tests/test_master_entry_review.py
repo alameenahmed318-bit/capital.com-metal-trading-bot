@@ -49,4 +49,38 @@ class MasterReviewTests(unittest.TestCase):
         gate={"approved":True,"authorization_id":"AZ-1","expires_at_unix":99}
         r=apply_gate(gate,{"approved":False,"reason_ar":"review"})
         self.assertFalse(r["approved"]);self.assertIsNone(r["authorization_id"]);self.assertEqual(r["expires_at_unix"],0)
+class LiveArenaReviewTests(unittest.TestCase):
+    def run_review(self,names=("LightGBM","TiRex-2"),age=10,side="BUY",fresh=True,symbol="XAUUSD",ask=100.1,trap=False):
+        d=decision([model(n,side,points=.018) for n in names]+[pending()],confidence=.98,buy=1.2,sell=.05,trap=trap)
+        d["symbol"]="XAUUSD"
+        d["context"]["last_closed_candle_pressure"]=.8
+        now=BAR+60+age
+        d["master"]["arena_shadow"]={"status":"SHADOW_READY","symbol":symbol,"bar_time":BAR if fresh else BAR-60,
+            "received_at":now-1,"models":{n:.9 if side=="BUY" else -.9 for n in names}}
+        d["master"]["arena_advisory"]={"used":list(names)}
+        return review(d,{**item(ask),"symbol":"XAUUSD"},{},now,live_arena=True)
+    def test_two_families_approve_without_legacy(self):
+        r=self.run_review(age=5)
+        self.assertTrue(r["approved"])
+        self.assertEqual(r["policy"],"MASTER_REVIEW_V2")
+        self.assertEqual(r["supporting_families"],2)
+        self.assertTrue(r["legacy_pending_optional"])
+    def test_no_instant_early_entry(self):
+        self.assertEqual(self.run_review(age=2)["state"],"COLLECTING")
+    def test_correlated_models_wait_until_later(self):
+        self.assertEqual(self.run_review(names=("LightGBM","XGBoost","CatBoost"),age=10)["state"],"COLLECTING")
+        r=self.run_review(names=("LightGBM","XGBoost","CatBoost"),age=15)
+        self.assertTrue(r["approved"])
+        self.assertEqual(r["supporting_families"],1)
+    def test_opposing_trap_price_and_stale_rejected(self):
+        self.assertEqual(self.run_review(side="SELL")["state"],"WEAK_EVIDENCE")
+        self.assertEqual(self.run_review(trap=True)["state"],"WEAK_EVIDENCE")
+        self.assertEqual(self.run_review(ask=103)["state"],"PRICE_MOVED")
+        self.assertEqual(self.run_review(age=60)["state"],"STALE_BAR")
+    def test_stale_or_cross_market_not_counted(self):
+        self.assertEqual(self.run_review(fresh=False,age=25)["state"],"NO_INDEPENDENT_EVIDENCE")
+        self.assertEqual(self.run_review(symbol="BTCUSD",age=25)["state"],"NO_INDEPENDENT_EVIDENCE")
+    def test_fast_only_still_blocked(self):
+        self.assertEqual(self.run_review(names=("Fast AI",),age=25)["state"],"NO_INDEPENDENT_EVIDENCE")
+
 if __name__=="__main__":unittest.main()
