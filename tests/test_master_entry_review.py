@@ -91,11 +91,26 @@ class LiveArenaReviewTests(unittest.TestCase):
         self.assertTrue(review(d,item(),{},BAR+65,live_arena=True)["approved"])
         d["master"]["models"][0]["direction"]="SELL"
         self.assertEqual(review(d,item(),{},BAR+65,live_arena=True)["state"],"COLLECTING")
-    def test_correlated_models_wait_until_later(self):
-        self.assertEqual(self.run_review(names=("LightGBM","XGBoost","CatBoost"),age=10)["state"],"COLLECTING")
-        r=self.run_review(names=("LightGBM","XGBoost","CatBoost"),age=15)
+    def test_correlated_models_are_still_one_family(self):
+        names=("LightGBM","XGBoost","CatBoost")
+        self.assertEqual(self.run_review(names=names,age=7)["state"],"COLLECTING")
+        r=self.run_review(names=names,age=8)
         self.assertTrue(r["approved"])
         self.assertEqual(r["supporting_families"],1)
+        self.assertTrue(r["early_single_candidate"])
+        self.assertEqual(self.run_review(names=names,age=8,ask=103)["state"],"PRICE_MOVED")
+    def test_ordinary_single_family_retains_fifteen_second_lane(self):
+        d=decision([model("LightGBM",points=.018),pending()],confidence=.80,buy=1.2,sell=.05)
+        d["symbol"]="XAUUSD";d["context"]["last_closed_candle_pressure"]=.20
+        def at(age):
+            now=BAR+60+age
+            d["master"]["arena_shadow"]={"status":"SHADOW_READY","symbol":"XAUUSD","bar_time":BAR,
+                "received_at":now-1,"models":{"LightGBM":.9}}
+            d["master"]["arena_advisory"]={"used":["LightGBM"]}
+            return review(d,{**item(),"symbol":"XAUUSD"},{},now,live_arena=True)
+        self.assertEqual(at(10)["state"],"COLLECTING")
+        self.assertFalse(at(10)["early_single_candidate"])
+        self.assertTrue(at(15)["approved"])
     def test_opposing_trap_price_and_stale_rejected(self):
         self.assertEqual(self.run_review(side="SELL")["state"],"WEAK_EVIDENCE")
         self.assertEqual(self.run_review(trap=True)["state"],"WEAK_EVIDENCE")

@@ -115,10 +115,16 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         # existing five-second lane. Keep all normal quality thresholds.
         exceptional=(strong and supporting>=3 and all(v>=.75 for v in family_support.values())
                      and quality>=.90 and margin>=.60 and market_quality>=.70 and pressure>=.50)
-        target=2.0 if exceptional else 5.0 if strong else 10.0 if medium else 15.0
+        # A very strong, strategy-backed single-family signal may use the
+        # eight-second lane instead of an unconditional fifteen-second wait.
+        # Never waive the single-family quality/support requirements.
+        early_single=(single and supporting==1 and len(family_support)==1
+                      and quality>=.85 and support>=.95 and margin>=.75
+                      and market_quality>=.45 and pressure>=.35)
+        target=2.0 if exceptional else 5.0 if strong else 8.0 if early_single else 10.0 if medium else 15.0
         detail.update(evidence_families=family_support,supporting_families=supporting,
-                      exceptional_early_candidate=exceptional,
-                      collection_limit_sec=target,quality_threshold=.90 if exceptional else .80 if strong else .68 if medium else .70)
+                      exceptional_early_candidate=exceptional,early_single_candidate=early_single,
+                      collection_limit_sec=target,quality_threshold=.90 if exceptional else .80 if strong else .85 if early_single else .68 if medium else .70)
         if not (strong or medium or single):
             return result("WEAK_EVIDENCE","أدلة النماذج المتاحة أو اتجاه السوق غير كافية؛ انتظار فرصة أوضح",**detail)
         if age<target:

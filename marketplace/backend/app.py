@@ -946,7 +946,8 @@ class Handler(SimpleHTTPRequestHandler):
                 pm.setdefault("entry_max_deviation_atr",0.5)
                 settings["position_management"]=pm
                 return self.send_json(200,{"client_id":client_id,"settings":settings,
-                    "smart_profit_capable":bool(item and item.get("smart_profit_capable") is True and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30)})
+                    "smart_profit_capable":bool(item and item.get("smart_profit_capable") is True and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30),
+                    "smart_profit_runner_version":(item or {}).get("smart_profit_runner_version") if item and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30 else None})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path in ("/health","/api/health"):
@@ -2696,6 +2697,7 @@ class Handler(SimpleHTTPRequestHandler):
                         if isinstance(data.get("mt5_central_trading_enabled"),bool) else None),
                     "positions":positions,
                     "smart_profit_capable":data.get("smart_profit_capable") is True,
+                    "smart_profit_runner_version":304 if data.get("smart_profit_runner_version")==304 else None,
                     "recovery_bidirectional_capable":data.get("recovery_bidirectional_capable") is True,
                     "recovery_cycle_active":data.get("recovery_cycle_active") is True,
                     "recovery_group_net":(finite_number(data["recovery_group_net"]) if
