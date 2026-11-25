@@ -8,7 +8,6 @@ os.environ.setdefault('OMP_NUM_THREADS','1')
 os.environ.setdefault('MKL_NUM_THREADS','1')
 import model_arena_worker as arena
 from specialist_market import features,samples,LOOKBACK
-from model_arena_api import LIVE_MODELS
 from datetime import datetime,timezone
 ACTIONS=("ADDON","COOLING","RECOVERY")
 def estimator():
