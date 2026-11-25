@@ -13,6 +13,7 @@ import accuracy_v4
 import feedback_learning
 import master_ai
 import master_entry_review
+import master_balanced
 import master_v2
 import master_v3
 import arena_master
@@ -1159,6 +1160,7 @@ class Handler(SimpleHTTPRequestHandler):
             ai_council=council_result(client_id,decision)
             if advisory_mode:
                 decision=resolve_owner_decision(client_id,decision,ai_council,mode)
+                if mode=="MASTER":decision=master_balanced.select_demo(decision,item,control_settings,datetime.now(timezone.utc).timestamp())
                 confidence=finite_number(decision.get("confidence",0.0))
                 signal=str(decision.get("decision","WAIT"))
                 strategy_id=int(finite_number(decision.get("strategy_id",0)))
@@ -1695,6 +1697,8 @@ class Handler(SimpleHTTPRequestHandler):
                 advisory=mode!="STRICT"
                 council=council_result(cid,decision)
                 if advisory: decision=resolve_owner_decision(cid,decision,council,mode)
+                management_decision=decision
+                if mode=="MASTER":decision=master_balanced.select_demo(decision,item,settings,now.timestamp())
                 signal=str(decision.get("decision","WAIT")).upper()
                 local=item.get("local_ai_advice")
                 local_advice=({**local,"age_seconds":now.timestamp()-finite_number(local.get("received_at_unix",0))}
@@ -1745,8 +1749,8 @@ class Handler(SimpleHTTPRequestHandler):
                             "adaptive_report":feedback_learning.snapshot(cid,item.get("symbol"),sb).get("master_adaptive") or {}}
                     except Exception:v3_shadow={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
                 bot=item.get("bot_report") or {}
-                actions=plan_account_actions(item,decision,council,risk,settings,council_advisory=advisory)
-                actions["specialist_shadow"]=arena_master.management(item,decision,actions)
+                actions=plan_account_actions(item,management_decision,council,risk,settings,council_advisory=advisory)
+                actions["specialist_shadow"]=arena_master.management(item,management_decision,actions)
                 return self.send_json(200,{
                     "connected":0<=(now-item.get("received_at",now-timedelta(days=1))).total_seconds()<=30,
                     "last_seen":item.get("last_seen"),"symbol":item.get("symbol"),
