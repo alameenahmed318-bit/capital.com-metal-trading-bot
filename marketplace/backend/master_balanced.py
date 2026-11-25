@@ -1,8 +1,9 @@
-"""40/40/20 entry-only demo pilot. Scores are not win probabilities."""
+"""AI-first entry-only demo pilot; retain balanced V2 for research comparison."""
 import math
 from market_symbols import same_market_symbol
 
-VERSION="MASTER_BALANCED_DEMO_V2"
+LEGACY_VERSION="MASTER_BALANCED_DEMO_V2"
+VERSION="MASTER_AI_FIRST_DEMO_V3"
 THRESHOLD=.72
 SIDES=("BUY","SELL")
 FAMILIES={"TREES":("LightGBM","XGBoost","CatBoost"),
@@ -47,10 +48,10 @@ def weight_profile(feedback,symbol,now):
             "factors":factors,"statuses":statuses,"profile_fresh":fresh,
             "metric":"MATURE_180S_PRICE_PROXY_NOT_PROFITABILITY"}
 
-def evaluate(d,item,settings,now):
+def evaluate(d,item,settings,now,*,legacy=False):
     """Rank BUY/SELL on the same scale, only for actual eligible strategies.
-    Seven advisers contribute 40% in total. Missing/stale values are neutral
-    (zero signed movement), never treated as votes of agreement.
+    AI-first uses 60% of the score and requires current, material directional
+    model evidence. No required model count or unanimity. V2 is research only.
     """
     report=d.get("master") or {};symbol=d.get("symbol")
     bar=num(d.get("bar_time"));age=now-bar-60
@@ -66,9 +67,15 @@ def evaluate(d,item,settings,now):
     forecasts={}
     if fresh:
         for n,v in (arena.get("models") or {}).items():
-            if n in weights and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
+            if n in weights and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v) and (legacy or abs(v)>.05):
                 forecasts[n]=clamp(v,-1.,1.)
     signed=sum(weights[n]*v for n,v in forecasts.items())
+    evidence_mass=sum(weights[n]*abs(v) for n,v in forecasts.items())
+    # Signed ATR forecasts are not probabilities. Use bounded directional
+    # agreement, softly shrink weak aggregate evidence instead of granting a
+    # full vote to a tiny prediction or renormalizing absent models.
+    conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
+    model_direction="BUY" if signed>1e-9 else "SELL" if signed< -1e-9 else "WAIT"
     ctx=d.get("context") or {};raw=d.get("directional_scores") or {}
     tick=item.get("tick") or {};bid=num(tick.get("bid"));ask=num(tick.get("ask"))
     ref=num(d.get("entry_reference_price"));atr=num(d.get("entry_atr") or ctx.get("atr"))
@@ -86,14 +93,20 @@ def evaluate(d,item,settings,now):
         move=sign*((bid+ask)*.5-ref)/atr if valid_price else 0.
         momentum=.5+.5*clamp(move/.35,-1.,1.)
         market=.5*quality+.5*momentum
-        model=.5+.5*sign*signed
-        score=.40*strategy+.40*model+.20*market
+        model=.5+.5*sign*(signed if legacy else conviction)
+        # Missing evidence has no usable entry points; the direction check
+        # below also prevents strategies overriding the signed AI direction.
+        if not legacy and not forecasts:model=0.
+        score=.40*strategy+.40*model+.20*market if legacy else .25*strategy+.60*model+.15*market
         candidate=(d.get("directional_candidates") or {}).get(side)
         deviation=abs((ask if side=="BUY" else bid)-ref)/atr if valid_price else None
         checks={"strategy":isinstance(candidate,dict) and 1<=num(candidate.get("strategy_id"))<=200,
             "fresh":0<=age<60,"symbol":bool(symbol) and symbol==item.get("symbol"),
             "no_trap":ctx.get(side.lower()+"_trap") is False,
             "price":valid_price and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap)}
+        if not legacy:
+            checks["ai_evidence"]=bool(forecasts)
+            checks["ai_direction"]=model_direction==side
         failed=[k for k,v in checks.items() if not v]
         sides[side]={"score":round(score,8),"eligible":not failed,"failed_checks":failed,
             "components":{"strategy":strategy,"models":model,"market":market,
@@ -105,12 +118,16 @@ def evaluate(d,item,settings,now):
     selected=ranking[0] if ranking else "WAIT"
     tied=len(ranking)==2 and abs(sides[ranking[0]]["score"]-sides[ranking[1]]["score"])<1e-8
     approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=THRESHOLD)
-    return {"version":VERSION,"mode":"DEMO_ONLY","selected":selected,
+    reason="READY" if approved else "TIE" if tied else "NO_ELIGIBLE_SIDE" if not ranking else "WEIGHTED_SCORE"
+    if not legacy and not forecasts:reason="NO_FRESH_AI_EVIDENCE"
+    elif not legacy and model_direction=="WAIT":reason="AI_DIRECTION_UNCLEAR"
+    elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
+    return {"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
         "direction":selected if approved else "WAIT","approved":approved,"threshold":THRESHOLD,
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
-        "reason":"READY" if approved else "TIE" if tied else "NO_ELIGIBLE_SIDE" if not ranking else "WEIGHTED_SCORE",
-        "allocation":{"strategy":.4,"seven_models":.4,"market":.2}}
+        "reason":reason,"model_direction":model_direction,"evidence_mass":evidence_mass,"model_conviction":conviction,
+        "allocation":{"strategy":.4,"seven_models":.4,"market":.2} if legacy else {"strategy":.25,"seven_models":.60,"market":.15}}
 
 def select_demo(d,item,settings,now):
     """Entry only. Keep existing master report and management scores unchanged."""
@@ -126,7 +143,8 @@ def select_demo(d,item,settings,now):
         c=(d.get("directional_candidates") or {})[side]
         out.update(decision=side,strategy_id=c["strategy_id"],strategy_name=c.get("strategy_name",""),
             combination_id=c.get("combination_id",0),confidence=trial["scores"][side]["score"],
-            reason_ar="MASTER BALANCED DEMO: تقييم الاستراتيجيات والذكاء السبعة والسعر")
+            reason_ar="MASTER AI FIRST DEMO: الذكاء يحدد الاتجاه والاستراتيجية تختار نقطة الدخول")
     else:
-        out.update(decision="WAIT",confidence=0.)
+        out.update(decision="WAIT",confidence=0.,strategy_id=0,combination_id=0,strategy_name="",
+                   reason_ar="MASTER AI FIRST: "+trial["reason"])
     return out

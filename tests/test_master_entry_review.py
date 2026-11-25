@@ -259,25 +259,52 @@ class BalancedDemoTests(unittest.TestCase):
         snap={"symbol":symbol,"timeframe":"M1","account":{"trade_mode":"DEMO"},
             "master_direct_demo_capable":True,"tick":{"bid":100.3,"ask":100.4}}
         return d,snap
-    def test_seven_models_have_40_percent_budget_and_missing_neutral(self):
+    def test_seven_models_have_60_percent_budget_and_missing_block(self):
         from master_balanced import evaluate,MODELS,select_demo
         d,snap=self.fixture(forecasts={n:1. for n in MODELS})
         t=evaluate(d,snap,{},BAR+62)
         self.assertAlmostEqual(sum(t["weights"].values()),1.)
-        self.assertEqual(t["allocation"],{"strategy":.4,"seven_models":.4,"market":.2})
+        self.assertEqual(t["allocation"],{"strategy":.25,"seven_models":.60,"market":.15})
         self.assertTrue(t["approved"])
         self.assertEqual(t["direction"],"BUY")
         selected=select_demo(d,snap,{},BAR+62)
         self.assertTrue(review(selected,snap,{},BAR+62,live_arena=True)["approved"])
         d["master"]["arena_shadow"]["models"]={n:-1. for n in MODELS}
         against=evaluate(d,snap,{},BAR+62)
-        self.assertAlmostEqual(t["scores"]["BUY"]["score"]-against["scores"]["BUY"]["score"],.4,places=7)
+        self.assertAlmostEqual(t["scores"]["BUY"]["score"]-against["scores"]["BUY"]["score"],.60,places=7)
+        self.assertFalse(against["scores"]["BUY"]["eligible"])
+        self.assertEqual(against["model_direction"],"SELL")
         d["master"]["arena_shadow"]["models"]={}
         neutral=evaluate(d,snap,{},BAR+62)
-        self.assertEqual(neutral["scores"]["BUY"]["components"]["models"],.5)
+        self.assertEqual(neutral["scores"]["BUY"]["components"]["models"],0.)
+        self.assertFalse(neutral["approved"])
+        self.assertEqual(neutral["reason"],"NO_FRESH_AI_EVIDENCE")
+        self.assertFalse(review(select_demo(d,snap,{},BAR+62),snap,{},BAR+62,live_arena=True)["approved"])
+        self.assertEqual(evaluate(d,snap,{},BAR+62,legacy=True)["scores"]["BUY"]["components"]["models"],.5)
         d["master"]["arena_shadow"]["models"]={n:1. for n in MODELS}
         d["master"]["arena_shadow"]["bar_time"]=BAR-60
         self.assertEqual(evaluate(d,snap,{},BAR+62)["used_models"],[])
+    def test_one_material_model_no_wait_both_markets(self):
+        from master_balanced import evaluate,select_demo
+        for sym in ("XAUUSD","BTCUSDm"):
+            for sign in (1.,-1.):
+                d,snap=self.fixture(sym,{"LightGBM":sign})
+                side="BUY" if sign>0 else "SELL"
+                other="SELL" if sign>0 else "BUY"
+                d["directional_scores"]={side:.98,other:.02}
+                snap["tick"]={"bid":100.3,"ask":100.4} if sign>0 else {"bid":99.6,"ask":99.7}
+                t=evaluate(d,snap,{},BAR+62)
+                self.assertEqual(t["model_direction"],side)
+                self.assertEqual(t["used_models"],["LightGBM"])
+                self.assertTrue(t["approved"])
+                self.assertTrue(review(select_demo(d,snap,{},BAR+62),snap,{},BAR+62,live_arena=True)["approved"])
+                d["master"]["arena_shadow"]["models"]={"LightGBM":.03}
+                self.assertFalse(evaluate(d,snap,{},BAR+62)["approved"])
+                d["master"]["arena_shadow"]["models"]={"LightGBM":.8,"XGBoost":-.8}
+                self.assertEqual(evaluate(d,snap,{},BAR+62)["reason"],"AI_DIRECTION_UNCLEAR")
+                d["master"]["arena_shadow"]["models"]={"LightGBM":sign}
+                del d["directional_candidates"][side]
+                self.assertEqual(evaluate(d,snap,{},BAR+62)["reason"],"AI_SIDE_NOT_ELIGIBLE")
     def test_rank_both_eligible_and_never_model_only(self):
         from master_balanced import evaluate,MODELS
         d,snap=self.fixture(forecasts={n:-1. for n in MODELS})
