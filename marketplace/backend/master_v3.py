@@ -9,6 +9,7 @@ import master_ai
 import master_v2
 import master_entry_review
 import master_adaptive
+import master_balanced
 from market_symbols import same_market_symbol
 
 VERSION="MASTER_V3_SHADOW"
@@ -85,9 +86,13 @@ def evaluate(base,council,feedback,tick,settings,now,arena=None,positions=None):
     live["master"]={**(live.get("master") or {}),"arena_shadow":arena or {}}
     live_review=master_entry_review.review(live,{**snapshot,"symbol":base.get("symbol")},
                                           settings,now,live_arena=True)
+    demo_snapshot={**snapshot,"symbol":base.get("symbol"),"account":{"trade_mode":"DEMO"},"master_direct_demo_capable":True}
+    demo_v1=master_entry_review.review(live,demo_snapshot,settings,now,live_arena=True)
+    balanced=master_balanced.evaluate(live,demo_snapshot,settings,now)
+    balanced={**balanced,"mode":"SHADOW_ONLY","execution_authorized":False,"baseline_direction":live.get("decision") if demo_v1.get("approved") else "WAIT"}
     adaptive=master_adaptive.evaluate(base,live,arena,feedback,tick,settings,now)
     adaptive["management"]=master_adaptive.management(adaptive,arena,positions,base.get("symbol"))
-    return {"adaptive":adaptive,"adaptive_baseline":live["decision"] if live_review["approved"] else "WAIT",
+    return {"balanced_demo_comparison":balanced,"adaptive":adaptive,"adaptive_baseline":live["decision"] if live_review["approved"] else "WAIT",
         "adaptive_baseline_review":live_review,
         "current":current["decision"] if old["approved"] else "WAIT",
         "challenger":direction if review["approved"] else "WAIT",
@@ -256,12 +261,12 @@ def summarize(rows,symbol):
                     "candidate_signals":sum(x[4] in SIDES for x in data)}
         speed_report.setdefault(str(lane),{})[str(h)]={"train":paired(items[:cut]),
             "validation":paired(items[cut:]),"enough_for_review":cut>=80 and len(items)-cut>=40}
-    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"speed_trap_shadow":speed_report,"unified_score_validation":summarize_unified(rows,symbol),"regime_memory":memory(regimes),
+    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"speed_trap_shadow":speed_report,"unified_score_validation":summarize_unified(rows,symbol),"balanced_demo_validation":summarize_unified(rows,symbol,balanced=True),"regime_memory":memory(regimes),
             "strategy_memory":memory(strategies),"live_execution_changed":False,
             "metric":"OBSERVED_QUOTES_COMMON_HORIZON_NOT_BROKER_TRADES"}
 
 
-def summarize_unified(rows,symbol):
+def summarize_unified(rows,symbol,balanced=False):
     """Same observed quote, chronological split and nonoverlapping 180s
     outcome windows. Never auto-promote a research candidate."""
     samples={}
@@ -270,15 +275,16 @@ def summarize_unified(rows,symbol):
         if p.get("version")!=VERSION or not same_market_symbol(p.get("symbol"),symbol) or p.get("lane")!=10:continue
         c=p.get("candidate") or {}
         review=c.get("adaptive_baseline_review") or {}
-        trial=review.get("unified_score") or {}
-        if trial.get("version")!=master_entry_review.UNIFIED_SCORE_VERSION or trial.get("execution_authorized") is not False:continue
+        trial=(c.get("balanced_demo_comparison") if balanced else review.get("unified_score")) or {}
+        version=master_balanced.VERSION if balanced else master_entry_review.UNIFIED_SCORE_VERSION
+        if trial.get("version")!=version or trial.get("execution_authorized") is not False:continue
         o=(p.get("outcomes") or {}).get("180")
         if not isinstance(o,dict) or num(o.get("max_gap_sec"),999)>20:continue
         pay=o.get("payoffs") or {}
         if not all(s in pay and math.isfinite(num(pay[s],float("nan"))) for s in SIDES):continue
         bar=p.get("bar_time")
         if not isinstance(bar,int):continue
-        a=c.get("adaptive_baseline","WAIT");b=trial.get("direction","WAIT")
+        a=trial.get("baseline_direction","WAIT") if balanced else c.get("adaptive_baseline","WAIT");b=trial.get("direction","WAIT")
         if a not in (*SIDES,"WAIT") or b not in (*SIDES,"WAIT"):continue
         observed=num(p.get("observed_at"));end=num(o.get("quote_time"))
         if not 0<observed<end:continue
@@ -298,6 +304,6 @@ def summarize_unified(rows,symbol):
     train=stats(distinct[:cut]);valid=stats(distinct[cut:])
     enough=train["windows"]>=80 and valid["windows"]>=40 and train["candidate_signals"]>=30 and valid["candidate_signals"]>=20
     improves=enough and all(x["candidate_net_atr"]>max(0.,x["baseline_net_atr"]) for x in (train,valid))
-    return {"version":master_entry_review.UNIFIED_SCORE_VERSION,"mode":"SHADOW_ONLY","lane":10,"horizon":180,
+    return {"version":master_balanced.VERSION if balanced else master_entry_review.UNIFIED_SCORE_VERSION,"mode":"SHADOW_ONLY","lane":10,"horizon":180,
         "train":train,"validation":valid,"enough_for_review":enough,"candidate_improves_proxy":improves,
         "auto_promoted":False,"execution_authorized":False,"metric":"OBSERVED_QUOTES_NOT_BROKER_TRADES"}
