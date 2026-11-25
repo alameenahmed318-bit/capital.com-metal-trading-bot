@@ -111,13 +111,28 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         strong=quality>=.80 and support>=.75 and supporting>=2 and pressure>=.25 and not trap
         medium=quality>=.68 and support>=.65 and supporting>=2 and not trap
         single=quality>=.70 and support>=.75 and supporting>=1 and margin>=.35 and market_quality>=.35 and not trap
-        target=5.0 if strong else 10.0 if medium else 15.0
+        # Only exceptionally strong, diverse evidence may accelerate the
+        # existing five-second lane. Keep all normal quality thresholds.
+        exceptional=(strong and supporting>=3 and all(v>=.75 for v in family_support.values())
+                     and quality>=.90 and margin>=.60 and market_quality>=.70 and pressure>=.50)
+        target=2.0 if exceptional else 5.0 if strong else 10.0 if medium else 15.0
         detail.update(evidence_families=family_support,supporting_families=supporting,
-                      collection_limit_sec=target,quality_threshold=.80 if strong else .68 if medium else .70)
+                      exceptional_early_candidate=exceptional,
+                      collection_limit_sec=target,quality_threshold=.90 if exceptional else .80 if strong else .68 if medium else .70)
         if not (strong or medium or single):
             return result("WEAK_EVIDENCE","أدلة النماذج المتاحة أو اتجاه السوق غير كافية؛ انتظار فرصة أوضح",**detail)
         if age<target:
             return result("COLLECTING","مراجعة ديناميكية للأدلة المتاحة؛ لا انتظار إجباري للنماذج القديمة",**detail)
+    # When accelerating a legacy-only candidate, require at least the same
+    # single-family quality and directional support used for arena evidence.
+    # The normal post-collection policy is unchanged.
+    if live_arena and not adaptive and pending and age<MAX_COLLECTION_SECONDS:
+        early_ok=(quality>=.70 and support>=.75 and margin>=.35 and market_quality>=.35 and not trap)
+        detail.update(early_legacy_quality_threshold=.70,early_legacy_eligible=early_ok)
+        if not early_ok:
+            return result("COLLECTING","الأدلة الحالية لا تحقق جودة الدخول المبكر؛ مراجعة عند وصول دليل إضافي",**detail)
+        if age<5:
+            return result("COLLECTING","مراجعة مبكرة للسعر والأدلة المستقلة",**detail)
     if quality<MIN_QUALITY:
         return result("WEAK_EVIDENCE","جودة الأدلة المجمعة ضعيفة؛ انتظار فرصة أفضل",**detail)
     tick=item.get("tick") or {}
