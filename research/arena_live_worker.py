@@ -171,7 +171,69 @@ def live(email,password):
                     print(market,"FIT_ERROR",type(exc).__name__,flush=True)
             time.sleep(5)
     threading.Thread(target=train_loop,daemon=True,name="arena-training-lane").start()
-    print("ALZOOL LIVE ADVISERS | seven models | cloud Arena OFF | no order permission",flush=True)
+    print("ALZOOL LIVE ADVISERS | seven models | GOLD FAST LANE | no order permission",flush=True)
+    def poll_market(market,auth):
+        ctx=arena.api(market,"live-context",auth)
+        if ctx.get("status")!="READY":return
+        cid=ctx["client"];bar=ctx["bar_time"]
+        if not fresh(bar):return
+        with lock:
+            old=jobs.get(market)
+            if old and old["bar_time"]==bar and old["client"]==cid and seen.get(market)==(cid,bar):
+                return
+        f=features(ctx["bars"])
+        if f is None:return
+        x,atr=f
+        with lock:
+            fitted=cache.get(market)
+            old=jobs.get(market)
+            if not old or old["bar_time"]!=bar or old["client"]!=cid:
+                jobs[market]={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,
+                              "values":[(b["close"]-ctx["bars"][-1]["close"])/atr for b in ctx["bars"]]}
+        if not fitted or fitted[0]!=cid or seen.get(market)==(cid,bar):return
+        _,models,actions=fitted
+        scores={};action_scores={}
+        for name,m in models.items():
+            try:
+                value=float(m.predict([x])[0])
+                if math.isfinite(value):scores[name]=value
+            except Exception as exc:print(market,name,type(exc).__name__,flush=True)
+        body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar}
+        # Gold's entry evidence is transmitted before position-management
+        # inference. The server merges same-bar partial updates by model/action.
+        gold=market=="XAUUSD"
+        if gold and scores:
+            if not fresh(bar):return
+            response=arena.api(market,"live-forecast",auth,{**body,"models":scores,"actions":{}})
+            print(market,bar,"DIRECTION_FIRST",list(scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),
+                  "age_after_close_sec",round(time.time()-bar-60,3),flush=True)
+            if not response.get("accepted"):return
+        for (action,side),m in actions.items():
+            try:
+                value=float(m.predict([x])[0])
+                if math.isfinite(value):action_scores.setdefault(action,{})[side]=value
+            except Exception as exc:print(market,action,side,type(exc).__name__,flush=True)
+        if not fresh(bar):return
+        if gold and scores:
+            if action_scores:
+                response=arena.api(market,"live-forecast",auth,{**body,"models":{},"actions":action_scores})
+                if not response.get("accepted"):return
+            seen[market]=(cid,bar)
+            return
+        if not scores and not action_scores:return
+        response=arena.api(market,"live-forecast",auth,{**body,"models":scores,"actions":action_scores})
+        if response.get("accepted"):seen[market]=(cid,bar)
+        print(market,bar,"FAST",list(scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
+    def gold_loop():
+        # A slow BTC request cannot consume the gold candle's entry window.
+        while True:
+            try:
+                with lock:auth=state["token"]
+                poll_market("XAUUSD",auth)
+            except Exception as exc:
+                print("XAUUSD","LIVE_WORKER_ERROR",type(exc).__name__,flush=True)
+            time.sleep(2)
+    threading.Thread(target=gold_loop,daemon=True,name="arena-gold-fast-lane").start()
     while True:
         if time.monotonic()>renew:
             try:
@@ -181,35 +243,9 @@ def live(email,password):
                 print("AUTH_REFRESH_ERROR",type(exc).__name__,flush=True)
                 time.sleep(10);continue
         for market in arena.MARKETS:
+            if market=="XAUUSD":continue
             try:
-                ctx=arena.api(market,"live-context",token)
-                if ctx.get("status")!="READY":continue
-                cid=ctx["client"];bar=ctx["bar_time"]
-                if not fresh(bar):continue
-                f=features(ctx["bars"])
-                if f is None:continue
-                x,atr=f
-                with lock:
-                    fitted=cache.get(market)
-                    old=jobs.get(market)
-                    if not old or old["bar_time"]!=bar or old["client"]!=cid:
-                        jobs[market]={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,
-                                      "values":[(b["close"]-ctx["bars"][-1]["close"])/atr for b in ctx["bars"]]}
-                if not fitted or fitted[0]!=cid or seen.get(market)==(cid,bar):continue
-                _,models,actions=fitted
-                scores={};action_scores={}
-                for name,m in models.items():
-                    try:scores[name]=float(m.predict([x])[0])
-                    except Exception as exc:print(market,name,type(exc).__name__,flush=True)
-                for (action,side),m in actions.items():
-                    try:action_scores.setdefault(action,{})[side]=float(m.predict([x])[0])
-                    except Exception as exc:print(market,action,side,type(exc).__name__,flush=True)
-                if not scores and not action_scores:continue
-                if not fresh(bar):continue
-                body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"models":scores,"actions":action_scores}
-                response=arena.api(market,"live-forecast",token,body)
-                seen[market]=(cid,bar)
-                print(market,bar,"FAST",list(scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
+                poll_market(market,token)
             except Exception as exc:
                 print(market,"LIVE_WORKER_ERROR",type(exc).__name__,flush=True)
         time.sleep(3)
