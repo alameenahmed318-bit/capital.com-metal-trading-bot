@@ -29,6 +29,29 @@ def num(x,default=0.0):
 def lane_for(age):
     return max((x for x in LANES if x<=age<60),default=None)
 
+def speed_trap_candidate(proposed,snapshot,settings,now,review):
+    """Research-only: earlier candidate and adverse candle/price context."""
+    side=proposed.get("decision");ctx=proposed.get("context") or {}
+    if side not in SIDES:
+        return {"direction":"WAIT","reason":"NO_DIRECTION","execution_authorized":False}
+    sign=1 if side=="BUY" else -1
+    pressure=sign*num(ctx.get("last_closed_candle_pressure"))
+    quality=max(0.,min(1.,num(ctx.get(side.lower()+"_quality"),50.)/100.))
+    flagged=ctx.get(side.lower()+"_trap") is True
+    ref=num(proposed.get("entry_reference_price"));atr=num(proposed.get("entry_atr") or ctx.get("atr"))
+    price=num((snapshot.get("tick") or {}).get("ask" if side=="BUY" else "bid"))
+    adverse=max(0.,min(1.,-sign*(price-ref)/atr)) if price>0 and ref>0 and atr>0 else 0.
+    risk=min(1.,.5*flagged+.25*max(0.,-pressure)+.15*(1.-quality)+.1*adverse)
+    trial=review
+    if review.get("state")=="COLLECTING":
+        master=proposed.get("master") or {}
+        models=[{**m,"status":"DEFERRED"} if m.get("model") in review.get("pending",[]) else m for m in master.get("models",[])]
+        trial=master_entry_review.review({**proposed,"master":{**master,"models":models}},snapshot,settings,now)
+        if not (trial.get("approved") and trial.get("independent_votes",0)>=1 and num(trial.get("quality"))>=.80 and num(trial.get("independent_support"))>=.85 and pressure>=.35 and risk<.25):
+            return {"direction":"WAIT","reason":"EARLY_EVIDENCE_WEAK","trap_risk":round(risk,4),"execution_authorized":False}
+    approved=trial.get("approved") is True and risk<.50
+    return {"direction":side if approved else "WAIT","reason":"RESEARCH_CANDIDATE" if approved else "TRAP_RISK" if risk>=.50 else trial.get("state","WAIT"),"trap_risk":round(risk,4),"flagged":flagged,"pressure":round(pressure,4),"execution_authorized":False}
+
 def evaluate(base,council,feedback,tick,settings,now):
     """Research only: compare current review against adaptive challenger."""
     age=now-num(base.get("bar_time"))-60
@@ -45,6 +68,7 @@ def evaluate(base,council,feedback,tick,settings,now):
         "strategy_id":v2["strategy_id"],"combination_id":v2["combination_id"],
         "master":{"models":models,"scores":scores}}
     review=master_entry_review.review(proposed,snapshot,settings,now)
+    speed_trap=speed_trap_candidate(proposed,snapshot,settings,now,review)
     # Early release is a research hypothesis, not a live authorization.
     # It bypasses only remaining model collection, never quality or price checks.
     early=False
@@ -56,6 +80,7 @@ def evaluate(base,council,feedback,tick,settings,now):
     return {"current":current["decision"] if old["approved"] else "WAIT",
         "challenger":direction if review["approved"] else "WAIT",
         "candidate_direction":direction,"current_review":old,"review":review,
+        "speed_trap_shadow":speed_trap,
         "early_candidate":early,"strategy_id":v2["strategy_id"],"combination_id":v2["combination_id"],
         "regime":v2["regime"],"weights":v2["weights"],"profile_evidence":v2["profile_evidence"],
         "eligible":v2["eligible"],"execution_authorized":False}
@@ -134,7 +159,7 @@ def latest(client,symbol):
 
 def summarize(rows,symbol):
     """Persisted same-quote paired evidence; compare chronological holdout."""
-    groups={};seen=set();regimes={};strategies={}
+    groups={};seen=set();regimes={};strategies={};speed_groups={}
     for row in rows or []:
         p=row.get("payload") or {}
         if p.get("version")!=VERSION or not same_market_symbol(p.get("symbol"),symbol):continue
@@ -152,6 +177,10 @@ def summarize(rows,symbol):
             x=num(pay.get(a));y=num(pay.get(b))
             missed=b=="WAIT" and any(num(pay.get(s))>0 for s in c.get("eligible",[]))
             groups.setdefault((lane,h),[]).append((bar,x,y,a,b,missed))
+            trial=c.get("speed_trap_shadow") or {}
+            side=trial.get("direction")
+            if side in (*SIDES,"WAIT") and trial.get("execution_authorized") is False:
+                speed_groups.setdefault((lane,h),[]).append((bar,y,num(pay.get(side)),b,side))
             if h==180 and b in SIDES:
                 ex=(o.get("excursion") or {}).get(b) or {}
                 sample=(bar,y,num(ex.get("mae_atr")),num(ex.get("mfe_atr")))
@@ -179,6 +208,16 @@ def summarize(rows,symbol):
                 "training":len(train),"validation":len(valid),
                 "status":"REVIEW_ONLY" if len(train)>=30 and len(valid)>=15 else "INSUFFICIENT"})
         return sorted(out,key=lambda x:x["samples"],reverse=True)[:30]
-    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"regime_memory":memory(regimes),
+    speed_report={}
+    for (lane,h),items in speed_groups.items():
+        items=sorted(items);cut=int(len(items)*.7)
+        def paired(data):
+            return {"samples":len(data),"baseline_net_atr":round(sum(x[1] for x in data),4),
+                    "candidate_net_atr":round(sum(x[2] for x in data),4),
+                    "baseline_signals":sum(x[3] in SIDES for x in data),
+                    "candidate_signals":sum(x[4] in SIDES for x in data)}
+        speed_report.setdefault(str(lane),{})[str(h)]={"train":paired(items[:cut]),
+            "validation":paired(items[cut:]),"enough_for_review":cut>=80 and len(items)-cut>=40}
+    return {"version":VERSION,"mode":"SHADOW_ONLY","lanes":result,"speed_trap_shadow":speed_report,"regime_memory":memory(regimes),
             "strategy_memory":memory(strategies),"live_execution_changed":False,
             "metric":"OBSERVED_QUOTES_COMMON_HORIZON_NOT_BROKER_TRADES"}
