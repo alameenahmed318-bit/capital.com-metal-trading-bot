@@ -52,6 +52,64 @@ def learned_factors(feedback,symbol):
             result[row.get("model")]=factor
     return result
 
+def reconcile_direction(base,result):
+    """Re-rank only a conflicting, independently supported *eligible* alternative.
+
+    Family agreement is not a win probability. Preserve legacy scores for audit;
+    never flip to a model-only trade or change a price/position authorization.
+    """
+    from master_entry_review import ARENA_FAMILIES
+    h=result.get("hybrid") or {}
+    first=result.get("decision")
+    diag={"status":"UNCHANGED","original_direction":first}
+    if first not in ("BUY","SELL"):return diag
+    other="SELL" if first=="BUY" else "BUY"
+    groups={}
+    for m in h.get("model_contributions") or []:
+        if not m.get("used") or m.get("direction") not in ("BUY","SELL"):continue
+        name=m.get("model")
+        family=ARENA_FAMILIES.get(name,"LANGUAGE" if name in ("Qwen","DeepSeek","GPT-OSS 120B") else None)
+        if family is None:continue
+        g=groups.setdefault(family,{"BUY":0.,"SELL":0.})
+        g[m["direction"]]+=max(0.,num(m.get("points")))
+    support={k:v[other]/sum(v.values()) for k,v in groups.items() if sum(v.values())>0}
+    if not all(support.get(k,0.)>=.85 for k in ("TREES","FORECAST")):return diag
+    agreement=sum(support.values())/len(support)
+    diag.update(status="CONFLICT_REVIEW",alternative_direction=other,family_support=support)
+    candidate=(base.get("directional_candidates") or {}).get(other)
+    quant=h.get("quantitative_scores") or {}
+    ctx=base.get("context") or {}
+    q=num(quant.get(other));qfirst=num(quant.get(first))
+    mq=num(ctx.get(other.lower()+"_quality"))/100.
+    pressure=(1 if other=="BUY" else -1)*num(ctx.get("last_closed_candle_pressure"))
+    if (not isinstance(candidate,dict) or not 1<=num(candidate.get("strategy_id"))<=200
+        or q<.35 or qfirst-q>.20 or agreement<.65 or mq<.65 or pressure<.25
+        or ctx.get(other.lower()+"_trap") is not False):
+        diag["status"]="ALTERNATIVE_NOT_QUALIFIED"
+        return diag
+    # Balance bounded quantitative strength and independent family support,
+    # only in this explicit conflict case. Do not reuse the first side's
+    # confidence, strategy or margin. The ordinary review still runs.
+    bounded=lambda x:max(0.,min(1.,x))
+    scores={other:.5*bounded(q)+.5*agreement,
+            first:.5*bounded(qfirst)+.5*(1-agreement)}
+    margin=(scores[other]-scores[first])/max(1e-9,sum(scores.values()))
+    strength=scores[other]
+    quality=.40*strength+.25*max(0.,margin)+.20*mq+.15*agreement
+    diag.update(alternative_quality=round(quality,4),alternative_scores=scores)
+    if margin<=0 or quality<.68:
+        diag["status"]="ALTERNATIVE_QUALITY_INSUFFICIENT"
+        return diag
+    result.update(decision=other,strategy_id=candidate["strategy_id"],
+        strategy_name=candidate.get("strategy_name",""),combination_id=candidate.get("combination_id",0),
+        confidence=round(strength,6),reason_ar="HYBRID "+other+" | إعادة ترجيح اتجاه مؤهل بأدلة عائلتين مستقلتين")
+    h.update(original_combined_scores=h.get("combined_scores"),combined_scores=scores,
+             effective_direction=other,direction_changed=other!=h.get("base_direction"),
+             score_margin=round(abs(scores[other]-scores[first]),6),
+             reason_ar=result["reason_ar"])
+    diag["status"]="ALTERNATIVE_SELECTED"
+    return diag
+
 def decide(base,council,feedback=None,arena_evidence=None):
     symbol=(base or {}).get("symbol")
     if not supported_market_symbol(symbol):
@@ -80,6 +138,7 @@ def decide(base,council,feedback=None,arena_evidence=None):
         fusion_council={**council,"bar_time":base.get("bar_time"),"votes":{**(adjusted if same_bar else {}),**extra}}
     live_weights={**WEIGHTS,**{n:ARENA_WEIGHTS[n] for n in extra}}
     result=fuse_live_decision(base,fusion_council,model_weights=live_weights)
+    reconciliation=reconcile_direction(base,result)
     fusion=result.get("hybrid") or {}
     inputs=fusion.get("model_contributions") or []
     for row in inputs:
@@ -94,7 +153,7 @@ def decide(base,council,feedback=None,arena_evidence=None):
         "mode":"MASTER","version":"MASTER_V1","direction":result["decision"],
         "source":"CLOUD_ASSISTED" if cloud_used else "LOCAL_CONTROLLER",
         "cloud_status":(cloud or {}).get("status","NOT_RECEIVED"),
-        "unanimity_required":False,"reason_ar":result["reason_ar"],
+        "unanimity_required":False,"reason_ar":result["reason_ar"],"direction_reconciliation":reconciliation,
         "models":inputs,"scores":fusion.get("combined_scores",{}),
         "quant_direction":fusion.get("base_direction"),
         "strategy_id":result.get("strategy_id"),"combination_id":result.get("combination_id"),
