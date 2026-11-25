@@ -1178,7 +1178,7 @@ class Handler(SimpleHTTPRequestHandler):
             )
             review_report={}
             if mode=="MASTER":
-                review_report=master_entry_review.review(decision,item,control_settings,datetime.now(timezone.utc).timestamp())
+                review_report=master_entry_review.review(decision,item,control_settings,datetime.now(timezone.utc).timestamp(),live_arena=True)
                 gate=master_entry_review.apply_gate(gate,review_report)
                 decision["master"]={**(decision.get("master") or {}),"entry_review":review_report}
             risk_report=risk_guardian(item.get("account") or {},item.get("positions") or [],risk_limits_from_settings(control_settings))
@@ -1694,7 +1694,7 @@ class Handler(SimpleHTTPRequestHandler):
                     strategy_first=advisory)
                 review_report={}
                 if mode=="MASTER":
-                    review_report=master_entry_review.review(decision,item,settings,now.timestamp())
+                    review_report=master_entry_review.review(decision,item,settings,now.timestamp(),live_arena=True)
                     gate=master_entry_review.apply_gate(gate,review_report)
                     decision["master"]={**(decision.get("master") or {}),"entry_review":review_report}
                 risk=risk_guardian(item.get("account") or {},item.get("positions") or [],
