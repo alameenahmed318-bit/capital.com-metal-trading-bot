@@ -4,6 +4,8 @@ import math
 MAX_COLLECTION_SECONDS=20.0
 MIN_QUALITY=.55
 INDEPENDENT=("Qwen","DeepSeek","GPT-OSS 120B")
+ARENA_FAMILIES={**{n:"TREES" for n in ("LightGBM","XGBoost","CatBoost")},
+                **{n:"FORECAST" for n in ("TiRex-2","Chronos-2","TimesFM-2.5","Chronos-Bolt Tiny")}}
 PENDING={"PENDING","AWAITING_LOCAL_VOTE","NOT_RECEIVED","MISSING"}
 PERIODS={"M1":60,"M5":300,"M15":900,"M30":1800,"H1":3600,"H4":14400}
 
@@ -17,7 +19,7 @@ def number(v,default=0.0):
 def clamp(v):
     return min(1.0,max(0.0,v))
 
-def review(decision,snapshot,settings,now_unix):
+def review(decision,snapshot,settings,now_unix,*,live_arena=False):
     """Review current-bar evidence without sleeps, requests, or unanimity.
     Threshold is a provisional quality score, NOT a calibrated win probability.
     The existing MT5 price-deviation setting is respected, not replaced.
@@ -34,18 +36,41 @@ def review(decision,snapshot,settings,now_unix):
            rows[n].get("used") is True and rows[n].get("status")=="READY" and
            rows[n].get("direction") in ("BUY","SELL")]
     pending=[n for n,s in statuses.items() if s in PENDING]
-    base={"policy":"MASTER_REVIEW_V1","age_after_close_sec":round(age,3),
+    # New admission path only uses the server-side, owner-scoped current-bar
+    # cache already verified by master_ai; never accept browser/EA votes here.
+    arena=report.get("arena_shadow") or {}
+    advisory=report.get("arena_advisory") or {}
+    fresh_arena=(live_arena and frame=="M1" and arena.get("status")=="SHADOW_READY"
+        and arena.get("symbol")==d.get("symbol")==item.get("symbol")
+        and arena.get("bar_time")==d.get("bar_time")
+        and 0<=number(now_unix)-number(arena.get("received_at"))<=60)
+    extra=[]
+    if fresh_arena:
+        used=set(advisory.get("used") or [])
+        for n in ARENA_FAMILIES:
+            r=rows.get(n,{})
+            v=number((arena.get("models") or {}).get(n))
+            if (n in used and r.get("used") is True and r.get("status")=="READY"
+                and abs(v)>.05 and r.get("direction")==("BUY" if v>0 else "SELL")
+                and number(r.get("points"))>0):
+                extra.append(r)
+    adaptive=bool(extra)
+    if adaptive:
+        votes=votes+extra
+        statuses.update({n:("READY" if any(r.get("model")==n for r in extra) else "OPTIONAL_UNAVAILABLE") for n in ARENA_FAMILIES})
+    base={"policy":"MASTER_REVIEW_V2" if live_arena else "MASTER_REVIEW_V1","age_after_close_sec":round(age,3),
           "collection_limit_sec":MAX_COLLECTION_SECONDS,
           "independent_votes":len(votes),"pending":pending,"statuses":statuses,
           "candidate_direction":side,"quality_threshold":MIN_QUALITY,
-          "quality":None,"unanimity_required":False}
+          "quality":None,"unanimity_required":False,"arena_models_used":[r["model"] for r in extra],
+          "legacy_pending_optional":adaptive}
     def result(state,reason,approved=False,**extra):
         return {**base,**extra,"state":state,"reason_ar":reason,"approved":approved}
     if side not in ("BUY","SELL"):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
         return result("STALE_BAR","نافذة الشمعة غير صالحة")
-    if age<MAX_COLLECTION_SECONDS and pending:
+    if not adaptive and age<MAX_COLLECTION_SECONDS and pending:
         return result("COLLECTING","جارٍ جمع تحليلات النماذج المستقلة للشمعة الحالية")
     if not votes:
         return result("NO_INDEPENDENT_EVIDENCE","لا دخول اعتماداً على Fast AI وحده؛ لا يوجد تحليل اتجاهي مستقل صالح")
@@ -57,6 +82,15 @@ def review(decision,snapshot,settings,now_unix):
     weights=[max(0.0,number(r.get("points"))) for r in votes]
     total=sum(weights)
     support=sum(w for w,r in zip(weights,votes) if r.get("direction")==side)/total if total>0 else 0.0
+    family_support={}
+    if adaptive:
+        groups={}
+        for r in votes:
+            family=ARENA_FAMILIES.get(r.get("model"),"LANGUAGE")
+            g=groups.setdefault(family,{"BUY":0.,"SELL":0.})
+            g[r["direction"]]+=max(0.,number(r.get("points")))
+        family_support={k:g.get(side,0)/sum(g.values()) for k,g in groups.items() if sum(g.values())>0}
+        support=sum(family_support.values())/len(family_support) if family_support else 0.
     context=d.get("context") or {}
     prefix=side.lower()
     market_quality=clamp(number(context.get(prefix+"_quality"),50.0)/100.0)
@@ -66,6 +100,21 @@ def review(decision,snapshot,settings,now_unix):
     detail={"quality":round(quality,4),"direction_margin":round(margin,4),
             "independent_support":round(support,4),"market_quality":round(market_quality,4),
             "trap_flag":trap}
+    if adaptive:
+        supporting=sum(v>.5 for v in family_support.values())
+        pressure=(1 if side=="BUY" else -1)*number(context.get("last_closed_candle_pressure"))
+        # Correlated trees/forecasters count as one family each. Do not
+        # confuse seven forecasts with seven independent confirmations.
+        strong=quality>=.80 and support>=.75 and supporting>=2 and pressure>=.25 and not trap
+        medium=quality>=.68 and support>=.65 and supporting>=2 and not trap
+        single=quality>=.70 and support>=.75 and supporting>=1 and margin>=.35 and market_quality>=.35 and not trap
+        target=5.0 if strong else 10.0 if medium else 15.0
+        detail.update(evidence_families=family_support,supporting_families=supporting,
+                      collection_limit_sec=target,quality_threshold=.80 if strong else .68 if medium else .70)
+        if not (strong or medium or single):
+            return result("WEAK_EVIDENCE","أدلة النماذج المتاحة أو اتجاه السوق غير كافية؛ انتظار فرصة أوضح",**detail)
+        if age<target:
+            return result("COLLECTING","مراجعة ديناميكية للأدلة المتاحة؛ لا انتظار إجباري للنماذج القديمة",**detail)
     if quality<MIN_QUALITY:
         return result("WEAK_EVIDENCE","جودة الأدلة المجمعة ضعيفة؛ انتظار فرصة أفضل",**detail)
     tick=item.get("tick") or {}
@@ -82,7 +131,7 @@ def review(decision,snapshot,settings,now_unix):
         cap=number(pm.get("entry_max_deviation_atr"),.5)
         if cap<=0 or deviation>cap:
             return result("PRICE_MOVED","السعر ابتعد عن نقطة الدخول وفق حد الانحراف الحالي",**detail)
-    return result("REVIEWED","اكتملت مراجعة الأدلة والسعر؛ دون اشتراط اتفاق النماذج",True,**detail)
+    return result("REVIEWED",("MASTER V2: اكتملت مراجعة أدلة النماذج المتاحة والسعر؛ لا انتظار إجباري للنماذج القديمة" if adaptive else "اكتملت مراجعة الأدلة والسعر؛ دون اشتراط اتفاق النماذج"),True,**detail)
 
 def apply_gate(gate,review_result):
     """Preserve every existing rejection and only narrow entry authorization."""
