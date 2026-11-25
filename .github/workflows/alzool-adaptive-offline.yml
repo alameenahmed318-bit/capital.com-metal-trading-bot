@@ -22,3 +22,6 @@ jobs:
       - run: python -m unittest discover -s tests -p test_recovery_basket_speed.py -v
       - run: python -m unittest discover -s tests -p test_master_v3.py -v
       - run: python -m unittest discover -s tests -p test_recovery_action_protocol.py -v
+
+      - run: python -m unittest discover -s tests -p test_smart_profit_advice.py -v
+      - run: node --check trade-management.js
