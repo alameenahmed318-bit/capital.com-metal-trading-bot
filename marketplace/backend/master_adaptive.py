@@ -69,7 +69,7 @@ def profile(rows,symbol,now):
 
 def candidate_weights(feedback,symbol,now):
     p=(feedback or {}).get("master_adaptive") or {}
-    fresh=same_market_symbol((feedback or {}).get("symbol"),symbol) and 0<=now-num(p.get("updated_at_unix"))<=600
+    fresh=same_market_symbol((feedback or {}).get("symbol"),symbol) and 0<=now-num(p.get("updated_at_unix"))<=1200
     evidence=p.get("model_profiles") or {} if fresh else {}
     weights={n:w*clamp(num((evidence.get(n) or {}).get("factor"),1.),.8,1.2) for n,w in ARENA_WEIGHTS.items()}
     total=sum(weights.values())
@@ -116,7 +116,7 @@ def evaluate(base,current,arena,feedback,tick,settings,now):
     elif age<target:reason="COLLECTING"
     elif age>15:reason="RESEARCH_WINDOW_EXPIRED"
     forecasts={}
-    if isinstance(arena,dict) and arena.get("symbol")==base.get("symbol") and arena.get("bar_time")==base.get("bar_time") and 0<=now-num(arena.get("received_at"))<=60:
+    if isinstance(arena,dict) and arena.get("status")=="SHADOW_READY" and arena.get("symbol")==base.get("symbol") and arena.get("bar_time")==base.get("bar_time") and 0<=now-num(arena.get("received_at"))<=60:
         forecasts={n:num(v) for n,v in (arena.get("models") or {}).items() if n in MODELS and num(v,None) is not None}
     return {"version":VERSION,"direction":side if reason=="READY_RESEARCH" else "WAIT","candidate_direction":side,
             "strategy_id":fused.get("strategy_id"),"combination_id":fused.get("combination_id"),
