@@ -175,7 +175,7 @@ class UnifiedScoreTests(unittest.TestCase):
                     directional_candidates={side:{"strategy_id":12,"combination_id":21}})
                 d["context"].update({side.lower()+"_quality":65,side.lower()+"_trap":False})
                 d["master"]["scores"]={side:1.0,other:0.}
-                item={"symbol":sym,"timeframe":"M1","tick":{"bid":100,"ask":100.1}}
+                item={"symbol":sym,"timeframe":"M1","tick":{"bid":100.05,"ask":100.1}}
                 votes=[{"model":n,"direction":other,"confidence":.10} for n in ("LightGBM","Chronos-2")]
                 r=unified_score(d,item,side,10,votes,{})
                 strong=unified_score(d,item,side,10,[{**v,"confidence":.95} for v in votes],{})
