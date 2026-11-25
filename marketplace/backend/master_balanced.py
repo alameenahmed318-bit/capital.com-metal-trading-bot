@@ -122,12 +122,49 @@ def evaluate(d,item,settings,now,*,legacy=False):
     if not legacy and not forecasts:reason="NO_FRESH_AI_EVIDENCE"
     elif not legacy and model_direction=="WAIT":reason="AI_DIRECTION_UNCLEAR"
     elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
-    return {"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
+    result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
         "direction":selected if approved else "WAIT","approved":approved,"threshold":THRESHOLD,
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
         "reason":reason,"model_direction":model_direction,"evidence_mass":evidence_mass,"model_conviction":conviction,
         "allocation":{"strategy":.4,"seven_models":.4,"market":.2} if legacy else {"strategy":.25,"seven_models":.60,"market":.15}}
+
+
+    if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
+        result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
+    return result
+
+def gold_strategy_advisory_shadow(trial,age):
+    """Gold-only comparison. Never grants authorization or mutates the V3 decision.
+    A weak strategy is neutral, not affirmative; stronger strategy evidence
+    can still help. Additional candidates require price confirmation, material
+    AI evidence and the unchanged eligibility checks. Early 15s lane only.
+    """
+    side=trial.get("model_direction","WAIT")
+    detail=(trial.get("scores") or {}).get(side,{})
+    parts=detail.get("components") or {}
+    m=clamp(num(parts.get("models")))
+    st=clamp(num(parts.get("strategy")))
+    market=clamp(num(parts.get("market")))
+    momentum=clamp(num(parts.get("live_momentum")))
+    mass=num(trial.get("evidence_mass"))
+    names=trial.get("used_models") or []
+    score=.60*m+.25*max(st,.5)+.15*market
+    early=0<=num(age,-1)<=15
+    eligible=side in SIDES and detail.get("eligible") is True
+    baseline=early and eligible and num(detail.get("score"))>=THRESHOLD
+    additional=(early and eligible and score>=THRESHOLD and m>=.95
+                and market>=.50 and momentum>=.60 and mass>=.12 and len(names)>=2)
+    return {"version":"GOLD_STRATEGY_ADVISORY_SHADOW_V1","mode":"SHADOW_ONLY",
+            "execution_authorized":False,"direction":side if baseline or additional else "WAIT",
+            "baseline_direction":side if baseline else "WAIT",
+            "additional_signal":bool(additional and not baseline),
+            "score":round(score,8),"threshold":THRESHOLD,"age_after_close_sec":round(num(age),3),
+            "strategy_raw":st,"strategy_advisory":max(st,.5),
+            "strategy_id":detail.get("strategy_id"),"combination_id":detail.get("combination_id"),
+            "ai_score":m,"market_score":market,"momentum":momentum,"evidence_mass":mass,
+            "used_models":list(names),"eligible":bool(eligible)}
+
 
 def select_demo(d,item,settings,now):
     """Entry only. Keep existing master report and management scores unchanged."""
