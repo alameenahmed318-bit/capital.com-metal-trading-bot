@@ -385,7 +385,8 @@ def resolve_owner_decision(client_id,decision,council,mode):
     if mode=="MASTER":
         # Bounded background cache: no network/model wait on the order path.
         feedback=feedback_learning.snapshot(client_id,decision.get("symbol"),sb)
-        result=master_ai.decide(decision,council,feedback)
+        evidence=arena_master.evidence(client_id,decision)
+        result=master_ai.decide(decision,council,feedback,arena_evidence=evidence)
         result["master"]["arena_shadow"]=arena_master.fused_shadow(client_id,decision,result)
         return result
     return fuse_live_decision(decision,council) if mode=="ADVISORY" else decision
@@ -1252,6 +1253,7 @@ class Handler(SimpleHTTPRequestHandler):
                             "models":report.get("models") or [],"scores":report.get("scores") or {},
                             "calibration_applied":report.get("calibration_applied") is True,"entry_review":review_report,
                             "adaptive_shadow":report.get("adaptive_shadow") or {},
+                            "arena_advisory":report.get("arena_advisory") or {},
                             "decision_at":datetime.now(timezone.utc).isoformat()}})
                 except Exception as audit_error:
                     print("MASTER_AUDIT_WARNING:",type(audit_error).__name__,flush=True)
