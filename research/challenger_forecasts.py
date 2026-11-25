@@ -52,12 +52,16 @@ def cloud_forecast(name,contexts,key,request=None):
     else:call=request
     values=[]
     for i,context in enumerate(contexts):
-        if i and request is None:time.sleep(3)
-        payload={"model":CLOUD[name],"max_completion_tokens":1024,
+        if i and request is None:time.sleep(20)
+        payload={"model":CLOUD[name],"max_completion_tokens":512,"reasoning_effort":"none" if name=="Qwen 3.8 27B" else "low",
+            "response_format":{"type":"json_schema","json_schema":{"name":"forecast","strict":True,"schema":{"type":"object","properties":{"forecast":{"type":"number"}},"required":["forecast"],"additionalProperties":False}}},
             "messages":[{"role":"system","content":"Research only. Forecast normalized price at t+3 from observed data. Last price is zero, units ATR. Reply JSON only: {\"forecast\": number}. Never issue an order."},
                         {"role":"user","content":json.dumps([round(float(x),5) for x in context],allow_nan=False)}]}
         response=call(payload)
-        parsed=json.loads(response["choices"][0]["message"]["content"])
+        choice=response["choices"][0]
+        if choice.get("finish_reason") not in (None,"stop"):raise ValueError("incomplete cloud response")
+        parsed=json.loads(choice["message"]["content"] or "")
+        if not isinstance(parsed,dict):raise ValueError("invalid forecast object")
         value=parsed.get("forecast")
         if isinstance(value,bool) or not isinstance(value,(float,int)) or not math.isfinite(value):raise ValueError("invalid cloud forecast")
         values.append(max(-6.,min(6.,float(value))))
