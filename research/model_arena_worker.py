@@ -130,6 +130,7 @@ def run(email,password,names,allow_timesfm,cloud_key=None):
                "first_candle":datetime.fromtimestamp(bars[0]["time"],timezone.utc).isoformat() if bars else "",
                "last_candle":datetime.fromtimestamp(bars[-1]["time"],timezone.utc).isoformat() if bars else ""}
             for name in names:
+                quota_exhausted=False
                 t=time.monotonic()
                 def publish(result):
                     # Fresh token before writing even if inference took minutes.
@@ -140,9 +141,18 @@ def run(email,password,names,allow_timesfm,cloud_key=None):
                         publish({"status":"RUNNING"})
                         result=evaluate(name,bars,parts,allow_timesfm,cloud_key)
                 except (ImportError,ModuleNotFoundError) as exc:result={"status":"UNAVAILABLE","detail":"Missing package: "+str(exc.name or type(exc).__name__)}
-                except Exception as exc:result={"status":"ERROR","detail":type(exc).__name__}
+                except Exception as exc:
+                    status=getattr(exc,"status_code",None)
+                    quota_exhausted=name in CLOUD and status==429
+                    result={"status":"ERROR","detail":type(exc).__name__+(f" HTTP {status}" if isinstance(status,int) else "")}
+                    if quota_exhausted:
+                        retry=getattr(getattr(exc,"response",None),"headers",{}).get("retry-after","")
+                        if str(retry).isdigit():result["detail"]+=f"; retry after {retry}s"
                 publish({**result,"sample_seconds":round(time.monotonic()-t,2)})
-                print(market,name,result["status"],flush=True)
+                print(market,name,result["status"],result.get("detail",""),flush=True)
+                if quota_exhausted:
+                    print("CLOUD_QUOTA_STOP: no more requests this run",flush=True)
+                    return
                 import gc
                 gc.collect()
         except Exception as exc:print(market,"WORKER_ERROR",type(exc).__name__,flush=True)

@@ -1,7 +1,7 @@
 """Optional forecasting challengers, imported only by research worker.
 No broker/terminal endpoints or server dependencies.
 """
-import math,json,time,urllib.request
+import math,json,time,os
 
 LOCAL=("TiRex-2","Chronos-Bolt Tiny")
 CLOUD={"Qwen 3.8 27B":"qwen/qwen3.8-27b",
@@ -14,6 +14,7 @@ def finite_predictions(values,expected):
     return result
 
 def forecast_local(name,contexts):
+    if name=="TiRex-2" and os.name=="nt":os.environ.setdefault("TORCH_COMPILE_DISABLE","1")
     import torch
     torch.set_num_threads(1)
     inputs=[torch.as_tensor(x,dtype=torch.float32) for x in contexts]
@@ -42,21 +43,25 @@ def cloud_forecast(name,contexts,key,request=None):
     Errors never become fabricated WAITs. Caller must opt in to API charges.
     """
     if name not in CLOUD or not key or len(contexts)>48:raise ValueError("cloud pilot limit")
-    def send(body):
-        req=urllib.request.Request("https://api.groq.com/openai/v1/chat/completions",
-            data=json.dumps(body,allow_nan=False).encode(),
-            headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"})
-        with urllib.request.urlopen(req,timeout=25) as r:return json.load(r)
-    call=request or send
+    if request is None:
+        from groq import Groq
+        client=Groq(api_key=key,max_retries=0,timeout=30.0)
+        def send(body):
+            return client.chat.completions.create(**body).model_dump()
+        call=send
+    else:call=request
     values=[]
     for i,context in enumerate(contexts):
-        if i and request is None:time.sleep(3)
-        payload={"model":CLOUD[name],"temperature":0,"max_completion_tokens":256,
-            "response_format":{"type":"json_object"},"reasoning_effort":"low",
+        if i and request is None:time.sleep(20)
+        payload={"model":CLOUD[name],"max_completion_tokens":512,"reasoning_effort":"none" if name=="Qwen 3.8 27B" else "low",
+            "response_format":{"type":"json_schema","json_schema":{"name":"forecast","strict":True,"schema":{"type":"object","properties":{"forecast":{"type":"number"}},"required":["forecast"],"additionalProperties":False}}},
             "messages":[{"role":"system","content":"Research only. Forecast normalized price at t+3 from observed data. Last price is zero, units ATR. Reply JSON only: {\"forecast\": number}. Never issue an order."},
                         {"role":"user","content":json.dumps([round(float(x),5) for x in context],allow_nan=False)}]}
         response=call(payload)
-        parsed=json.loads(response["choices"][0]["message"]["content"])
+        choice=response["choices"][0]
+        if choice.get("finish_reason") not in (None,"stop"):raise ValueError("incomplete cloud response")
+        parsed=json.loads(choice["message"]["content"] or "")
+        if not isinstance(parsed,dict):raise ValueError("invalid forecast object")
         value=parsed.get("forecast")
         if isinstance(value,bool) or not isinstance(value,(float,int)) or not math.isfinite(value):raise ValueError("invalid cloud forecast")
         values.append(max(-6.,min(6.,float(value))))
