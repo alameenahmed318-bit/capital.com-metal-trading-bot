@@ -8,6 +8,7 @@ import time
 import urllib.parse
 from market_symbols import market_family, same_market_symbol
 from learning_memory import memory_snapshot, combine_deals
+import adaptive_memory
 
 VERSION="FEEDBACK_V1"
 MODELS={"LOCAL_AI":{"qwen2.5:1.5b","deepseek-r1:1.5b"},
@@ -128,9 +129,14 @@ def _refresh(key,request,live_deals):
         rows=request("GET",query,admin=True)
         if not isinstance(rows,list):raise ValueError("outcomes")
         memory=memory_snapshot(client,request)
+        deals=combine_deals(memory["deals"],live_deals)
         report={"version":VERSION,"status":"RESEARCH_ONLY","symbol":symbol,
             "market":market_family(symbol),"updated_at_unix":time.time(),
-            "models":model_feedback(rows,symbol),"actions":action_feedback(combine_deals(memory["deals"],live_deals),symbol),
+            "models":model_feedback(rows,symbol),"actions":action_feedback(deals,symbol),
+            "adaptive_memory":{"version":adaptive_memory.VERSION,"mode":"SHADOW_ONLY",
+                "model_performance":adaptive_memory.performance_factors(rows,symbol),
+                "action_sides":adaptive_memory.action_side_memory(deals,symbol,action_feedback),
+                "execution_authorized":False},
             "memory_status":memory["status"],"live_weights_changed":False,"execution_authorized":False}
         # Publish live V1 feedback before the extra research query.
         # A slow comparison database must not delay V1 cache availability.
