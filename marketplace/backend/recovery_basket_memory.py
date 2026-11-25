@@ -42,7 +42,13 @@ def summarize(claims,deals,symbol):
         if not pid or not ticket or ticket in seen:continue
         seen.add(ticket);by_id.setdefault(pid,[]).append(d)
     reports=[]
-    for row in claims or []:
+    counted_positions=set()
+    # Latest complete basket is authoritative; never count overlapping broker
+    # positions twice across successive recovery claims.
+    ordered=sorted((row for row in claims or [] if isinstance(row,dict)),
+                   key=lambda row: timestamp((row.get('payload') or {}).get('claimed_at')) or 0,
+                   reverse=True)
+    for row in ordered:
         p=row.get("payload") or {}
         if p.get("action")!="RECOVERY_PROPOSAL" or not same_market_symbol(p.get("symbol"),symbol):continue
         t=timestamp(p.get("claimed_at"));lot=num(p.get("lot_cap"));members=p.get("basket_members") or []
@@ -89,7 +95,11 @@ def summarize(claims,deals,symbol):
         if exit_complete:
             report.update(status="EXIT_EVIDENCE_ONLY",exit_net=round(exit_net,4))
         if complete and exit_complete:
-            report.update(status="COMPLETE_LINKED_BASKET",full_net=round(full_net,4))
+            if counted_positions.intersection(ids):
+                report.update(status="OVERLAPPING_BASKET_NOT_COUNTED",full_net=None)
+            else:
+                counted_positions.update(ids)
+                report.update(status="COMPLETE_LINKED_BASKET",full_net=round(full_net,4))
         reports.append(report)
     full=[r["full_net"] for r in reports if r["full_net"] is not None]
     return {"mode":"RESEARCH_ONLY","metric":"EXACT_POSITION_LINKS_NOT_COUNTERFACTUAL",
