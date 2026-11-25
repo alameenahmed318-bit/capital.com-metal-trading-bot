@@ -82,9 +82,14 @@ def reconcile_direction(base,result):
     q=num(quant.get(other));qfirst=num(quant.get(first))
     mq=num(ctx.get(other.lower()+"_quality"))/100.
     pressure=(1 if other=="BUY" else -1)*num(ctx.get("last_closed_candle_pressure"))
-    if (not isinstance(candidate,dict) or not 1<=num(candidate.get("strategy_id"))<=200
-        or q<.35 or qfirst-q>.20 or agreement<.65 or mq<.65 or pressure<.25
-        or ctx.get(other.lower()+"_trap") is not False):
+    checks={"strategy_eligible":isinstance(candidate,dict) and 1<=num(candidate.get("strategy_id"))<=200,
+        "quant_score":q>=.35,"relative_score":qfirst-q<=.20,"family_agreement":agreement>=.65,
+        "market_quality":mq>=.65,"candle_pressure":pressure>=.25,
+        "no_trap":ctx.get(other.lower()+"_trap") is False}
+    diag.update(alternative_checks=checks,alternative_quant_score=q,original_quant_score=qfirst,
+                alternative_market_quality=mq,alternative_pressure=pressure,
+                failed_checks=[k for k,v in checks.items() if not v])
+    if not all(checks.values()):
         diag["status"]="ALTERNATIVE_NOT_QUALIFIED"
         return diag
     # Balance bounded quantitative strength and independent family support,

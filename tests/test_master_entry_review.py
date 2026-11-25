@@ -122,4 +122,46 @@ class LiveArenaReviewTests(unittest.TestCase):
     def test_fast_only_still_blocked(self):
         self.assertEqual(self.run_review(names=("Fast AI",),age=25)["state"],"NO_INDEPENDENT_EVIDENCE")
 
+class LocalContinuationTests(unittest.TestCase):
+    def check_local(self,side="BUY",symbol="XAUUSD",age=7,forecast=-.10,
+                    pressure=.8,quality=90,move=.15,trap=False,cap=.5,eligible=True,
+                    family_count=6,language_opposes=False):
+        sign=1 if side=="BUY" else -1
+        other="SELL" if side=="BUY" else "BUY"
+        names=("LightGBM","CatBoost","Chronos-2")
+        d=decision([model(n,other,points=.002) for n in names]+[pending()],confidence=.98)
+        d.update(decision=side,symbol=symbol,strategy_id=12,combination_id=21,
+            directional_candidates={side:{"strategy_id":12,"combination_id":21}} if eligible else {},
+            directional_scores={side:1.,other:.02},
+            family_votes={str(i):side for i in range(family_count)})
+        d["context"].update({side.lower()+"_quality":quality,side.lower()+"_trap":trap,
+            "last_closed_candle_pressure":sign*pressure})
+        now=BAR+60+age
+        for row in d["master"]["models"]:
+            if row["model"] in names:row["confidence"]=abs(forecast)
+        if language_opposes:
+            row=model("GPT-OSS 120B",other,points=.3);row["confidence"]=.9
+            d["master"]["models"].append(row)
+        d["master"]["scores"]={side:1.2,other:.02}
+        d["master"]["arena_shadow"]={"status":"SHADOW_READY","symbol":symbol,"bar_time":BAR,
+            "received_at":now-1,"models":{n:-sign*abs(forecast) for n in names}}
+        d["master"]["arena_advisory"]={"used":list(names)}
+        mid=100+sign*move*2
+        snap={"symbol":symbol,"timeframe":"M1","tick":{"bid":mid-.05,"ask":mid+.05}}
+        return review(d,snap,{"position_management":{"entry_max_deviation_atr":cap}},now,live_arena=True)
+    def test_strong_local_m1_route_both_directions_and_markets(self):
+        for side in ("BUY","SELL"):
+            for symbol in ("XAUUSD","BTCUSDm"):
+                r=self.check_local(side=side,symbol=symbol)
+                self.assertTrue(r["approved"])
+                self.assertEqual(r["route"],"LOCAL_PRICE_CONFIRMED")
+                self.assertEqual(r["independent_support"] if "independent_support" in r else None,None)
+    def test_weak_conflicting_and_stale_cases(self):
+        for kw in ({"age":4},{"age":60},{"forecast":-.6},{"pressure":.1},{"quality":60},
+                   {"move":-.1},{"trap":True},{"eligible":False},{"family_count":2},
+                   {"language_opposes":True}):
+            self.assertFalse(self.check_local(**kw)["approved"],kw)
+    def test_local_price_cap_preserved(self):
+        self.assertEqual(self.check_local(cap=.05)["state"],"PRICE_MOVED")
+
 if __name__=="__main__":unittest.main()
