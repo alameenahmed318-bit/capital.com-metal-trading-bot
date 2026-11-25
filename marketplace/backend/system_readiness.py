@@ -116,3 +116,44 @@ def owner_readiness(identity,snapshot,settings,council,latest_candle,now=None):
         "latest_saved_candle_utc":_as_utc(latest_candle).isoformat() if _as_utc(latest_candle) else None,
         "note_ar":"يربط المحرك حساب MT5 التجريبي أو الحقيقي بدون تمييز. الجاهزية التقنية لا تعني أن التداول آمن أو مختبر؛ راجع الاختبارات قبل تشغيل أوامر مالية."
     }
+
+
+def entry_execution_status(snapshot, ready=False, now=None):
+    """Read-only broker-reported positions and latest opening fill.
+    A ready signal is never proof of execution. Never infer a fill from
+    strategy confidence or authorization, and never show stale positions as live.
+    """
+    now=now or datetime.now(timezone.utc)
+    item=snapshot or {}
+    symbol=item.get("symbol")
+    stamp=_as_utc(item.get("received_at"))
+    if not symbol or not stamp or not 0<=(now-stamp).total_seconds()<=30 or not isinstance(item.get("positions"),list):
+        return {"state":"UNKNOWN","confirmed":False,"open_count":None,"buy_count":None,
+                "sell_count":None,"last_entry":None,"reason_ar":"لا توجد بيانات MT5 حديثة للتحقق"}
+    positions=[p for p in item["positions"] if isinstance(p,dict) and p.get("symbol")==symbol]
+    def side(p):
+        value=str(p.get("type",p.get("deal_type",""))).upper()
+        return "BUY" if value in ("0","BUY","POSITION_TYPE_BUY","DEAL_TYPE_BUY") else "SELL" if value in ("1","SELL","POSITION_TYPE_SELL","DEAL_TYPE_SELL") else None
+    buys=sum(side(p)=="BUY" for p in positions)
+    sells=sum(side(p)=="SELL" for p in positions)
+    def epoch(p):
+        try:
+            n=int(float(p.get("time",0)))
+            return n if 0<n<4102444800 else 0
+        except (ValueError,TypeError,OverflowError):return 0
+    entries=[p for p in item.get("action_entry_deals") or [] if isinstance(p,dict) and p.get("symbol")==symbol
+             and str(p.get("entry"))=="0" and p.get("position_id") and side(p) and epoch(p)]
+    latest=max(entries+ [p for p in positions if p.get("position_id") and side(p) and epoch(p)],key=epoch,default=None)
+    last=None
+    if latest:
+        tag=str(latest.get("comment") or "")[:80]
+        pid=str(latest.get("position_id"))
+        last={"side":side(latest),"position_id":pid,"time":epoch(latest),
+            "comment":tag,"still_open":any(str(p.get("position_id"))==pid for p in positions),
+            "source":"MT5_REPORTED","origin":"ALZOOL_ENTRY" if tag.startswith("ALZOOL-S") else
+            "ALZOOL_ACTION" if tag in ("ALZOOL-ADD","ALZOOL-COOL","ALZOOL-RECOVERY") else "OTHER_OR_UNKNOWN"}
+    state="OPEN" if positions else "READY_NOT_CONFIRMED" if ready else "NO_OPEN_POSITION"
+    return {"state":state,"confirmed":bool(positions),"open_count":len(positions),"buy_count":buys,
+        "sell_count":sells,"entry_ready":bool(ready),"last_entry":last,"observed_at":stamp.isoformat(),
+        "reason_ar":"صفقات مفتوحة مؤكدة من MT5" if positions else
+            "إشارة جاهزة؛ لم يرصد MT5 فتح صفقة" if ready else "لا توجد صفقات مفتوحة حالياً"}
