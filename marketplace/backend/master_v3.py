@@ -89,7 +89,8 @@ def evaluate(base,council,feedback,tick,settings,now,arena=None,positions=None):
     demo_snapshot={**snapshot,"symbol":base.get("symbol"),"account":{"trade_mode":"DEMO"},"master_direct_demo_capable":True}
     demo_v1=master_entry_review.review(live,demo_snapshot,settings,now,live_arena=True)
     balanced=master_balanced.evaluate(live,demo_snapshot,settings,now)
-    balanced={**balanced,"mode":"SHADOW_ONLY","execution_authorized":False,"baseline_direction":live.get("decision") if demo_v1.get("approved") else "WAIT"}
+    previous_balanced=master_balanced.evaluate(live,demo_snapshot,settings,now,legacy=True)
+    balanced={**balanced,"mode":"SHADOW_ONLY","execution_authorized":False,"baseline_direction":previous_balanced["direction"],"baseline_version":master_balanced.LEGACY_VERSION}
     adaptive=master_adaptive.evaluate(base,live,arena,feedback,tick,settings,now)
     adaptive["management"]=master_adaptive.management(adaptive,arena,positions,base.get("symbol"))
     return {"balanced_demo_comparison":balanced,"adaptive":adaptive,"adaptive_baseline":live["decision"] if live_review["approved"] else "WAIT",
