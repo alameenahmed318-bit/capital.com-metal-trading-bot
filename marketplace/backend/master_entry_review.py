@@ -19,6 +19,59 @@ def number(v,default=0.0):
 def clamp(v):
     return min(1.0,max(0.0,v))
 
+def local_continuation(d,item,side,age,arena_rows,language_rows):
+    """Strict, price-confirmed M1 route; no dependency on model availability.
+
+    This is a separate quantitative route, not fabricated independent votes.
+    Weak three-minute forecasts do not become a full veto. A materially
+    opposing family still prevents this route. Thresholds are policy
+    hypotheses, not a calibrated probability or demonstrated profitability.
+    """
+    other="SELL" if side=="BUY" else "BUY"
+    sign=1 if side=="BUY" else -1
+    ctx=d.get("context") or {}
+    candidate=(d.get("directional_candidates") or {}).get(side)
+    scores=d.get("directional_scores") or {}
+    own=number(scores.get(side),-1.)
+    opposite=number(scores.get(other),1.)
+    margin=(own-opposite)/max(abs(own)+abs(opposite),1e-9)
+    families=list((d.get("family_votes") or {}).values())
+    supporting=families.count(side)
+    total=supporting+families.count(other)
+    quality=number(ctx.get(side.lower()+"_quality"))/100.
+    pressure=sign*number(ctx.get("last_closed_candle_pressure"))
+    tick=item.get("tick") or {}
+    bid=number(tick.get("bid"));ask=number(tick.get("ask"))
+    ref=number(d.get("entry_reference_price"));atr=number(d.get("entry_atr") or ctx.get("atr"))
+    move=sign*((bid+ask)*.5-ref)/atr if 0<bid<=ask and ref>0 and atr>0 else -1.
+    spread=(ask-bid)/atr if 0<bid<=ask and atr>0 else 1.
+    # Expected movement is in ATR, not probability. Count each forecast
+    # family once, by average signed amplitude (not number of model names).
+    mass={}
+    for row in arena_rows:
+        family=ARENA_FAMILIES.get(row.get("model"))
+        if family:
+            v=clamp(number(row.get("confidence")))
+            mass.setdefault(family,[]).append(v if row.get("direction")==side else -v)
+    strengths={k:sum(v)/len(v) for k,v in mass.items() if v}
+    material=max(.20,2*spread)
+    opposing=any(v<=-material for v in strengths.values()) or any(
+        row.get("direction")==other and number(row.get("confidence"))>=.60
+        for row in language_rows)
+    eligible=(isinstance(candidate,dict) and 1<=number(candidate.get("strategy_id"))<=200
+        and number(candidate.get("strategy_id"))==number(d.get("strategy_id"))
+        and number(candidate.get("combination_id"))>0
+        and own>=.85 and margin>=.75 and supporting>=5 and total>0
+        and supporting/total>=.80 and quality>=.80 and pressure>=.55
+        and ctx.get(side.lower()+"_trap") is False and 0<=spread<=.15
+        and .08<=move<=.35 and 5<=age<=20 and not opposing)
+    return {"eligible":bool(eligible),"quant_score":round(own,4),"quant_margin":round(margin,4),
+        "strategy_families":supporting,"strategy_family_count":total,
+        "market_quality":round(quality,4),"candle_pressure":round(pressure,4),
+        "live_move_atr":round(move,4),"spread_atr":round(spread,4),
+        "forecast_family_strength":strengths,"material_opposition_threshold":round(material,4),
+        "material_opposition":bool(opposing)}
+
 def review(decision,snapshot,settings,now_unix,*,live_arena=False):
     """Review current-bar evidence without sleeps, requests, or unanimity.
     Threshold is a provisional quality score, NOT a calibrated win probability.
@@ -70,6 +123,23 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:
         return result("STALE_BAR","نافذة الشمعة غير صالحة")
+    local=local_continuation(d,item,side,age,extra,[r for r in votes if r.get("model") in INDEPENDENT]) if live_arena and frame=="M1" else {"eligible":False}
+    if live_arena:
+        base["local_continuation"]=local
+    if local["eligible"]:
+        # Use the same price validity/deviation check as the usual gate.
+        tick=item.get("tick") or {}
+        price=number(tick.get("ask" if side=="BUY" else "bid"))
+        reference=number(d.get("entry_reference_price"))
+        atr=number(d.get("entry_atr") or (d.get("context") or {}).get("atr"))
+        deviation=abs(price-reference)/atr
+        pm=(settings or {}).get("position_management") or {}
+        cap=number(pm.get("entry_max_deviation_atr"),.5)
+        if pm.get("entry_guard_enabled",True) is True and (cap<=0 or deviation>cap):
+            return result("PRICE_MOVED","السعر ابتعد عن نقطة الدخول وفق حد الانحراف الحالي",price_deviation_atr=round(deviation,4))
+        return result("REVIEWED","MASTER: استراتيجية قوية مدعومة باستمرار السعر الفعلي دون معارضة نموذجية معتبرة",
+                      True,route="LOCAL_PRICE_CONFIRMED",price_deviation_atr=round(deviation,4),
+                      quality=None,collection_limit_sec=5.0)
     # Legacy local advisers are optional in the live path. Do not hold a
     # valid independent vote hostage to a missing Qwen/DeepSeek response.
     # Preserve the existing quality, independent-evidence and price checks.
