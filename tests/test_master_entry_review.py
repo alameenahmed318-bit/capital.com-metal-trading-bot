@@ -247,4 +247,66 @@ class DirectDemoReviewTests(unittest.TestCase):
         self.assertIn('JsonBool(response,"master_direct_demo")',source)
         self.assertIn('master_direct_demo_capable',source)
 
+class BalancedDemoTests(unittest.TestCase):
+    def fixture(self,symbol="XAUUSD",forecasts=None):
+        d=decision([],confidence=.99)
+        d.update(symbol=symbol,strategy_id=12,combination_id=21,
+            directional_candidates={"BUY":{"strategy_id":12,"combination_id":21},"SELL":{"strategy_id":13,"combination_id":22}},
+            directional_scores={"BUY":.98,"SELL":.02})
+        d["context"].update(buy_quality=80,sell_quality=80,buy_trap=False,sell_trap=False)
+        d["master"]["arena_shadow"]={"status":"SHADOW_READY","symbol":symbol,"bar_time":BAR,
+            "received_at":BAR+61,"models":forecasts or {}}
+        snap={"symbol":symbol,"timeframe":"M1","account":{"trade_mode":"DEMO"},
+            "master_direct_demo_capable":True,"tick":{"bid":100.3,"ask":100.4}}
+        return d,snap
+    def test_seven_models_have_40_percent_budget_and_missing_neutral(self):
+        from master_balanced import evaluate,MODELS,select_demo
+        d,snap=self.fixture(forecasts={n:1. for n in MODELS})
+        t=evaluate(d,snap,{},BAR+62)
+        self.assertAlmostEqual(sum(t["weights"].values()),1.)
+        self.assertEqual(t["allocation"],{"strategy":.4,"seven_models":.4,"market":.2})
+        self.assertTrue(t["approved"])
+        self.assertEqual(t["direction"],"BUY")
+        selected=select_demo(d,snap,{},BAR+62)
+        self.assertTrue(review(selected,snap,{},BAR+62,live_arena=True)["approved"])
+        d["master"]["arena_shadow"]["models"]={n:-1. for n in MODELS}
+        against=evaluate(d,snap,{},BAR+62)
+        self.assertAlmostEqual(t["scores"]["BUY"]["score"]-against["scores"]["BUY"]["score"],.4,places=7)
+        d["master"]["arena_shadow"]["models"]={}
+        neutral=evaluate(d,snap,{},BAR+62)
+        self.assertEqual(neutral["scores"]["BUY"]["components"]["models"],.5)
+        d["master"]["arena_shadow"]["models"]={n:1. for n in MODELS}
+        d["master"]["arena_shadow"]["bar_time"]=BAR-60
+        self.assertEqual(evaluate(d,snap,{},BAR+62)["used_models"],[])
+    def test_rank_both_eligible_and_never_model_only(self):
+        from master_balanced import evaluate,MODELS
+        d,snap=self.fixture(forecasts={n:-1. for n in MODELS})
+        d["directional_scores"]={"BUY":.8,"SELL":.8}
+        snap["tick"]={"bid":99.4,"ask":99.5}
+        t=evaluate(d,snap,{},BAR+62)
+        self.assertEqual(t["selected"],"SELL")
+        self.assertGreater(t["scores"]["SELL"]["score"],t["scores"]["BUY"]["score"])
+        del d["directional_candidates"]["SELL"]
+        self.assertNotEqual(evaluate(d,snap,{},BAR+62)["direction"],"SELL")
+    def test_weight_learning_requires_market_scope_and_chronological_samples(self):
+        from master_balanced import weight_profile
+        now=BAR+62
+        profile={"symbol":"XAUUSD","master_adaptive":{"updated_at_unix":now,
+            "model_profiles":{"LightGBM":{"train":80,"validation":40,"train_mean":.1,"validation_mean":.1,"status":"POSITIVE_BOTH"},
+                "XGBoost":{"train":79,"validation":40,"train_mean":.1,"validation_mean":.1,"status":"POSITIVE_BOTH"}}}}
+        good=weight_profile(profile,"XAUUSD",now)
+        self.assertEqual(good["factors"]["LightGBM"],1.2)
+        self.assertEqual(good["factors"]["XGBoost"],1.)
+        self.assertEqual(weight_profile(profile,"BTCUSDm",now)["factors"]["LightGBM"],1.)
+        self.assertEqual(weight_profile(profile,"XAUUSD",now+1201)["factors"]["LightGBM"],1.)
+    def test_real_or_old_client_and_existing_gate_preserved(self):
+        from master_balanced import select_demo,MODELS
+        d,snap=self.fixture(forecasts={n:1. for n in MODELS})
+        for mode in ("REAL","UNKNOWN","CONTEST"):
+            self.assertIs(select_demo(d,{**snap,"account":{"trade_mode":mode}},{},BAR+62),d)
+        self.assertIs(select_demo(d,{**snap,"master_direct_demo_capable":False},{},BAR+62),d)
+        trial=select_demo(d,snap,{},BAR+62)
+        self.assertFalse(apply_gate({"approved":False,"reason_ar":"owner"},review(trial,snap,{},BAR+62,live_arena=True))["approved"])
+        self.assertFalse(review(trial,snap,{},BAR+120,live_arena=True)["approved"])
+
 if __name__=="__main__":unittest.main()
