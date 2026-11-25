@@ -25,3 +25,6 @@ jobs:
 
       - run: python -m unittest discover -s tests -p test_smart_profit_advice.py -v
       - run: node --check trade-management.js
+
+      - run: python -m compileall -q research
+      - run: python -m unittest discover -s tests -p test_challenger_forecasts.py -v
