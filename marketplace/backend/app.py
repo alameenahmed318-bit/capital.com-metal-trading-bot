@@ -1262,6 +1262,7 @@ class Handler(SimpleHTTPRequestHandler):
                             "calibration_applied":report.get("calibration_applied") is True,"entry_review":review_report,
                             "adaptive_shadow":report.get("adaptive_shadow") or {},
                             "arena_advisory":report.get("arena_advisory") or {},
+                            "direction_reconciliation":report.get("direction_reconciliation") or {},
                             "decision_at":datetime.now(timezone.utc).isoformat()}})
                 except Exception as audit_error:
                     print("MASTER_AUDIT_WARNING:",type(audit_error).__name__,flush=True)
