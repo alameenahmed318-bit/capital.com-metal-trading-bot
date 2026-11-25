@@ -165,14 +165,24 @@ def _refresh(key,request,live_deals):
             rows=request("GET",q,admin=True)
             if not isinstance(rows,list):raise ValueError("v3 outcomes")
             report["master_v3"]=master_v3.summarize(rows,symbol)
+            import master_adaptive
+            report["master_adaptive"]=master_adaptive.summarize(rows,symbol,time.time())
         except Exception:
             report["master_v3"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE","lanes":{}}
+            report["master_adaptive"]={"mode":"SHADOW_ONLY","status":"UNAVAILABLE"}
         try:
             q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.CENTRAL_ACTION_CLAIM&select=payload&order=created_at.desc&limit=200"
             claims=request("GET",q,admin=True)
             report["recovery_baskets"]=recovery_basket_memory.summarize(claims if isinstance(claims,list) else [],deals,symbol)
         except Exception:
             report["recovery_baskets"]={"mode":"RESEARCH_ONLY","status":"UNAVAILABLE","execution_authorized":False}
+        try:
+            import master_adaptive
+            q="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client,safe="")+"&event_type=eq.MASTER_DECISION_AUDIT&payload->>status=eq.AUTHORIZED&select=payload&order=created_at.desc&limit=500"
+            audits=request("GET",q,admin=True)
+            report.setdefault("master_adaptive",{})["attribution"]=master_adaptive.attribution(deals,symbol,audits if isinstance(audits,list) else [])
+        except Exception:
+            report.setdefault("master_adaptive",{})["attribution"]={"status":"UNAVAILABLE"}
         with _LOCK:_CACHE[key]=(time.monotonic(),report)
     except Exception:
         with _LOCK:
