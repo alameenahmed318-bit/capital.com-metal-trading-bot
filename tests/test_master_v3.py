@@ -70,4 +70,17 @@ class V3Tests(unittest.TestCase):
     def test_wrong_bar_no_sample(self):
         b=base();b["bar_time"]+=60
         self.send(5,b=b);self.assertFalse(self.events)
+    def test_unified_validation_nonoverlap_and_market_scope(self):
+        def row(bar,symbol="BTCUSDm",gap=5):
+            return {"payload":{"version":v3.VERSION,"symbol":symbol,"lane":10,"bar_time":bar,
+                "observed_at":bar+70,"candidate":{"adaptive_baseline":"WAIT",
+                    "adaptive_baseline_review":{"unified_score":{"version":v3.master_entry_review.UNIFIED_SCORE_VERSION,
+                        "direction":"BUY","execution_authorized":False}}},
+                "outcomes":{"180":{"quote_time":bar+240,"max_gap_sec":gap,"payoffs":{"BUY":.2,"SELL":-.3}}}}}
+        rows=[row(BAR),row(BAR+60),row(BAR+180),row(BAR+360),row(BAR+540,"XAUUSD"),row(BAR+720,gap=21)]
+        r=v3.summarize_unified(rows,"BTCUSDm")
+        self.assertEqual(r["train"]["windows"]+r["validation"]["windows"],3)
+        self.assertFalse(r["enough_for_review"])
+        self.assertFalse(r["auto_promoted"])
+        self.assertFalse(r["execution_authorized"])
 if __name__=="__main__":unittest.main()
