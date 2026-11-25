@@ -83,4 +83,16 @@ class V3Tests(unittest.TestCase):
         self.assertFalse(r["enough_for_review"])
         self.assertFalse(r["auto_promoted"])
         self.assertFalse(r["execution_authorized"])
+    def test_balanced_demo_research_has_no_execution_authority(self):
+        from unittest.mock import patch
+        now=BAR+70
+        arena={"status":"SHADOW_READY","symbol":"BTCUSDm","bar_time":BAR,
+               "received_at":now-1,"models":{"LightGBM":.9,"TiRex-2":.9}}
+        with patch("master_ai.time.time",return_value=now):
+            result=v3.evaluate(base(),council(),{},tick(),{},now,arena)
+        trial=result["balanced_demo_comparison"]
+        self.assertEqual(trial["mode"],"SHADOW_ONLY")
+        self.assertFalse(trial["execution_authorized"])
+        self.assertIn(trial["baseline_direction"],("BUY","SELL","WAIT"))
+        self.assertFalse(v3.summarize([],"BTCUSDm")["balanced_demo_validation"]["auto_promoted"])
 if __name__=="__main__":unittest.main()
