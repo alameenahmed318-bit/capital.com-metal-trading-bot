@@ -1,0 +1,20 @@
+name: ALZOOL adaptive memory offline checks
+on:
+  pull_request:
+    branches: [deploy/alzool-meeno-btc-demo-20261121]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m compileall -q marketplace/backend tests/test_adaptive_memory.py
+      - run: python -m unittest discover -s tests -p test_adaptive_memory.py -v
+      - run: python -m unittest discover -s tests -p test_hybrid_decision.py -v
+      - run: python -m unittest discover -s tests -p test_recovery_candle_guard.py -v
