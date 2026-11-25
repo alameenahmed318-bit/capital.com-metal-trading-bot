@@ -3,7 +3,8 @@ import math, re, urllib.parse, hashlib, json
 from datetime import datetime,timezone
 MODELS=("LightGBM","XGBoost","CatBoost","TimesFM-2.5","Chronos-2")
 CHALLENGERS=("TiRex-2","Chronos-Bolt Tiny")
-REPORT_MODELS=MODELS+CHALLENGERS
+CLOUD_CHALLENGERS=("Qwen 3.8 27B","GPT-OSS 120B (Arena)")
+REPORT_MODELS=MODELS+CHALLENGERS+CLOUD_CHALLENGERS
 VERSION="ARENA_V1"
 STATUSES=("RUNNING","TESTED","UNAVAILABLE","INSUFFICIENT_HISTORY","LICENSE_REVIEW","ERROR")
 def enc(x):return urllib.parse.quote(str(x),safe="")
@@ -48,7 +49,7 @@ def save(sb,uid,market,data):
     def score(x):
         if not isinstance(x,dict):return None
         out={}
-        for k in ("windows","signals","positive","buy","sell","wait","net_atr","positive_rate","net_per_window"):
+        for k in ("windows","signals","positive","buy","sell","wait","net_atr","positive_rate","net_per_window","max_drawdown_atr"):
             v=x.get(k)
             if v is None:continue
             if isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v):raise ValueError("invalid metric")
@@ -61,7 +62,7 @@ def save(sb,uid,market,data):
         if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):p[k]=v
     for k in ("detail","dataset_id","first_candle","last_candle","test_id","model_version","method"):
         if isinstance(data.get(k),str):p[k]=data[k][:240]
-    for k in ("test","baseline_test","validation"):
+    for k in ("test","baseline_test","validation","stress_test","stress_baseline"):
         s=score(data.get(k))
         if s is not None:p[k]=s
     eid="arena:"+hashlib.sha256((cid+name+p["checked_at"]).encode()).hexdigest()
