@@ -166,6 +166,8 @@ def decide(base,council,feedback=None,arena_evidence=None):
         "calibration_applied":any(x["used"] and x["calibration_factor"]<1 for x in inputs),
         "arena_advisory":{"mode":"BOUNDED_LIVE_ADVICE","configured":list(LIVE_MODELS),"received":list((arena_evidence or {}).get("models",{})) if isinstance(arena_evidence,dict) else [],"used":[x["model"] for x in inputs if x["model"] in extra and x["used"]],"total_points":round(sum(x["points"] for x in inputs if x["model"] in extra),6),"max_weight":sum(ARENA_WEIGHTS.values()),"execution_authorized":False},
         "execution_authorized":False}
+    from master_balanced import weight_profile
+    result["master"]["balanced_weight_profile"]=weight_profile(feedback,symbol,time.time())
     # Research comparison only: never replace live decision, confidence or lot.
     if (isinstance(feedback,dict) and feedback.get("status")=="RESEARCH_ONLY"
         and same_market_symbol(feedback.get("symbol"),symbol)
