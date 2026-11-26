@@ -370,7 +370,11 @@ class BalancedDemoTests(unittest.TestCase):
         r=review(selected,snap,{},now,live_arena=True)
         self.assertTrue(r["approved"])
         self.assertEqual(r["quality_threshold"],.68)
-        self.assertFalse(review(selected,snap,{},BAR+71,live_arena=True)["approved"])
+        later=review(selected,snap,{},BAR+71,live_arena=True)
+        self.assertTrue(later["approved"])
+        self.assertEqual(later["quality_threshold"],.68)
+        self.assertTrue(review(selected,snap,{},BAR+119,live_arena=True)["approved"])
+        self.assertFalse(review(selected,snap,{},BAR+120,live_arena=True)["approved"])
         self.assertFalse(apply_gate({"approved":False,"reason_ar":"risk"},r)["approved"])
         for mode in ("REAL","CONTEST","UNKNOWN"):
             x=evaluate(d,{**snap,"account":{"trade_mode":mode}},{},now,early_demo=True)

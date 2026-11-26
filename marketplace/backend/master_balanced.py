@@ -6,7 +6,7 @@ LEGACY_VERSION="MASTER_BALANCED_DEMO_V2"
 VERSION="MASTER_AI_FIRST_DEMO_V3"
 THRESHOLD=.72
 GOLD_EARLY_DEMO_THRESHOLD=.68
-GOLD_EARLY_DEMO_SECONDS=10.
+GOLD_EARLY_DEMO_SECONDS=60.
 SIDES=("BUY","SELL")
 FAMILIES={"TREES":("LightGBM","XGBoost","CatBoost"),
           "FORECAST":("TiRex-2","Chronos-2","TimesFM-2.5","Chronos-Bolt Tiny")}
@@ -58,7 +58,7 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
     report=d.get("master") or {};symbol=d.get("symbol")
     bar=num(d.get("bar_time"));age=now-bar-60
     # Only real entry-review calls opt in. Research comparisons retain 72%.
-    gold_early_pilot=(early_demo and not legacy and 0<=age<=GOLD_EARLY_DEMO_SECONDS
+    gold_early_pilot=(early_demo and not legacy and 0<=age<GOLD_EARLY_DEMO_SECONDS
         and str(symbol or "").upper().startswith("XAUUSD") and item.get("symbol")==symbol
         and str(item.get("timeframe","M1")).upper().replace("PERIOD_","")=="M1"
         and item.get("master_direct_demo_capable") is True
@@ -133,7 +133,7 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
     elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
     result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
         "direction":selected if approved else "WAIT","approved":approved,"threshold":threshold,
-        "entry_threshold_policy":"GOLD_EARLY_DEMO_68" if gold_early_pilot else "BASELINE_72",
+        "entry_threshold_policy":"GOLD_DEMO_FIXED_68" if gold_early_pilot else "BASELINE_72",
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
         "reason":reason,"model_direction":model_direction,"evidence_mass":evidence_mass,"model_conviction":conviction,
