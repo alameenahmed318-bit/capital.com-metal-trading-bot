@@ -1,0 +1,44 @@
+name: AL-ZOOL longer RL and deep challenger research
+on:
+  push:
+    branches: ['research/master-next-deep-challengers-20261126']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  experiment:
+    if: github.ref == 'refs/heads/research/master-next-deep-challengers-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [gold, btc]
+        method: [deep, rl]
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install numpy==1.26.4 scikit-learn==1.6.1 gymnasium==1.1.1 stable-baselines3==2.6.0 joblib==1.4.2
+      - name: Train deep challengers
+        if: matrix.method == 'deep'
+        run: python research/master_next/deep_challengers.py --development --bars tests/fixtures/v3_replacement_${{ matrix.market }}_m1.json --epochs 40 --out deep.json
+      - name: Longer RL development trial
+        if: matrix.method == 'rl'
+        run: python research/master_next/run_v2.py --development --bars tests/fixtures/v3_replacement_${{ matrix.market }}_m1.json --steps 32768 --out rl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: challenger-${{ matrix.market }}-${{ matrix.method }}
+          path: |
+            deep.json
+            rl/report.json
+          if-no-files-found: warn
+          retention-days: 7
