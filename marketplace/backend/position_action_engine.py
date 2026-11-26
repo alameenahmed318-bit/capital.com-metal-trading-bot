@@ -224,6 +224,13 @@ def plan_account_actions(snapshot,decision,council,risk,settings,council_advisor
                 action="HOLD";reason="تم تقييم الإضافة بصورة مستقلة؛ النموذج المتخصص يحذر من الإضافة أثناء انتظار التعافي"
             else:
                 reason="فرصة إدارة مستقلة أثناء انتظار التعافي | "+reason
+        # No SELL cooling specialist passed gold validation and cost stress.
+        # Suspend new automatic SELL cooling on the explicitly tagged DEMO pilot
+        # only. Manual cooling, BUY, exits, and recovery paths are untouched.
+        from master_balanced import gold_demo_retirement_enabled
+        if (action=="COOLING_PROPOSAL" and side=="SELL" and mode=="AI"
+                and gold_demo_retirement_enabled(snapshot,symbol)):
+            action="HOLD";reason="GOLD DEMO: التبريد SELL معلق حتى اجتياز بديل متخصص للاختبار"
         sizing={}
         if action in ("ADDON_PROPOSAL","COOLING_PROPOSAL"):
             sizing=next_action_lot(group,action,pm,tick)
