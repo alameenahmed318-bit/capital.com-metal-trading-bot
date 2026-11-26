@@ -9,7 +9,7 @@
 </style>
 
 
-<link rel="stylesheet" href="/alzool-dark-ai.css?v=full-shadow-layout-20261122-5">
+<link rel="stylesheet" href="/alzool-dark-ai.css?v=command-center-20261126-1">
 </head>
 <body><div class="shell"><aside class="sidebar">
  <a class="brand" href="/dashboard.html"><span class="brand-mark">AZ</span><span><b>AL-ZOOL</b><small>SHADOW SYSTEM · BTC</small></span></a>
@@ -39,7 +39,7 @@
  </div>
  <div class="side-bottom"><span class="live-dot"></span><span>بوابة AL-ZOOL</span><small id="serviceState">جارٍ الفحص</small></div>
 </aside>
-<main class="main"><header class="topbar"><div><div class="eyebrow">MT5 EXECUTION HISTORY</div><h1>سجل التداول</h1><p>سجل الصفقات المغلقة من تنفيذ MT5 مع صافي الربح والتكاليف</p></div><div class="top-actions"><button class="refresh" id="refreshBtn">تحديث</button><a class="avatar" href="/dashboard.html">AZ</a></div></header>
+<main class="main"><header class="topbar"><div><div class="eyebrow">MT5 EXECUTION HISTORY</div><h1>المراقبة والسجلات</h1><p>سجل الصفقات المغلقة من تنفيذ MT5 مع صافي الربح والتكاليف</p></div><div class="top-actions"><button class="refresh" id="refreshBtn">تحديث</button><a class="avatar" href="/dashboard.html">AZ</a></div></header>
 <section id="groupView" hidden>
 <div class="th-actions"><a href="/trade-history.html">سجل الصفقات الفردية</a><select id="groupDays"><option value="7">آخر 7 أيام</option><option value="30" selected>آخر 30 يومًا</option><option value="90">آخر 90 يومًا</option></select><select id="groupSide"><option value="all">كل الاتجاهات</option><option value="BUY">BUY · شراء</option><option value="SELL">SELL · بيع</option></select></div>
 <div class="th-grid"><article class="th-stat"><small>آخر إغلاق</small><strong id="lastGroupNet">—</strong><small id="lastGroupInfo"></small></article><article class="th-stat"><small>آخر إغلاق BUY</small><strong id="lastBuyNet">—</strong><small id="lastBuyInfo"></small></article><article class="th-stat"><small>آخر إغلاق SELL</small><strong id="lastSellNet">—</strong><small id="lastSellInfo"></small></article><article class="th-stat"><small>مجموع صافي الإغلاقات المعروضة</small><strong id="groupNet">—</strong><small id="groupCount"></small></article></div>
@@ -74,5 +74,5 @@ async function boot(){try{const cfg=await fetch("/api/config").then(r=>r.json())
 if(groupsView){document.title="AL-ZOOL | سجل إغلاق المجموعات";document.querySelector(".topbar h1").textContent="سجل إغلاق المجموعات";document.querySelector(".topbar p").textContent="كل إغلاق جماعي في سطر واحد، مع صافي النتيجة والتفاصيل";$("groupView").hidden=false;$("individualView").hidden=true;$("groupDays").addEventListener("change",loadGroups);$("groupSide").addEventListener("change",renderGroups);setInterval(()=>{if(accessToken&&!document.hidden)loadGroups()},15000)}
 $("refreshBtn").addEventListener("click",load);$("days").addEventListener("change",load);$("search").addEventListener("input",()=>{render();renderEvents()});$("resultFilter").addEventListener("change",render);boot();
 </script><script src="/numbers-en.js?v=3"></script>
-<script src="/ui-shell.js?v=full-shadow-layout-20261122-5" defer></script>
+<script src="/ui-shell.js?v=command-center-20261126-1" defer></script>
 </body></html>
