@@ -390,6 +390,36 @@ class BalancedDemoTests(unittest.TestCase):
         d["master"]["arena_shadow"]["models"]={}
         self.assertFalse(evaluate(d,snap,{},now,early_demo=True)["approved"])
 
+    def test_gold_master_advisory_no_strategy_veto_or_score(self):
+        from master_balanced import evaluate, MODELS, select_demo
+        from decision_guard import evaluate_entry_gate
+        from datetime import datetime, timezone
+        d,snap=self.fixture(forecasts={n:1. for n in MODELS})
+        snap["master_ai_advisory_capable"]=True
+        now=BAR+65
+        initial=evaluate(d,snap,{},now,early_demo=True)
+        self.assertTrue(initial["approved"])
+        self.assertEqual(initial["allocation"]["strategy"],0.)
+        d["directional_candidates"]={}
+        d["directional_scores"]={"BUY":0,"SELL":1}
+        trial=evaluate(d,snap,{},now,early_demo=True)
+        self.assertEqual(initial["scores"]["BUY"]["score"],trial["scores"]["BUY"]["score"])
+        self.assertTrue(trial["approved"])
+        self.assertEqual(trial["scores"]["BUY"]["strategy_id"],0)
+        selected=select_demo(d,snap,{},now)
+        self.assertTrue(review(selected,snap,{},now,live_arena=True)["approved"])
+        moment=datetime.fromtimestamp(now,timezone.utc)
+        account={"trade_mode":"DEMO","balance":100,"equity":100,"free_margin":100}
+        self.assertTrue(evaluate_entry_gate(selected,account,"XAUUSD",moment,moment,True,strategy_first=True)["approved"])
+        self.assertFalse(evaluate_entry_gate(selected,{**account,"trade_mode":"REAL"},"XAUUSD",moment,moment,True,strategy_first=True)["approved"])
+        self.assertFalse(evaluate_entry_gate(selected,account,"XAUUSD",moment,moment,False,strategy_first=True)["approved"])
+        self.assertFalse(evaluate(d,{**snap,"master_ai_advisory_capable":False},{},now,early_demo=True)["approved"])
+        d["context"]["buy_trap"]=True
+        self.assertFalse(evaluate(d,snap,{},now,early_demo=True)["approved"])
+        d["context"]["buy_trap"]=False
+        d["master"]["arena_shadow"]["models"]={}
+        self.assertFalse(evaluate(d,snap,{},now,early_demo=True)["approved"])
+
     def test_real_or_old_client_and_existing_gate_preserved(self):
         from master_balanced import select_demo,MODELS
         d,snap=self.fixture(forecasts={n:1. for n in MODELS})

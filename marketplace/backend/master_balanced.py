@@ -64,6 +64,7 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
         and item.get("master_direct_demo_capable") is True
         and (item.get("account") or {}).get("trade_mode")=="DEMO")
     threshold=GOLD_EARLY_DEMO_THRESHOLD if gold_early_pilot else THRESHOLD
+    ai_direct=gold_early_pilot and item.get("master_ai_advisory_capable") is True
     arena=report.get("arena_shadow") or {}
     fresh=(arena.get("status")=="SHADOW_READY" and symbol and
         arena.get("symbol")==symbol==item.get("symbol") and
@@ -107,12 +108,17 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
         # below also prevents strategies overriding the signed AI direction.
         if not legacy and not forecasts:model=0.
         score=.40*strategy+.40*model+.20*market if legacy else .25*strategy+.60*model+.15*market
+        if ai_direct:
+            # Strategy outputs remain visible but cannot change the decision.
+            score=.80*model+.20*market
         candidate=(d.get("directional_candidates") or {}).get(side)
         deviation=abs((ask if side=="BUY" else bid)-ref)/atr if valid_price else None
         checks={"strategy":isinstance(candidate,dict) and 1<=num(candidate.get("strategy_id"))<=200,
             "fresh":0<=age<60,"symbol":bool(symbol) and symbol==item.get("symbol"),
             "no_trap":ctx.get(side.lower()+"_trap") is False,
             "price":valid_price and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap)}
+        if ai_direct:
+            checks.pop("strategy")
         if not legacy:
             checks["ai_evidence"]=bool(forecasts)
             checks["ai_direction"]=model_direction==side
@@ -121,8 +127,10 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
             "components":{"strategy":strategy,"models":model,"market":market,
                 "strength":strength,"margin":margin,"market_quality":quality,"live_momentum":momentum,
                 "live_move_atr":move},"price_deviation_atr":deviation,
-            "strategy_id":candidate.get("strategy_id") if isinstance(candidate,dict) else None,
-            "combination_id":candidate.get("combination_id") if isinstance(candidate,dict) else None}
+            "strategy_id":0 if ai_direct else candidate.get("strategy_id") if isinstance(candidate,dict) else None,
+            "combination_id":0 if ai_direct else candidate.get("combination_id") if isinstance(candidate,dict) else None,
+            **({"advisory_strategy_id":candidate.get("strategy_id") if isinstance(candidate,dict) else None,
+                "advisory_combination_id":candidate.get("combination_id") if isinstance(candidate,dict) else None} if ai_direct else {})}
     ranking=sorted((s for s in SIDES if sides[s]["eligible"]),key=lambda s:sides[s]["score"],reverse=True)
     selected=ranking[0] if ranking else "WAIT"
     tied=len(ranking)==2 and abs(sides[ranking[0]]["score"]-sides[ranking[1]]["score"])<1e-8
@@ -140,6 +148,9 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
         "allocation":{"strategy":.4,"seven_models":.4,"market":.2} if legacy else {"strategy":.25,"seven_models":.60,"market":.15}}
 
 
+    if ai_direct:
+        result.update(entry_threshold_policy="GOLD_MASTER_ADVISORY_DEMO_V1",
+                      strategy_advisory_only=True, allocation={"strategy":0.,"seven_models":.80,"market":.20})
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
         result["gold_early_threshold_shadow"]=gold_early_threshold_shadow(result,age)
@@ -210,7 +221,11 @@ def select_demo(d,item,settings,now):
     # The old V1 candidate is logged separately by the research worker.
     out={**d,"master":{**report,"balanced_entry":trial}}
     side=trial["selected"]
-    if side in SIDES:
+    if side in SIDES and trial.get("strategy_advisory_only") is True:
+        out.update(decision=side,strategy_id=0,strategy_name="MASTER AI DIRECT",
+            combination_id=0,confidence=trial["scores"][side]["score"],master_ai_direct=True,
+            reason_ar="MASTER AI DIRECT DEMO: الاستراتيجيات والتراكيب استشارية فقط")
+    elif side in SIDES:
         c=(d.get("directional_candidates") or {})[side]
         out.update(decision=side,strategy_id=c["strategy_id"],strategy_name=c.get("strategy_name",""),
             combination_id=c.get("combination_id",0),confidence=trial["scores"][side]["score"],
