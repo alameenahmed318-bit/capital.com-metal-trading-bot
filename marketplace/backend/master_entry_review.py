@@ -224,7 +224,7 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
     if live_arena and frame=="M1" and direct_demo_enabled(item) and isinstance(balanced,dict):
         from master_balanced import evaluate, VERSION, direct_timing_shadow
         # Recompute using the current quote and freshness, never trust a cached approval.
-        trial=evaluate(d,item,settings,now_unix)
+        trial=evaluate(d,item,settings,now_unix,early_demo=True)
         selected=trial["selected"]
         detail=trial["scores"].get(selected,{})
         base.update(policy=VERSION,route="DIRECT_DEMO",balanced_entry=trial,

@@ -352,6 +352,40 @@ class BalancedDemoTests(unittest.TestCase):
         self.assertEqual(good["factors"]["XGBoost"],1.)
         self.assertEqual(weight_profile(profile,"BTCUSDm",now)["factors"]["LightGBM"],1.)
         self.assertEqual(weight_profile(profile,"XAUUSD",now+1201)["factors"]["LightGBM"],1.)
+    def test_gold_early_demo_68_is_explicit_scoped_and_rechecked(self):
+        from master_balanced import evaluate, MODELS, select_demo
+        d,snap=self.fixture(forecasts={n:1. for n in MODELS})
+        d["directional_scores"]={"BUY":.4,"SELL":.4}
+        d["context"]["buy_quality"]=20
+        snap["tick"]={"bid":99.99,"ask":100.01}
+        now=BAR+65
+        base=evaluate(d,snap,{},now)
+        self.assertGreaterEqual(base["scores"]["BUY"]["score"],.68)
+        self.assertLess(base["scores"]["BUY"]["score"],.72)
+        self.assertFalse(base["approved"])
+        pilot=evaluate(d,snap,{},now,early_demo=True)
+        self.assertTrue(pilot["approved"])
+        self.assertEqual(pilot["threshold"],.68)
+        selected=select_demo(d,snap,{},now)
+        r=review(selected,snap,{},now,live_arena=True)
+        self.assertTrue(r["approved"])
+        self.assertEqual(r["quality_threshold"],.68)
+        self.assertFalse(review(selected,snap,{},BAR+71,live_arena=True)["approved"])
+        self.assertFalse(apply_gate({"approved":False,"reason_ar":"risk"},r)["approved"])
+        for mode in ("REAL","CONTEST","UNKNOWN"):
+            x=evaluate(d,{**snap,"account":{"trade_mode":mode}},{},now,early_demo=True)
+            self.assertEqual(x["threshold"],.72)
+        for patch in ({"master_direct_demo_capable":False},{"timeframe":"M5"}):
+            self.assertEqual(evaluate(d,{**snap,**patch},{},now,early_demo=True)["threshold"],.72)
+        btc,bs=self.fixture("BTCUSDm",{n:1. for n in MODELS})
+        self.assertEqual(evaluate(btc,bs,{},now,early_demo=True)["threshold"],.72)
+        self.assertEqual(evaluate(d,snap,{},now,legacy=True,early_demo=True)["threshold"],.72)
+        d["context"]["buy_trap"]=True
+        self.assertFalse(evaluate(d,snap,{},now,early_demo=True)["approved"])
+        d["context"]["buy_trap"]=False
+        d["master"]["arena_shadow"]["models"]={}
+        self.assertFalse(evaluate(d,snap,{},now,early_demo=True)["approved"])
+
     def test_real_or_old_client_and_existing_gate_preserved(self):
         from master_balanced import select_demo,MODELS
         d,snap=self.fixture(forecasts={n:1. for n in MODELS})

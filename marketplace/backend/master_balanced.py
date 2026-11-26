@@ -5,6 +5,8 @@ from market_symbols import same_market_symbol
 LEGACY_VERSION="MASTER_BALANCED_DEMO_V2"
 VERSION="MASTER_AI_FIRST_DEMO_V3"
 THRESHOLD=.72
+GOLD_EARLY_DEMO_THRESHOLD=.68
+GOLD_EARLY_DEMO_SECONDS=10.
 SIDES=("BUY","SELL")
 FAMILIES={"TREES":("LightGBM","XGBoost","CatBoost"),
           "FORECAST":("TiRex-2","Chronos-2","TimesFM-2.5","Chronos-Bolt Tiny")}
@@ -48,13 +50,20 @@ def weight_profile(feedback,symbol,now):
             "factors":factors,"statuses":statuses,"profile_fresh":fresh,
             "metric":"MATURE_180S_PRICE_PROXY_NOT_PROFITABILITY"}
 
-def evaluate(d,item,settings,now,*,legacy=False):
+def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
     """Rank BUY/SELL on the same scale, only for actual eligible strategies.
     AI-first uses 60% of the score and requires current, material directional
     model evidence. No required model count or unanimity. V2 is research only.
     """
     report=d.get("master") or {};symbol=d.get("symbol")
     bar=num(d.get("bar_time"));age=now-bar-60
+    # Only real entry-review calls opt in. Research comparisons retain 72%.
+    gold_early_pilot=(early_demo and not legacy and 0<=age<=GOLD_EARLY_DEMO_SECONDS
+        and str(symbol or "").upper().startswith("XAUUSD") and item.get("symbol")==symbol
+        and str(item.get("timeframe","M1")).upper().replace("PERIOD_","")=="M1"
+        and item.get("master_direct_demo_capable") is True
+        and (item.get("account") or {}).get("trade_mode")=="DEMO")
+    threshold=GOLD_EARLY_DEMO_THRESHOLD if gold_early_pilot else THRESHOLD
     arena=report.get("arena_shadow") or {}
     fresh=(arena.get("status")=="SHADOW_READY" and symbol and
         arena.get("symbol")==symbol==item.get("symbol") and
@@ -117,13 +126,14 @@ def evaluate(d,item,settings,now,*,legacy=False):
     ranking=sorted((s for s in SIDES if sides[s]["eligible"]),key=lambda s:sides[s]["score"],reverse=True)
     selected=ranking[0] if ranking else "WAIT"
     tied=len(ranking)==2 and abs(sides[ranking[0]]["score"]-sides[ranking[1]]["score"])<1e-8
-    approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=THRESHOLD)
+    approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=threshold)
     reason="READY" if approved else "TIE" if tied else "NO_ELIGIBLE_SIDE" if not ranking else "WEIGHTED_SCORE"
     if not legacy and not forecasts:reason="NO_FRESH_AI_EVIDENCE"
     elif not legacy and model_direction=="WAIT":reason="AI_DIRECTION_UNCLEAR"
     elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
     result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
-        "direction":selected if approved else "WAIT","approved":approved,"threshold":THRESHOLD,
+        "direction":selected if approved else "WAIT","approved":approved,"threshold":threshold,
+        "entry_threshold_policy":"GOLD_EARLY_DEMO_68" if gold_early_pilot else "BASELINE_72",
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
         "reason":reason,"model_direction":model_direction,"evidence_mass":evidence_mass,"model_conviction":conviction,
@@ -196,7 +206,7 @@ def select_demo(d,item,settings,now):
     frame=str(item.get("timeframe","M1")).upper().replace("PERIOD_","")
     if frame!="M1" or not direct_demo_enabled(item):return d
     report=d.get("master") or {}
-    trial=evaluate(d,item,settings,now)
+    trial=evaluate(d,item,settings,now,early_demo=True)
     # The old V1 candidate is logged separately by the research worker.
     out={**d,"master":{**report,"balanced_entry":trial}}
     side=trial["selected"]
