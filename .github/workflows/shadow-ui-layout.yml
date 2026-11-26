@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - work/shadow-layout-containment-20261122
+      - work/command-center-ui-20261126
       - deploy/alzool-meeno-btc-demo-20261121
     paths:
       - '**.html'

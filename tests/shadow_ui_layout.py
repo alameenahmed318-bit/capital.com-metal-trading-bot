@@ -12,7 +12,7 @@ class Quiet(SimpleHTTPRequestHandler):
 server=ThreadingHTTPServer(("127.0.0.1",0),Quiet)
 threading.Thread(target=server.serve_forever,daemon=True).start()
 origin=f"http://127.0.0.1:{server.server_port}"
-pages=["dashboard.html","trade-management.html#positions","ai-analysis.html","ai-monitor.html","learning-lab.html","opportunities.html","backtest-lab.html","trade-history.html","bots-library.html","index.html?manage=1"]
+pages=["dashboard.html","master-ai.html","model-arena.html","trade-management.html#positions","ai-analysis.html","ai-monitor.html","learning-lab.html","opportunities.html","backtest-lab.html","trade-history.html","bots-library.html","index.html?manage=1"]
 widths=[390,768,1024,1280,1536,1920]
 errors=[]
 with sync_playwright() as p:
@@ -65,9 +65,9 @@ with sync_playwright() as p:
             if(!el.getClientRects().length)continue;
             const r=bounds(el);if(r.left<c.left-2||r.right>c.right+2)leaks.push(el.className+' '+JSON.stringify(r));
           }
-          return {width:innerWidth,scrollWidth:root.scrollWidth,menu:m,main:c,leaks,overlap:innerWidth>760?m.right>c.left+1:m.bottom>c.top+1};
+          return {width:innerWidth,scrollWidth:root.scrollWidth,menu:m,main:c,leaks,menuCount:menu.querySelectorAll(":scope>a").length,overlap:innerWidth>760?c.right>m.left+1:m.bottom>c.top+1};
         }""")
-        if data.get("failure") or data.get("overlap") or data.get("leaks") or data.get("scrollWidth",0)>width+2:
+        if data.get("failure") or data.get("menuCount")!=6 or data.get("overlap") or data.get("leaks") or data.get("scrollWidth",0)>width+2:
             errors.append({"page":route,"viewport":width,**data})
             print("FAIL",json.dumps(errors[-1],ensure_ascii=False))
         else: print("PASS",route,width)
