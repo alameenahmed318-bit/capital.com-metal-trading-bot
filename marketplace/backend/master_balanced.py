@@ -9,16 +9,6 @@ SIDES=("BUY","SELL")
 FAMILIES={"TREES":("LightGBM","XGBoost","CatBoost"),
           "FORECAST":("TiRex-2","Chronos-2","TimesFM-2.5","Chronos-Bolt Tiny")}
 MODELS=tuple(n for names in FAMILIES.values() for n in names)
-GOLD_DEMO_RETIREMENT="GOLD_FOUR_MODEL_DEMO_PILOT_V1"
-GOLD_DEMO_WEIGHTS={"CatBoost":.25,"TiRex-2":.25,"Chronos-2":.25,"TimesFM-2.5":.25}
-
-def gold_demo_retirement_enabled(item,symbol):
-    """Scope experiment to explicitly capable native MT5 demo gold M1."""
-    return (str(symbol or "").upper().startswith("XAUUSD") and item.get("symbol")==symbol
-            and str(item.get("timeframe","M1")).upper().replace("PERIOD_","")=="M1"
-            and item.get("master_direct_demo_capable") is True
-            and (item.get("account") or {}).get("trade_mode")=="DEMO")
-
 
 def num(v,default=0.):
     try:
@@ -73,8 +63,7 @@ def evaluate(d,item,settings,now,*,legacy=False):
     p=report.get("balanced_weight_profile") or {}
     # The profile is generated server-side from a market-scoped cache.
     profile=p if p.get("symbol")==symbol and 0<=now-num(p.get("computed_at"),-1)<=1200 else weight_profile({},symbol,now)
-    pilot=not legacy and gold_demo_retirement_enabled(item,symbol)
-    weights=dict(GOLD_DEMO_WEIGHTS) if pilot else profile["weights"]
+    weights=profile["weights"]
     forecasts={}
     if fresh:
         for n,v in (arena.get("models") or {}).items():
@@ -115,8 +104,6 @@ def evaluate(d,item,settings,now,*,legacy=False):
             "fresh":0<=age<60,"symbol":bool(symbol) and symbol==item.get("symbol"),
             "no_trap":ctx.get(side.lower()+"_trap") is False,
             "price":valid_price and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap)}
-        if pilot:
-            checks["gold_retired_strategy"]=not isinstance(candidate,dict) or num(candidate.get("strategy_id"))!=12
         if not legacy:
             checks["ai_evidence"]=bool(forecasts)
             checks["ai_direction"]=model_direction==side
@@ -143,14 +130,33 @@ def evaluate(d,item,settings,now,*,legacy=False):
         "allocation":{"strategy":.4,"seven_models":.4,"market":.2} if legacy else {"strategy":.25,"seven_models":.60,"market":.15}}
 
 
-    if pilot:
-        result.update(gold_demo_pilot=GOLD_DEMO_RETIREMENT, active_model_count=4,
-            weight_statuses={n:profile["statuses"].get(n,"INSUFFICIENT") for n in weights},
-            retired_model_names=["XGBoost","LightGBM","Chronos-Bolt Tiny"],
-            retired_entry_strategy_ids=[12], model_weight_policy="FIXED_PILOT")
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
+        result["gold_early_threshold_shadow"]=gold_early_threshold_shadow(result,age)
     return result
+
+def gold_early_threshold_shadow(trial,age):
+    """Read-only entry timing comparison. Never changes the live threshold."""
+    side=trial.get("model_direction","WAIT")
+    detail=(trial.get("scores") or {}).get(side,{})
+    score=num(detail.get("score"),-1.)
+    early=0<=num(age,-1.)<=10
+    eligible=(side in SIDES and early and detail.get("eligible") is True)
+    variants={}
+    for cut in (.72,.68,.65):
+        variants[str(int(round(cut*100)))]={
+            "threshold":cut,
+            "direction":side if eligible and score>=cut else "WAIT",
+            "execution_authorized":False}
+    return {"version":"GOLD_EARLY_THRESHOLD_SHADOW_V1","mode":"SHADOW_ONLY",
+            "execution_authorized":False,"age_after_close_sec":round(num(age,-1),3),
+            "max_age_sec":10,"score":score,"eligible":eligible,
+            "strategy_id":detail.get("strategy_id"),
+            "combination_id":detail.get("combination_id"),
+            "used_models":list(trial.get("used_models") or []),
+            "baseline_direction":trial.get("direction","WAIT"),
+            "variants":variants}
+
 
 def gold_strategy_advisory_shadow(trial,age):
     """Gold-only comparison. Never grants authorization or mutates the V3 decision.
