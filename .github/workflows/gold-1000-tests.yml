@@ -1,13 +1,13 @@
-name: Gold 1000 independent research tests
+name: Gold HARD V2 1000 independent research tests
 on:
   pull_request:
-    branches: [research/gold-1000-base-20261126]
-    paths: ['.github/workflows/gold-1000-tests.yml', 'research/gold_1000_walkforward.py']
+    branches: [research/gold-1000-tests-20261126]
+    paths: ['.github/workflows/gold-1000-tests.yml', 'research/gold_hard_1000.py']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: gold-1000-research
+  group: gold-hard-1000-research
   cancel-in-progress: false
 jobs:
   data:
@@ -26,10 +26,10 @@ jobs:
           root = f'https://raw.githubusercontent.com/kevingtlin/Market-Data-Lab/{revision}'
           def epoch(day):
               return int(datetime.datetime.fromisoformat(day).replace(tzinfo=datetime.timezone.utc).timestamp()*1000)
-          first, last = epoch('2026-08-03'), epoch('2026-08-20')
+          first, last = epoch('2026-09-01'), epoch('2026-10-01')
           data, hashes = {}, {}
           for side in ('bid', 'ask'):
-              url = f'{root}/xauusd/{side}/m1/xauusd_{side}_m1_2026_08.csv'
+              url = f'{root}/xauusd/{side}/m1/xauusd_{side}_m1_2026_09.csv'
               with urllib.request.urlopen(url, timeout=90) as response:
                   blob = response.read(10000000)
               hashes[side] = hashlib.sha256(blob).hexdigest()
@@ -58,7 +58,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: public-gold-input
+          name: public-gold-hard-input
           path: gold.json
           retention-days: 7
   test:
@@ -99,19 +99,19 @@ jobs:
           python-version: '3.11'
       - uses: actions/download-artifact@v4
         with:
-          name: public-gold-input
+          name: public-gold-hard-input
       - name: Install isolated CPU dependencies
         run: |
           python -m pip install numpy pandas scikit-learn requests
           if [ "$SLUG" != catboost ]; then python -m pip install torch --index-url https://download.pytorch.org/whl/cpu; fi
           python -m pip install "$PACKAGE"
-      - name: Run 200 chronological scored cases
+      - name: Run 200 chronological cases with three stress scenarios
         run: |
-          python -u research/gold_1000_walkforward.py --data gold.json --model "$MODEL" --output "reports/$SLUG.jsonl"
+          python -u research/gold_hard_1000.py --data gold.json --model "$MODEL" --output "reports/$SLUG.jsonl"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gold-results-${{ matrix.slug }}
+          name: gold-hard-results-${{ matrix.slug }}
           path: reports/
           retention-days: 30
           if-no-files-found: warn
