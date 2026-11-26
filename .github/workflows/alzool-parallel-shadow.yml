@@ -13,6 +13,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Compile and isolation unit tests
+        env:
+          PYTHONPATH: marketplace/backend
         run: |
           python -m compileall -q marketplace/backend research/parallel_shadow_worker.py
           python tests/test_parallel_shadow.py
