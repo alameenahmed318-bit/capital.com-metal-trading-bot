@@ -33,9 +33,10 @@ def main():
     lstm,count,_=lstm_features(b,atr,valid,fit,42)
     forest,_=anomaly_features(x,valid,fit,42)
     x=np.column_stack([x,lstm,forest]).astype(np.float32)
+    scale=float(np.median(atr[:fit]))
     def env(part,stress=False,random=False,seed=42):
         return make_env(b,x,atr,valid,parts[part],slippage=.30 if stress else .10,
-            commission_atr=.04 if stress else .02,random_start=random,seed=seed)
+            commission_atr=.04 if stress else .02,random_start=random,seed=seed,scale=scale)
     check_env(env("train"),warn=True)
     report={"version":"MASTER_NEXT_RESEARCH_V2","symbol":symbol,"bars":n,"execution_authorized":False,
         "development_only":a.development,"split_indices":parts,"test_start_unix":int(b[parts["test"][0],0]),

@@ -4,12 +4,13 @@ from core import target_for
 
 ACTIONS=("HOLD","BUY","SELL","ADD","COOL","REDUCE","CLOSE","RECOVERY_REDUCE")
 
-def make_env(b,x,atr,valid,split,slippage=.10,commission_atr=.02,seed=42,random_start=False):
+def make_env(b,x,atr,valid,split,slippage=.10,commission_atr=.02,seed=42,random_start=False,scale=None):
     import gymnasium as gym
     from gymnasium import spaces
     lo,hi=split
     if hi-lo<100:raise ValueError("Need >=100 bars per partition")
-    scale=float(np.median(atr[:max(1,int(.35*len(b)))]))
+    scale=float(np.median(atr[:lo])) if scale is None else float(scale)
+    if not np.isfinite(scale) or scale<=0:raise ValueError("Invalid training scale")
     class Env(gym.Env):
         action_space=spaces.Discrete(len(ACTIONS))
         observation_space=spaces.Box(-20.,20.,shape=(x.shape[1]+8,),dtype=np.float32)
