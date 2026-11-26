@@ -21,15 +21,15 @@ def main():
     anomaly,_=anomaly_features(x,valid,fit,42)
     models={"LSTM":l,"MOMENTUM":x[:,1]}
     masks={k:valid.copy() for k in models}
-    if a.timesfm:
-        f,m=timesfm_features(b,atr,valid,fit)
-        models["TimesFM"]=f;masks["TimesFM"]=valid & (m>0)
     # Nonoverlapping three-bar holding windows. At i close, buy/sell next open;
     # exit at i+3 close. All quotes and scale are consistent across advisers.
     def origins(lo,hi):
         return np.array([i for i in range(lo,hi-3,3) if valid[i] and b[i+3,0]-b[i,0]==180],dtype=int)
     va=origins(fit+5,boundary);te=origins(boundary+5,n)
     if min(len(va),len(te))<30:raise ValueError("Insufficient contiguous test origins")
+    if a.timesfm:
+        f,m=timesfm_features(b,atr,valid,fit,origins=np.r_[va,te])
+        models["TimesFM"]=f;masks["TimesFM"]=valid & (m>0)
     def metrics(ids,pred,mask,threshold,anomaly_filter,stress):
         pred=pred[ids];eligible=mask[ids]
         side=np.where(eligible & (abs(pred)>threshold),np.sign(pred),0.)

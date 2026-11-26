@@ -1,0 +1,35 @@
+name: AL-ZOOL TimesFM development comparison
+on:
+  push:
+    branches: ['research/master-next-timesfm-20261126']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    if: github.ref == 'refs/heads/research/master-next-timesfm-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: CPU dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install numpy==1.26.4 scikit-learn==1.6.1 'timesfm[torch]==2.0.2'
+      - name: Adviser comparison on previously inspected fixtures
+        run: |
+          python research/master_next/audit_advisers.py --development --timesfm --bars tests/fixtures/v3_replacement_gold_m1.json --out gold_adviser.json
+          python research/master_next/audit_advisers.py --development --timesfm --bars tests/fixtures/v3_replacement_btc_m1.json --out btc_adviser.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timesfm-development-comparison
+          path: |
+            gold_adviser.json
+            btc_adviser.json
+          retention-days: 7

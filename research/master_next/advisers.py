@@ -36,13 +36,15 @@ def anomaly_features(x,valid,fit_end,seed):
     m.fit(x[:fit_end][valid[:fit_end]])
     return np.clip(-m.decision_function(x),-1,1).astype(np.float32),m
 
-def timesfm_features(b,atr,valid,fit_end):
+def timesfm_features(b,atr,valid,fit_end,origins=None):
     # Explicit opt-in; same checkpoint as the existing project, no duplicate live worker.
+    import torch
+    torch.set_num_threads(1)
     import timesfm
     model=timesfm.TimesFM_2p5_200M_torch.from_pretrained("google/timesfm-2.5-200m-pytorch",torch_compile=False)
     model.compile(timesfm.ForecastConfig(max_context=128,max_horizon=128,normalize_inputs=True,per_core_batch_size=2,infer_is_positive=False))
     vals=np.zeros(len(b),np.float32);mask=np.zeros(len(b),np.float32)
-    ids=[i for i in range(max(127,fit_end),len(b)) if valid[i] and b[i,0]-b[i-127,0]==127*60]
+    ids=[int(i) for i in (range(max(127,fit_end),len(b)) if origins is None else origins) if i>=max(127,fit_end) and valid[i] and b[i,0]-b[i-127,0]==127*60]
     for start in range(0,len(ids),16):
         batch=ids[start:start+16]
         contexts=[np.asarray((b[i-127:i+1,4]-b[i,4])/atr[i],dtype=np.float32) for i in batch]
