@@ -1,7 +1,7 @@
 name: Gold 1000 independent research tests
 on:
-  push:
-    branches: [research/gold-1000-tests-20261126]
+  pull_request:
+    branches: [research/gold-1000-base-20261126]
     paths: ['.github/workflows/gold-1000-tests.yml', 'research/gold_1000_walkforward.py']
   workflow_dispatch:
 permissions:
