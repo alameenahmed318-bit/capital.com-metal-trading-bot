@@ -315,7 +315,7 @@ def live(email,password):
                         with lock:
                             prior=cache.get(market)
                             previous=prior[1] if prior and prior[0]==cid else {}
-                        direction=choose_gold_champion(cid,bars,gold_direction(bars),previous)
+                        direction=choose_gold_champion(cid,bars,gold_direction(bars,names=("CatBoost",)),previous)
                     else:
                         direction=train_direction(bars)
                     # Publish validated gold direction models immediately;
