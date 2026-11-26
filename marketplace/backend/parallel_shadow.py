@@ -37,9 +37,11 @@ def accept(uid,market,ctx,data,now=None):
         for n in usable:rows[n]["weight"]=round(factors[n]/max(len(names),sum(factors.values()))/len(FAMILIES),6)
     signed=sum(rows[n]["forecast"]*rows[n]["weight"] for n in DIRECTION if n in rows)
     rows["Ensemble"]={"forecast":round(signed,5),"status":"DERIVED_SHADOW_ONLY","weight":0.,"samples":0,"accuracy":None,"net_atr":None}
+    from parallel_learning import sanitize_report
+    learning=sanitize_report(data.get("learning"))
     key=(str(uid),market)
     value={"status":"SHADOW_READY","market":market,"symbol":ctx["symbol"],"bar_time":bar,"received_at":now,
-           "models":rows,"direction":"BUY" if signed>.05 else "SELL" if signed<-.05 else "WAIT","execution_authorized":False}
+           "models":rows,"learning":learning,"direction":"BUY" if signed>.05 else "SELL" if signed<-.05 else "WAIT","execution_authorized":False}
     with LOCK:
         old=CACHE.get(key)
         if old and old["bar_time"]>bar:return {"accepted":False,"reason":"OUT_OF_ORDER","execution_authorized":False}

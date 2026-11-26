@@ -45,7 +45,8 @@ def train_actions(bars):
             reports[action+":"+side]={"train":len(train),"test":len(test),"signals":len(take),"positive":sum(v>0 for v in take),"net_proxy":round(sum(take),4)}
             fitted[(action,side)]=model
     return fitted,reports
-def train_direction(bars):
+TREE_RETRY={}
+def train_direction(bars,market="UNKNOWN"):
     d=samples(bars)
     if len(d)<600:return {}
     # Purge future-label overlap at the chronological split, evaluate using
@@ -56,6 +57,9 @@ def train_direction(bars):
     if len(train)<400 or len(holdout)<100:return {}
     models={}
     for name in ("LightGBM","XGBoost","CatBoost"):
+        key=(market,name)
+        if time.monotonic()<TREE_RETRY.get(key,0):
+            print(market,name,"FIT_COOLDOWN",flush=True);continue
         try:
             if name=="LightGBM":m=estimator()
             elif name=="XGBoost":
@@ -70,10 +74,12 @@ def train_direction(bars):
                       if math.isfinite(float(p)) and abs(p)>.05]
             print(name,"HOLDOUT",len(train),len(holdout),"signals",len(selected),
                   "net_proxy",round(sum(selected),5),flush=True)
-            if len(selected)<30 or sum(selected)<=0:continue
+            if len(selected)<30 or sum(selected)<=0:
+                TREE_RETRY[key]=time.monotonic()+21600;continue
             m.fit([v["x"] for v in d],[max(-6,min(6,v["y"])) for v in d])
-            models[name]=m
-        except Exception as e:print(name,"FIT_ERROR",type(e).__name__,flush=True)
+            models[name]=m;TREE_RETRY.pop(key,None)
+        except Exception as e:
+            TREE_RETRY[key]=time.monotonic()+21600;print(name,"FIT_ERROR",type(e).__name__,flush=True)
     return models
 PRETRAINED=("TiRex-2","Chronos-Bolt Tiny","Chronos-2","TimesFM-2.5")
 
@@ -140,7 +146,7 @@ def live(email,password):
                 reply=arena.api(market,"live-forecast",auth,{**body,"models":{name:v},"actions":{}})
                 print(market,bar,name,"ACCEPTED" if reply.get("accepted") else reply.get("reason","REJECTED"),flush=True)
             except Exception as exc:
-                retry[name]=time.monotonic()+60
+                retry[name]=time.monotonic()+600
                 print(market,name,"ERROR",type(exc).__name__,flush=True)
     threading.Thread(target=heavy,daemon=True,name="arena-forecast-lane").start()
     # Training runs separately; keep previous fitted models until a complete
@@ -154,7 +160,7 @@ def live(email,password):
                     with lock:auth=state["token"]
                     cid,bars=arena.archive(market,auth)
                     if not cid:continue
-                    direction=train_direction(bars)
+                    direction=train_direction(bars,market)
                     try:actions,reports=train_actions(bars)
                     except Exception as exc:
                         actions,reports={},{}

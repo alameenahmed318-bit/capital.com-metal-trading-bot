@@ -1663,6 +1663,18 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,rows[0] if rows else {"status":"NO_TRAINING"})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception:return self.send_json(502,{"error":"action_report_unavailable"})
+        if path=="/api/ai/arena/parallel-learning":
+            try:
+                u=owner(token_of(self))
+                from model_arena_api import ids
+                from parallel_learning import read_evidence
+                params=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                cid=(params.get("client") or [""])[0];symbol=(params.get("symbol") or [""])[0]
+                if cid not in ids(sb,u["id"],ENGINE_MARKET) or not btc_market(symbol):
+                    return self.send_json(403,{"error":"invalid owner market/client"})
+                return self.send_json(200,read_evidence(sb,cid,symbol))
+            except PermissionError:return self.send_json(403,{"error":"owner required"})
+            except Exception:return self.send_json(502,{"error":"parallel_learning_unavailable"})
         if path=="/api/ai/arena/parallel-monitor":
             try:
                 u=owner(token_of(self))
