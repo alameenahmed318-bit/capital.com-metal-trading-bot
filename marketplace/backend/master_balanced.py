@@ -133,13 +133,16 @@ def evaluate(d,item,settings,now,*,legacy=False):
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
         result["gold_five_model_shadow"]=gold_five_model_shadow(result,forecasts)
+        result["gold_four_model_shadow"]=gold_five_model_shadow(result,forecasts,exclude_bolt=True)
     return result
 
 
-def gold_five_model_shadow(trial, forecasts):
-    """Compare fixed five-model weights for gold; research only, never authorize."""
+def gold_five_model_shadow(trial, forecasts, *, exclude_bolt=False):
+    """Compare fixed gold model weights; research only, never authorize."""
     weights = {"CatBoost": .25, "TiRex-2": .1875, "Chronos-2": .1875,
                "TimesFM-2.5": .1875, "Chronos-Bolt Tiny": .1875}
+    if exclude_bolt:
+        weights = {n: .25 for n in weights if n != "Chronos-Bolt Tiny"}
     values = {n: clamp(num(v), -1., 1.) for n, v in forecasts.items()
               if n in weights and abs(num(v)) > .05}
     signed = sum(weights[n]*v for n,v in values.items())
@@ -154,7 +157,7 @@ def gold_five_model_shadow(trial, forecasts):
              +.25*clamp(num(parts.get("strategy")))
              +.15*clamp(num(parts.get("market")))) if side in SIDES else None
     direction = side if eligible and score is not None and score >= THRESHOLD else "WAIT"
-    return {"version": "GOLD_FIVE_MODEL_SHADOW_V1", "mode": "SHADOW_ONLY",
+    return {"version": "GOLD_FOUR_MODEL_SHADOW_V1" if exclude_bolt else "GOLD_FIVE_MODEL_SHADOW_V1", "mode": "SHADOW_ONLY",
             "execution_authorized": False, "baseline_direction": trial.get("direction","WAIT"),
             "direction": direction, "score": round(score,8) if score is not None else None,
             "threshold": THRESHOLD, "weights": weights, "used_models": list(values),
