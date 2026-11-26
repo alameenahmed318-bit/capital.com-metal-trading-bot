@@ -1663,6 +1663,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(200,rows[0] if rows else {"status":"NO_TRAINING"})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception:return self.send_json(502,{"error":"action_report_unavailable"})
+        if path=="/api/ai/arena/parallel-monitor":
+            try:
+                u=owner(token_of(self))
+                from parallel_shadow import snapshot
+                return self.send_json(200,snapshot(u["id"],ENGINE_MARKET))
+            except PermissionError as e:return self.send_json(403,{"error":str(e)})
+            except Exception:return self.send_json(502,{"error":"parallel_monitor_unavailable"})
         if path=="/api/ai/arena/live-context":
             try:
                 u=owner(token_of(self))
@@ -1869,6 +1876,13 @@ class Handler(SimpleHTTPRequestHandler):
                 queue_ai_diagnostic_event({"event_id":"action-ai:"+hashlib.sha256((cid+str(int(time.time()//3600))).encode()).hexdigest(),
                     "client_id":cid,"event_type":"ARENA_ACTION_TRAINING","payload":{"market":ENGINE_MARKET,"candles":int(arena_master.num(data.get("candles"))),"reports":report,"metric":"HISTORICAL_PATH_PROXY_NOT_BASKET_PROFIT","execution_authorized":False}})
                 return self.send_json(200,{"accepted":True})
+            if path=="/api/ai/arena/parallel-monitor":
+                u=owner(token)
+                from model_arena_api import ids
+                from parallel_shadow import accept
+                cid=data.get("client")
+                if cid not in ids(sb,u["id"],ENGINE_MARKET):return self.send_json(403,{"error":"invalid owner client"})
+                return self.send_json(200,accept(u["id"],ENGINE_MARKET,arena_master.context(cid,CONNECTIONS.get(cid) or {}),data))
             if path=="/api/ai/arena/live-forecast":
                 u=owner(token)
                 from model_arena_api import ids
