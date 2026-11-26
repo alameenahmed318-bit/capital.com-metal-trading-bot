@@ -1,0 +1,54 @@
+name: AL-ZOOL MASTER NEXT offline research
+on:
+  push:
+    branches: ['research/master-next-rl-20261126']
+    paths: ['research/master_next/**', '.github/workflows/alzool-master-next-research.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: master-next-research-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline:
+    if: github.ref == 'refs/heads/research/master-next-rl-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated CPU research dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install numpy==1.26.4 scikit-learn==1.6.1 gymnasium==1.1.1 stable-baselines3==2.6.0 joblib==1.4.2
+      - name: Offline unit tests
+        run: python research/master_next/test_core.py
+      - name: Gold historical smoke trial
+        run: python research/master_next/run.py --bars tests/fixtures/v3_replacement_gold_m1.json --steps 4096 --out master_next_gold
+      - name: Bitcoin historical smoke trial
+        run: python research/master_next/run.py --bars tests/fixtures/v3_replacement_btc_m1.json --steps 4096 --out master_next_btc
+      - name: Report summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in ('master_next_gold/report.json','master_next_btc/report.json'):
+              d=json.loads(Path(p).read_text())
+              assert d['execution_authorized'] is False
+              print(d['symbol'], 'choice', d['validation_choice'], 'pass', d['pilot_pass'])
+              print(json.dumps(d['test'],indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: master-next-offline-reports
+          path: |
+            master_next_gold/report.json
+            master_next_btc/report.json
+          if-no-files-found: warn
+          retention-days: 7
