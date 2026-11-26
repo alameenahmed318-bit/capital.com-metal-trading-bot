@@ -1,0 +1,70 @@
+name: AL-ZOOL six challenger development pilot
+on:
+  push:
+    branches: ['research/master-next-six-20261126']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  challenger:
+    if: github.ref == 'refs/heads/research/master-next-six-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        model: [kronos, chronos, patchtst, moirai, iql_cql, dt]
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      WANDB_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Common CPU dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install numpy==1.26.4 scikit-learn==1.6.1 gymnasium==1.1.1
+      - name: Kronos pinned source
+        if: matrix.model == 'kronos'
+        run: |
+          git clone https://github.com/shiyu-coder/Kronos.git /tmp/kronos
+          git -C /tmp/kronos checkout 67b630e67f6a18c9e9be918d9b4337c960db1e9a
+          python -m pip install pandas einops huggingface_hub safetensors tqdm matplotlib
+      - name: Chronos dependencies
+        if: matrix.model == 'chronos'
+        run: python -m pip install 'chronos-forecasting>=2.2,<3' 'transformers>=4.57,<5' 'peft>=0.17,<1' 'accelerate>=1,<2'
+      - name: PatchTST dependencies
+        if: matrix.model == 'patchtst'
+        run: python -m pip install transformers==4.57.0
+      - name: Moirai pinned research source
+        if: matrix.model == 'moirai'
+        run: |
+          git clone https://github.com/SalesforceAIResearch/uni2ts.git /tmp/uni2ts
+          git -C /tmp/uni2ts checkout cfd46d4510ed8896f263116f32928eede05b0a75
+          python -m pip install /tmp/uni2ts
+      - name: Run public fixture development on both markets
+        shell: bash
+        run: |
+          for market in gold btc; do
+            if [[ '${{ matrix.model }}' == 'iql_cql' || '${{ matrix.model }}' == 'dt' ]]; then
+              python research/master_next/six_offline.py --group '${{ matrix.model }}' --development --bars tests/fixtures/v3_replacement_${market}_m1.json --out "${market}.json"
+            else
+              python research/master_next/six_forecast.py --model '${{ matrix.model }}' --development --kronos-path /tmp/kronos --bars tests/fixtures/v3_replacement_${market}_m1.json --out "${market}.json"
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: six-${{ matrix.model }}
+          path: |
+            gold.json
+            btc.json
+          if-no-files-found: warn
+          retention-days: 7
