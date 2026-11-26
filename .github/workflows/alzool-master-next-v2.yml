@@ -1,0 +1,44 @@
+name: AL-ZOOL MASTER NEXT V2 development
+on:
+  push:
+    branches: ['research/master-next-v2-20261126']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: master-next-v2-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  development:
+    if: github.ref == 'refs/heads/research/master-next-v2-20261126'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        market: [gold, btc]
+    env:
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: CPU dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install numpy==1.26.4 scikit-learn==1.6.1 gymnasium==1.1.1 stable-baselines3==2.6.0 joblib==1.4.2
+      - name: Unit tests
+        run: |
+          python research/master_next/test_core.py
+          python research/master_next/test_v2.py
+      - name: Three-seed development trial, previously seen data
+        run: python research/master_next/run_v2.py --development --bars tests/fixtures/v3_replacement_${{ matrix.market }}_m1.json --steps 8192 --out dev_${{ matrix.market }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v2-dev-${{ matrix.market }}
+          path: dev_${{ matrix.market }}/report.json
+          if-no-files-found: warn
+          retention-days: 7
