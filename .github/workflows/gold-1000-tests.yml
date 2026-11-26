@@ -14,23 +14,48 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: '22'
-      - name: Obtain public gold bid and ask candles
+          python-version: '3.11'
+      - name: Obtain pinned public gold bid and ask archive
         run: |
-          npm install --no-audit --no-fund dukascopy-node@1.51.1
-          node --input-type=module <<'JS'
-          import { getHistoricalRates } from 'dukascopy-node';
-          import { writeFileSync } from 'node:fs';
-          const data = {};
-          for (const priceType of ['bid','ask']) {
-            data[priceType] = await getHistoricalRates({instrument:'xauusd',dates:{from:'2026-08-03',to:'2026-08-20'},timeframe:'m1',priceType,format:'array',retryCount:3});
-            if (!Array.isArray(data[priceType]) || data[priceType].length < 3000 || !Array.isArray(data[priceType][0])) throw new Error('Insufficient public M1 data');
-            console.log(priceType, data[priceType].length, 'candles');
-          }
-          writeFileSync('gold.json',JSON.stringify(data));
-          JS
+          python <<'PY'
+          import csv, datetime, hashlib, io, json, math, urllib.request
+          from pathlib import Path
+          revision = '9d19afba6e1a1c2f9c4fbe85cb2fcf2778584dc7'
+          root = f'https://raw.githubusercontent.com/kevingtlin/Market-Data-Lab/{revision}'
+          def epoch(day):
+              return int(datetime.datetime.fromisoformat(day).replace(tzinfo=datetime.timezone.utc).timestamp()*1000)
+          first, last = epoch('2026-08-03'), epoch('2026-08-20')
+          data, hashes = {}, {}
+          for side in ('bid', 'ask'):
+              url = f'{root}/xauusd/{side}/m1/xauusd_{side}_m1_2026_08.csv'
+              with urllib.request.urlopen(url, timeout=90) as response:
+                  blob = response.read(10000000)
+              hashes[side] = hashlib.sha256(blob).hexdigest()
+              records = {}
+              for row in csv.DictReader(io.StringIO(blob.decode('utf-8-sig'))):
+                  t = int(row['timestamp'])
+                  if not first <= t < last:
+                      continue
+                  values = [float(row[k]) for k in ('open','high','low','close')]
+                  o,h,l,c = values
+                  if t % 60000 or not all(math.isfinite(v) and v>0 for v in values) or l>min(o,c) or h<max(o,c):
+                      raise ValueError(f'Invalid {side} candle at {t}')
+                  if t in records:
+                      raise ValueError(f'Duplicate {side} candle at {t}')
+                  records[t] = [t, *values]
+              data[side] = records
+              print(side, len(records), 'candles', 'sha256', hashes[side], flush=True)
+          times = sorted(data['bid'].keys() & data['ask'].keys())
+          times = [t for t in times if data['ask'][t][1]>=data['bid'][t][1] and data['ask'][t][4]>=data['bid'][t][4]]
+          if len(times)<8000:
+              raise RuntimeError('Insufficient aligned actual bid/ask M1 candles')
+          out = {side:[data[side][t] for t in times] for side in ('bid','ask')}
+          out['provenance'] = {'source':root,'sha256':hashes,'volume_available':False,'aligned_candles':len(times),'start_utc':first,'end_exclusive_utc':last}
+          Path('gold.json').write_text(json.dumps(out,allow_nan=False))
+          print('DATA_READY',len(times),'aligned actual candles; volume unavailable',flush=True)
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: public-gold-input
@@ -46,7 +71,7 @@ jobs:
       matrix:
         include:
           - model: TiRex-2
-            package: tirex-2==0.5.0
+            package: tirex-2==0.1.1
             slug: tirex
           - model: Chronos-2
             package: chronos-forecasting>=2,<3
