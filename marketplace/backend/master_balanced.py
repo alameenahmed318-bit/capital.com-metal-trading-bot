@@ -5,8 +5,6 @@ from market_symbols import same_market_symbol
 LEGACY_VERSION="MASTER_BALANCED_DEMO_V2"
 VERSION="MASTER_AI_FIRST_DEMO_V3"
 THRESHOLD=.72
-GOLD_EARLY_DEMO_THRESHOLD=.68
-GOLD_EARLY_DEMO_SECONDS=60.
 SIDES=("BUY","SELL")
 FAMILIES={"TREES":("LightGBM","XGBoost","CatBoost"),
           "FORECAST":("TiRex-2","Chronos-2","TimesFM-2.5","Chronos-Bolt Tiny")}
@@ -50,21 +48,13 @@ def weight_profile(feedback,symbol,now):
             "factors":factors,"statuses":statuses,"profile_fresh":fresh,
             "metric":"MATURE_180S_PRICE_PROXY_NOT_PROFITABILITY"}
 
-def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
+def evaluate(d,item,settings,now,*,legacy=False):
     """Rank BUY/SELL on the same scale, only for actual eligible strategies.
     AI-first uses 60% of the score and requires current, material directional
     model evidence. No required model count or unanimity. V2 is research only.
     """
     report=d.get("master") or {};symbol=d.get("symbol")
     bar=num(d.get("bar_time"));age=now-bar-60
-    # Only real entry-review calls opt in. Research comparisons retain 72%.
-    gold_early_pilot=(early_demo and not legacy and 0<=age<GOLD_EARLY_DEMO_SECONDS
-        and str(symbol or "").upper().startswith("XAUUSD") and item.get("symbol")==symbol
-        and str(item.get("timeframe","M1")).upper().replace("PERIOD_","")=="M1"
-        and item.get("master_direct_demo_capable") is True
-        and (item.get("account") or {}).get("trade_mode")=="DEMO")
-    threshold=GOLD_EARLY_DEMO_THRESHOLD if gold_early_pilot else THRESHOLD
-    ai_direct=gold_early_pilot and item.get("master_ai_advisory_capable") is True
     arena=report.get("arena_shadow") or {}
     fresh=(arena.get("status")=="SHADOW_READY" and symbol and
         arena.get("symbol")==symbol==item.get("symbol") and
@@ -108,17 +98,12 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
         # below also prevents strategies overriding the signed AI direction.
         if not legacy and not forecasts:model=0.
         score=.40*strategy+.40*model+.20*market if legacy else .25*strategy+.60*model+.15*market
-        if ai_direct:
-            # Strategy outputs remain visible but cannot change the decision.
-            score=.80*model+.20*market
         candidate=(d.get("directional_candidates") or {}).get(side)
         deviation=abs((ask if side=="BUY" else bid)-ref)/atr if valid_price else None
         checks={"strategy":isinstance(candidate,dict) and 1<=num(candidate.get("strategy_id"))<=200,
             "fresh":0<=age<60,"symbol":bool(symbol) and symbol==item.get("symbol"),
             "no_trap":ctx.get(side.lower()+"_trap") is False,
             "price":valid_price and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap)}
-        if ai_direct:
-            checks.pop("strategy")
         if not legacy:
             checks["ai_evidence"]=bool(forecasts)
             checks["ai_direction"]=model_direction==side
@@ -127,57 +112,27 @@ def evaluate(d,item,settings,now,*,legacy=False,early_demo=False):
             "components":{"strategy":strategy,"models":model,"market":market,
                 "strength":strength,"margin":margin,"market_quality":quality,"live_momentum":momentum,
                 "live_move_atr":move},"price_deviation_atr":deviation,
-            "strategy_id":0 if ai_direct else candidate.get("strategy_id") if isinstance(candidate,dict) else None,
-            "combination_id":0 if ai_direct else candidate.get("combination_id") if isinstance(candidate,dict) else None,
-            **({"advisory_strategy_id":candidate.get("strategy_id") if isinstance(candidate,dict) else None,
-                "advisory_combination_id":candidate.get("combination_id") if isinstance(candidate,dict) else None} if ai_direct else {})}
+            "strategy_id":candidate.get("strategy_id") if isinstance(candidate,dict) else None,
+            "combination_id":candidate.get("combination_id") if isinstance(candidate,dict) else None}
     ranking=sorted((s for s in SIDES if sides[s]["eligible"]),key=lambda s:sides[s]["score"],reverse=True)
     selected=ranking[0] if ranking else "WAIT"
     tied=len(ranking)==2 and abs(sides[ranking[0]]["score"]-sides[ranking[1]]["score"])<1e-8
-    approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=threshold)
+    approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=THRESHOLD)
     reason="READY" if approved else "TIE" if tied else "NO_ELIGIBLE_SIDE" if not ranking else "WEIGHTED_SCORE"
     if not legacy and not forecasts:reason="NO_FRESH_AI_EVIDENCE"
     elif not legacy and model_direction=="WAIT":reason="AI_DIRECTION_UNCLEAR"
     elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
     result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
-        "direction":selected if approved else "WAIT","approved":approved,"threshold":threshold,
-        "entry_threshold_policy":"GOLD_DEMO_FIXED_68" if gold_early_pilot else "BASELINE_72",
+        "direction":selected if approved else "WAIT","approved":approved,"threshold":THRESHOLD,
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
         "reason":reason,"model_direction":model_direction,"evidence_mass":evidence_mass,"model_conviction":conviction,
         "allocation":{"strategy":.4,"seven_models":.4,"market":.2} if legacy else {"strategy":.25,"seven_models":.60,"market":.15}}
 
 
-    if ai_direct:
-        result.update(entry_threshold_policy="GOLD_MASTER_ADVISORY_DEMO_V1",
-                      strategy_advisory_only=True, allocation={"strategy":0.,"seven_models":.80,"market":.20})
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
-        result["gold_early_threshold_shadow"]=gold_early_threshold_shadow(result,age)
     return result
-
-def gold_early_threshold_shadow(trial,age):
-    """Read-only entry timing comparison. Never changes the live threshold."""
-    side=trial.get("model_direction","WAIT")
-    detail=(trial.get("scores") or {}).get(side,{})
-    score=num(detail.get("score"),-1.)
-    early=0<=num(age,-1.)<=10
-    eligible=(side in SIDES and early and detail.get("eligible") is True)
-    variants={}
-    for cut in (.72,.68,.65):
-        variants[str(int(round(cut*100)))]={
-            "threshold":cut,
-            "direction":side if eligible and score>=cut else "WAIT",
-            "execution_authorized":False}
-    return {"version":"GOLD_EARLY_THRESHOLD_SHADOW_V1","mode":"SHADOW_ONLY",
-            "execution_authorized":False,"age_after_close_sec":round(num(age,-1),3),
-            "max_age_sec":10,"score":score,"eligible":eligible,
-            "strategy_id":detail.get("strategy_id"),
-            "combination_id":detail.get("combination_id"),
-            "used_models":list(trial.get("used_models") or []),
-            "baseline_direction":trial.get("direction","WAIT"),
-            "variants":variants}
-
 
 def gold_strategy_advisory_shadow(trial,age):
     """Gold-only comparison. Never grants authorization or mutates the V3 decision.
@@ -217,15 +172,11 @@ def select_demo(d,item,settings,now):
     frame=str(item.get("timeframe","M1")).upper().replace("PERIOD_","")
     if frame!="M1" or not direct_demo_enabled(item):return d
     report=d.get("master") or {}
-    trial=evaluate(d,item,settings,now,early_demo=True)
+    trial=evaluate(d,item,settings,now)
     # The old V1 candidate is logged separately by the research worker.
     out={**d,"master":{**report,"balanced_entry":trial}}
     side=trial["selected"]
-    if side in SIDES and trial.get("strategy_advisory_only") is True:
-        out.update(decision=side,strategy_id=0,strategy_name="MASTER AI DIRECT",
-            combination_id=0,confidence=trial["scores"][side]["score"],master_ai_direct=True,
-            reason_ar="MASTER AI DIRECT DEMO: الاستراتيجيات والتراكيب استشارية فقط")
-    elif side in SIDES:
+    if side in SIDES:
         c=(d.get("directional_candidates") or {})[side]
         out.update(decision=side,strategy_id=c["strategy_id"],strategy_name=c.get("strategy_name",""),
             combination_id=c.get("combination_id",0),confidence=trial["scores"][side]["score"],

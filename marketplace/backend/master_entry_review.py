@@ -224,27 +224,21 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
     if live_arena and frame=="M1" and direct_demo_enabled(item) and isinstance(balanced,dict):
         from master_balanced import evaluate, VERSION, direct_timing_shadow
         # Recompute using the current quote and freshness, never trust a cached approval.
-        trial=evaluate(d,item,settings,now_unix,early_demo=True)
+        trial=evaluate(d,item,settings,now_unix)
         selected=trial["selected"]
         detail=trial["scores"].get(selected,{})
-        direct=trial.get("strategy_advisory_only") is True
-        diagnostic_detail=detail or (trial["scores"].get(trial.get("model_direction"),{}) if direct else {})
-        label="MASTER AI DIRECT 80/20" if direct else "MASTER 60/25/15"
         base.update(policy=VERSION,route="DIRECT_DEMO",balanced_entry=trial,
                     direct_timing_shadow=direct_timing_shadow(trial),
-                    quality=diagnostic_detail.get("score"),quality_threshold=trial["threshold"],
+                    quality=detail.get("score"),quality_threshold=trial["threshold"],
                     collection_limit_sec=0.,legacy_pending_optional=True,
-                    price_deviation_atr=diagnostic_detail.get("price_deviation_atr"),
-                    master_ai_advisory_capable=item.get("master_ai_advisory_capable") is True,
-                    strategy_advisory_only=direct)
-        identity_ok=(d.get("master_ai_direct") is True and d.get("strategy_id")==0 and d.get("combination_id")==0) if direct else detail.get("strategy_id")==d.get("strategy_id")
-        if trial["approved"] and selected==side and identity_ok:
-            return result("REVIEWED",label+": الاتجاه بقيادة الذكاء دون انتظار اكتمال النماذج",True)
+                    price_deviation_atr=detail.get("price_deviation_atr"))
+        if trial["approved"] and selected==side and detail.get("strategy_id")==d.get("strategy_id"):
+            return result("REVIEWED","MASTER التجريبي 60/25/15: الاتجاه بقيادة الذكاء دون انتظار اكتمال النماذج",True)
         reasons={"NO_FRESH_AI_EVIDENCE":"لم يصل تحليل ذكاء حديث صالح",
                  "AI_DIRECTION_UNCLEAR":"ترجيح الذكاء غير حاسم",
-                 "AI_SIDE_NOT_ELIGIBLE":"فشل فحص السعر أو حداثة الإشارة أو حالة السوق" if direct else "اتجاه الذكاء لا يملك استراتيجية أو سعر دخول صالح",
+                 "AI_SIDE_NOT_ELIGIBLE":"اتجاه الذكاء لا يملك استراتيجية أو سعر دخول صالح",
                  "WEIGHTED_SCORE":"درجة الدخول الموحدة غير كافية"}
-        return result("WEAK_EVIDENCE",label+": "+reasons.get(trial["reason"],trial["reason"]))
+        return result("WEAK_EVIDENCE","MASTER 60/25/15: "+reasons.get(trial["reason"],trial["reason"]))
     if side not in ("BUY","SELL"):
         return result("NO_CANDIDATE","لا توجد إشارة اتجاهية صالحة للمراجعة")
     if age<0 or age>=seconds:

@@ -199,15 +199,8 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
     passed("confidence", "ثقة القرار صالحة؛ الاستراتيجية مسؤولة عن اختيار الفرصة")
 
     strategy_id = int(_number(decision.get("strategy_id")))
-    trial=(decision.get("master") or {}).get("balanced_entry") or {}
-    ai_direct=(strategy_first and strategy_id==0 and decision.get("master_ai_direct") is True
-        and str(symbol).upper().startswith("XAUUSD") and decision.get("symbol")==symbol
-        and account.get("trade_mode")=="DEMO" and trial.get("strategy_advisory_only") is True
-        and trial.get("entry_threshold_policy")=="GOLD_MASTER_ADVISORY_DEMO_V1"
-        and trial.get("approved") is True and trial.get("direction")==signal)
-    if not ai_direct and not 1 <= strategy_id <= 200:
+    if not 1 <= strategy_id <= 200:
         return reject("strategy", "معرّف الاستراتيجية غير صالح")
-    if ai_direct:passed("master_direct", "الماستر التجريبي مستقل؛ الاستراتيجيات استشارية")
     bar_time = int(_number(decision.get("bar_time")))
     if bar_time <= 0 or bar_time > int(now.timestamp()) + 60:
         return reject("closed_bar", "وقت الشمعة المغلقة غير صالح")
@@ -243,7 +236,7 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
         passed("council_combinations", f"تأييد {combo_support} تركيبة مقابل {combo_opposition}")
 
     else:
-        passed("strategy_consensus", "الاستراتيجيات استشارية فقط" if ai_direct else "المحرك الكمي أكد الاستراتيجية والعائلات والتركيبات مسبقاً")
+        passed("strategy_consensus", "المحرك الكمي أكد الاستراتيجية والعائلات والتركيبات مسبقاً")
 
     balance = _number(account.get("balance"))
     equity = _number(account.get("equity"))
@@ -268,7 +261,7 @@ def evaluate_entry_gate(decision, account, symbol, received_at, now, trading_ena
     return {
         "approved": True,
         "status": signal,
-        "reason_ar": ("MASTER AI DIRECT DEMO؛ حساب MT5 سليم" if ai_direct else "الاستراتيجية معتمدة؛ النماذج استشارية؛ حساب MT5 سليم" if strategy_first else "اجتاز القرار مجلس العائلات والتركيبات وحارس سلامة الحساب"),
+        "reason_ar": ("الاستراتيجية معتمدة؛ النماذج استشارية؛ حساب MT5 سليم" if strategy_first else "اجتاز القرار مجلس العائلات والتركيبات وحارس سلامة الحساب"),
         "checks": checks,
         "authorization_id": f"AZ-{bar_time}-{strategy_id}-{signal}",
         "issued_at": now.astimezone(timezone.utc).isoformat(),
