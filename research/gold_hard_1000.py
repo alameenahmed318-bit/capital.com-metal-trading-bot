@@ -39,7 +39,7 @@ def metrics(rows,p,scenario):
     pay=[r["payoffs"][p][scenario] for r in rows];sel=[r for r in rows if r["decisions"][p]]
     eq=peak=dd=0.
     for v in pay:eq+=v;peak=max(eq,peak);dd=max(dd,peak-eq)
-    return dict(cases=len(rows),signals=len(sel),coverage=len(sel)/max(1,len(rows)),direction_accuracy=sum(r["decisions"][p]*r["move"]>0 for r in sel)/len(sel) if sel else None,net_atr=round(eq,5),drawdown_atr=round(dd,5),positive=sum(v>0 for v in pay))
+    return dict(cases=len(rows),signals=len(sel),coverage=len(sel)/max(1,len(rows)),direction_accuracy=sum(r["decisions"][p]*(r["extreme_move"] if scenario=="extreme" else r["move"])>0 for r in sel)/len(sel) if sel else None,net_atr=round(eq,5),drawdown_atr=round(dd,5),positive=sum(v>0 for v in pay))
 def main():
     p=argparse.ArgumentParser();p.add_argument("--data",required=True);p.add_argument("--model",choices=NAMES,required=True);p.add_argument("--output",required=True);a=p.parse_args()
     bars=read_data(a.data);cut=int(len(bars)*.40)
@@ -94,7 +94,7 @@ def main():
             ms=(time.perf_counter()-t)*1000
             if not all(math.isfinite(k) for k in (raw,z,learned)):raise ValueError("Nonfinite prediction")
             decisions={"raw_forced":direction(raw),"learned_forced":direction(learned),"raw_coverage":coverage(raw,rawpast),"learned_coverage":coverage(learned,learnedpast)}
-            row=dict(model=a.model,case=n-59,bar=w[-1]["time"],regime=regime(x,atr),raw_score=raw,refit_score=z,learned_score=learned,move=move,
+            row=dict(model=a.model,case=n-59,bar=w[-1]["time"],regime=regime(x,atr),raw_score=raw,refit_score=z,learned_score=learned,move=move,extreme_move=(bars[i+3]["close"]-bars[i+3]["open"])/atr,
                      decisions=decisions,payoffs={k:{s:payoff(bars,i,atr,d,s) for s in COSTS} for k,d in decisions.items()},elapsed_ms=round(ms,3))
             if n>=60:
                 results.append(row);f.write(json.dumps(row,allow_nan=False)+"\n");f.flush()
