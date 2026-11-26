@@ -270,6 +270,10 @@ def forecast(name,values,models):
 def fresh(bar):
     return 60<=time.time()-bar<120
 
+def select_forecast_job(pairs):
+    # Gold first; latest bar within market priority; stable model ordering.
+    return min(pairs, key=lambda p: (p[0] != 'XAUUSD', -p[2]['bar_time'])) if pairs else None
+
 def live(email,password):
     token=arena.login(email,password);renew=time.monotonic()+1800
     state={"token":token};lock=threading.Lock()
@@ -277,13 +281,13 @@ def live(email,password):
     # One bounded slow lane with latest-only slots (one per market). Never
     # waits on the MT5/server path, and cannot delay the fast prediction lane.
     def heavy():
-        models={};done={};retry={};turn=0
+        models={};done={};retry={}
         while True:
             with lock:pending=list(jobs.items());auth=state["token"]
             pairs=[(market,name,job) for market,job in pending for name in PRETRAINED
                    if done.get((market,name))!=job["bar_time"] and fresh(job["bar_time"]) and time.monotonic()>=retry.get(name,0)]
             if not pairs:time.sleep(1);continue
-            market,name,job=pairs[turn%len(pairs)];turn+=1
+            market,name,job=select_forecast_job(pairs)
             bar=job["bar_time"];done[(market,name)]=bar
             try:
                 v=forecast(name,job["values"],models)
