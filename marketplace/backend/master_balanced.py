@@ -132,7 +132,34 @@ def evaluate(d,item,settings,now,*,legacy=False):
 
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
+        result["gold_five_model_shadow"]=gold_five_model_shadow(result,forecasts)
     return result
+
+
+def gold_five_model_shadow(trial, forecasts):
+    """Compare fixed five-model weights for gold; research only, never authorize."""
+    weights = {"CatBoost": .25, "TiRex-2": .1875, "Chronos-2": .1875,
+               "TimesFM-2.5": .1875, "Chronos-Bolt Tiny": .1875}
+    values = {n: clamp(num(v), -1., 1.) for n, v in forecasts.items()
+              if n in weights and abs(num(v)) > .05}
+    signed = sum(weights[n]*v for n,v in values.items())
+    mass = sum(weights[n]*abs(v) for n,v in values.items())
+    side = "BUY" if signed > 1e-9 else "SELL" if signed < -1e-9 else "WAIT"
+    detail = (trial.get("scores") or {}).get(side, {})
+    parts = detail.get("components") or {}
+    failed = detail.get("failed_checks")
+    eligible = (side in SIDES and bool(values) and isinstance(failed, list)
+                and not any(k not in ("ai_direction", "ai_evidence") for k in failed))
+    score = (.60*(.5+.5*abs(signed)/max(.10,mass))
+             +.25*clamp(num(parts.get("strategy")))
+             +.15*clamp(num(parts.get("market")))) if side in SIDES else None
+    direction = side if eligible and score is not None and score >= THRESHOLD else "WAIT"
+    return {"version": "GOLD_FIVE_MODEL_SHADOW_V1", "mode": "SHADOW_ONLY",
+            "execution_authorized": False, "baseline_direction": trial.get("direction","WAIT"),
+            "direction": direction, "score": round(score,8) if score is not None else None,
+            "threshold": THRESHOLD, "weights": weights, "used_models": list(values),
+            "evidence_mass": mass, "eligible": eligible,
+            "strategy_id": detail.get("strategy_id"), "combination_id": detail.get("combination_id")}
 
 def gold_strategy_advisory_shadow(trial,age):
     """Gold-only comparison. Never grants authorization or mutates the V3 decision.
