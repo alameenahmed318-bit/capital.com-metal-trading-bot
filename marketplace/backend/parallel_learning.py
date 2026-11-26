@@ -55,7 +55,7 @@ def sanitize_report(r):
     for k in ("backtests","trade_samples","persisted_samples"):
         v=num(r.get(k))
         if v is not None and 0<=v<=100000:out[k]=int(v)
-    for k in ("trade_accuracy","trade_probability"):
+    for k in ("trade_accuracy","trade_probability_buy","trade_probability_sell"):
         v=num(r.get(k))
         if v is not None and 0<=v<=1:out[k]=v
     if r.get("trade_status") in ("INSUFFICIENT","VALIDATED","NOT_VALIDATED","UNAVAILABLE"):out["trade_status"]=r["trade_status"]

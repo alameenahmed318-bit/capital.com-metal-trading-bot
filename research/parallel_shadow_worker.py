@@ -5,7 +5,7 @@ New models are research-only, never submitted to live-forecast.
 import os
 os.environ.setdefault("OMP_NUM_THREADS","1")
 os.environ.setdefault("MKL_NUM_THREADS","1")
-import argparse,getpass,time,sys,math,json
+import argparse,getpass,time,sys,math,json,urllib.parse
 from pathlib import Path
 from collections import deque
 from parallel_memory import state_path,load,save,pause_model,trade_calibrator
@@ -82,14 +82,28 @@ def fit(b,epochs,paused=(),slippage_points=None):
         except Exception as e:print(name,"UNAVAILABLE",type(e).__name__,flush=True)
     forest=IsolationForest(n_estimators=64,contamination=.03,n_jobs=1,random_state=42).fit(x.numpy().reshape(len(x),-1))
     return models,forest,thresholds
-def predict(fitted,b):
+def predict(fitted,b,paused=()):
     x,atr=feature(b);q=torch.tensor(x[None]);models,forest,thresholds=fitted;out={}
     with torch.no_grad():
         for name,m in models.items():
+            if name in paused:continue
             v=float(m(q[:,:,:1] if name=="LSTM" else q)[0])
             if math.isfinite(v):out[name]=max(-6.,min(6.,v)) if abs(v)>thresholds.get(name,.05) else 0.
     out["Isolation Forest"]=float(np.clip(-forest.decision_function(x.reshape(1,-1))[0],-1,1))
     return out,atr
+def exact_archive(market,token,cid,symbol):
+    params={"client":cid,"symbol":symbol};bars={}
+    for _ in range(12):
+        d=arena.api(market,"history?"+urllib.parse.urlencode(params),token)
+        if d.get("client")!=cid or d.get("symbol")!=symbol:raise ValueError("archive scope mismatch")
+        for r in d.get("rows") or []:
+            try:
+                if r.get("spread_points") is None or r.get("point_size") is None:continue
+                v=arena._candle(r);bars[v["time"]]=v
+            except (TypeError,ValueError,KeyError):continue
+        if not d.get("next_cursor"):break
+        params["cursor"]=d["next_cursor"]
+    return [bars[t] for t in sorted(bars)]
 def main():
     p=argparse.ArgumentParser();p.add_argument("--epochs",type=int,default=8);p.add_argument("--market",choices=["XAUUSD","BTCUSD","BOTH"],default="BOTH")
     a=p.parse_args()
@@ -101,7 +115,7 @@ def main():
     def bind(market,cid,symbol):
         key=(cid,symbol)
         if scopes.get(market)!=key:
-            scopes[market]=key;paths[market]=state_path(email,cid,symbol);state[market]=load(paths[market]);last.pop(market,None)
+            scopes[market]=key;paths[market]=state_path(email,cid,symbol);state[market]=load(paths[market]);last.pop(market,None);nextfit.pop(market,None)
         d=state[market];d.setdefault("outcomes",{});d.setdefault("pending",[]);d.setdefault("pause_until",{})
         return d
     while True:
@@ -114,12 +128,11 @@ def main():
                 if ctx.get("status")!="READY":continue
                 cid=ctx["client"];symbol=ctx["symbol"];d=bind(market,cid,symbol)
                 # Only active, connected markets consume training CPU. One attempt per six hours.
-                if time.monotonic()>=nextfit.get(market,0) or market not in fits or fits[market][0]!=scopes[market]:
+                if time.monotonic()>=nextfit.get(market,0):
                     nextfit[market]=time.monotonic()+21600
                     try:
-                        archive_id,rows=arena.archive(market,token)
-                        if archive_id!=cid:raise ValueError("archive client mismatch")
-                        history=array(rows[-6000:]);evidence=arena.api(market,"parallel-learning?client="+__import__("urllib.parse",fromlist=["quote"]).quote(cid,safe="")+"&symbol="+__import__("urllib.parse",fromlist=["quote"]).quote(symbol,safe=""),token)
+                        rows=exact_archive(market,token,cid,symbol)
+                        history=array(rows[-6000:]);evidence=arena.api(market,"parallel-learning?"+urllib.parse.urlencode({"client":cid,"symbol":symbol}),token)
                         if evidence.get("symbol")!=symbol:raise ValueError("wrong evidence symbol")
                         # Retest a suspended model after six hours, not permanently delete it.
                         now=time.time()
@@ -136,6 +149,7 @@ def main():
                     # The fit may take more than one bar. Refresh context.
                     ctx=arena.api(market,"live-context",token)
                     if ctx.get("status")!="READY" or (ctx["client"],ctx["symbol"])!=scopes[market]:continue
+                if market not in fits or fits[market][0]!=scopes[market]:continue
                 bar=int(ctx["bar_time"])
                 if last.get(market)==(cid,bar) or not 60<=time.time()-bar<105:continue
                 b=array(ctx["bars"])
@@ -152,21 +166,25 @@ def main():
                         if not q or q[-1][0]<t:q.append([t,float(np.sign(v)*move>0),float(np.sign(v)*move-cost)])
                         d["outcomes"][name]=q[-600:]
                 d["pending"]=remain
-                pred,scale=predict(fits[market][1],b)
-                # Pause sustained poor performers in monitoring only. Never alter trading.
+                # Pause sustained poor performers in monitoring only. Re-assess only new post-pause samples.
                 now=time.time()
-                for name in list(pred):
-                    if name=="Isolation Forest":continue
+                for name in NAMES:
                     until=float(d["pause_until"].get(name,0))
-                    if until>now:pred.pop(name);continue
-                    if until==0 and pause_model(d["outcomes"].get(name,[]),now):
-                        d["pause_until"][name]=now+21600;pred.pop(name)
+                    if until>now:continue
+                    fresh=[r for r in d["outcomes"].get(name,[]) if r[0]>=until]
+                    if pause_model(fresh,now):d["pause_until"][name]=now+21600
+                paused=[n for n,v in d["pause_until"].items() if float(v)>now]
+                pred,scale=predict(fits[market][1],b,paused)
                 payload={}
                 for name,v in pred.items():
                     q=d["outcomes"].get(name,[])
                     payload[name]={"forecast":v,"samples":len(q),"accuracy":sum(t[1] for t in q)/len(q) if q else None,"net_atr":sum(t[2] for t in q) if q else None}
                 report={**reports.get(market,{}),"persisted_samples":sum(len(q) for q in d["outcomes"].values()),
                     "paused":[n for n,v in d["pause_until"].items() if float(v)>now]}
+                cal=calibrators.get(market)
+                if cal is not None:
+                    x,_=feature(b);row=np.r_[x[-12:].mean(0),x[-1]]
+                    for side,tag in ((0,"buy"),(1,"sell")):report["trade_probability_"+tag]=float(cal.predict_proba([np.r_[row,side]])[0,1])
                 if not 60<=time.time()-bar<120:save(paths[market],d);continue
                 reply=arena.api(market,"parallel-monitor",token,{"client":cid,"symbol":symbol,"bar_time":bar,"models":payload,"learning":report})
                 if reply.get("accepted"):
