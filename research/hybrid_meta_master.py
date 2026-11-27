@@ -35,13 +35,26 @@ def features(p, advisers= CURRENT_ADVISERS):
     review=c.get("adaptive_baseline_review") or {}
     forecasts=a.get("forecasts") or {}
     statuses=review.get("statuses") or {}
+    # Historical archive evidence is selected as-of the original decision
+    # by the owner-local export query. Never use later data.
+    arena=p.get("arena_evidence") or {}
+    obs=number(p.get("observed_at"),-1)
+    if (arena.get("status")=="SHADOW_READY" and arena.get("symbol")==p.get("symbol")
+        and arena.get("bar_time")==p.get("bar_time")
+        and 0<=obs-number(arena.get("received_at"),-1)<=60):
+        for k,v in (arena.get("models") or {}).items():
+            if k in CURRENT_ADVISERS and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
+                # Prefer the original recorded decision inputs if present.
+                if statuses.get(k)!="READY" or k not in forecasts:
+                    forecasts={**forecasts,k:v}
+                    statuses={**statuses,k:"READY"}
     # Missing forecasts and genuine zero signals are different.
     # Optional timestamped parallel evidence must match the market and bar,
     # and be available at the observation time, not joined retrospectively.
     parallel=p.get("parallel_evidence") or {}
-    if (parallel.get("symbol")==p.get("symbol") and
+    if (parallel.get("status")=="SHADOW_READY" and parallel.get("symbol")==p.get("symbol") and
         parallel.get("bar_time")==p.get("bar_time") and
-        0 < number(parallel.get("received_at"), -1) <= number(p.get("observed_at"), -1)):
+        0<=obs-number(parallel.get("received_at"),-1)<=60):
         extra=parallel.get("forecasts") or {}
         for k,v in extra.items():
             if k in ("TCN","LSTM Multi","Patch Transformer","PatchTST","LSTM") and isinstance(v,(int,float)) and math.isfinite(v):
@@ -201,8 +214,10 @@ def main():
         r=rows(data,a.symbol,advisers)
         if a.advisers=='proposed':
             counts={name:sum(int(row[3][2*advisers.index(name)+1]) for row in r) for name in PARALLEL_REQUIRED}
-            if any(n<100 for n in counts.values()):
-                raise ValueError('Insufficient original parallel forecasts: '+str(counts))
+            parts=split(r)
+            coverage=[{name:sum(int(row[3][2*advisers.index(name)+1]) for row in part) for name in PARALLEL_REQUIRED} for part in parts]
+            if any(n<100 for n in counts.values()) or any(n<30 for part in coverage for n in part.values()):
+                raise ValueError('Insufficient original parallel forecasts by split: '+str(coverage))
         report=run(r)
         report['advisers']=list(advisers)
         report['availability_counts']={name:sum(int(row[3][2*i+1]) for row in r) for i,name in enumerate(advisers)}
