@@ -21,6 +21,7 @@ from torch import nn
 import model_arena_worker as arena
 torch.set_num_threads(1)
 NAMES=("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM")
+USE_ANOMALY=True
 FIELDS=("time","open","high","low","close","tick_volume","spread_points","point_size")
 def array(rows):
     return np.asarray([[float(r.get(k,0)) for k in FIELDS] for r in rows],dtype=np.float64)
@@ -61,7 +62,7 @@ def fit(b,epochs,paused=(),slippage_points=None):
     cut=int(.8*len(xs));x=torch.tensor(np.asarray(xs[:cut]));y=torch.tensor(np.asarray(ys[:cut]),dtype=torch.float32)
     models={};thresholds={}
     for name,maker in (("TCN",TCN),("PatchTST",OfficialPatch),("LSTM Multi",lambda:Recurrent(4)),("Patch Transformer",Patch),("LSTM",lambda:Recurrent(1))):
-        if name in paused:continue
+        if name not in NAMES or name in paused:continue
         try:
             torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.001)
             for _ in range(epochs):
@@ -80,7 +81,7 @@ def fit(b,epochs,paused=(),slippage_points=None):
             models[name]=m
             print(name,"FIT_SHADOW",len(x),"threshold",thresholds[name],flush=True)
         except Exception as e:print(name,"UNAVAILABLE",type(e).__name__,flush=True)
-    forest=IsolationForest(n_estimators=64,contamination=.03,n_jobs=1,random_state=42).fit(x.numpy().reshape(len(x),-1))
+    forest=IsolationForest(n_estimators=64,contamination=.03,n_jobs=1,random_state=42).fit(x.numpy().reshape(len(x),-1)) if USE_ANOMALY else None
     return models,forest,thresholds
 def predict(fitted,b,paused=()):
     x,atr=feature(b);q=torch.tensor(x[None]);models,forest,thresholds=fitted;out={}
@@ -89,7 +90,7 @@ def predict(fitted,b,paused=()):
             if name in paused:continue
             v=float(m(q[:,:,:1] if name=="LSTM" else q)[0])
             if math.isfinite(v):out[name]=max(-6.,min(6.,v)) if abs(v)>thresholds.get(name,.05) else 0.
-    out["Isolation Forest"]=float(np.clip(-forest.decision_function(x.reshape(1,-1))[0],-1,1))
+    if forest is not None:out["Isolation Forest"]=float(np.clip(-forest.decision_function(x.reshape(1,-1))[0],-1,1))
     return out,atr
 def exact_archive(market,token,cid,symbol):
     params={"client":cid,"symbol":symbol};bars={}
@@ -104,11 +105,12 @@ def exact_archive(market,token,cid,symbol):
         if not d.get("next_cursor"):break
         params["cursor"]=d["next_cursor"]
     return [bars[t] for t in sorted(bars)]
-def main():
+def main(email=None,password=None,argv=None):
     p=argparse.ArgumentParser();p.add_argument("--epochs",type=int,default=8);p.add_argument("--market",choices=["XAUUSD","BTCUSD","BOTH"],default="BOTH")
-    a=p.parse_args()
+    a=p.parse_args(argv)
     if not 1<=a.epochs<=40:raise ValueError("epochs 1..40")
-    email=input("Owner email: ").strip();password=getpass.getpass("Owner password: ")
+    if email is None:email=input("Owner email: ").strip()
+    if password is None:password=getpass.getpass("Owner password: ")
     token=arena.login(email,password);renew=time.monotonic()+1500
     markets=arena.MARKETS if a.market=="BOTH" else (a.market,)
     fits={};last={};nextfit={};state={};reports={};calibrators={};paths={};scopes={};pause_until={}
