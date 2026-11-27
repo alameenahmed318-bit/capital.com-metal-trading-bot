@@ -28,6 +28,7 @@ from strategy_versions import versions as strategy_versions, get_active as get_a
 from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
 from telemetry_persistence import queue_closed_deals
+from connection_resilience import database_call, DiagnosticQueue
 from system_readiness import owner_readiness, position_management_status, entry_execution_status
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
@@ -70,6 +71,7 @@ MARKET_ACCOUNT_LOCK=threading.RLock()
 TRADE_SETTINGS_CACHE={}
 SETTINGS_REFRESHING=set()
 AI_EVENT_CACHE={}
+DIAGNOSTIC_QUEUE=DiagnosticQueue()
 CACHE_LOCK=threading.RLock()
 LICENSE_CACHE_TTL_SECONDS=60.0
 SETTINGS_CACHE_REFRESH_SECONDS=2.0
@@ -121,9 +123,11 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
         headers["Content-Type"]="application/json"; data=json.dumps(payload).encode()
     if prefer: headers["Prefer"]=prefer
     req=urllib.request.Request(SUPABASE_URL+path,data=data,headers=headers,method=method)
-    try:
-        with urllib.request.urlopen(req,timeout=20) as r:
+    def send(timeout):
+        with urllib.request.urlopen(req,timeout=timeout) as r:
             raw=r.read(); return json.loads(raw.decode()) if raw else {}
+    try:
+        return database_call(send,path,method)
     except urllib.error.HTTPError as e:
         detail=e.read().decode("utf-8","replace")
         try:
@@ -149,30 +153,22 @@ def send_client_password_setup(email):
         return "NOT_SENT"
 
 
-def persist_ai_diagnostic_event(event):
-    """Persist AI diagnostics off latency-sensitive request paths."""
-    try:
-        sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
-           event,admin=True,prefer="resolution=merge-duplicates,return=minimal")
-    except Exception as exc:
-        print("AI_DIAGNOSTIC_SAVE_WARNING:",str(exc)[:180],flush=True)
-
+def persist_ai_diagnostic_event(events):
+    sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
+       events,admin=True,prefer="resolution=merge-duplicates,return=minimal")
 
 def queue_ai_diagnostic_event(event):
-    """Deduplicate event writes per bar and keep Supabase off the decision path."""
-    if not isinstance(event,dict) or not event.get("event_id"):
-        return False
-    now=time.monotonic()
-    event_id=str(event["event_id"])
+    """Bound and batch research logs without blocking the decision path."""
+    if not isinstance(event,dict) or not event.get("event_id"):return False
+    now=time.monotonic();event_id=str(event["event_id"])
     with CACHE_LOCK:
         previous=AI_EVENT_CACHE.get(event_id,0.0)
-        if now-previous<60.0:
-            return False
+        if now-previous<60.0:return False
+        if not DIAGNOSTIC_QUEUE.submit(event,persist_ai_diagnostic_event):return False
         AI_EVENT_CACHE[event_id]=now
         if len(AI_EVENT_CACHE)>4000:
             for key,_ in sorted(AI_EVENT_CACHE.items(),key=lambda pair:pair[1])[:1000]:
                 AI_EVENT_CACHE.pop(key,None)
-    threading.Thread(target=persist_ai_diagnostic_event,args=(event,),daemon=True).start()
     return True
 
 
