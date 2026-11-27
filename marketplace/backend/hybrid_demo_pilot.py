@@ -40,21 +40,25 @@ def collect(d,item,parallel,now):
         return (isinstance(e,dict) and e.get("status")=="SHADOW_READY"
           and e.get("symbol")==symbol and num(e.get("bar_time"))==bar
           and 0<=now-num(e.get("received_at"),-1)<=60)
-    raw={}
+    raw={};monitor={}
     arena=(d.get("master") or {}).get("arena_shadow") or {}
     if fresh(arena):
         for n,v in (arena.get("models") or {}).items():
             if n in NAMES[:4] and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
                 raw[n]=max(-6.,min(6.,float(v)))
+        for n,v in (arena.get("monitor_models") or {}).items():
+            if n in NAMES[:4] and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):monitor[n]=max(-6.,min(6.,float(v)))
     # Caller obtains server-accepted parallel snapshot, never browser votes.
     if fresh(parallel) and parallel.get("client_id")==str(item["client_id"]):
         for n,m in (parallel.get("models") or {}).items():
             if n in PARALLEL and isinstance(m,dict):
                 v=m.get("forecast")
-                if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):raw[n]=max(-6.,min(6.,float(v)))
+                if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
+                    target=monitor if m.get("status")=="MONITOR_ONLY" else raw
+                    target[n]=max(-6.,min(6.,float(v)))
     ctx=d.get("context") or {};scores=d.get("directional_scores") or {}
     return {"key":(str(item["client_id"]),symbol),"bar":int(bar),"at":now,"bid":bid,"ask":ask,"atr":atr,
-        "raw":raw,"context":[num(scores.get("BUY")),num(scores.get("SELL")),num(ctx.get("buy_quality"))/100.,
+        "raw":raw,"monitor":monitor,"context":[num(scores.get("BUY")),num(scores.get("SELL")),num(ctx.get("buy_quality"))/100.,
             num(ctx.get("sell_quality"))/100.,(ask-bid)/atr,age/60.]}
 def vector(row,excluded=()):
     x=[]
@@ -89,7 +93,7 @@ def retired(rows):
     for n in NAMES:
         samples=[]
         for r in rows:
-            v=r["raw"].get(n,0.)
+            v=r["raw"].get(n,r.get("monitor",{}).get(n,0.))
             if abs(v)>.05:samples.append(r["y"][0 if v>0 else 1]-.3)
         if len(samples)>=60 and sum(samples[-60:-30])<0 and sum(samples[-30:])<0:out.append(n)
     return tuple(out)
@@ -149,7 +153,7 @@ def work(row):
             try:save(key,rows)
             except Exception:pass
         s["pending"]=None
-    if not s["pending"] and row["raw"] and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
+    if not s["pending"] and (row["raw"] or row.get("monitor")) and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
     excluded=retired(rows)
     if len(rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
         s["next"]=at+RETRAIN;s["exclude_retry"]=at+60
