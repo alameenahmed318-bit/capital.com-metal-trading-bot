@@ -24,9 +24,9 @@ def request(url,body=None,headers=None,timeout=45):
 def login(email,password):
     cfg=request(SERVER+"/api/config")
     return request(cfg["supabase_url"]+"/auth/v1/token?grant_type=password",{"email":email,"password":password},{"apikey":cfg["supabase_anon_key"]})["access_token"]
-def api(market,path,token,body=None):
+def api(market,path,token,body=None,timeout=45):
     prefix="/market/XAUUSD" if market=="XAUUSD" else ""
-    return request(SERVER+prefix+"/api/ai/arena/"+path,body,{"Authorization":"Bearer "+token})
+    return request(SERVER+prefix+"/api/ai/arena/"+path,body,{"Authorization":"Bearer "+token},timeout=timeout)
 def archive(market,token):
     params={};bars=[];cid=None;symbol=None
     for _ in range(12):
