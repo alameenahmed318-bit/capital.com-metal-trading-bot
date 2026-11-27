@@ -179,9 +179,9 @@ def live(email,password):
         while True:
             with lock:pending=list(jobs.items());auth=state["token"]
             pairs=[(market,name,job) for market,job in pending for name in PRETRAINED
-                   if done.get((market,name))!=job["bar_time"] and fresh(job["bar_time"]) and time.monotonic()>=retry.get(name,0)]
+                   if done.get((market,name))!=job["bar_time"] and fresh(job["bar_time"]) and time.monotonic()>=retry.get((market,name),0)]
             if not pairs:time.sleep(1);continue
-            market,name,job=min(pairs,key=lambda p:(p[2]["bar_time"],p[0]!="XAUUSD",PRETRAINED.index(p[1])));turn+=1
+            market,name,job=pairs[turn%len(pairs)];turn+=1
             bar=job["bar_time"]
             try:
                 v=forecast(name,job["values"],models)
@@ -189,10 +189,10 @@ def live(email,password):
                 body={k:job[k] for k in ("client","symbol","bar_time")}
                 reply=arena.api(market,"live-forecast",auth,{**body,"horizon":ENTRY_HORIZON,"models":{name:v},"actions":{}},timeout=6)
                 if reply.get("accepted"):done[(market,name)]=bar
-                else:time.sleep(.5)
+                else:retry[(market,name)]=time.monotonic()+2
                 print(market,bar,name,"ACCEPTED" if reply.get("accepted") else reply.get("reason","REJECTED"),flush=True)
             except Exception as exc:
-                retry[name]=time.monotonic()+30
+                retry[(market,name)]=time.monotonic()+15
                 print(market,name,"ERROR",type(exc).__name__,flush=True)
     threading.Thread(target=heavy,daemon=True,name="arena-forecast-lane").start()
     # Training runs separately; keep previous fitted models until a complete
