@@ -1,1 +1,5 @@
-# Connection and licensing portal uses Python standard library only.
+# CPU-only demo meta learner; Python 3.14 compatible wheels.
+--only-binary=:all:
+numpy==2.4.6
+catboost==1.2.10
+xgboost-cpu==3.4.1
