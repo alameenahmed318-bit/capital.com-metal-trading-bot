@@ -1,7 +1,7 @@
 """Chronological cost-aware advisory selection; no execution permissions."""
 import math
 
-THRESHOLDS=(0.,.05,.10,.20,.35,.50,.75,1.,1.5,2.)
+THRESHOLDS=(.05,.10,.20,.35,.50,.75,1.,1.5,2.)
 STRESS=.15  # extra assumed slippage in ATR, not measured broker slippage
 
 def split_rows(rows, origin, end, minimum=600):
@@ -44,7 +44,7 @@ class SideModel:
             b=buy if "BUY" in self.models and buy>self.models["BUY"][1] else -math.inf
             s=sell if "SELL" in self.models and sell>self.models["SELL"][1] else -math.inf
             # No false strong vote: magnitude is estimated positive net ATR.
-            out.append(max(.051,b) if b>s else -max(.051,s) if s>b else 0.)
+            out.append(b if b>s else -s if s>b else 0.)
         return out
 
 class ActionModel:
