@@ -1901,7 +1901,7 @@ class Handler(SimpleHTTPRequestHandler):
                 result=arena_master.accept(cid,item,data)
                 if result.get("accepted"):
                     evidence=arena_master.evidence(cid,item.get("strategy_decision") or {})
-                    digest=hashlib.sha256(json.dumps({"models":evidence.get("models"),"actions":evidence.get("actions")},sort_keys=True).encode()).hexdigest()[:16]
+                    digest=hashlib.sha256(json.dumps({"models":evidence.get("models"),"monitor_models":evidence.get("monitor_models"),"actions":evidence.get("actions")},sort_keys=True).encode()).hexdigest()[:16]
                     queue_ai_diagnostic_event({"event_id":"arena-live:"+hashlib.sha256((cid+str(data.get("bar_time"))+digest).encode()).hexdigest(),
                         "client_id":cid,"event_type":"ARENA_LIVE_FORECAST","payload":{**evidence,"market":ENGINE_MARKET}})
                 return self.send_json(200,result)
