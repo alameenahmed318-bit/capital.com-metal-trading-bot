@@ -60,11 +60,42 @@ def collect(d,item,parallel,now):
     return {"key":(str(item["client_id"]),symbol),"bar":int(bar),"at":now,"bid":bid,"ask":ask,"atr":atr,
         "raw":raw,"monitor":monitor,"context":[num(scores.get("BUY")),num(scores.get("SELL")),num(ctx.get("buy_quality"))/100.,
             num(ctx.get("sell_quality"))/100.,(ask-bid)/atr,age/60.]}
-def vector(row,excluded=()):
-    x=[]
+def all_forecasts(row):
+    """Worker validation labels are provenance, never a master participation veto."""
+    return {n:v for n,v in {**(row.get("monitor") or {}),**(row.get("raw") or {})}.items()
+            if n in NAMES and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)}
+
+def performance_profile(rows):
+    """Master-only bounded weights from matured same-market quote outcomes.
+    No local approval gate and no permanent zero. Missing predictions are not
+    reallocated to the remaining models. These are proxy scores, not deal P&L.
+    """
+    factors={};statuses={};counts={}
     for n in NAMES:
-        available=n in row["raw"] and n not in excluded
-        x.extend([row["raw"][n] if available else 0.,float(available)])
+        outcomes=[]
+        for r in rows[-240:]:
+            v=all_forecasts(r).get(n)
+            if v is not None and abs(v)>.05:
+                outcomes.append(r["y"][0 if v>0 else 1]-.3)
+        q=outcomes[-120:];counts[n]=len(q)
+        factor=.75;status="COLLECTING"
+        if len(q)>=30:
+            # Shrink toward neutral with small samples; repeated losses
+            # reduce influence but do not remove future learning evidence.
+            mean=sum(q)/len(q)
+            factor=max(.15,min(1.5,.75+mean*len(q)/(len(q)+60)))
+            status="REDUCED" if factor<.60 else "STRONGER" if factor>.90 else "ADAPTIVE"
+        factors[n]=factor;statuses[n]=status
+    total=sum(factors.values())
+    return {"weights":{n:factors[n]/total for n in NAMES},"statuses":statuses,"counts":counts}
+
+def vector(row,excluded=()):
+    x=[];forecasts=all_forecasts(row)
+    weights=row.get("model_weights") or {}
+    for n in NAMES:
+        available=n in forecasts and n not in excluded
+        scale=len(NAMES)*num(weights.get(n),1./len(NAMES))
+        x.extend([forecasts[n]*scale if available else 0.,float(available)])
     return x+row["context"]
 def choose_blend(a,b,w):
     return [w*a[i]+(1-w)*b[i] for i in range(2)]
@@ -93,7 +124,7 @@ def retired(rows):
     for n in NAMES:
         samples=[]
         for r in rows:
-            v=r["raw"].get(n,r.get("monitor",{}).get(n,0.))
+            v=all_forecasts(r).get(n,0.)
             if abs(v)>.05:samples.append(r["y"][0 if v>0 else 1]-.3)
         if len(samples)>=60 and sum(samples[-60:-30])<0 and sum(samples[-30:])<0:out.append(n)
     return tuple(out)
@@ -153,8 +184,11 @@ def work(row):
             try:save(key,rows)
             except Exception:pass
         s["pending"]=None
-    if not s["pending"] and (row["raw"] or row.get("monitor")) and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
-    excluded=retired(rows)
+    profile=performance_profile(rows)
+    row={**row,"model_weights":profile["weights"]}
+    if not s["pending"] and all_forecasts(row) and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
+    # The master manages relative influence; no automatic hard retirement.
+    excluded=()
     if len(rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
         s["next"]=at+RETRAIN;s["exclude_retry"]=at+60
         if not training_resources_ready():
@@ -169,20 +203,20 @@ def work(row):
             except Exception as exc:
                 s["error"]=type(exc).__name__;s["next"]=at+600
     m=s["model"]
-    if not m or not row["raw"] or m[1]!=excluded:
+    if not m or not all_forecasts(row) or m[1]!=excluded:
         result={"status":"RESOURCE_LIMIT" if s.get("error")=="INSUFFICIENT_MEMORY_HEADROOM" else "BOOTSTRAP","samples":len(rows),"excluded":list(excluded),"error":s.get("error")}
     else:
         a,b,w=m[0];x=vector(row,excluded)
-        if not any(n not in excluded for n in row["raw"]):result={"status":"NO_ADVICE","samples":len(rows),"excluded":list(excluded)}
+        if not any(n not in excluded for n in all_forecasts(row)):result={"status":"NO_ADVICE","samples":len(rows),"excluded":list(excluded)}
         else:
             ca=prediction(a,x);xb=prediction(b,x);p=choose_blend(ca,xb,w)
             side=max(range(2),key=lambda i:p[i])
             result={"status":"READY","direction":SIDES[side] if p[side]>0 else "WAIT",
                 "predicted_atr":dict(zip(SIDES,p)),"catboost_weight":w,"xgboost_weight":1-w,
-                "samples":len(rows),"excluded":list(excluded),"advisers":[n for n in row["raw"] if n not in excluded]}
+                "samples":len(rows),"excluded":list(excluded),"advisers":[n for n in all_forecasts(row) if n not in excluded]}
     with LOCK:
         if len(PUBLISHED)>=32 and key not in PUBLISHED:PUBLISHED.pop(next(iter(PUBLISHED)))
-        PUBLISHED[key]={**result,"bar":row["bar"],"at":at,"version":VERSION}
+        PUBLISHED[key]={**result,"model_profile":profile,"forecast_snapshot":all_forecasts(row),"bar":row["bar"],"at":at,"version":VERSION}
 def loop():
     while True:
         row=JOBS.get()
@@ -203,4 +237,4 @@ def submit(row):
                 if len(RECENT)>64:RECENT.pop(next(iter(RECENT)))
             except queue.Full:pass
         p=dict(PUBLISHED.get(key) or {})
-    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 else {"status":"PENDING","excluded":p.get("excluded",[]),"samples":p.get("samples",0)}
+    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 and p.get("forecast_snapshot")==all_forecasts(row) else {"status":"PENDING","excluded":[],"samples":p.get("samples",0),"model_profile":p.get("model_profile") or performance_profile([])}
