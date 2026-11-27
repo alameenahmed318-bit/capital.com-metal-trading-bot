@@ -17,6 +17,7 @@ jobs:
           python-version: '3.11'
       - run: python -m py_compile marketplace/backend/hybrid_demo_pilot.py marketplace/backend/master_balanced.py marketplace/backend/master_entry_review.py marketplace/backend/parallel_shadow.py marketplace/backend/app.py
       - run: python tests/test_hybrid_demo_pilot.py
+      - run: python tests/test_recovery_same_side.py
       - run: python -m unittest discover -s tests -p 'test_parallel_shadow.py'
       - run: python -m unittest discover -s tests -p 'test_master_entry_review.py'
       - run: python -m unittest discover -s tests -p 'test_connection_resilience.py'
