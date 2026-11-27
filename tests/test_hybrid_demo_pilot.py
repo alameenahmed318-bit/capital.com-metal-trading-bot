@@ -19,6 +19,11 @@ class PilotTest(unittest.TestCase):
             self.assertEqual(m.collect(d,self.item(),p,1070)["raw"],{"CatBoost":.2,"TCN":.3})
             self.assertEqual(m.collect(d,self.item(),{**p,"client_id":"other"},1070)["raw"],{"CatBoost":.2})
             self.assertIsNone(m.collect(d,self.item("REAL"),p,1070))
+    def test_resource_guard(self):
+        with patch.dict(os.environ,{"ALZOOL_META_RESOURCE_GUARD":"1"}):
+            with patch.object(m,"memory_headroom",return_value=200*1024*1024):self.assertFalse(m.training_resources_ready())
+            with patch.object(m,"memory_headroom",return_value=None):self.assertFalse(m.training_resources_ready())
+            with patch.object(m,"memory_headroom",return_value=450*1024*1024):self.assertTrue(m.training_resources_ready())
     def test_retirement(self):
         rows=[{"raw":{"TCN":.2,"CatBoost":.4},"y":[-.1,.1]} for _ in range(60)]
         self.assertEqual(set(m.retired(rows)),{"TCN","CatBoost"})
