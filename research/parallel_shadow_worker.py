@@ -69,7 +69,7 @@ def fit(b,epochs,paused=(),slippage_points=None):
         if name not in NAMES or name in paused:continue
         try:
             torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.001)
-            for _ in range(epochs):
+            for _ in range(0 if name=="GRU" else epochs):
                 for ix in torch.randperm(len(x)).split(128):
                     q=x[ix];q=q[:,:,:1] if name=="LSTM" else q
                     loss=nn.functional.smooth_l1_loss(m(q),y[ix]);opt.zero_grad();loss.backward();opt.step()
