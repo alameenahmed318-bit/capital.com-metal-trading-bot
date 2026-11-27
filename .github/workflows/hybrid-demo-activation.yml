@@ -1,0 +1,33 @@
+name: Hybrid demo Python 3.14 activation
+on:
+  pull_request:
+    branches: [deploy/alzool-meeno-btc-demo-20261121]
+    paths:
+      - requirements.txt
+      - marketplace/backend/hybrid_demo_pilot.py
+      - tests/test_hybrid_demo_pilot.py
+      - .github/workflows/hybrid-demo-activation.yml
+permissions:
+  contents: read
+jobs:
+  native-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: pip install -r requirements.txt
+      - run: python tests/test_hybrid_demo_pilot.py
+      - run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'marketplace/backend')
+          import hybrid_demo_pilot as m
+          rows=[{"at":i*120,"end":i*120+60,"raw":{"TCN":(-1)**i*.5,"CatBoost":.3},"context":[0.1]*6,"y":[(-1)**i*.5,-(-1)**i*.5]} for i in range(180)]
+          trained=m.train(rows,())
+          assert trained is not None
+          a,b,w=trained
+          print("native model smoke",m.prediction(a,m.vector(rows[-1])),m.prediction(b,m.vector(rows[-1])),w)
+          PY

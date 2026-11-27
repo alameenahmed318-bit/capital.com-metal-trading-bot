@@ -93,9 +93,30 @@ def retired(rows):
             if abs(v)>.05:samples.append(r["y"][0 if v>0 else 1]-.3)
         if len(samples)>=60 and sum(samples[-60:-30])<0 and sum(samples[-30:])<0:out.append(n)
     return tuple(out)
+def memory_headroom():
+    # In a constrained container avoid loading native ML libraries if the
+    # cgroup cannot accommodate their peak footprint. Unknown limits are
+    # treated conservatively when the resource guard is requested.
+    try:
+        limit=Path("/sys/fs/cgroup/memory.max").read_text().strip()
+        if limit!="max":
+            return int(limit)-int(Path("/sys/fs/cgroup/memory.current").read_text().strip())
+    except (OSError,ValueError):
+        pass
+    try:
+        return int(Path("/sys/fs/cgroup/memory/memory.limit_in_bytes").read_text())-int(Path("/sys/fs/cgroup/memory/memory.usage_in_bytes").read_text())
+    except (OSError,ValueError):
+        return None
+
+def training_resources_ready():
+    if os.getenv("ALZOOL_META_RESOURCE_GUARD")!="1":return True
+    available=memory_headroom()
+    return available is not None and available>=400*1024*1024
+
 def train(rows,excluded):
     from catboost import CatBoostRegressor
-    from xgboost import XGBRegressor
+    import xgboost as xgb
+    import numpy as np
     # Purge the chronological split by the actual outcome time.
     cut=int(len(rows)*.8);v=rows[cut:];t=[r for r in rows[:cut] if r["end"]<v[0]["at"]]
     if len(t)<100 or len(v)<30:return None
@@ -104,8 +125,12 @@ def train(rows,excluded):
         vec=vector(r,excluded)
         for i in range(2):x.append(vec+[float(i)]);y.append(max(-6.,min(6.,r["y"][i])))
     a=CatBoostRegressor(iterations=100,depth=4,learning_rate=.05,thread_count=1,verbose=False,allow_writing_files=False,random_seed=42)
-    b=XGBRegressor(n_estimators=100,max_depth=3,learning_rate=.05,n_jobs=1,random_state=42,objective="reg:squarederror")
-    a.fit(x,y);b.fit(x,y)
+    a.fit(x,y)
+    booster=xgb.train({"max_depth":3,"eta":.05,"nthread":1,"seed":42,"objective":"reg:squarederror","tree_method":"hist"},xgb.DMatrix(np.asarray(x,dtype=np.float32),label=np.asarray(y,dtype=np.float32),nthread=1),num_boost_round=100)
+    class NativePredictor:
+        def predict(self,values):
+            return booster.inplace_predict(np.asarray(values,dtype=np.float32))
+    b=NativePredictor()
     pa=[prediction(a,vector(r,excluded)) for r in v];pb=[prediction(b,vector(r,excluded)) for r in v]
     # Both participate; weights are selected on prior validation only.
     w=max((.25,.5,.75),key=lambda w:sum(score(choose_blend(u,z,w),r["y"]) for u,z,r in zip(pa,pb,v)))
@@ -128,14 +153,20 @@ def work(row):
     excluded=retired(rows)
     if len(rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
         s["next"]=at+RETRAIN;s["exclude_retry"]=at+60
-        try:
-            fitted=train(rows,excluded)
-            if fitted:s["model"]=(fitted,excluded)
-        except Exception as exc:
-            s["error"]=type(exc).__name__;s["next"]=at+600
+        if not training_resources_ready():
+            s["error"]="INSUFFICIENT_MEMORY_HEADROOM"
+            s["next"]=at+300
+        else:
+            try:
+                fitted=train(rows,excluded)
+                if fitted:
+                    s["model"]=(fitted,excluded)
+                    s.pop("error",None)
+            except Exception as exc:
+                s["error"]=type(exc).__name__;s["next"]=at+600
     m=s["model"]
     if not m or not row["raw"] or m[1]!=excluded:
-        result={"status":"BOOTSTRAP","samples":len(rows),"excluded":list(excluded),"error":s.get("error")}
+        result={"status":"RESOURCE_LIMIT" if s.get("error")=="INSUFFICIENT_MEMORY_HEADROOM" else "BOOTSTRAP","samples":len(rows),"excluded":list(excluded),"error":s.get("error")}
     else:
         a,b,w=m[0];x=vector(row,excluded)
         if not any(n not in excluded for n in row["raw"]):result={"status":"NO_ADVICE","samples":len(rows),"excluded":list(excluded)}
