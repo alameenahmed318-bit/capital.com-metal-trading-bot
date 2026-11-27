@@ -26,12 +26,12 @@ def accept(uid,market,ctx,data,now=None):
         accuracy=number(m.get("accuracy"),0,1)
         net=number(m.get("net_atr"),-100000,100000)
         rows[name]={"forecast":forecast,"samples":int(samples or 0),"accuracy":accuracy,"net_atr":net,
-                    "status":"SHADOW_ONLY","weight":0.}
+                    "status":"MONITOR_ONLY" if m.get("monitor_only") is True else "SHADOW_ONLY","weight":0.}
     if not rows:return {"accepted":False,"reason":"NO_VALID_MODELS","execution_authorized":False}
     # Diagnostic family budgets only. Never allow ensemble to double count its components.
     for family,names in FAMILIES.items():
         if family=="RECURRENT" and "GRU" in rows:names=("GRU","LSTM")
-        usable=[n for n in names if n in rows]
+        usable=[n for n in names if n in rows and rows[n]["status"]!="MONITOR_ONLY"]
         if not usable:continue
         factors={n:(1.2 if rows[n]["samples"]>=100 and (rows[n]["net_atr"] or 0)>0 else .8 if rows[n]["samples"]>=100 and (rows[n]["net_atr"] or 0)<0 else 1.) for n in usable}
         # Missing models do not inflate surviving families.
