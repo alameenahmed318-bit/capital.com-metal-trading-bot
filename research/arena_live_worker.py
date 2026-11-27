@@ -152,7 +152,8 @@ def fresh(bar):
 def live(email,password):
     token=arena.login(email,password);renew=time.monotonic()+1800
     state={"token":token};lock=threading.Lock()
-    jobs={};cache={};seen={};next_fit={}
+    jobs={};cache={};seen={};next_fit={};retry_poll={}
+    markets=tuple(sorted(arena.MARKETS,key=lambda m:0 if m=="XAUUSD" else 1))
     # One bounded slow lane with latest-only slots (one per market). Never
     # waits on the MT5/server path, and cannot delay the fast prediction lane.
     def heavy():
@@ -168,7 +169,7 @@ def live(email,password):
                 v=forecast(name,job["values"],models)
                 if not fresh(bar):print(market,name,"LATE_SKIPPED",flush=True);continue
                 body={k:job[k] for k in ("client","symbol","bar_time")}
-                reply=arena.api(market,"live-forecast",auth,{**body,"models":{name:v},"actions":{}})
+                reply=arena.api(market,"live-forecast",auth,{**body,"models":{name:v},"actions":{}},timeout=6)
                 print(market,bar,name,"ACCEPTED" if reply.get("accepted") else reply.get("reason","REJECTED"),flush=True)
             except Exception as exc:
                 retry[name]=time.monotonic()+600
@@ -178,7 +179,7 @@ def live(email,password):
     # new fit is available. Never replace a good fit with an empty result.
     def train_loop():
         while True:
-            for market in arena.MARKETS:
+            for market in markets:
                 if time.monotonic()<next_fit.get(market,0):continue
                 next_fit[market]=time.monotonic()+3600
                 try:
@@ -211,9 +212,10 @@ def live(email,password):
             except Exception as exc:
                 print("AUTH_REFRESH_ERROR",type(exc).__name__,flush=True)
                 time.sleep(10);continue
-        for market in arena.MARKETS:
+        for market in markets:
             try:
-                ctx=arena.api(market,"live-context",token)
+                if time.monotonic()<retry_poll.get(market,0):continue
+                ctx=arena.api(market,"live-context",token,timeout=6)
                 if ctx.get("status")!="READY":continue
                 cid=ctx["client"];bar=ctx["bar_time"]
                 if not fresh(bar):continue
@@ -245,11 +247,13 @@ def live(email,password):
                 if not scores and not action_scores and not monitor_scores:continue
                 if not fresh(bar):continue
                 body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"models":scores,"actions":action_scores,"monitor_models":monitor_scores}
-                response=arena.api(market,"live-forecast",token,body)
-                seen[market]=(cid,bar)
+                response=arena.api(market,"live-forecast",token,body,timeout=6)
+                if response.get("accepted"):seen[market]=(cid,bar)
                 print(market,bar,"FAST",list(scores),"MONITOR",list(monitor_scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
             except Exception as exc:
-                print(market,"LIVE_WORKER_ERROR",type(exc).__name__,flush=True)
+                code=getattr(exc,"code",None)
+                retry_poll[market]=time.monotonic()+(30 if code==403 else 5)
+                print(market,"LIVE_WORKER_ERROR",type(exc).__name__,code or "",flush=True)
         time.sleep(3)
 if __name__=="__main__":
     email=input("Owner email: ").strip()
