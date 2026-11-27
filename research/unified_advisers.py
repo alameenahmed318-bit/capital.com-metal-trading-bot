@@ -8,9 +8,9 @@ import multiprocessing as mp
 import time
 from urllib.error import HTTPError
 
-FAST=("XGBoost","CatBoost")
+FAST=("Extra Trees","CatBoost")
 FORECAST=("TiRex-2","Chronos-Bolt Tiny")
-PARALLEL=("TCN","LSTM Multi","Patch Transformer")
+PARALLEL=("TCN","GRU","Patch Transformer")
 
 def run_worker(lane,email,password,session,guard,market,epochs):
     import model_arena_worker as arena
