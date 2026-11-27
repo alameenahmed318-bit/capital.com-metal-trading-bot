@@ -47,7 +47,7 @@ def collect(d,item,parallel,now):
             if n in NAMES[:4] and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
                 raw[n]=max(-6.,min(6.,float(v)))
     # Caller obtains server-accepted parallel snapshot, never browser votes.
-    if fresh(parallel) and parallel.get("client_id")==item["client_id"]:
+    if fresh(parallel) and parallel.get("client_id")==str(item["client_id"]):
         for n,m in (parallel.get("models") or {}).items():
             if n in PARALLEL and isinstance(m,dict):
                 v=m.get("forecast")
@@ -126,8 +126,8 @@ def work(row):
         s["pending"]=None
     if not s["pending"] and row["raw"] and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
     excluded=retired(rows)
-    if len(rows)>=MIN_TRAIN and at>=s["next"]:
-        s["next"]=at+RETRAIN
+    if len(rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
+        s["next"]=at+RETRAIN;s["exclude_retry"]=at+60
         try:
             fitted=train(rows,excluded)
             if fitted:s["model"]=(fitted,excluded)
@@ -168,4 +168,4 @@ def submit(row):
                 if len(RECENT)>64:RECENT.pop(next(iter(RECENT)))
             except queue.Full:pass
         p=dict(PUBLISHED.get(key) or {})
-    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 else {"status":"PENDING"}
+    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 else {"status":"PENDING","excluded":p.get("excluded",[]),"samples":p.get("samples",0)}
