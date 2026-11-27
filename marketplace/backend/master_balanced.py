@@ -5,6 +5,7 @@ from market_symbols import same_market_symbol
 LEGACY_VERSION="MASTER_BALANCED_DEMO_V2"
 VERSION="MASTER_AI_FIRST_DEMO_V3"
 THRESHOLD=.72
+HYBRID_DEMO_THRESHOLD=.68
 SIDES=("BUY","SELL")
 FAMILIES={"TREES":("LightGBM","XGBoost","CatBoost"),
           "FORECAST":("TiRex-2","Chronos-2","TimesFM-2.5","Chronos-Bolt Tiny")}
@@ -147,13 +148,14 @@ def evaluate(d,item,settings,now,*,legacy=False):
     ranking=sorted((s for s in SIDES if sides[s]["eligible"]),key=lambda s:sides[s]["score"],reverse=True)
     selected=ranking[0] if ranking else "WAIT"
     tied=len(ranking)==2 and abs(sides[ranking[0]]["score"]-sides[ranking[1]]["score"])<1e-8
-    approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=THRESHOLD)
+    threshold=HYBRID_DEMO_THRESHOLD if use_pilot else THRESHOLD
+    approved=bool(selected in SIDES and not tied and sides[selected]["score"]>=threshold)
     reason="READY" if approved else "TIE" if tied else "NO_ELIGIBLE_SIDE" if not ranking else "WEIGHTED_SCORE"
     if not legacy and not forecasts:reason="NO_FRESH_AI_EVIDENCE"
     elif not legacy and model_direction=="WAIT":reason="AI_DIRECTION_UNCLEAR"
     elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
     result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
-        "direction":selected if approved else "WAIT","approved":approved,"threshold":THRESHOLD,
+        "direction":selected if approved else "WAIT","approved":approved,"threshold":threshold,
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
         "reason":reason,"model_direction":model_direction,"evidence_mass":evidence_mass,"model_conviction":conviction,

@@ -79,6 +79,28 @@ class PilotTest(unittest.TestCase):
             self.assertEqual(m.PUBLISHED[key]["samples"],1)
             self.assertEqual(m.PUBLISHED[key]["stored_samples"],2)
             self.assertEqual(persist.call_args.args[1]["bar"],1000)
+    def test_demo_threshold_68_preserves_direction_and_price_guards(self):
+        from master_balanced import evaluate,THRESHOLD
+        now=1070
+        item=self.item()
+        d={"symbol":"XAUUSD","bar_time":1000,"entry_atr":1.,
+           "entry_reference_price":100.05,"directional_scores":{"BUY":.8,"SELL":.2},
+           "directional_candidates":{"BUY":{"strategy_id":1,"combination_id":1}},
+           "context":{"buy_quality":80,"sell_quality":20,"buy_trap":False,"sell_trap":False},
+           "master":{"hybrid_meta_demo":{"bar":1000,"at":now,"status":"BOOTSTRAP","raw":{n:.08 for n in m.NAMES}}}}
+        with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
+            out=evaluate(d,item,{},now)
+            self.assertEqual(out["threshold"],.68)
+            self.assertGreaterEqual(out["scores"]["BUY"]["score"],.68)
+            self.assertLess(out["scores"]["BUY"]["score"],.72)
+            self.assertTrue(out["approved"])
+            self.assertEqual(out["direction"],"BUY")
+            self.assertFalse(evaluate(d,item,{"position_management":{"entry_max_deviation_atr":.001}},now)["approved"])
+            self.assertFalse(evaluate({**d,"context":{**d["context"],"buy_trap":True}},item,{},now)["approved"])
+            self.assertFalse(evaluate({**d,"directional_candidates":{}},item,{},now)["approved"])
+            self.assertFalse(evaluate(d,item,{},1120)["approved"])
+            self.assertEqual(evaluate(d,self.item("REAL"),{},now)["threshold"],THRESHOLD)
+            self.assertEqual(evaluate(d,item,{},now,legacy=True)["threshold"],THRESHOLD)
     def test_resource_guard(self):
         with patch.dict(os.environ,{"ALZOOL_META_RESOURCE_GUARD":"1"}):
             with patch.object(m,"memory_headroom",return_value=200*1024*1024):self.assertFalse(m.training_resources_ready())
