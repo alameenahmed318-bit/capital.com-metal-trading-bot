@@ -25,7 +25,7 @@ def accept(uid,market,ctx,data,now=None):
         samples=number(m.get("samples"),0,100000)
         accuracy=number(m.get("accuracy"),0,1)
         net=number(m.get("net_atr"),-100000,100000)
-        rows[name]={"forecast":forecast,"samples":int(samples or 0),"accuracy":accuracy,"net_atr":net,
+        rows[name]={"horizon":1 if data.get("horizon")==1 else 3,"forecast":forecast,"samples":int(samples or 0),"accuracy":accuracy,"net_atr":net,
                     "status":"MONITOR_ONLY" if m.get("monitor_only") is True else "SHADOW_ONLY","weight":0.}
     if not rows:return {"accepted":False,"reason":"NO_VALID_MODELS","execution_authorized":False}
     # Diagnostic family budgets only. Never allow ensemble to double count its components.
