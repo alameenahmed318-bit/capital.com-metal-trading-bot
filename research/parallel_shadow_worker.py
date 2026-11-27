@@ -78,6 +78,28 @@ def fit(b,epochs,paused=(),slippage_points=None):
                 s=np.where(abs(pv)>t,np.sign(pv),0.);n=int(np.count_nonzero(s))
                 if n>=20:options.append((float((s*truth-(s!=0)*cost).sum()),t))
             thresholds[name]=max(options)[1] if options else .05
+            if name=="LSTM Multi":
+                # Chronological validation and later untouched holdout, with
+                # non-overlapping 3-minute outcomes. Refit from scratch below.
+                from adviser_validation import select_threshold,metrics
+                a=int(.6*len(xs));b=int(.8*len(xs))
+                tx=torch.tensor(np.asarray(xs[:a-3]));ty=torch.tensor(np.asarray(ys[:a-3]),dtype=torch.float32)
+                torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.0007,weight_decay=.01)
+                for _ in range(epochs):
+                    for ix in torch.randperm(len(tx)).split(128):
+                        loss=nn.functional.smooth_l1_loss(m(tx[ix]),ty[ix]);opt.zero_grad();loss.backward();opt.step()
+                m.eval()
+                vi=list(range(a,b-3,2));ti=list(range(b,len(xs),2))
+                with torch.no_grad():
+                    pv=m(torch.tensor(np.asarray([xs[i] for i in vi]))).numpy()
+                    pt=m(torch.tensor(np.asarray([xs[i] for i in ti]))).numpy()
+                # Choose absolute threshold on validation only; score actual side net.
+                vp=[abs(float(p)) for p in pv]
+                vy=[float(np.sign(p)*ys[i]-costs[i]) for p,i in zip(pv,vi)]
+                t=select_threshold(vp,vy,20)
+                report=metrics([abs(float(p)) for p in pt],[float(np.sign(p)*ys[i]-costs[i]) for p,i in zip(pt,ti)],t,20) if t is not None else {"eligible":False}
+                print(name,"RETEST",report,"threshold",t,flush=True)
+                thresholds[name]=t if report["eligible"] else float("inf")
             models[name]=m
             print(name,"FIT_SHADOW",len(x),"threshold",thresholds[name],flush=True)
         except Exception as e:print(name,"UNAVAILABLE",type(e).__name__,flush=True)
@@ -119,6 +141,11 @@ def main(email=None,password=None,argv=None):
         if scopes.get(market)!=key:
             scopes[market]=key;paths[market]=state_path(email,cid,symbol);state[market]=load(paths[market]);last.pop(market,None);nextfit.pop(market,None)
         d=state[market];d.setdefault("outcomes",{});d.setdefault("pending",[]);d.setdefault("pause_until",{})
+        # One-time owner-requested re-evaluation, preserving all old outcomes.
+        if "LSTM Multi" in NAMES and not d.get("lstm_retest_v2"):
+            now=time.time();d["pause_until"]["LSTM Multi"]=now
+            d["lstm_retest_v2"]=True;save(paths[market],d)
+            print(market,"LSTM Multi RETEST_REQUESTED",flush=True)
         return d
     while True:
         if time.monotonic()>=renew:
@@ -179,6 +206,9 @@ def main(email=None,password=None,argv=None):
                 pred,scale=predict(fits[market][1],b,paused)
                 payload={}
                 for name,v in pred.items():
+                    if name=="LSTM Multi" and math.isinf(fits[market][1][2].get(name,0.)):
+                        print(market,name,"MONITOR_ONLY_RETEST_NOT_VALIDATED",flush=True)
+                        continue
                     q=d["outcomes"].get(name,[])
                     payload[name]={"forecast":v,"samples":len(q),"accuracy":sum(t[1] for t in q)/len(q) if q else None,"net_atr":sum(t[2] for t in q) if q else None}
                 report={**reports.get(market,{}),"persisted_samples":sum(len(q) for q in d["outcomes"].values()),
