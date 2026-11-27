@@ -12,6 +12,14 @@ class ShadowTests(unittest.TestCase):
         self.assertFalse(r["execution_authorized"]);self.assertEqual(r["models"]["Ensemble"]["weight"],0)
         self.assertNotIn("TimesFM-2.5",r["models"])
         self.assertLessEqual(sum(m["weight"] for m in r["models"].values()),1.00001)
+    def test_monitor_weight_zero(self):
+        data={**self.data,"models":{"GRU":{"forecast":.9,"monitor_only":True},"TCN":{"forecast":.3}}}
+        self.assertTrue(p.accept("a","XAUUSD",self.ctx,data,1065)["accepted"])
+        r=p.snapshot("a","XAUUSD",1066)
+        self.assertEqual(r["models"]["GRU"]["forecast"],.9)
+        self.assertEqual(r["models"]["GRU"]["status"],"MONITOR_ONLY")
+        self.assertEqual(r["models"]["GRU"]["weight"],0)
+        self.assertAlmostEqual(r["models"]["Ensemble"]["forecast"],.1,places=5)
     def test_scope_and_stale(self):
         p.accept("a","XAUUSD",self.ctx,self.data,1065)
         for uid,market,now in (("b","XAUUSD",1066),("a","BTCUSD",1066),("a","XAUUSD",1120)):
