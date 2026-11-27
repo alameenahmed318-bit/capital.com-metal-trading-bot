@@ -1,6 +1,7 @@
 """Owner-only arena persistence. Research reports never authorize trading."""
 import math, re, urllib.parse, hashlib, json
 from datetime import datetime,timezone
+from report_cache import archive_read, cutoff
 MODELS=("LightGBM","XGBoost","CatBoost","TimesFM-2.5","Chronos-2")
 CHALLENGERS=("TiRex-2","Chronos-Bolt Tiny")
 CLOUD_CHALLENGERS=("Qwen 3.8 27B","GPT-OSS 120B (Arena)")
@@ -21,7 +22,7 @@ def query(sb,uid,market,params):
     if not cid:
         best=None
         for c in owned:
-            rows=sb("GET","/rest/v1/alzool_engine_market_candles?client_id=eq."+enc(c)+"&timeframe=eq.PERIOD_M1&symbol=ilike."+market+"*&select=symbol,candle_time&order=candle_time.desc&limit=1",admin=True)
+            rows=archive_read(sb,"/rest/v1/alzool_engine_market_candles?client_id=eq."+enc(c)+"&timeframe=eq.PERIOD_M1&symbol=ilike."+market+"*&select=symbol,candle_time&order=candle_time.desc&limit=1",60)
             if rows and (best is None or rows[0]["candle_time"]>best[0]):best=(rows[0]["candle_time"],c,rows[0]["symbol"])
         if best is None:return {"rows":[],"next_cursor":None}
         _,cid,sym=best
@@ -30,14 +31,14 @@ def query(sb,uid,market,params):
     if cursor:
         datetime.fromisoformat(cursor.replace("Z","+00:00"))
         q+="&candle_time=lt."+enc(cursor)
-    else:q+="&candle_time=lt."+enc(datetime.now(timezone.utc).isoformat())
-    rows=sb("GET",q,admin=True)
+    else:q+="&candle_time=lt."+enc(cutoff(seconds=60))
+    rows=archive_read(sb,q,300 if cursor else 60)
     return {"client":cid,"symbol":sym,"rows":rows,"next_cursor":rows[-1]["candle_time"] if len(rows)==1000 else None}
 def report(sb,uid,market):
     owned=ids(sb,uid,market)
     out={}
     if owned:
-        rows=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=in.("+",".join(enc(x) for x in owned)+")&event_type=eq.ARENA_MODEL_REPORT&payload->>market=eq."+market+"&select=payload,created_at&order=created_at.desc&limit=200",admin=True)
+        rows=archive_read(sb,"/rest/v1/alzool_engine_signal_events?client_id=in.("+",".join(enc(x) for x in owned)+")&event_type=eq.ARENA_MODEL_REPORT&payload->>market=eq."+market+"&select=payload,created_at&order=created_at.desc&limit=200")
         for row in rows or []:
             p=row.get("payload") or {};name=p.get("model")
             if name in REPORT_MODELS and name not in out:out[name]={**p,"recorded_at":row["created_at"]}

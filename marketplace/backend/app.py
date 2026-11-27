@@ -29,6 +29,7 @@ from auto_research import schedule as schedule_automatic_research
 from central_action_protocol import propose as propose_central_action, claim as claim_central_action
 from telemetry_persistence import queue_closed_deals
 from connection_resilience import database_call, DiagnosticQueue
+from report_cache import archive_read, cutoff as report_cutoff
 from system_readiness import owner_readiness, position_management_status, entry_execution_status
 from bot_advisors import analyze_advisors
 from bot_signal_bus import build_bot_messages, update_history, market_bar_fresh
@@ -722,7 +723,7 @@ class Handler(SimpleHTTPRequestHandler):
                 client_id=(lic or {}).get("client_id","")
                 if not client_id or (lic or {}).get("revoked"):return self.send_json(200,accuracy_v4.summarize([]))
                 query="/rest/v1/alzool_engine_signal_events?client_id=eq."+urllib.parse.quote(client_id,safe="")+"&event_type=eq.AI_ACCURACY_V4_OUTCOME&select=payload,created_at&order=created_at.desc&limit=500"
-                return self.send_json(200,accuracy_v4.summarize(sb("GET",query,admin=True)))
+                return self.send_json(200,accuracy_v4.summarize(archive_read(sb,query)))
             except PermissionError:return self.send_json(403,{"error":"Owner only"})
             except Exception:return self.send_json(502,{"error":"Accuracy data unavailable"})
         if path=="/api/ai/stress-learning":
@@ -1340,10 +1341,10 @@ class Handler(SimpleHTTPRequestHandler):
                 history_error=""
                 try:
                     if client_id:
-                        cutoff=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
-                        stored=sb("GET","/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
+                        cutoff=report_cutoff(30)
+                        stored=archive_read(sb,"/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")+
                             "&deal_time=gte."+urllib.parse.quote(cutoff,safe="")+
-                            "&select=deal_time,payload&order=deal_time.desc&limit=2000",admin=True)
+                            "&select=deal_time,payload&order=deal_time.desc&limit=2000")
                         if isinstance(stored,list):
                             history_records=len(stored)
                             deals=[]
@@ -1425,10 +1426,10 @@ class Handler(SimpleHTTPRequestHandler):
                 if event_types:
                     query+="&event_type=in."+urllib.parse.quote("("+",".join(event_types)+")",safe=",()")
                 if days:
-                    cutoff=(datetime.now(timezone.utc).replace(second=0,microsecond=0)-timedelta(days=days)).isoformat()
+                    cutoff=report_cutoff(days)
                     query+="&created_at=gte."+urllib.parse.quote(cutoff,safe="")
                 query+="&select=event_id,event_type,payload,created_at&order=created_at.desc&limit="+str(limit)
-                rows=report_events_read(query)
+                rows=archive_read(sb,query)
                 return self.send_json(200,{"events":rows if isinstance(rows,list) else [],
                     "count":len(rows) if isinstance(rows,list) else 0,"client_id":client_id,"days":days,"kind":kind})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
@@ -1445,12 +1446,12 @@ class Handler(SimpleHTTPRequestHandler):
                 days=days if days in (0,7,30,90,365) else 30
                 query="/rest/v1/alzool_engine_closed_deals?client_id=eq."+urllib.parse.quote(client_id,safe="")
                 if days:
-                    cutoff=(datetime.now(timezone.utc)-timedelta(days=days)).isoformat()
+                    cutoff=report_cutoff(days)
                     query+="&deal_time=gte."+urllib.parse.quote(cutoff,safe="")
                 query+="&select=deal_time,payload&order=deal_time.desc"
                 records=[]; offset=0
                 while len(records)<5000:
-                    page=sb("GET",query+"&limit=1000&offset="+str(offset),admin=True)
+                    page=archive_read(sb,query+"&limit=1000&offset="+str(offset))
                     if not isinstance(page,list) or not page: break
                     records.extend(page); offset+=len(page)
                     if len(page)<1000: break
@@ -1622,10 +1623,10 @@ class Handler(SimpleHTTPRequestHandler):
                 persisted_audit=None
                 audit_read_error=None
                 try:
-                    events=sb("GET","/rest/v1/alzool_engine_signal_events?client_id=eq."+
+                    events=archive_read(sb,"/rest/v1/alzool_engine_signal_events?client_id=eq."+
                         urllib.parse.quote(client_id,safe="")+
                         "&event_type=eq.LEARNING_DECISION_AUDIT&select=created_at,payload"+
-                        "&order=created_at.desc&limit=80",admin=True)
+                        "&order=created_at.desc&limit=80")
                     for record in events if isinstance(events,list) else []:
                         proof=record.get("payload") if isinstance(record,dict) else None
                         if isinstance(proof,dict) and same_market_symbol(proof.get("symbol"),symbol):
@@ -2074,7 +2075,7 @@ class Handler(SimpleHTTPRequestHandler):
                 for start in range(0,len(candles),500):
                     batch=candles[start:start+500]
                     sb("POST","/rest/v1/alzool_engine_market_candles?on_conflict=client_id,symbol,timeframe,candle_time",
-                       batch,admin=True,prefer="resolution=merge-duplicates")
+                       batch,admin=True,prefer="resolution=merge-duplicates,return=minimal")
                     saved+=len(batch)
                 return self.send_json(200,{"accepted":True,"candles_saved":saved,"symbol":symbol,"timeframe":timeframe})
             if path=="/api/client/basic-settings":

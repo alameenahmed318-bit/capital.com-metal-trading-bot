@@ -1,7 +1,7 @@
 name: Connection resilience and policy regression
 on:
   push:
-    branches: [fix/connection-resilience-20261127, fix/auth-recovery-20261127]
+    branches: [fix/connection-resilience-20261127, fix/auth-recovery-20261127, fix/egress-reduction-20261127]
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -12,6 +12,7 @@ jobs:
           python-version: '3.12'
       - run: python -m compileall -q marketplace/backend tests
       - run: |
+          python -m unittest discover -s tests -p 'test_report_cache.py' -v
           python -m unittest discover -s tests -p 'test_connection_resilience.py' -v
           python -m unittest discover -s tests -p 'test_dual_market_gateway.py' -v
           python -m unittest discover -s tests -p 'test_telemetry_latency.py' -v
