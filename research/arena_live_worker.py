@@ -17,6 +17,9 @@ def estimator():
 from adviser_validation import split_rows,nonoverlap,metrics,select_threshold,SideModel,ActionModel
 
 def fit_regressor(name,depth):
+    if name=="Extra Trees":
+        from sklearn.ensemble import ExtraTreesRegressor
+        return ExtraTreesRegressor(n_estimators=96,max_depth=depth+2,min_samples_leaf=32,max_features=.8,n_jobs=1,random_state=42)
     if name=="XGBoost":
         from xgboost import XGBRegressor
         return XGBRegressor(n_estimators=100,max_depth=depth,n_jobs=1,learning_rate=.035,random_state=42,tree_method="hist",min_child_weight=12,reg_lambda=5)
@@ -35,7 +38,7 @@ def validated_fit(name,rows,origin,end,feature,target,minimum=600,min_signals=30
     candidates=[]
     # Compare a shallow and standard tree on validation only; holdout never
     # selects the candidate. All candidates use the same temporal split.
-    for depth in ((2,3) if name=="XGBoost" else (3,)):
+    for depth in ((2,3) if name in ("XGBoost","Extra Trees") else (3,)):
         candidate=fit_regressor(name,depth)
         candidate.fit([feature(r) for r in tr],[max(-6,min(6,target(r))) for r in tr])
         pv=candidate.predict([feature(r) for r in va])
