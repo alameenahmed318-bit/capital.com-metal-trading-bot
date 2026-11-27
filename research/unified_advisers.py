@@ -1,4 +1,4 @@
-"""Single-console, local-only launcher for the seven approved advisers.
+"""Single-console, local-only launcher for the seven candidate advisers.
 Separate child processes keep model inference and training isolated.
 Credentials stay in process memory; no order endpoints or persistent credentials.
 """
