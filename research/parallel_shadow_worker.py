@@ -141,54 +141,80 @@ def main(email=None,password=None,argv=None):
     if password is None:password=getpass.getpass("Owner password: ")
     token=arena.login(email,password);renew=time.monotonic()+1500
     markets=arena.MARKETS if a.market=="BOTH" else (a.market,)
-    fits={};last={};nextfit={};state={};reports={};calibrators={};paths={};scopes={};pause_until={}
+    from concurrent.futures import ThreadPoolExecutor
+    from urllib.error import HTTPError
+    # Single background trainer keeps CPU bounded; polling never waits on a fit.
+    executor=ThreadPoolExecutor(max_workers=1,thread_name_prefix="parallel-training")
+    fits={};last={};nextfit={};state={};reports={};calibrators={};paths={};scopes={}
+    jobs={};retry={};status_log={}
+    markets=tuple(sorted(markets,key=lambda m:0 if m=="XAUUSD" else 1))
+    def note(market,key,*parts):
+        now=time.monotonic()
+        if now-status_log.get((market,key),-1000)>=30:
+            status_log[(market,key)]=now
+            print(market,*parts,flush=True)
     def bind(market,cid,symbol):
         key=(cid,symbol)
         if scopes.get(market)!=key:
-            scopes[market]=key;paths[market]=state_path(email,cid,symbol);state[market]=load(paths[market]);last.pop(market,None);nextfit.pop(market,None)
+            scopes[market]=key;paths[market]=state_path(email,cid,symbol)
+            state[market]=load(paths[market]);last.pop(market,None);nextfit.pop(market,None)
         d=state[market];d.setdefault("outcomes",{});d.setdefault("pending",[]);d.setdefault("pause_until",{})
-        # One-time owner-requested re-evaluation, preserving all old outcomes.
-        if "LSTM Multi" in NAMES and not d.get("lstm_retest_v2"):
-            now=time.time();d["pause_until"]["LSTM Multi"]=now
-            d["lstm_retest_v2"]=True;save(paths[market],d)
-            print(market,"LSTM Multi RETEST_REQUESTED",flush=True)
         return d
-    while True:
+    def train_job(market,auth,cid,symbol):
+        print(market,"TRAIN_BACKGROUND_START",flush=True)
+        rows=exact_archive(market,auth,cid,symbol)
+        history=array(rows[-6000:])
+        # Missing trade evidence must not prevent candle-only research fits.
+        evidence={}
+        try:
+            e=arena.api(market,"parallel-learning?"+urllib.parse.urlencode({"client":cid,"symbol":symbol}),auth)
+            if e.get("symbol")==symbol:evidence=e
+        except Exception as exc:
+            print(market,"LEARNING_EVIDENCE_UNAVAILABLE",type(exc).__name__,getattr(exc,"code",""),flush=True)
+        fitted=fit(history,a.epochs,(),evidence.get("slippage_points"))
+        cal=None;report={"trade_status":"UNAVAILABLE","trade_samples":0}
+        try:
+            cal,report=trade_calibrator(history,evidence.get("positions",[]),feature)
+        except Exception as exc:
+            print(market,"TRADE_CALIBRATION_ERROR",type(exc).__name__,flush=True)
+        return fitted,cal,{**report,"backtests":evidence.get("backtests",0)}
+    try:
+      while True:
         if time.monotonic()>=renew:
             try:token=arena.login(email,password);renew=time.monotonic()+1500
-            except Exception as e:print("AUTH",type(e).__name__,flush=True);time.sleep(30);continue
+            except Exception as e:print("AUTH",type(e).__name__,flush=True);time.sleep(10);continue
         for market in markets:
+            # Consume a completed fit even when current quotes are unavailable.
+            pending=jobs.get(market)
+            if pending and pending[1].done():
+                scope,job=jobs.pop(market)
+                try:
+                    fitted,cal,report=job.result()
+                    if scope==scopes.get(market) and fitted[0]:
+                        fits[market]=(scope,fitted);calibrators[market]=cal;reports[market]=report
+                        print(market,"TRAIN_BACKGROUND_READY",list(fitted[0]),report,flush=True)
+                    elif scope==scopes.get(market):nextfit[market]=time.monotonic()+120
+                except Exception as exc:
+                    nextfit[market]=time.monotonic()+120
+                    print(market,"TRAIN_BACKGROUND_ERROR",type(exc).__name__,getattr(exc,"code",""),str(exc)[:160],flush=True)
+            if time.monotonic()<retry.get(market,0):continue
             try:
-                ctx=arena.api(market,"live-context",token)
-                if ctx.get("status")!="READY":continue
+                ctx=arena.api(market,"live-context",token,timeout=6)
+                if ctx.get("status")!="READY":
+                    note(market,"context","CONTEXT",ctx.get("status","UNKNOWN"));continue
                 cid=ctx["client"];symbol=ctx["symbol"];d=bind(market,cid,symbol)
-                # Only active, connected markets consume training CPU. One attempt per six hours.
-                if time.monotonic()>=nextfit.get(market,0):
+                if market not in jobs and time.monotonic()>=nextfit.get(market,0):
                     nextfit[market]=time.monotonic()+21600
-                    try:
-                        rows=exact_archive(market,token,cid,symbol)
-                        history=array(rows[-6000:]);evidence=arena.api(market,"parallel-learning?"+urllib.parse.urlencode({"client":cid,"symbol":symbol}),token)
-                        if evidence.get("symbol")!=symbol:raise ValueError("wrong evidence symbol")
-                        # Retest a suspended model after six hours, not permanently delete it.
-                        now=time.time()
-                        paused=[n for n,v in d["pause_until"].items() if float(v)>now]
-                        fitted=fit(history,a.epochs,paused,evidence.get("slippage_points"))
-                        fits[market]=(scopes[market],fitted)
-                        cal,report=trade_calibrator(history,evidence.get("positions",[]),feature)
-                        calibrators[market]=cal;reports[market]={**report,"backtests":evidence.get("backtests",0),"paused":paused}
-                        print(market,"LEARNING",reports[market],flush=True)
-                    except Exception as e:
-                        print(market,"FIT_ERROR",type(e).__name__,flush=True)
-                        if market not in fits or fits[market][0]!=scopes[market]:
-                            nextfit[market]=time.monotonic()+600;continue
-                    # The fit may take more than one bar. Refresh context.
-                    ctx=arena.api(market,"live-context",token)
-                    if ctx.get("status")!="READY" or (ctx["client"],ctx["symbol"])!=scopes[market]:continue
-                if market not in fits or fits[market][0]!=scopes[market]:continue
+                    jobs[market]=(scopes[market],executor.submit(train_job,market,token,cid,symbol))
+                if market not in fits or fits[market][0]!=scopes[market]:
+                    note(market,"training","TRAINING_OR_WAITING",list(NAMES));continue
                 bar=int(ctx["bar_time"])
-                if last.get(market)==(cid,bar) or not 60<=time.time()-bar<105:continue
+                if last.get(market)==(cid,bar):continue
+                if not 60<=time.time()-bar<120:
+                    note(market,'stale','CONTEXT_STALE',round(time.time()-bar,1));continue
                 b=array(ctx["bars"])
-                if len(b)<48 or b[-1,0]-b[-48,0]!=47*60:continue
+                if len(b)<48 or b[-1,0]-b[-48,0]!=47*60:
+                    note(market,"gap","CANDLE_GAP");continue
                 lookup={int(row[0]):row for row in b};remain=[]
                 for t,pred,scale in d["pending"]:
                     if bar<t+180:remain.append([t,pred,scale]);continue
@@ -222,13 +248,20 @@ def main(email=None,password=None,argv=None):
                     x,_=feature(b);row=np.r_[x[-12:].mean(0),x[-1]]
                     for side,tag in ((0,"buy"),(1,"sell")):report["trade_probability_"+tag]=float(cal.predict_proba([np.r_[row,side]])[0,1])
                 if not 60<=time.time()-bar<120:save(paths[market],d);continue
-                reply=arena.api(market,"parallel-monitor",token,{"client":cid,"symbol":symbol,"bar_time":bar,"models":payload,"learning":report})
+                reply=arena.api(market,"parallel-monitor",token,{"client":cid,"symbol":symbol,"bar_time":bar,"models":payload,"learning":report},timeout=6)
                 if reply.get("accepted"):
                     last[market]=(cid,bar)
                     if not any(t[0]==bar for t in d["pending"]):d["pending"].append([bar,{**monitor,**pred},scale])
                     d["pending"]=d["pending"][-120:]
                 save(paths[market],d)
-                print(market,bar,"SHADOW",list(pred),"MONITOR",list(monitor),reply.get("accepted"),flush=True)
-            except Exception as e:print(market,"SHADOW_ERROR",type(e).__name__,flush=True)
-        time.sleep(10)
+                print(market,bar,"SHADOW",list(pred),"MONITOR",list(monitor),reply.get("accepted"),reply.get("reason",""),flush=True)
+            except HTTPError as e:
+                retry[market]=time.monotonic()+(30 if e.code==403 else 5)
+                note(market,"http","SHADOW_HTTP_ERROR",e.code)
+            except Exception as e:
+                retry[market]=time.monotonic()+5
+                note(market,"error","SHADOW_ERROR",type(e).__name__,str(e)[:160])
+        time.sleep(2)
+    finally:
+        executor.shutdown(wait=False,cancel_futures=True)
 if __name__=="__main__":main()
