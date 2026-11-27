@@ -46,6 +46,7 @@ def train_actions(bars):
             fitted[(action,side)]=model
     return fitted,reports
 TREE_RETRY={}
+DIRECTION_TREES=("LightGBM","XGBoost","CatBoost")
 def train_direction(bars,market="UNKNOWN"):
     d=samples(bars)
     if len(d)<600:return {}
@@ -56,7 +57,7 @@ def train_direction(bars,market="UNKNOWN"):
     train=[v for v in d[:cut] if v["end"]<holdout[0]["time"]]
     if len(train)<400 or len(holdout)<100:return {}
     models={}
-    for name in ("LightGBM","XGBoost","CatBoost"):
+    for name in DIRECTION_TREES:
         key=(market,name)
         if time.monotonic()<TREE_RETRY.get(key,0):
             print(market,name,"FIT_COOLDOWN",flush=True);continue
@@ -177,7 +178,7 @@ def live(email,password):
                     print(market,"FIT_ERROR",type(exc).__name__,flush=True)
             time.sleep(5)
     threading.Thread(target=train_loop,daemon=True,name="arena-training-lane").start()
-    print("ALZOOL LIVE ADVISERS | seven models | cloud Arena OFF | no order permission",flush=True)
+    print("ALZOOL LIVE ADVISERS | "+", ".join(DIRECTION_TREES+PRETRAINED)+" | no order permission",flush=True)
     while True:
         if time.monotonic()>renew:
             try:
