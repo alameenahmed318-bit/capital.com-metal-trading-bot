@@ -5,7 +5,7 @@ No network, training, disk I/O or waits on the request/decision thread.
 import hashlib,json,math,os,queue,threading,time
 from pathlib import Path
 from collections import deque
-NAMES=("XGBoost","TiRex-2","CatBoost","Chronos-Bolt Tiny","TCN","LSTM Multi","Patch Transformer")
+NAMES=("Extra Trees","TiRex-2","CatBoost","Chronos-Bolt Tiny","TCN","GRU","Patch Transformer")
 PARALLEL=NAMES[4:]
 VERSION="HYBRID_META_DEMO_V1"
 SIDES=("BUY","SELL")
