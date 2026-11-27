@@ -240,16 +240,16 @@ def work(row):
         except Exception as exc:
             rows=local;MEMORY_HEALTH[key]="READ_FAILED_LOCAL_FALLBACK"
             print("META_MEMORY_READ_WARNING",type(exc).__name__,flush=True)
-        s=STATE[key]={"rows":rows,"pending":None,"model":None,"next":0.,"memory_retry":at+60}
+        s=STATE[key]={"rows":rows,"pending":None,"model":None,"next":0.,"memory_retry":at+60,"remote_loaded":MEMORY_HEALTH.get(key)=="RESTORED"}
         # Backfill any surviving local samples after restart without blocking entry.
         for r in local[-60:]:queue_memory(key,r)
     rows=s["rows"];p=s["pending"]
-    if MEMORY_DB is not None and MEMORY_HEALTH.get(key)=="READ_FAILED_LOCAL_FALLBACK" and at>=s["memory_retry"]:
+    if MEMORY_DB is not None and not s.get("remote_loaded") and at>=s["memory_retry"]:
         s["memory_retry"]=at+120
         try:
             remote=durable_load(key)
             rows[:]=sorted({int(r["bar"]):r for r in rows+remote}.values(),key=lambda r:r["bar"])[-3000:]
-            MEMORY_HEALTH[key]="RESTORED"
+            MEMORY_HEALTH[key]="RESTORED";s["remote_loaded"]=True
         except Exception:pass
     if p and at>=p["at"]+60:
         if at<=p["at"]+75 and not any(r["bar"]==p["bar"] for r in rows):
@@ -262,7 +262,10 @@ def work(row):
     # A one-minute adviser and an old three-minute adviser are not the same
     # training distribution. Retain old samples; train and weight the new
     # configuration only on matching horizons. Unknown historical tags = 3.
-    signature={n:int(row.get("horizons",{}).get(n,3)) for n in all_forecasts(row)}
+    observed={n:int(row.get("horizons",{}).get(n,3)) for n in all_forecasts(row)}
+    # Remember the last seen horizon even when a model misses a poll.
+    signature=s.setdefault("horizons",{})
+    signature.update(observed)
     def compatible(r):
         h=r.get("horizons") or {}
         return all(int(h.get(n,3))==signature.get(n,int(h.get(n,3))) for n in all_forecasts(r))
@@ -270,8 +273,14 @@ def work(row):
     profile=performance_profile(eligible_rows)
     row={**row,"model_weights":profile["weights"]}
     if not s["pending"] and all_forecasts(row) and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
+    elif s["pending"] and row["bar"]==s["pending"]["bar"] and at-s["pending"]["at"]<=12 and len(all_forecasts(row))>len(all_forecasts(s["pending"])):
+        # Training only: record the richer causal snapshot at its own quote/time.
+        # The live decision never waits for this window.
+        s["pending"]=row
     # The master manages relative influence; no automatic hard retirement.
     excluded=()
+    if s["model"] and any(s.get("model_horizons",{}).get(n,3)!=h for n,h in signature.items()):
+        s["model"]=None;s["next"]=0.
     if len(eligible_rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
         s["next"]=at+RETRAIN;s["exclude_retry"]=at+60
         if not training_resources_ready():
@@ -287,8 +296,6 @@ def work(row):
             except Exception as exc:
                 s["error"]=type(exc).__name__;s["next"]=at+600
     m=s["model"]
-    if m and any(s.get("model_horizons",{}).get(n,3)!=h for n,h in signature.items()):
-        s["model"]=m=None;s["next"]=0.
     if not m or not all_forecasts(row) or m[1]!=excluded:
         result={"status":"RESOURCE_LIMIT" if s.get("error")=="INSUFFICIENT_MEMORY_HEADROOM" else "BOOTSTRAP","samples":len(eligible_rows),"excluded":list(excluded),"error":s.get("error")}
     else:
