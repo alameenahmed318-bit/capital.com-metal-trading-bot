@@ -1894,7 +1894,15 @@ class Handler(SimpleHTTPRequestHandler):
                 from parallel_shadow import accept
                 cid=data.get("client")
                 if cid not in ids(sb,u["id"],ENGINE_MARKET):return self.send_json(403,{"error":"invalid owner client"})
-                return self.send_json(200,accept(u["id"],ENGINE_MARKET,arena_master.context(cid,CONNECTIONS.get(cid) or {}),data))
+                result=accept(u["id"],ENGINE_MARKET,arena_master.context(cid,CONNECTIONS.get(cid) or {}),data,return_evidence=True)
+                evidence=result.pop("_archive_evidence",None)
+                if evidence and evidence.get("forecasts"):
+                    # One diagnostic event per client, exact symbol and closed bar.
+                    # Existing asynchronous queue: no database wait or trading authorization.
+                    key=hashlib.sha256((cid+"|"+evidence["symbol"]+"|"+str(int(evidence["bar_time"]))).encode()).hexdigest()
+                    queue_ai_diagnostic_event({"event_id":"parallel-meta:"+key,"client_id":cid,
+                        "event_type":"PARALLEL_META_FORECAST","payload":evidence})
+                return self.send_json(200,result)
             if path=="/api/ai/arena/live-forecast":
                 u=owner(token)
                 from model_arena_api import ids
