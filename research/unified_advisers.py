@@ -24,10 +24,10 @@ def run_worker(lane,email,password,session,guard,market,epochs):
                 session["token"]=original_login(email,password)
                 session["expires"]=time.monotonic()+1200
             return session["token"]
-    def shared_api(market_name,path,_token,body=None):
+    def shared_api(market_name,path,_token,body=None,timeout=45):
         token=shared_login(email,password)
         try:
-            return original_api(market_name,path,token,body)
+            return original_api(market_name,path,token,body,timeout=timeout)
         except HTTPError as exc:
             print(lane,market_name,path.split("?")[0],"HTTP",exc.code,flush=True)
             if exc.code!=401:
@@ -35,7 +35,7 @@ def run_worker(lane,email,password,session,guard,market,epochs):
             # Refresh once only on expired credentials. Never bypass 403.
             with guard:
                 if session.get("token")==token:session["expires"]=0
-            return original_api(market_name,path,shared_login(email,password),body)
+            return original_api(market_name,path,shared_login(email,password),body,timeout=timeout)
     arena.login=shared_login
     arena.api=shared_api
     try:
