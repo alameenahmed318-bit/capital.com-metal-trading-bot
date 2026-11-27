@@ -36,6 +36,10 @@ class Recurrent(nn.Module):
     def __init__(self,d):
         super().__init__();self.r=nn.LSTM(d,16,batch_first=True);self.h=nn.Linear(16,1)
     def forward(self,x):return self.h(self.r(x)[0][:,-1]).squeeze(-1)
+class GRU(nn.Module):
+    def __init__(self):
+        super().__init__();self.r=nn.GRU(4,16,batch_first=True);self.h=nn.Linear(16,1)
+    def forward(self,x):return self.h(self.r(x)[0][:,-1]).squeeze(-1)
 class TCN(nn.Module):
     def __init__(self):
         super().__init__();self.a=nn.Conv1d(4,24,3,padding=1);self.b=nn.Conv1d(24,24,3,padding=1);self.h=nn.Linear(24,1)
@@ -61,7 +65,7 @@ def fit(b,epochs,paused=(),slippage_points=None):
     if len(xs)<300:raise ValueError("insufficient contiguous archive")
     cut=int(.8*len(xs));x=torch.tensor(np.asarray(xs[:cut]));y=torch.tensor(np.asarray(ys[:cut]),dtype=torch.float32)
     models={};thresholds={}
-    for name,maker in (("TCN",TCN),("PatchTST",OfficialPatch),("LSTM Multi",lambda:Recurrent(4)),("Patch Transformer",Patch),("LSTM",lambda:Recurrent(1))):
+    for name,maker in (("TCN",TCN),("PatchTST",OfficialPatch),("LSTM Multi",lambda:Recurrent(4)),("GRU",GRU),("Patch Transformer",Patch),("LSTM",lambda:Recurrent(1))):
         if name not in NAMES or name in paused:continue
         try:
             torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.001)
@@ -78,7 +82,7 @@ def fit(b,epochs,paused=(),slippage_points=None):
                 s=np.where(abs(pv)>t,np.sign(pv),0.);n=int(np.count_nonzero(s))
                 if n>=20:options.append((float((s*truth-(s!=0)*cost).sum()),t))
             thresholds[name]=max(options)[1] if options else .05
-            if name=="LSTM Multi":
+            if name in ("LSTM Multi","GRU"):
                 # Chronological validation and later untouched holdout, with
                 # non-overlapping 3-minute outcomes. Refit from scratch below.
                 from adviser_validation import select_threshold,metrics
@@ -206,7 +210,7 @@ def main(email=None,password=None,argv=None):
                 pred,scale=predict(fits[market][1],b,paused)
                 payload={}
                 for name,v in pred.items():
-                    if name=="LSTM Multi" and math.isinf(fits[market][1][2].get(name,0.)):
+                    if name in ("LSTM Multi","GRU") and math.isinf(fits[market][1][2].get(name,0.)):
                         print(market,name,"MONITOR_ONLY_RETEST_NOT_VALIDATED",flush=True)
                         continue
                     q=d["outcomes"].get(name,[])
