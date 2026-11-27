@@ -14,10 +14,10 @@ class PilotTest(unittest.TestCase):
         with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"0"}):self.assertFalse(m.allowed(self.item()))
     def test_seven_exact_and_stale(self):
         with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
-            d={"symbol":"XAUUSD","bar_time":1000,"entry_atr":1,"master":{"arena_shadow":{"status":"SHADOW_READY","symbol":"XAUUSD","bar_time":1000,"received_at":1065,"models":{"CatBoost":.2,"LightGBM":.8,"TimesFM-2.5":.9,"Chronos-2":.7}}}}
-            p={"status":"SHADOW_READY","client_id":"test","symbol":"XAUUSD","bar_time":1000,"received_at":1066,"models":{"TCN":{"forecast":.3},"Isolation Forest":{"forecast":.5}}}
-            self.assertEqual(m.collect(d,self.item(),p,1070)["raw"],{"CatBoost":.2,"TCN":.3})
-            self.assertEqual(m.collect(d,self.item(),{**p,"client_id":"other"},1070)["raw"],{"CatBoost":.2})
+            d={"symbol":"XAUUSD","bar_time":1000,"entry_atr":1,"master":{"arena_shadow":{"status":"SHADOW_READY","symbol":"XAUUSD","bar_time":1000,"received_at":1065,"models":{"CatBoost":.2,"Extra Trees":.4,"XGBoost":.7,"LightGBM":.8,"TimesFM-2.5":.9,"Chronos-2":.7}}}}
+            p={"status":"SHADOW_READY","client_id":"test","symbol":"XAUUSD","bar_time":1000,"received_at":1066,"models":{"TCN":{"forecast":.3},"GRU":{"forecast":.6},"LSTM Multi":{"forecast":.9},"Isolation Forest":{"forecast":.5}}}
+            self.assertEqual(m.collect(d,self.item(),p,1070)["raw"],{"CatBoost":.2,"Extra Trees":.4,"TCN":.3,"GRU":.6})
+            self.assertEqual(m.collect(d,self.item(),{**p,"client_id":"other"},1070)["raw"],{"CatBoost":.2,"Extra Trees":.4})
             self.assertIsNone(m.collect(d,self.item("REAL"),p,1070))
     def test_resource_guard(self):
         with patch.dict(os.environ,{"ALZOOL_META_RESOURCE_GUARD":"1"}):
