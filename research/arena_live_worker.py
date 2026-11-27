@@ -11,6 +11,7 @@ from specialist_market import features,samples,LOOKBACK
 from model_arena_api import LIVE_MODELS
 from datetime import datetime,timezone
 ACTIONS=("ADDON","COOLING","RECOVERY")
+ENTRY_HORIZON=3 # Unified demo launcher opts into M1; action specialists unchanged.
 def estimator():
     from lightgbm import LGBMRegressor
     return LGBMRegressor(n_estimators=80,max_depth=3,num_leaves=7,learning_rate=.05,n_jobs=1,verbosity=-1,random_state=42)
@@ -84,8 +85,25 @@ def train_actions(bars):
     return fitted,reports
 TREE_RETRY={}
 DIRECTION_TREES=("LightGBM","XGBoost","CatBoost")
+def entry_samples(bars):
+    if ENTRY_HORIZON==3:return samples(bars)
+    bars=sorted({b["time"]:b for b in bars}.values(),key=lambda b:b["time"])
+    rows=[]
+    for i in range(LOOKBACK,len(bars)-ENTRY_HORIZON):
+        end=bars[i+ENTRY_HORIZON];entry=bars[i+1]
+        if end["time"]-bars[i]["time"]!=60*ENTRY_HORIZON:continue
+        f=features(bars[i-LOOKBACK:i+1])
+        if f is None:continue
+        x,atr=f
+        if atr<=0 or min(entry["point_size"],end["point_size"])<=0:continue
+        ec=entry["spread_points"]*entry["point_size"]/atr;xc=end["spread_points"]*end["point_size"]/atr
+        if min(ec,xc)<0:continue
+        move=(end["close"]-entry["open"])/atr
+        rows.append({"time":bars[i]["time"],"end":end["time"],"x":x,"y":move,"buy":move-ec,"sell":-move-xc})
+    return rows
+
 def train_direction(bars,market="UNKNOWN",monitor_models=None):
-    d=samples(bars)
+    d=entry_samples(bars)
     if len(d)<600:return {}
     models={}
     for name in DIRECTION_TREES:
@@ -132,17 +150,17 @@ def forecast(name,values,models):
     if name=="TiRex-2":
         from tirex2 import TimeseriesType
         ts=TimeseriesType(target=x.unsqueeze(0),past_covariates=None,future_covariates=None)
-        out=m.forecast([ts],prediction_length=3,output_type="numpy",pad_context=False,batch_size=1)
-        value=float(next(iter(out))[0,4,2])
+        out=m.forecast([ts],prediction_length=ENTRY_HORIZON,output_type="numpy",pad_context=False,batch_size=1)
+        value=float(next(iter(out))[0,4,ENTRY_HORIZON-1])
     elif name=="Chronos-Bolt Tiny":
-        q,_=m.predict_quantiles([x],prediction_length=3,quantile_levels=[.5])
-        value=float(q[0][2,0])
+        q,_=m.predict_quantiles([x],prediction_length=ENTRY_HORIZON,quantile_levels=[.5])
+        value=float(q[0][ENTRY_HORIZON-1,0])
     elif name=="Chronos-2":
-        q,_=m.predict_quantiles([x],prediction_length=3,quantile_levels=[.5],batch_size=1)
-        a=q[0];value=float(a[0,2,0]) if a.ndim==3 else float(a[2,0])
+        q,_=m.predict_quantiles([x],prediction_length=ENTRY_HORIZON,quantile_levels=[.5],batch_size=1)
+        a=q[0];value=float(a[0,ENTRY_HORIZON-1,0]) if a.ndim==3 else float(a[ENTRY_HORIZON-1,0])
     else:
-        p,_=m.forecast(horizon=3,inputs=[np.asarray(values,dtype=np.float32)])
-        value=float(p[0][2])
+        p,_=m.forecast(horizon=ENTRY_HORIZON,inputs=[np.asarray(values,dtype=np.float32)])
+        value=float(p[0][ENTRY_HORIZON-1])
     if not math.isfinite(value):raise ValueError("nonfinite forecast")
     return max(-6.,min(6.,value))
 
@@ -152,7 +170,8 @@ def fresh(bar):
 def live(email,password):
     token=arena.login(email,password);renew=time.monotonic()+1800
     state={"token":token};lock=threading.Lock()
-    jobs={};cache={};seen={};next_fit={}
+    jobs={};cache={};seen={};next_fit={};retry_poll={}
+    markets=tuple(sorted(arena.MARKETS,key=lambda m:0 if m=="XAUUSD" else 1))
     # One bounded slow lane with latest-only slots (one per market). Never
     # waits on the MT5/server path, and cannot delay the fast prediction lane.
     def heavy():
@@ -160,25 +179,27 @@ def live(email,password):
         while True:
             with lock:pending=list(jobs.items());auth=state["token"]
             pairs=[(market,name,job) for market,job in pending for name in PRETRAINED
-                   if done.get((market,name))!=job["bar_time"] and fresh(job["bar_time"]) and time.monotonic()>=retry.get(name,0)]
+                   if done.get((market,name))!=job["bar_time"] and fresh(job["bar_time"]) and time.monotonic()>=retry.get((market,name),0)]
             if not pairs:time.sleep(1);continue
             market,name,job=pairs[turn%len(pairs)];turn+=1
-            bar=job["bar_time"];done[(market,name)]=bar
+            bar=job["bar_time"]
             try:
                 v=forecast(name,job["values"],models)
                 if not fresh(bar):print(market,name,"LATE_SKIPPED",flush=True);continue
                 body={k:job[k] for k in ("client","symbol","bar_time")}
-                reply=arena.api(market,"live-forecast",auth,{**body,"models":{name:v},"actions":{}})
+                reply=arena.api(market,"live-forecast",auth,{**body,"horizon":ENTRY_HORIZON,"models":{name:v},"actions":{}},timeout=6)
+                if reply.get("accepted"):done[(market,name)]=bar
+                else:retry[(market,name)]=time.monotonic()+2
                 print(market,bar,name,"ACCEPTED" if reply.get("accepted") else reply.get("reason","REJECTED"),flush=True)
             except Exception as exc:
-                retry[name]=time.monotonic()+600
+                retry[(market,name)]=time.monotonic()+15
                 print(market,name,"ERROR",type(exc).__name__,flush=True)
     threading.Thread(target=heavy,daemon=True,name="arena-forecast-lane").start()
     # Training runs separately; keep previous fitted models until a complete
     # new fit is available. Never replace a good fit with an empty result.
     def train_loop():
         while True:
-            for market in arena.MARKETS:
+            for market in markets:
                 if time.monotonic()<next_fit.get(market,0):continue
                 next_fit[market]=time.monotonic()+3600
                 try:
@@ -187,6 +208,10 @@ def live(email,password):
                     if not cid:continue
                     monitors={}
                     direction=train_direction(bars,market,monitors)
+                    # Publish new direction models immediately; action research can finish later.
+                    with lock:
+                        previous=cache.get(market)
+                        cache[market]=(cid,direction,previous[2] if previous and previous[0]==cid else {},monitors)
                     try:actions,reports=train_actions(bars)
                     except Exception as exc:
                         actions,reports={},{}
@@ -211,9 +236,10 @@ def live(email,password):
             except Exception as exc:
                 print("AUTH_REFRESH_ERROR",type(exc).__name__,flush=True)
                 time.sleep(10);continue
-        for market in arena.MARKETS:
+        for market in markets:
             try:
-                ctx=arena.api(market,"live-context",token)
+                if time.monotonic()<retry_poll.get(market,0):continue
+                ctx=arena.api(market,"live-context",token,timeout=6)
                 if ctx.get("status")!="READY":continue
                 cid=ctx["client"];bar=ctx["bar_time"]
                 if not fresh(bar):continue
@@ -244,13 +270,15 @@ def live(email,password):
                     except Exception as exc:print(market,action,side,type(exc).__name__,flush=True)
                 if not scores and not action_scores and not monitor_scores:continue
                 if not fresh(bar):continue
-                body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"models":scores,"actions":action_scores,"monitor_models":monitor_scores}
-                response=arena.api(market,"live-forecast",token,body)
-                seen[market]=(cid,bar)
+                body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"horizon":ENTRY_HORIZON,"models":scores,"actions":action_scores,"monitor_models":monitor_scores}
+                response=arena.api(market,"live-forecast",token,body,timeout=6)
+                if response.get("accepted"):seen[market]=(cid,bar)
                 print(market,bar,"FAST",list(scores),"MONITOR",list(monitor_scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
             except Exception as exc:
-                print(market,"LIVE_WORKER_ERROR",type(exc).__name__,flush=True)
-        time.sleep(3)
+                code=getattr(exc,"code",None)
+                retry_poll[market]=time.monotonic()+(30 if code==403 else 3)
+                print(market,"LIVE_WORKER_ERROR",type(exc).__name__,code or "",flush=True)
+        time.sleep(1)
 if __name__=="__main__":
     email=input("Owner email: ").strip()
     live(email,getpass.getpass("Owner password: "))

@@ -34,7 +34,8 @@ def accept(cid,item,body):
     if ctx.get("status")!="READY" or body.get("symbol")!=ctx["symbol"] or body.get("bar_time")!=ctx["bar_time"]:
         return {"accepted":False,"reason":"STALE_OR_WRONG_BAR"}
     models={}
-    accepted_names=LIVE_MODELS+(HYBRID_ONLY_MODELS if hybrid_allowed(item) else ())
+    is_demo=hybrid_allowed(item)
+    accepted_names=() if body.get("horizon")==1 and not is_demo else LIVE_MODELS+(HYBRID_ONLY_MODELS if is_demo else ())
     for name,v in (body.get("models") or {}).items():
         if name in accepted_names and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
             models[name]=round(max(-6,min(6,v)),5)
@@ -65,7 +66,8 @@ def accept(cid,item,body):
         merged_actions={action:dict(sides) for action,sides in previous.get("actions",{}).items()}
         for action,sides in actions.items():
             merged_actions[action]={**merged_actions.get(action,{}),**sides}
-        CACHE[key]={"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"monitor_models":merged_monitor,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
+        horizons={**previous.get("horizons",{}),**{n:1 if body.get("horizon")==1 else 3 for n in set(models)|set(monitor)}}
+        CACHE[key]={"horizons":horizons,"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"monitor_models":merged_monitor,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
         CACHE.move_to_end(key)
         while len(CACHE)>128:CACHE.popitem(last=False)
     return {"accepted":True,"execution_authorized":False}

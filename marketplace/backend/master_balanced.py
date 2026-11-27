@@ -90,14 +90,19 @@ def evaluate(d,item,settings,now,*,legacy=False):
         weights=master_profile["weights"]
         signed=sum(weights[n]*v for n,v in forecasts.items())
         evidence_mass=sum(weights[n]*abs(v) for n,v in forecasts.items())
-        conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
+        # Bounded score, not probability: magnitude AND breadth matter.
+        # A small unanimous forecast must not become certainty.
+        conviction=meta.calibrated_strength(signed,evidence_mass,master_profile)
         model_direction="BUY" if signed>1e-9 else "SELL" if signed< -1e-9 else "WAIT"
         if not any(abs(v)>.05 for v in forecasts.values()):
             model_direction="WAIT";conviction=0.
         if pilot.get("status")=="READY" and any(abs(v)>.05 for v in forecasts.values()):
             # The learned blend selects direction; original strategy/quote gates still apply.
             model_direction=pilot.get("direction","WAIT")
-            conviction=1. if model_direction=="BUY" else -1. if model_direction=="SELL" else 0.
+            predictions=pilot.get("predicted_atr") or {}
+            margin=num(predictions.get("BUY"))-num(predictions.get("SELL"))
+            learned=meta.calibrated_strength(margin/2.,abs(margin)/2.,master_profile)
+            conviction=abs(learned)*(1 if model_direction=="BUY" else -1 if model_direction=="SELL" else 0)
             if not any(n in pilot.get("advisers",[]) for n in forecasts):model_direction="WAIT";conviction=0.
         elif pilot.get("status")=="NO_ADVICE":
             model_direction="WAIT";conviction=0.
@@ -159,7 +164,8 @@ def evaluate(d,item,settings,now,*,legacy=False):
         result.update(version=meta.VERSION,meta_status=pilot.get("status"),meta_samples=pilot.get("samples",0),
             excluded=[],meta_predictions=pilot.get("predicted_atr"),
             evaluated_models=list(evaluated),model_sample_counts=master_profile["counts"],
-            weights_kind="MASTER_PERFORMANCE_PRIOR",
+            weights_kind="MASTER_PERFORMANCE_PRIOR",confidence_kind="BOUNDED_EVIDENCE_NOT_PROBABILITY",
+            memory_status=pilot.get("memory_status","LOADING"),forecast_horizons=pilot.get("horizons",{}),
             catboost_weight=pilot.get("catboost_weight"),xgboost_weight=pilot.get("xgboost_weight"),
             weight_statuses=master_profile["statuses"],
             allocation={"strategy":.25,"meta_master":.60,"market":.15})
@@ -211,7 +217,7 @@ def select_demo(d,item,settings,now):
         row=meta.collect(d,item,snapshot_for_client(item["client_id"],d.get("symbol"),now),now)
         cached=meta.submit(row)
         # An enabled pilot always uses the agreed seven, even while learning.
-        pilot={**cached,"raw":row["raw"] if row else {},"monitor":row["monitor"] if row else {},"bar":num(d.get("bar_time")),"at":now}
+        pilot={**cached,"raw":row["raw"] if row else {},"monitor":row["monitor"] if row else {},"horizons":row.get("horizons",{}) if row else {},"bar":num(d.get("bar_time")),"at":now}
         d={**d,"master":{**report,"hybrid_meta_demo":pilot}}
         report=d["master"]
     trial=evaluate(d,item,settings,now)

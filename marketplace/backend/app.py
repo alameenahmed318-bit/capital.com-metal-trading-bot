@@ -154,6 +154,9 @@ def send_client_password_setup(email):
         return "NOT_SENT"
 
 
+import hybrid_demo_pilot
+hybrid_demo_pilot.configure_memory(sb)
+
 def persist_ai_diagnostic_event(events):
     sb("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",
        events,admin=True,prefer="resolution=merge-duplicates,return=minimal")

@@ -2,7 +2,7 @@
 Labels are observed quote counterfactuals, not attributed broker-trade profits.
 No network, training, disk I/O or waits on the request/decision thread.
 """
-import hashlib,json,math,os,queue,threading,time
+import hashlib,json,math,os,queue,threading,time,urllib.parse
 from pathlib import Path
 from collections import deque
 NAMES=("Extra Trees","TiRex-2","CatBoost","Chronos-Bolt Tiny","TCN","GRU","Patch Transformer")
@@ -17,6 +17,54 @@ PUBLISHED={}
 STARTED=False
 STATE={}
 RECENT={}
+MEMORY_DB=None
+MEMORY_JOBS=queue.Queue(maxsize=128)
+MEMORY_STARTED=False
+MEMORY_HEALTH={}
+MEMORY_EVENT="HYBRID_META_SCALP_OUTCOME_V1"
+def configure_memory(db):
+    global MEMORY_DB
+    MEMORY_DB=db
+def memory_id(key,bar):
+    return "meta-scalp:"+hashlib.sha256(json.dumps([*key,int(bar)],separators=(",",":")).encode()).hexdigest()
+def durable_load(key):
+    if MEMORY_DB is None:return []
+    cid,symbol=key
+    query="/rest/v1/alzool_engine_signal_events?"+urllib.parse.urlencode({"client_id":"eq."+cid,"event_type":"eq."+MEMORY_EVENT,"payload->>symbol":"eq."+symbol,"select":"payload","order":"created_at.desc","limit":600})
+    data=MEMORY_DB("GET",query,admin=True)
+    rows=[]
+    for item in data or []:
+        p=item.get("payload") or {}
+        row=p.get("sample")
+        if isinstance(row,dict) and p.get("symbol")==symbol and tuple(row.get("key") or ())==key and "y" in row and "raw" in row and "context" in row:rows.append(row)
+    return rows
+def durable_save(key,row):
+    if MEMORY_DB is None:return
+    event={"event_id":memory_id(key,row["bar"]),"client_id":key[0],"event_type":MEMORY_EVENT,"payload":{"symbol":key[1],"sample":row}}
+    MEMORY_DB("POST","/rest/v1/alzool_engine_signal_events?on_conflict=event_id",event,admin=True,prefer="resolution=ignore-duplicates,return=minimal")
+def memory_loop():
+    while True:
+        key,row=MEMORY_JOBS.get()
+        try:
+            for attempt in range(3):
+                try:
+                    durable_save(key,row)
+                    MEMORY_HEALTH[key]="DURABLE"
+                    break
+                except Exception as exc:
+                    MEMORY_HEALTH[key]="RETRY_LOCAL_FALLBACK"
+                    if attempt==2:
+                        print("META_MEMORY_WRITE_WARNING",type(exc).__name__,flush=True)
+                    else:time.sleep(2**attempt)
+        finally:MEMORY_JOBS.task_done()
+def queue_memory(key,row):
+    global MEMORY_STARTED
+    if MEMORY_DB is None:return
+    if not MEMORY_STARTED:
+        threading.Thread(target=memory_loop,daemon=True,name="meta-durable-memory").start();MEMORY_STARTED=True
+    try:MEMORY_JOBS.put_nowait((key,row))
+    except queue.Full:MEMORY_HEALTH[key]="QUEUE_FULL_LOCAL_FALLBACK"
+
 ROOT=Path(os.getenv("ALZOOL_META_STATE_DIR",str(Path.home()/".alzool-meta-demo")))
 def num(v,default=0.):
     try:
@@ -40,7 +88,7 @@ def collect(d,item,parallel,now):
         return (isinstance(e,dict) and e.get("status")=="SHADOW_READY"
           and e.get("symbol")==symbol and num(e.get("bar_time"))==bar
           and 0<=now-num(e.get("received_at"),-1)<=60)
-    raw={};monitor={}
+    raw={};monitor={};horizons={}
     arena=(d.get("master") or {}).get("arena_shadow") or {}
     if fresh(arena):
         for n,v in (arena.get("models") or {}).items():
@@ -48,6 +96,8 @@ def collect(d,item,parallel,now):
                 raw[n]=max(-6.,min(6.,float(v)))
         for n,v in (arena.get("monitor_models") or {}).items():
             if n in NAMES[:4] and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):monitor[n]=max(-6.,min(6.,float(v)))
+    if fresh(arena):
+        horizons.update({n:int((arena.get("horizons") or {}).get(n,3)) for n in set(raw)|set(monitor)})
     # Caller obtains server-accepted parallel snapshot, never browser votes.
     if fresh(parallel) and parallel.get("client_id")==str(item["client_id"]):
         for n,m in (parallel.get("models") or {}).items():
@@ -56,14 +106,21 @@ def collect(d,item,parallel,now):
                 if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
                     target=monitor if m.get("status")=="MONITOR_ONLY" else raw
                     target[n]=max(-6.,min(6.,float(v)))
+                    horizons[n]=int(m.get("horizon",3))
     ctx=d.get("context") or {};scores=d.get("directional_scores") or {}
     return {"key":(str(item["client_id"]),symbol),"bar":int(bar),"at":now,"bid":bid,"ask":ask,"atr":atr,
-        "raw":raw,"monitor":monitor,"context":[num(scores.get("BUY")),num(scores.get("SELL")),num(ctx.get("buy_quality"))/100.,
+        "raw":raw,"monitor":monitor,"horizons":horizons,"context":[num(scores.get("BUY")),num(scores.get("SELL")),num(ctx.get("buy_quality"))/100.,
             num(ctx.get("sell_quality"))/100.,(ask-bid)/atr,age/60.]}
 def all_forecasts(row):
     """Worker validation labels are provenance, never a master participation veto."""
     return {n:v for n,v in {**(row.get("monitor") or {}),**(row.get("raw") or {})}.items()
             if n in NAMES and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)}
+
+def calibrated_strength(signed,mass,profile=None):
+    # Shrink weak evidence smoothly. Saturation requires a genuinely large
+    # aggregate margin; this is a directional score, never a probability.
+    s=num(signed);m=max(abs(s),num(mass))
+    return max(-.95,min(.95,s/(.15+.65*m)))
 
 def performance_profile(rows):
     """Master-only bounded weights from matured same-market quote outcomes.
@@ -175,48 +232,84 @@ def work(row):
     s=STATE.get(key)
     if s is None:
         if len(STATE)>=16:STATE.pop(next(iter(STATE)))
-        s=STATE[key]={"rows":load(key),"pending":None,"model":None,"next":0.}
+        local=load(key)
+        try:
+            remote=durable_load(key)
+            rows=sorted({int(r["bar"]):r for r in local+remote}.values(),key=lambda r:r["bar"])[-3000:]
+            MEMORY_HEALTH[key]="RESTORED" if MEMORY_DB is not None else "LOCAL_ONLY"
+        except Exception as exc:
+            rows=local;MEMORY_HEALTH[key]="READ_FAILED_LOCAL_FALLBACK"
+            print("META_MEMORY_READ_WARNING",type(exc).__name__,flush=True)
+        s=STATE[key]={"rows":rows,"pending":None,"model":None,"next":0.,"memory_retry":at+60,"remote_loaded":MEMORY_HEALTH.get(key)=="RESTORED"}
+        # Backfill any surviving local samples after restart without blocking entry.
+        for r in local[-60:]:queue_memory(key,r)
     rows=s["rows"];p=s["pending"]
+    if MEMORY_DB is not None and not s.get("remote_loaded") and at>=s["memory_retry"]:
+        s["memory_retry"]=at+120
+        try:
+            remote=durable_load(key)
+            rows[:]=sorted({int(r["bar"]):r for r in rows+remote}.values(),key=lambda r:r["bar"])[-3000:]
+            MEMORY_HEALTH[key]="RESTORED";s["remote_loaded"]=True
+        except Exception:pass
     if p and at>=p["at"]+60:
         if at<=p["at"]+75 and not any(r["bar"]==p["bar"] for r in rows):
             rows.append({**p,"end":at,"y":[(row["bid"]-p["ask"])/p["atr"],(p["bid"]-row["ask"])/p["atr"]]})
             del rows[:-3000]
+            queue_memory(key,rows[-1])
             try:save(key,rows)
             except Exception:pass
         s["pending"]=None
-    profile=performance_profile(rows)
+    # A one-minute adviser and an old three-minute adviser are not the same
+    # training distribution. Retain old samples; train and weight the new
+    # configuration only on matching horizons. Unknown historical tags = 3.
+    observed={n:int(row.get("horizons",{}).get(n,3)) for n in all_forecasts(row)}
+    # Remember the last seen horizon even when a model misses a poll.
+    signature=s.setdefault("horizons",{})
+    signature.update(observed)
+    def compatible(r):
+        h=r.get("horizons") or {}
+        return all(int(h.get(n,3))==signature.get(n,int(h.get(n,3))) for n in all_forecasts(r))
+    eligible_rows=[r for r in rows if compatible(r)]
+    profile=performance_profile(eligible_rows)
     row={**row,"model_weights":profile["weights"]}
     if not s["pending"] and all_forecasts(row) and (not rows or row["bar"]>rows[-1]["bar"]):s["pending"]=row
+    elif s["pending"] and row["bar"]==s["pending"]["bar"] and at-s["pending"]["at"]<=12 and len(all_forecasts(row))>len(all_forecasts(s["pending"])):
+        # Training only: record the richer causal snapshot at its own quote/time.
+        # The live decision never waits for this window.
+        s["pending"]=row
     # The master manages relative influence; no automatic hard retirement.
     excluded=()
-    if len(rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
+    if s["model"] and any(s.get("model_horizons",{}).get(n,3)!=h for n,h in signature.items()):
+        s["model"]=None;s["next"]=0.
+    if len(eligible_rows)>=MIN_TRAIN and (at>=s["next"] or (s["model"] and s["model"][1]!=excluded and at>=s.get("exclude_retry",0.))):
         s["next"]=at+RETRAIN;s["exclude_retry"]=at+60
         if not training_resources_ready():
             s["error"]="INSUFFICIENT_MEMORY_HEADROOM"
             s["next"]=at+300
         else:
             try:
-                fitted=train(rows,excluded)
+                fitted=train(eligible_rows,excluded)
                 if fitted:
                     s["model"]=(fitted,excluded)
+                    s["model_horizons"]=dict(signature)
                     s.pop("error",None)
             except Exception as exc:
                 s["error"]=type(exc).__name__;s["next"]=at+600
     m=s["model"]
     if not m or not all_forecasts(row) or m[1]!=excluded:
-        result={"status":"RESOURCE_LIMIT" if s.get("error")=="INSUFFICIENT_MEMORY_HEADROOM" else "BOOTSTRAP","samples":len(rows),"excluded":list(excluded),"error":s.get("error")}
+        result={"status":"RESOURCE_LIMIT" if s.get("error")=="INSUFFICIENT_MEMORY_HEADROOM" else "BOOTSTRAP","samples":len(eligible_rows),"excluded":list(excluded),"error":s.get("error")}
     else:
         a,b,w=m[0];x=vector(row,excluded)
-        if not any(n not in excluded for n in all_forecasts(row)):result={"status":"NO_ADVICE","samples":len(rows),"excluded":list(excluded)}
+        if not any(n not in excluded for n in all_forecasts(row)):result={"status":"NO_ADVICE","samples":len(eligible_rows),"excluded":list(excluded)}
         else:
             ca=prediction(a,x);xb=prediction(b,x);p=choose_blend(ca,xb,w)
             side=max(range(2),key=lambda i:p[i])
             result={"status":"READY","direction":SIDES[side] if p[side]>0 else "WAIT",
                 "predicted_atr":dict(zip(SIDES,p)),"catboost_weight":w,"xgboost_weight":1-w,
-                "samples":len(rows),"excluded":list(excluded),"advisers":[n for n in all_forecasts(row) if n not in excluded]}
+                "samples":len(eligible_rows),"excluded":list(excluded),"advisers":[n for n in all_forecasts(row) if n not in excluded]}
     with LOCK:
         if len(PUBLISHED)>=32 and key not in PUBLISHED:PUBLISHED.pop(next(iter(PUBLISHED)))
-        PUBLISHED[key]={**result,"model_profile":profile,"forecast_snapshot":all_forecasts(row),"bar":row["bar"],"at":at,"version":VERSION}
+        PUBLISHED[key]={**result,"memory_status":MEMORY_HEALTH.get(key,"LOCAL_ONLY"),"stored_samples":len(rows),"model_profile":profile,"forecast_snapshot":all_forecasts(row),"forecast_horizons":dict(row.get("horizons") or {}),"bar":row["bar"],"at":at,"version":VERSION}
 def loop():
     while True:
         row=JOBS.get()
@@ -237,4 +330,4 @@ def submit(row):
                 if len(RECENT)>64:RECENT.pop(next(iter(RECENT)))
             except queue.Full:pass
         p=dict(PUBLISHED.get(key) or {})
-    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 and p.get("forecast_snapshot")==all_forecasts(row) else {"status":"PENDING","excluded":[],"samples":p.get("samples",0),"model_profile":p.get("model_profile") or performance_profile([])}
+    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 and p.get("forecast_snapshot")==all_forecasts(row) and p.get("forecast_horizons")==dict(row.get("horizons") or {}) else {"status":"PENDING","excluded":[],"samples":p.get("samples",0),"model_profile":p.get("model_profile") or performance_profile([]),"memory_status":p.get("memory_status","LOADING")}
