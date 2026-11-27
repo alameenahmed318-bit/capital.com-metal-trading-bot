@@ -3,7 +3,7 @@ import math,time,threading
 from collections import OrderedDict
 NAMES=("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM","GRU","Ensemble","Isolation Forest")
 DIRECTION=NAMES[:6]
-FAMILIES={"CONV":("TCN",),"RECURRENT":("LSTM Multi","LSTM","GRU"),"PATCH":("PatchTST","Patch Transformer")}
+FAMILIES={"CONV":("TCN",),"RECURRENT":("LSTM Multi","LSTM"),"PATCH":("PatchTST","Patch Transformer")}
 CACHE=OrderedDict();LOCK=threading.Lock()
 def number(v,lo,hi):
     if isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or not lo<=v<=hi:return None
@@ -29,7 +29,8 @@ def accept(uid,market,ctx,data,now=None):
                     "status":"SHADOW_ONLY","weight":0.}
     if not rows:return {"accepted":False,"reason":"NO_VALID_MODELS","execution_authorized":False}
     # Diagnostic family budgets only. Never allow ensemble to double count its components.
-    for names in FAMILIES.values():
+    for family,names in FAMILIES.items():
+        if family=="RECURRENT" and "GRU" in rows:names=("GRU","LSTM")
         usable=[n for n in names if n in rows]
         if not usable:continue
         factors={n:(1.2 if rows[n]["samples"]>=100 and (rows[n]["net_atr"] or 0)>0 else .8 if rows[n]["samples"]>=100 and (rows[n]["net_atr"] or 0)<0 else 1.) for n in usable}
