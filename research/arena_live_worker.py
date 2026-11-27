@@ -90,7 +90,7 @@ def train_direction(bars,market="UNKNOWN",monitor_models=None):
     models={}
     for name in DIRECTION_TREES:
         key=(market,name)
-        if time.monotonic()<TREE_RETRY.get(key,0):
+        if monitor_models is None and time.monotonic()<TREE_RETRY.get(key,0):
             print(market,name,"FIT_COOLDOWN",flush=True);continue
         chosen_sides={};shadow_sides={}
         for side in ("BUY","SELL"):
