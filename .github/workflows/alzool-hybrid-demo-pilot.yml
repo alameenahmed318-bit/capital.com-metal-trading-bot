@@ -1,0 +1,20 @@
+name: Hybrid demo pilot safety
+on:
+  push:
+    branches: [pilot/hybrid-meta-master-demo-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile marketplace/backend/hybrid_demo_pilot.py marketplace/backend/master_balanced.py marketplace/backend/master_entry_review.py marketplace/backend/parallel_shadow.py
+      - run: python tests/test_hybrid_demo_pilot.py
+      - run: python -m unittest discover -s tests -p 'test_parallel_shadow.py'
+      - run: python -m unittest discover -s tests -p 'test_master_balanced.py'
