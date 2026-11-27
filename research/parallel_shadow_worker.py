@@ -66,7 +66,7 @@ def fit(b,epochs,paused=(),slippage_points=None):
     cut=int(.8*len(xs));x=torch.tensor(np.asarray(xs[:cut]));y=torch.tensor(np.asarray(ys[:cut]),dtype=torch.float32)
     models={};thresholds={}
     for name,maker in (("TCN",TCN),("PatchTST",OfficialPatch),("LSTM Multi",lambda:Recurrent(4)),("GRU",GRU),("Patch Transformer",Patch),("LSTM",lambda:Recurrent(1))):
-        if name not in NAMES or name in paused:continue
+        if name not in NAMES:continue
         try:
             torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.001)
             for _ in range(0 if name=="GRU" else epochs):
@@ -109,13 +109,15 @@ def fit(b,epochs,paused=(),slippage_points=None):
         except Exception as e:print(name,"UNAVAILABLE",type(e).__name__,flush=True)
     forest=IsolationForest(n_estimators=64,contamination=.03,n_jobs=1,random_state=42).fit(x.numpy().reshape(len(x),-1)) if USE_ANOMALY else None
     return models,forest,thresholds
-def predict(fitted,b,paused=()):
+def predict(fitted,b,paused=(),monitor=None):
     x,atr=feature(b);q=torch.tensor(x[None]);models,forest,thresholds=fitted;out={}
     with torch.no_grad():
         for name,m in models.items():
-            if name in paused:continue
             v=float(m(q[:,:,:1] if name=="LSTM" else q)[0])
-            if math.isfinite(v):out[name]=max(-6.,min(6.,v)) if abs(v)>thresholds.get(name,.05) else 0.
+            if math.isfinite(v):
+                if name in paused or math.isinf(thresholds.get(name,0.)):
+                    if monitor is not None:monitor[name]=max(-6.,min(6.,v))
+                else:out[name]=max(-6.,min(6.,v)) if abs(v)>thresholds.get(name,.05) else 0.
     if forest is not None:out["Isolation Forest"]=float(np.clip(-forest.decision_function(x.reshape(1,-1))[0],-1,1))
     return out,atr
 def exact_archive(market,token,cid,symbol):
@@ -207,14 +209,12 @@ def main(email=None,password=None,argv=None):
                     fresh=[r for r in d["outcomes"].get(name,[]) if r[0]>=until]
                     if pause_model(fresh,now):d["pause_until"][name]=now+21600
                 paused=[n for n,v in d["pause_until"].items() if float(v)>now]
-                pred,scale=predict(fits[market][1],b,paused)
+                monitor={}
+                pred,scale=predict(fits[market][1],b,paused,monitor)
                 payload={}
-                for name,v in pred.items():
-                    if name in ("LSTM Multi","GRU") and math.isinf(fits[market][1][2].get(name,0.)):
-                        print(market,name,"MONITOR_ONLY_RETEST_NOT_VALIDATED",flush=True)
-                        continue
+                for name,v in {**monitor,**pred}.items():
                     q=d["outcomes"].get(name,[])
-                    payload[name]={"forecast":v,"samples":len(q),"accuracy":sum(t[1] for t in q)/len(q) if q else None,"net_atr":sum(t[2] for t in q) if q else None}
+                    payload[name]={"forecast":v,"monitor_only":name in monitor,"samples":len(q),"accuracy":sum(t[1] for t in q)/len(q) if q else None,"net_atr":sum(t[2] for t in q) if q else None}
                 report={**reports.get(market,{}),"persisted_samples":sum(len(q) for q in d["outcomes"].values()),
                     "paused":[n for n,v in d["pause_until"].items() if float(v)>now]}
                 cal=calibrators.get(market)
@@ -225,10 +225,10 @@ def main(email=None,password=None,argv=None):
                 reply=arena.api(market,"parallel-monitor",token,{"client":cid,"symbol":symbol,"bar_time":bar,"models":payload,"learning":report})
                 if reply.get("accepted"):
                     last[market]=(cid,bar)
-                    if not any(t[0]==bar for t in d["pending"]):d["pending"].append([bar,pred,scale])
+                    if not any(t[0]==bar for t in d["pending"]):d["pending"].append([bar,{**monitor,**pred},scale])
                     d["pending"]=d["pending"][-120:]
                 save(paths[market],d)
-                print(market,bar,"SHADOW",list(payload),reply.get("accepted"),flush=True)
+                print(market,bar,"SHADOW",list(pred),"MONITOR",list(monitor),reply.get("accepted"),flush=True)
             except Exception as e:print(market,"SHADOW_ERROR",type(e).__name__,flush=True)
         time.sleep(10)
 if __name__=="__main__":main()
