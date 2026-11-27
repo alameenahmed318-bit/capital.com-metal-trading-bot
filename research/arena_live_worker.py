@@ -28,7 +28,7 @@ def fit_regressor(name,depth):
         return CatBoostRegressor(iterations=100,depth=depth,thread_count=1,learning_rate=.035,verbose=False,allow_writing_files=False,random_seed=42,l2_leaf_reg=8)
     return estimator()
 
-def validated_fit(name,rows,origin,end,feature,target,minimum=600,min_signals=30):
+def validated_fit(name,rows,origin,end,feature,target,minimum=600,min_signals=30,monitor=None):
     parts=split_rows(rows,origin,end,minimum)
     if parts is None:return None,{"status":"INSUFFICIENT"}
     tr,va,te=parts
@@ -41,6 +41,7 @@ def validated_fit(name,rows,origin,end,feature,target,minimum=600,min_signals=30
     for depth in ((2,3) if name in ("XGBoost","Extra Trees") else (3,)):
         candidate=fit_regressor(name,depth)
         candidate.fit([feature(r) for r in tr],[max(-6,min(6,target(r))) for r in tr])
+        if monitor is not None and not monitor:monitor.append(candidate)
         pv=candidate.predict([feature(r) for r in va])
         threshold=select_threshold(pv,[target(r) for r in va],min_signals)
         if threshold is not None:
@@ -83,21 +84,24 @@ def train_actions(bars):
     return fitted,reports
 TREE_RETRY={}
 DIRECTION_TREES=("LightGBM","XGBoost","CatBoost")
-def train_direction(bars,market="UNKNOWN"):
+def train_direction(bars,market="UNKNOWN",monitor_models=None):
     d=samples(bars)
     if len(d)<600:return {}
     models={}
     for name in DIRECTION_TREES:
         key=(market,name)
-        if time.monotonic()<TREE_RETRY.get(key,0):
+        if monitor_models is None and time.monotonic()<TREE_RETRY.get(key,0):
             print(market,name,"FIT_COOLDOWN",flush=True);continue
-        chosen_sides={}
+        chosen_sides={};shadow_sides={}
         for side in ("BUY","SELL"):
             try:
-                chosen,report=validated_fit(name,d,lambda r:r["time"],lambda r:r["end"],lambda r:r["x"],lambda r:r[side.lower()])
+                diagnostic=[]
+                chosen,report=validated_fit(name,d,lambda r:r["time"],lambda r:r["end"],lambda r:r["x"],lambda r:r[side.lower()],monitor=diagnostic)
+                if diagnostic:shadow_sides[side]=diagnostic[0]
                 print(market,name,side,"COST_AWARE",report,flush=True)
                 if chosen:chosen_sides[side]=chosen
             except Exception as exc:print(market,name,side,"FIT_ERROR",type(exc).__name__,flush=True)
+        if monitor_models is not None and set(shadow_sides)=={"BUY","SELL"}:monitor_models[name]=shadow_sides
         if chosen_sides:
             models[name]=SideModel(chosen_sides);TREE_RETRY.pop(key,None)
         else:TREE_RETRY[key]=time.monotonic()+3600
@@ -181,7 +185,8 @@ def live(email,password):
                     with lock:auth=state["token"]
                     cid,bars=arena.archive(market,auth)
                     if not cid:continue
-                    direction=train_direction(bars,market)
+                    monitors={}
+                    direction=train_direction(bars,market,monitors)
                     try:actions,reports=train_actions(bars)
                     except Exception as exc:
                         actions,reports={},{}
@@ -189,7 +194,7 @@ def live(email,password):
                     with lock:
                         # Replace only on completed fresh validation. Rejected
                         # models must not remain eligible through stale cache.
-                        cache[market]=(cid,direction,actions)
+                        cache[market]=(cid,direction,actions,monitors)
                     print(market,"FIT",len(bars),"direction",list(direction),"actions",reports,flush=True)
                     arena.api(market,"action-training",auth,{"client":cid,"candles":len(bars),"reports":reports})
                 except Exception as exc:
@@ -222,20 +227,27 @@ def live(email,password):
                         jobs[market]={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,
                                       "values":[(b["close"]-ctx["bars"][-1]["close"])/atr for b in ctx["bars"]]}
                 if not fitted or fitted[0]!=cid or seen.get(market)==(cid,bar):continue
-                _,models,actions=fitted
-                scores={};action_scores={}
+                _,models,actions,monitors=fitted
+                scores={};action_scores={};monitor_scores={}
                 for name,m in models.items():
                     try:scores[name]=float(m.predict([x])[0])
                     except Exception as exc:print(market,name,type(exc).__name__,flush=True)
+                for name,side_models in monitors.items():
+                    if name in scores:continue
+                    try:
+                        buy=float(side_models['BUY'].predict([x])[0]);sell=float(side_models['SELL'].predict([x])[0])
+                        v=(buy-sell)/2
+                        if math.isfinite(v):monitor_scores[name]=max(-6.,min(6.,v))
+                    except Exception as exc:print(market,name,'MONITOR_ERROR',type(exc).__name__,flush=True)
                 for (action,side),m in actions.items():
                     try:action_scores.setdefault(action,{})[side]=float(m.predict([x])[0])
                     except Exception as exc:print(market,action,side,type(exc).__name__,flush=True)
-                if not scores and not action_scores:continue
+                if not scores and not action_scores and not monitor_scores:continue
                 if not fresh(bar):continue
-                body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"models":scores,"actions":action_scores}
+                body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"models":scores,"actions":action_scores,"monitor_models":monitor_scores}
                 response=arena.api(market,"live-forecast",token,body)
                 seen[market]=(cid,bar)
-                print(market,bar,"FAST",list(scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
+                print(market,bar,"FAST",list(scores),"MONITOR",list(monitor_scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
             except Exception as exc:
                 print(market,"LIVE_WORKER_ERROR",type(exc).__name__,flush=True)
         time.sleep(3)

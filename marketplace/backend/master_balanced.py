@@ -84,7 +84,7 @@ def evaluate(d,item,settings,now,*,legacy=False):
         excluded=set(pilot.get("excluded") or [])
         forecasts={n:clamp(v,-1.,1.) for n,v in (pilot.get("raw") or {}).items()
                    if n in meta.NAMES and n not in excluded and abs(v)>.05}
-        weights={n:0. if n in excluded else 1./len(meta.NAMES) for n in meta.NAMES}
+        weights={n:0. if n in excluded or n in (pilot.get("monitor") or {}) else 1./len(meta.NAMES) for n in meta.NAMES}
         signed=sum(weights[n]*v for n,v in forecasts.items())
         evidence_mass=sum(weights[n]*abs(v) for n,v in forecasts.items())
         conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
@@ -204,7 +204,7 @@ def select_demo(d,item,settings,now):
         row=meta.collect(d,item,snapshot_for_client(item["client_id"],d.get("symbol"),now),now)
         cached=meta.submit(row)
         # An enabled pilot always uses the agreed seven, even while learning.
-        pilot={**cached,"raw":row["raw"] if row else {},"bar":num(d.get("bar_time")),"at":now}
+        pilot={**cached,"raw":row["raw"] if row else {},"monitor":row["monitor"] if row else {},"bar":num(d.get("bar_time")),"at":now}
         d={**d,"master":{**report,"hybrid_meta_demo":pilot}}
         report=d["master"]
     trial=evaluate(d,item,settings,now)

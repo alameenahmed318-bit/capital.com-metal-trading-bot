@@ -81,6 +81,19 @@ class ArenaMasterTest(unittest.TestCase):
             self.assertEqual(m.arena_votes(self.item["strategy_decision"],evidence),{})
             self.assertFalse(a.accept("other",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
 
+    def test_monitor_only_not_legacy_evidence(self):
+        import master_ai as m
+        body={"symbol":"XAUUSD","bar_time":self.bar,"monitor_models":{"Extra Trees":.9,"CatBoost":-.8}}
+        demo={**self.item,"client_id":"owner","master_direct_demo_capable":True,"account":{"trade_mode":"DEMO"}}
+        with patch.dict("os.environ",{"ALZOOL_HYBRID_DEMO":"1"}):
+            self.assertTrue(a.accept("owner",demo,body)["accepted"])
+            r=a.evidence("owner",self.item["strategy_decision"])
+            self.assertEqual(r["models"],{})
+            self.assertEqual(r["monitor_models"],body["monitor_models"])
+            self.assertEqual(m.arena_votes(self.item["strategy_decision"],r),{})
+            self.assertFalse(a.accept("other",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
+            self.assertTrue(a.accept("owner",demo,{"symbol":"XAUUSD","bar_time":self.bar,"models":{"CatBoost":.4}})["accepted"])
+            self.assertEqual(a.evidence("owner",self.item["strategy_decision"])["monitor_models"],{"Extra Trees":.9})
     def test_master_uses_fresh_local_advice_without_permission(self):
         import master_ai as m
         from model_arena_api import LIVE_MODELS

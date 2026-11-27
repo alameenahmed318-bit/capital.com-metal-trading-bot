@@ -19,6 +19,17 @@ class PilotTest(unittest.TestCase):
             self.assertEqual(m.collect(d,self.item(),p,1070)["raw"],{"CatBoost":.2,"Extra Trees":.4,"TCN":.3,"GRU":.6})
             self.assertEqual(m.collect(d,self.item(),{**p,"client_id":"other"},1070)["raw"],{"CatBoost":.2,"Extra Trees":.4})
             self.assertIsNone(m.collect(d,self.item("REAL"),p,1070))
+    def test_monitor_only_never_becomes_decision_input(self):
+        with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
+            d={"symbol":"XAUUSD","bar_time":1000,"entry_atr":1,"master":{"arena_shadow":{"status":"SHADOW_READY","symbol":"XAUUSD","bar_time":1000,"received_at":1065,"models":{"TiRex-2":.2},"monitor_models":{"Extra Trees":.8,"CatBoost":-.7}}}}
+            p={"status":"SHADOW_READY","client_id":"test","symbol":"XAUUSD","bar_time":1000,"received_at":1066,"models":{"GRU":{"forecast":.9,"status":"MONITOR_ONLY"},"TCN":{"forecast":.3}}}
+            row=m.collect(d,self.item(),p,1070)
+            self.assertEqual(row["raw"],{"TiRex-2":.2,"TCN":.3})
+            self.assertEqual(row["monitor"],{"Extra Trees":.8,"CatBoost":-.7,"GRU":.9})
+            vec=m.vector(row)
+            for n in row["monitor"]:
+                i=m.NAMES.index(n)*2
+                self.assertEqual(vec[i:i+2],[0.,0.])
     def test_resource_guard(self):
         with patch.dict(os.environ,{"ALZOOL_META_RESOURCE_GUARD":"1"}):
             with patch.object(m,"memory_headroom",return_value=200*1024*1024):self.assertFalse(m.training_resources_ready())
