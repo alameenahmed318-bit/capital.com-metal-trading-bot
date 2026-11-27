@@ -81,15 +81,20 @@ def evaluate(d,item,settings,now,*,legacy=False):
     pilot=report.get("hybrid_meta_demo") or {}
     use_pilot=not legacy and meta.allowed(item) and pilot.get("bar")==bar and 0<=now-num(pilot.get("at"),-1)<=10
     if use_pilot:
-        excluded=set(pilot.get("excluded") or [])
-        forecasts={n:clamp(v,-1.,1.) for n,v in (pilot.get("raw") or {}).items()
-                   if n in meta.NAMES and n not in excluded and abs(v)>.05}
-        weights={n:0. if n in excluded or n in (pilot.get("monitor") or {}) else 1./len(meta.NAMES) for n in meta.NAMES}
+        # All fresh analyses go to the master, including locally unvalidated ones.
+        # WAIT is a neutral analysis, not a failure to participate.
+        excluded=set()
+        evaluated=meta.all_forecasts(pilot)
+        forecasts={n:clamp(v,-1.,1.) for n,v in evaluated.items() if abs(v)>1e-9}
+        master_profile=pilot.get("model_profile") or meta.performance_profile([])
+        weights=master_profile["weights"]
         signed=sum(weights[n]*v for n,v in forecasts.items())
         evidence_mass=sum(weights[n]*abs(v) for n,v in forecasts.items())
         conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
         model_direction="BUY" if signed>1e-9 else "SELL" if signed< -1e-9 else "WAIT"
-        if pilot.get("status")=="READY":
+        if not any(abs(v)>.05 for v in forecasts.values()):
+            model_direction="WAIT";conviction=0.
+        if pilot.get("status")=="READY" and any(abs(v)>.05 for v in forecasts.values()):
             # The learned blend selects direction; original strategy/quote gates still apply.
             model_direction=pilot.get("direction","WAIT")
             conviction=1. if model_direction=="BUY" else -1. if model_direction=="SELL" else 0.
@@ -152,9 +157,11 @@ def evaluate(d,item,settings,now,*,legacy=False):
 
     if use_pilot:
         result.update(version=meta.VERSION,meta_status=pilot.get("status"),meta_samples=pilot.get("samples",0),
-            excluded=pilot.get("excluded",[]),meta_predictions=pilot.get("predicted_atr"),
+            excluded=[],meta_predictions=pilot.get("predicted_atr"),
+            evaluated_models=list(evaluated),model_sample_counts=master_profile["counts"],
+            weights_kind="MASTER_PERFORMANCE_PRIOR",
             catboost_weight=pilot.get("catboost_weight"),xgboost_weight=pilot.get("xgboost_weight"),
-            weight_statuses={n:"RETIRED" if n in excluded else "ADVISER" for n in meta.NAMES},
+            weight_statuses=master_profile["statuses"],
             allocation={"strategy":.25,"meta_master":.60,"market":.15})
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
