@@ -300,16 +300,16 @@ def work(row):
         result={"status":"RESOURCE_LIMIT" if s.get("error")=="INSUFFICIENT_MEMORY_HEADROOM" else "BOOTSTRAP","samples":len(eligible_rows),"excluded":list(excluded),"error":s.get("error")}
     else:
         a,b,w=m[0];x=vector(row,excluded)
-        if not any(n not in excluded for n in all_forecasts(row)):result={"status":"NO_ADVICE","samples":len(rows),"excluded":list(excluded)}
+        if not any(n not in excluded for n in all_forecasts(row)):result={"status":"NO_ADVICE","samples":len(eligible_rows),"excluded":list(excluded)}
         else:
             ca=prediction(a,x);xb=prediction(b,x);p=choose_blend(ca,xb,w)
             side=max(range(2),key=lambda i:p[i])
             result={"status":"READY","direction":SIDES[side] if p[side]>0 else "WAIT",
                 "predicted_atr":dict(zip(SIDES,p)),"catboost_weight":w,"xgboost_weight":1-w,
-                "samples":len(rows),"excluded":list(excluded),"advisers":[n for n in all_forecasts(row) if n not in excluded]}
+                "samples":len(eligible_rows),"excluded":list(excluded),"advisers":[n for n in all_forecasts(row) if n not in excluded]}
     with LOCK:
         if len(PUBLISHED)>=32 and key not in PUBLISHED:PUBLISHED.pop(next(iter(PUBLISHED)))
-        PUBLISHED[key]={**result,"memory_status":MEMORY_HEALTH.get(key,"LOCAL_ONLY"),"stored_samples":len(rows),"model_profile":profile,"forecast_snapshot":all_forecasts(row),"bar":row["bar"],"at":at,"version":VERSION}
+        PUBLISHED[key]={**result,"memory_status":MEMORY_HEALTH.get(key,"LOCAL_ONLY"),"stored_samples":len(rows),"model_profile":profile,"forecast_snapshot":all_forecasts(row),"forecast_horizons":dict(row.get("horizons") or {}),"bar":row["bar"],"at":at,"version":VERSION}
 def loop():
     while True:
         row=JOBS.get()
@@ -330,4 +330,4 @@ def submit(row):
                 if len(RECENT)>64:RECENT.pop(next(iter(RECENT)))
             except queue.Full:pass
         p=dict(PUBLISHED.get(key) or {})
-    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 and p.get("forecast_snapshot")==all_forecasts(row) else {"status":"PENDING","excluded":[],"samples":p.get("samples",0),"model_profile":p.get("model_profile") or performance_profile([]),"memory_status":p.get("memory_status","LOADING")}
+    return p if p.get("bar")==row["bar"] and 0<=now-num(p.get("at"),-1)<=10 and p.get("forecast_snapshot")==all_forecasts(row) and p.get("forecast_horizons")==dict(row.get("horizons") or {}) else {"status":"PENDING","excluded":[],"samples":p.get("samples",0),"model_profile":p.get("model_profile") or performance_profile([]),"memory_status":p.get("memory_status","LOADING")}
