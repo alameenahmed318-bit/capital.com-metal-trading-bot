@@ -115,7 +115,8 @@ def training_resources_ready():
 
 def train(rows,excluded):
     from catboost import CatBoostRegressor
-    from xgboost import XGBRegressor
+    import xgboost as xgb
+    import numpy as np
     # Purge the chronological split by the actual outcome time.
     cut=int(len(rows)*.8);v=rows[cut:];t=[r for r in rows[:cut] if r["end"]<v[0]["at"]]
     if len(t)<100 or len(v)<30:return None
@@ -124,8 +125,12 @@ def train(rows,excluded):
         vec=vector(r,excluded)
         for i in range(2):x.append(vec+[float(i)]);y.append(max(-6.,min(6.,r["y"][i])))
     a=CatBoostRegressor(iterations=100,depth=4,learning_rate=.05,thread_count=1,verbose=False,allow_writing_files=False,random_seed=42)
-    b=XGBRegressor(n_estimators=100,max_depth=3,learning_rate=.05,n_jobs=1,random_state=42,objective="reg:squarederror")
-    a.fit(x,y);b.fit(x,y)
+    a.fit(x,y)
+    booster=xgb.train({"max_depth":3,"eta":.05,"nthread":1,"seed":42,"objective":"reg:squarederror","tree_method":"hist"},xgb.DMatrix(np.asarray(x,dtype=np.float32),label=np.asarray(y,dtype=np.float32),nthread=1),num_boost_round=100)
+    class NativePredictor:
+        def predict(self,values):
+            return booster.inplace_predict(np.asarray(values,dtype=np.float32))
+    b=NativePredictor()
     pa=[prediction(a,vector(r,excluded)) for r in v];pb=[prediction(b,vector(r,excluded)) for r in v]
     # Both participate; weights are selected on prior validation only.
     w=max((.25,.5,.75),key=lambda w:sum(score(choose_blend(u,z,w),r["y"]) for u,z,r in zip(pa,pb,v)))
