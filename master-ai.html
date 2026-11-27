@@ -54,7 +54,7 @@ el("reason").textContent=active?(!review.approved&&review.reason_ar?review.reaso
 const balanced=review.balanced_entry||{};const balancedActive=["MASTER_AI_FIRST_DEMO_V3","HYBRID_META_DEMO_V1"].includes(review.policy);
 const values=[["السوق",d.symbol||"—"],["درجة الدخول / الحد",pct(review.quality??d.confidence)+" / "+pct(review.quality_threshold)],["زمن المراجعة بعد الإغلاق",review.age_after_close_sec==null?"—":fmt(review.age_after_close_sec)+" ثانية"]];
 el("decisionKpis").innerHTML=values.map(([a,b])=>'<div><small>'+esc(a)+'</small><strong>'+esc(b)+'</strong></div>').join("");
-const names=["XGBoost","CatBoost","TiRex-2","Chronos-Bolt Tiny","TCN","LSTM Multi","Patch Transformer"];
+const names=["Extra Trees","CatBoost","TiRex-2","Chronos-Bolt Tiny","TCN","GRU","Patch Transformer"];
 const pilot=m.hybrid_meta_demo||{};
 const hybridActive=review.policy==="HYBRID_META_DEMO_V1"&&balanced.version==="HYBRID_META_DEMO_V1";
 const evidence=hybridActive?(pilot.raw||{}):(evi.status==="SHADOW_READY"?(evi.models||{}):{});
@@ -63,7 +63,7 @@ const excluded=new Set(hybridActive?(balanced.excluded||pilot.excluded||[]):[]);
 const hasForecast=n=>Object.prototype.hasOwnProperty.call(evidence,n)&&typeof evidence[n]==="number"&&Number.isFinite(evidence[n]);
 el("primaryModels").innerHTML=names.map(n=>{const has=hasForecast(n);const v=has?evidence[n]:null;const side=v==null?"—":v>.05?"BUY":v<-.05?"SELL":"WAIT";const cls=side==="BUY"?"master-buy":side==="SELL"?"master-sell":"master-wait";const status=!hybridActive?"التشكيلة الجديدة غير مفعلة":excluded.has(n)?"مستبعد من القرار — تقييم سلبي":used.has(n)?"مستخدم في القرار":has?"غير مستخدم في القرار الحالي":"لا توقع حديث";return '<div class="model-tile"><b>'+esc(n)+'</b><strong class="'+cls+'">'+esc(side)+'</strong><small>'+esc(has?"توقع مستلم · "+fmt(v)+" ATR":"لا توقع حديث")+'</small><small>'+esc(status)+'</small></div>'}).join("");
 el("modelCount").textContent=(hybridActive?"التشكيلة الجديدة نشطة · ":"التشكيلة الجديدة — بانتظار التفعيل · ")+"التوقعات المستلمة: "+names.filter(hasForecast).length+"/7 · المستخدمة في القرار الجديد: "+names.filter(n=>used.has(n)).length+"/7";
-el("hybridMasterState").innerHTML=line("حالة القيادة",hybridActive?(balanced.meta_status==="READY"?"CatBoost + XGBoost — نموذج مدرب":balanced.meta_status==="RESOURCE_LIMIT"?"جمع بيانات — التدريب مؤجل بسبب ذاكرة السيرفر":"مرحلة جمع بيانات وتدريب — ترجيح مؤقت"):"لم تتفعّل القيادة الجديدة")+line("عينات التعلم",hybridActive?balanced.meta_samples:"—")+line("وزن CatBoost",hybridActive?pct(balanced.catboost_weight):"—")+line("وزن XGBoost",hybridActive?pct(balanced.xgboost_weight):"—");
+el("hybridMasterState").innerHTML=line("حالة القيادة",hybridActive?(balanced.meta_status==="READY"?"CatBoost + XGBoost — نموذج مدرب":balanced.meta_status==="RESOURCE_LIMIT"?"جمع بيانات — التدريب مؤجل بسبب ذاكرة السيرفر":"مرحلة جمع بيانات وتدريب — ترجيح مؤقت"):"لم تتفعّل القيادة الجديدة")+line("عينات التعلم",hybridActive?balanced.meta_samples:"—")+line("وزن CatBoost Meta-Learner",hybridActive?pct(balanced.catboost_weight):"—")+line("وزن XGBoost Meta-Learner",hybridActive?pct(balanced.xgboost_weight):"—");
 const gold=balanced.gold_strategy_advisory_shadow||{};
 el("goldAdvisory").innerHTML=gold.version?'<details class="master-input"><summary>مقارنة الاستراتيجيات المساعدة · مراقبة فقط</summary>'+line("قرار المراقبة",gold.direction)+line("درجة المسار",pct(gold.score))+line("إشارة إضافية",gold.additional_signal?"نعم":"لا")+line("صلاحية التنفيذ","غير مفعل")+'</details>':"";
 
