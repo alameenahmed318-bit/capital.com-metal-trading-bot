@@ -16,7 +16,7 @@ def run_worker(lane,email,password,session,guard,market,epochs):
     import model_arena_worker as arena
     original_login=arena.login
     original_api=arena.api
-    arena.MARKETS=("BTCUSD","XAUUSD") if market=="BOTH" else (market,)
+    arena.MARKETS=("XAUUSD","BTCUSD") if market=="BOTH" else (market,)
     def shared_login(_email,_password):
         with guard:
             now=time.monotonic()
@@ -24,10 +24,10 @@ def run_worker(lane,email,password,session,guard,market,epochs):
                 session["token"]=original_login(email,password)
                 session["expires"]=time.monotonic()+1200
             return session["token"]
-    def shared_api(market_name,path,_token,body=None):
+    def shared_api(market_name,path,_token,body=None,timeout=45):
         token=shared_login(email,password)
         try:
-            return original_api(market_name,path,token,body)
+            return original_api(market_name,path,token,body,timeout=timeout)
         except HTTPError as exc:
             print(lane,market_name,path.split("?")[0],"HTTP",exc.code,flush=True)
             if exc.code!=401:
@@ -35,17 +35,19 @@ def run_worker(lane,email,password,session,guard,market,epochs):
             # Refresh once only on expired credentials. Never bypass 403.
             with guard:
                 if session.get("token")==token:session["expires"]=0
-            return original_api(market_name,path,shared_login(email,password),body)
+            return original_api(market_name,path,shared_login(email,password),body,timeout=timeout)
     arena.login=shared_login
     arena.api=shared_api
     try:
         if lane=="ARENA":
             import arena_live_worker as worker
+            worker.ENTRY_HORIZON=1
             worker.DIRECTION_TREES=FAST
             worker.PRETRAINED=FORECAST
             worker.live(email,password)
         else:
             import parallel_shadow_worker as worker
+            worker.ENTRY_HORIZON=1
             worker.NAMES=PARALLEL
             worker.USE_ANOMALY=False
             worker.main(email,password,["--market",market,"--epochs",str(epochs)])
