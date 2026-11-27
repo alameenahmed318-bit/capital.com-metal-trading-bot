@@ -1,7 +1,7 @@
 name: Connection resilience and policy regression
 on:
   push:
-    branches: [fix/connection-resilience-20261127]
+    branches: [fix/connection-resilience-20261127, fix/auth-recovery-20261127]
 jobs:
   tests:
     runs-on: ubuntu-latest

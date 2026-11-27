@@ -1,7 +1,7 @@
 """Bounded database transport and diagnostics. No authorization caching.
 Independent lanes protect live requests from research/write congestion.
 """
-import threading,time,urllib.error
+import threading,time,urllib.error,hashlib,copy
 from collections import OrderedDict
 
 class Busy(RuntimeError):pass
@@ -24,7 +24,7 @@ class Lane:
             try:
                 result=fn(self.timeout)
             except urllib.error.HTTPError as exc:
-                if exc.code not in (429,502,503,504):
+                if exc.code not in (429,500,502,503,504):
                     if probe:self._success(gen,probe)
                     raise
                 self._failure(gen);raise
@@ -45,16 +45,56 @@ class Lane:
         with self.lock:
             if self.generation==gen and probe:self.until=0.;self.probe=False
 
-# Limits are per market process. Never reuse auth or stale order permits.
+# No authorization cache: collapse only overlapping identical read requests.
+# Once a response completes the next request is independently authenticated.
+class SingleFlight:
+    def __init__(self,limit=128):
+        self.lock=threading.Lock();self.pending={};self.limit=limit
+    def call(self,key,fn):
+        with self.lock:
+            state=self.pending.get(key)
+            leader=state is None
+            if leader:
+                if len(self.pending)>=self.limit:raise Busy("auth requests busy")
+                state={"done":threading.Event(),"result":None,"error":None}
+                self.pending[key]=state
+        if leader:
+            try:
+                state["result"]=fn()
+            except Exception as exc:
+                state["error"]=exc
+            finally:
+                with self.lock:
+                    self.pending.pop(key,None)
+                    state["done"].set()
+        elif not state["done"].wait(6.):
+            raise Busy("auth request still pending")
+        if state["error"] is not None:
+            # HTTPError carries a mutable response stream. Never consume the
+            # same response body twice or share a provider error as a login.
+            if leader:raise state["error"]
+            raise Busy("shared authentication failed")
+        return copy.deepcopy(state["result"])
+
+# Limits per market process. Browser auth is isolated from MT5 identity and
+# normal DB reads; a failed login service cannot trip the REST lane.
 LIVE=Lane(6,5.,3.)
+BROWSER_AUTH=Lane(2,5.,3.)
+TERMINAL_AUTH=Lane(2,5.,3.)
 RESEARCH=Lane(2,5.,5.)
 DIAGNOSTICS=Lane(1,5.,5.)
-def database_call(fn,path,method):
+AUTH_FLIGHTS=SingleFlight()
+def database_call(fn,path,method,bearer=None,admin=False):
     name=threading.current_thread().name
     if name=="alzool-diagnostic-batch":lane=DIAGNOSTICS
+    elif path.startswith("/auth/v1/"):
+        lane=TERMINAL_AUTH if admin else BROWSER_AUTH
     elif name in ("strategy-evidence","specialist-research","alzool-offline-m1-diagnostic","alzool-closed-history") or "/alzool_engine_signal_events" in path or "/alzool_engine_market_candles" in path:
         lane=RESEARCH
     else:lane=LIVE
+    if method=="GET" and (path=="/auth/v1/user" and bearer and not admin or admin and path.startswith("/auth/v1/admin/users")):
+        identity=hashlib.sha256(str(bearer or "").encode()).hexdigest()
+        return AUTH_FLIGHTS.call((path,identity,admin),lambda:lane.call(fn))
     return lane.call(fn)
 
 class DiagnosticQueue:

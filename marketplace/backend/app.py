@@ -127,7 +127,7 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
         with urllib.request.urlopen(req,timeout=timeout) as r:
             raw=r.read(); return json.loads(raw.decode()) if raw else {}
     try:
-        return database_call(send,path,method)
+        return database_call(send,path,method,bearer=bearer,admin=admin)
     except urllib.error.HTTPError as e:
         detail=e.read().decode("utf-8","replace")
         try:
