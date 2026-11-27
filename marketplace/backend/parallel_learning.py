@@ -59,5 +59,5 @@ def sanitize_report(r):
         v=num(r.get(k))
         if v is not None and 0<=v<=1:out[k]=v
     if r.get("trade_status") in ("INSUFFICIENT","VALIDATED","NOT_VALIDATED","UNAVAILABLE"):out["trade_status"]=r["trade_status"]
-    if isinstance(r.get("paused"),list):out["paused"]=[x for x in r["paused"][:6] if x in ("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM","Isolation Forest")]
+    if isinstance(r.get("paused"),list):out["paused"]=[x for x in r["paused"][:6] if x in ("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM","Isolation Forest","GRU")]
     return out
