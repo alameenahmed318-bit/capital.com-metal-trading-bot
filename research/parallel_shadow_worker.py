@@ -21,6 +21,7 @@ from torch import nn
 import model_arena_worker as arena
 torch.set_num_threads(1)
 NAMES=("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM")
+USE_ANOMALY=True
 FIELDS=("time","open","high","low","close","tick_volume","spread_points","point_size")
 def array(rows):
     return np.asarray([[float(r.get(k,0)) for k in FIELDS] for r in rows],dtype=np.float64)
@@ -34,6 +35,10 @@ def feature(b):
 class Recurrent(nn.Module):
     def __init__(self,d):
         super().__init__();self.r=nn.LSTM(d,16,batch_first=True);self.h=nn.Linear(16,1)
+    def forward(self,x):return self.h(self.r(x)[0][:,-1]).squeeze(-1)
+class GRU(nn.Module):
+    def __init__(self):
+        super().__init__();self.r=nn.GRU(4,16,batch_first=True);self.h=nn.Linear(16,1)
     def forward(self,x):return self.h(self.r(x)[0][:,-1]).squeeze(-1)
 class TCN(nn.Module):
     def __init__(self):
@@ -60,11 +65,11 @@ def fit(b,epochs,paused=(),slippage_points=None):
     if len(xs)<300:raise ValueError("insufficient contiguous archive")
     cut=int(.8*len(xs));x=torch.tensor(np.asarray(xs[:cut]));y=torch.tensor(np.asarray(ys[:cut]),dtype=torch.float32)
     models={};thresholds={}
-    for name,maker in (("TCN",TCN),("PatchTST",OfficialPatch),("LSTM Multi",lambda:Recurrent(4)),("Patch Transformer",Patch),("LSTM",lambda:Recurrent(1))):
-        if name in paused:continue
+    for name,maker in (("TCN",TCN),("PatchTST",OfficialPatch),("LSTM Multi",lambda:Recurrent(4)),("GRU",GRU),("Patch Transformer",Patch),("LSTM",lambda:Recurrent(1))):
+        if name not in NAMES or name in paused:continue
         try:
             torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.001)
-            for _ in range(epochs):
+            for _ in range(0 if name=="GRU" else epochs):
                 for ix in torch.randperm(len(x)).split(128):
                     q=x[ix];q=q[:,:,:1] if name=="LSTM" else q
                     loss=nn.functional.smooth_l1_loss(m(q),y[ix]);opt.zero_grad();loss.backward();opt.step()
@@ -77,10 +82,32 @@ def fit(b,epochs,paused=(),slippage_points=None):
                 s=np.where(abs(pv)>t,np.sign(pv),0.);n=int(np.count_nonzero(s))
                 if n>=20:options.append((float((s*truth-(s!=0)*cost).sum()),t))
             thresholds[name]=max(options)[1] if options else .05
+            if name in ("LSTM Multi","GRU"):
+                # Chronological validation and later untouched holdout, with
+                # non-overlapping 3-minute outcomes. Refit from scratch below.
+                from adviser_validation import select_threshold,metrics
+                a=int(.6*len(xs));b=int(.8*len(xs))
+                tx=torch.tensor(np.asarray(xs[:a-3]));ty=torch.tensor(np.asarray(ys[:a-3]),dtype=torch.float32)
+                torch.manual_seed(42);m=maker();opt=torch.optim.AdamW(m.parameters(),lr=.0007,weight_decay=.01)
+                for _ in range(epochs):
+                    for ix in torch.randperm(len(tx)).split(128):
+                        loss=nn.functional.smooth_l1_loss(m(tx[ix]),ty[ix]);opt.zero_grad();loss.backward();opt.step()
+                m.eval()
+                vi=list(range(a,b-3,2));ti=list(range(b,len(xs),2))
+                with torch.no_grad():
+                    pv=m(torch.tensor(np.asarray([xs[i] for i in vi]))).numpy()
+                    pt=m(torch.tensor(np.asarray([xs[i] for i in ti]))).numpy()
+                # Choose absolute threshold on validation only; score actual side net.
+                vp=[abs(float(p)) for p in pv]
+                vy=[float(np.sign(p)*ys[i]-costs[i]) for p,i in zip(pv,vi)]
+                t=select_threshold(vp,vy,20)
+                report=metrics([abs(float(p)) for p in pt],[float(np.sign(p)*ys[i]-costs[i]) for p,i in zip(pt,ti)],t,20) if t is not None else {"eligible":False}
+                print(name,"RETEST",report,"threshold",t,flush=True)
+                thresholds[name]=t if report["eligible"] else float("inf")
             models[name]=m
             print(name,"FIT_SHADOW",len(x),"threshold",thresholds[name],flush=True)
         except Exception as e:print(name,"UNAVAILABLE",type(e).__name__,flush=True)
-    forest=IsolationForest(n_estimators=64,contamination=.03,n_jobs=1,random_state=42).fit(x.numpy().reshape(len(x),-1))
+    forest=IsolationForest(n_estimators=64,contamination=.03,n_jobs=1,random_state=42).fit(x.numpy().reshape(len(x),-1)) if USE_ANOMALY else None
     return models,forest,thresholds
 def predict(fitted,b,paused=()):
     x,atr=feature(b);q=torch.tensor(x[None]);models,forest,thresholds=fitted;out={}
@@ -89,7 +116,7 @@ def predict(fitted,b,paused=()):
             if name in paused:continue
             v=float(m(q[:,:,:1] if name=="LSTM" else q)[0])
             if math.isfinite(v):out[name]=max(-6.,min(6.,v)) if abs(v)>thresholds.get(name,.05) else 0.
-    out["Isolation Forest"]=float(np.clip(-forest.decision_function(x.reshape(1,-1))[0],-1,1))
+    if forest is not None:out["Isolation Forest"]=float(np.clip(-forest.decision_function(x.reshape(1,-1))[0],-1,1))
     return out,atr
 def exact_archive(market,token,cid,symbol):
     params={"client":cid,"symbol":symbol};bars={}
@@ -104,11 +131,12 @@ def exact_archive(market,token,cid,symbol):
         if not d.get("next_cursor"):break
         params["cursor"]=d["next_cursor"]
     return [bars[t] for t in sorted(bars)]
-def main():
+def main(email=None,password=None,argv=None):
     p=argparse.ArgumentParser();p.add_argument("--epochs",type=int,default=8);p.add_argument("--market",choices=["XAUUSD","BTCUSD","BOTH"],default="BOTH")
-    a=p.parse_args()
+    a=p.parse_args(argv)
     if not 1<=a.epochs<=40:raise ValueError("epochs 1..40")
-    email=input("Owner email: ").strip();password=getpass.getpass("Owner password: ")
+    if email is None:email=input("Owner email: ").strip()
+    if password is None:password=getpass.getpass("Owner password: ")
     token=arena.login(email,password);renew=time.monotonic()+1500
     markets=arena.MARKETS if a.market=="BOTH" else (a.market,)
     fits={};last={};nextfit={};state={};reports={};calibrators={};paths={};scopes={};pause_until={}
@@ -117,6 +145,11 @@ def main():
         if scopes.get(market)!=key:
             scopes[market]=key;paths[market]=state_path(email,cid,symbol);state[market]=load(paths[market]);last.pop(market,None);nextfit.pop(market,None)
         d=state[market];d.setdefault("outcomes",{});d.setdefault("pending",[]);d.setdefault("pause_until",{})
+        # One-time owner-requested re-evaluation, preserving all old outcomes.
+        if "LSTM Multi" in NAMES and not d.get("lstm_retest_v2"):
+            now=time.time();d["pause_until"]["LSTM Multi"]=now
+            d["lstm_retest_v2"]=True;save(paths[market],d)
+            print(market,"LSTM Multi RETEST_REQUESTED",flush=True)
         return d
     while True:
         if time.monotonic()>=renew:
@@ -177,6 +210,9 @@ def main():
                 pred,scale=predict(fits[market][1],b,paused)
                 payload={}
                 for name,v in pred.items():
+                    if name in ("LSTM Multi","GRU") and math.isinf(fits[market][1][2].get(name,0.)):
+                        print(market,name,"MONITOR_ONLY_RETEST_NOT_VALIDATED",flush=True)
+                        continue
                     q=d["outcomes"].get(name,[])
                     payload[name]={"forecast":v,"samples":len(q),"accuracy":sum(t[1] for t in q)/len(q) if q else None,"net_atr":sum(t[2] for t in q) if q else None}
                 report={**reports.get(market,{}),"persisted_samples":sum(len(q) for q in d["outcomes"].values()),

@@ -2,7 +2,8 @@
 import math,time,threading
 from collections import OrderedDict
 from market_symbols import supported_market_symbol
-from model_arena_api import LIVE_MODELS
+from model_arena_api import LIVE_MODELS,HYBRID_ONLY_MODELS
+from hybrid_demo_pilot import allowed as hybrid_allowed
 ACTIONS=("ADDON","COOLING","RECOVERY")
 LOCK=threading.Lock()
 CACHE=OrderedDict()
@@ -33,8 +34,9 @@ def accept(cid,item,body):
     if ctx.get("status")!="READY" or body.get("symbol")!=ctx["symbol"] or body.get("bar_time")!=ctx["bar_time"]:
         return {"accepted":False,"reason":"STALE_OR_WRONG_BAR"}
     models={}
+    accepted_names=LIVE_MODELS+(HYBRID_ONLY_MODELS if hybrid_allowed(item) else ())
     for name,v in (body.get("models") or {}).items():
-        if name in LIVE_MODELS and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
+        if name in accepted_names and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
             models[name]=round(max(-6,min(6,v)),5)
     actions={}
     for action in ACTIONS:

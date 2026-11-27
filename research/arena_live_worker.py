@@ -14,72 +14,93 @@ ACTIONS=("ADDON","COOLING","RECOVERY")
 def estimator():
     from lightgbm import LGBMRegressor
     return LGBMRegressor(n_estimators=80,max_depth=3,num_leaves=7,learning_rate=.05,n_jobs=1,verbosity=-1,random_state=42)
+from adviser_validation import split_rows,nonoverlap,metrics,select_threshold,SideModel,ActionModel
+
+def fit_regressor(name,depth):
+    if name=="Extra Trees":
+        from sklearn.ensemble import ExtraTreesRegressor
+        return ExtraTreesRegressor(n_estimators=96,max_depth=depth+2,min_samples_leaf=32,max_features=.8,n_jobs=1,random_state=42)
+    if name=="XGBoost":
+        from xgboost import XGBRegressor
+        return XGBRegressor(n_estimators=100,max_depth=depth,n_jobs=1,learning_rate=.035,random_state=42,tree_method="hist",min_child_weight=12,reg_lambda=5)
+    if name=="CatBoost":
+        from catboost import CatBoostRegressor
+        return CatBoostRegressor(iterations=100,depth=depth,thread_count=1,learning_rate=.035,verbose=False,allow_writing_files=False,random_seed=42,l2_leaf_reg=8)
+    return estimator()
+
+def validated_fit(name,rows,origin,end,feature,target,minimum=600,min_signals=30):
+    parts=split_rows(rows,origin,end,minimum)
+    if parts is None:return None,{"status":"INSUFFICIENT"}
+    tr,va,te=parts
+    va=nonoverlap(va,origin,end);te=nonoverlap(te,origin,end)
+    if len(tr)<100 or min(len(va),len(te))<min_signals:return None,{"status":"INSUFFICIENT"}
+    base={"train":len(tr),"validation":len(va),"test":len(te),"signals":0,"positive":0,"net_proxy":0.}
+    candidates=[]
+    # Compare a shallow and standard tree on validation only; holdout never
+    # selects the candidate. All candidates use the same temporal split.
+    for depth in ((2,3) if name in ("XGBoost","Extra Trees") else (3,)):
+        candidate=fit_regressor(name,depth)
+        candidate.fit([feature(r) for r in tr],[max(-6,min(6,target(r))) for r in tr])
+        pv=candidate.predict([feature(r) for r in va])
+        threshold=select_threshold(pv,[target(r) for r in va],min_signals)
+        if threshold is not None:
+            val=metrics(pv,[target(r) for r in va],threshold,min_signals)
+            candidates.append((val["stress_net_proxy"],candidate,threshold,depth))
+    if not candidates:return None,{**base,"status":"VALIDATION_REJECTED"}
+    _,model,threshold,depth=max(candidates,key=lambda q:q[0])
+    base["depth"]=depth
+    pt=model.predict([feature(r) for r in te])
+    result=metrics(pt,[target(r) for r in te],threshold,min_signals)
+    report={**base,**result,"threshold":threshold,"status":"PASSED" if result["eligible"] else "HOLDOUT_REJECTED"}
+    return ((model,threshold) if result["eligible"] else None),report
+
 def train_actions(bars):
     rows=[]
     for i in range(LOOKBACK,len(bars)-5):
         past=bars[i-LOOKBACK:i+1];f=features(past)
         if f is None or bars[i+5]["time"]-bars[i]["time"]!=300:continue
         x,atr=f;future=bars[i+1:i+6];entry=future[0]["open"]
-        cost=future[0]["spread_points"]*future[0]["point_size"]/atr
         for side,sign in (("BUY",1),("SELL",-1)):
             move5=sign*x[1];move15=sign*x[2]
             close=[sign*(b["close"]-entry)/atr for b in future]
             adverse=max(0,max((entry-b["low"])/atr if sign==1 else (b["high"]-entry)/atr for b in future))
-            # Different historical contexts, horizons and path penalties.
-            for action,eligible,target in (
-                ("ADDON",move5>.35,close[2]-cost-.3*adverse),
-                ("COOLING",move5<-.5,close[4]-cost-.6*adverse),
-                ("RECOVERY",move15<-1,close[4]-cost-adverse)):
-                if eligible:rows.append((action,side,bars[i]["time"],x,max(-6,min(6,target))))
+            for action,eligible,j,penalty in (
+                ("ADDON",move5>.35,2,.3),("COOLING",move5<-.5,4,.6),("RECOVERY",move15<-1,4,1.)):
+                cost_bar=future[0] if side=="BUY" else future[j]
+                cost=cost_bar["spread_points"]*cost_bar["point_size"]/atr
+                if eligible and cost>=0:rows.append((action,side,bars[i]["time"],x,close[j]-cost-penalty*adverse))
     fitted={};reports={}
     for action in ACTIONS:
         for side in ("BUY","SELL"):
             r=[x for x in rows if x[0]==action and x[1]==side]
-            n=len(r);split=int(n*.8)
-            if n<150:continue
-            test=r[split:];train=[v for v in r[:split] if v[2]+300<test[0][2]]
-            if len(train)<100:continue
-            model=estimator();model.fit([v[3] for v in train],[v[4] for v in train])
-            predictions=model.predict([v[3] for v in test])
-            take=[v[4] for p,v in zip(predictions,test) if p>0]
-            reports[action+":"+side]={"train":len(train),"test":len(test),"signals":len(take),"positive":sum(v>0 for v in take),"net_proxy":round(sum(take),4)}
-            fitted[(action,side)]=model
+            try:
+                chosen,report=validated_fit("LightGBM",r,lambda x:x[2],lambda x:x[2]+300,lambda x:x[3],lambda x:x[4],minimum=300,min_signals=15)
+                reports[action+":"+side]=report
+                if chosen:fitted[(action,side)]=ActionModel(*chosen)
+            except Exception as exc:
+                reports[action+":"+side]={"status":"ERROR","signals":0,"positive":0,"net_proxy":0.}
+                print(action,side,"FIT_ERROR",type(exc).__name__,flush=True)
     return fitted,reports
 TREE_RETRY={}
+DIRECTION_TREES=("LightGBM","XGBoost","CatBoost")
 def train_direction(bars,market="UNKNOWN"):
     d=samples(bars)
     if len(d)<600:return {}
-    # Purge future-label overlap at the chronological split, evaluate using
-    # recorded side-specific costs, and only refit a validated tree.
-    cut=int(len(d)*.8)
-    holdout=d[cut:]
-    train=[v for v in d[:cut] if v["end"]<holdout[0]["time"]]
-    if len(train)<400 or len(holdout)<100:return {}
     models={}
-    for name in ("LightGBM","XGBoost","CatBoost"):
+    for name in DIRECTION_TREES:
         key=(market,name)
         if time.monotonic()<TREE_RETRY.get(key,0):
             print(market,name,"FIT_COOLDOWN",flush=True);continue
-        try:
-            if name=="LightGBM":m=estimator()
-            elif name=="XGBoost":
-                from xgboost import XGBRegressor
-                m=XGBRegressor(n_estimators=80,max_depth=3,n_jobs=1,learning_rate=.05,random_state=42)
-            else:
-                from catboost import CatBoostRegressor
-                m=CatBoostRegressor(iterations=80,depth=4,thread_count=1,learning_rate=.05,verbose=False,allow_writing_files=False,random_seed=42)
-            m.fit([v["x"] for v in train],[max(-6,min(6,v["y"])) for v in train])
-            pred=m.predict([v["x"] for v in holdout])
-            selected=[v["buy"] if p>0 else v["sell"] for p,v in zip(pred,holdout)
-                      if math.isfinite(float(p)) and abs(p)>.05]
-            print(name,"HOLDOUT",len(train),len(holdout),"signals",len(selected),
-                  "net_proxy",round(sum(selected),5),flush=True)
-            if len(selected)<30 or sum(selected)<=0:
-                TREE_RETRY[key]=time.monotonic()+21600;continue
-            m.fit([v["x"] for v in d],[max(-6,min(6,v["y"])) for v in d])
-            models[name]=m;TREE_RETRY.pop(key,None)
-        except Exception as e:
-            TREE_RETRY[key]=time.monotonic()+21600;print(name,"FIT_ERROR",type(e).__name__,flush=True)
+        chosen_sides={}
+        for side in ("BUY","SELL"):
+            try:
+                chosen,report=validated_fit(name,d,lambda r:r["time"],lambda r:r["end"],lambda r:r["x"],lambda r:r[side.lower()])
+                print(market,name,side,"COST_AWARE",report,flush=True)
+                if chosen:chosen_sides[side]=chosen
+            except Exception as exc:print(market,name,side,"FIT_ERROR",type(exc).__name__,flush=True)
+        if chosen_sides:
+            models[name]=SideModel(chosen_sides);TREE_RETRY.pop(key,None)
+        else:TREE_RETRY[key]=time.monotonic()+3600
     return models
 PRETRAINED=("TiRex-2","Chronos-Bolt Tiny","Chronos-2","TimesFM-2.5")
 
@@ -166,9 +187,8 @@ def live(email,password):
                         actions,reports={},{}
                         print(market,"ACTION_FIT_ERROR",type(exc).__name__,flush=True)
                     with lock:
-                        old=cache.get(market)
-                        if old and old[0]==cid:
-                            direction={**old[1],**direction};actions={**old[2],**actions}
+                        # Replace only on completed fresh validation. Rejected
+                        # models must not remain eligible through stale cache.
                         cache[market]=(cid,direction,actions)
                     print(market,"FIT",len(bars),"direction",list(direction),"actions",reports,flush=True)
                     arena.api(market,"action-training",auth,{"client":cid,"candles":len(bars),"reports":reports})
@@ -177,7 +197,7 @@ def live(email,password):
                     print(market,"FIT_ERROR",type(exc).__name__,flush=True)
             time.sleep(5)
     threading.Thread(target=train_loop,daemon=True,name="arena-training-lane").start()
-    print("ALZOOL LIVE ADVISERS | seven models | cloud Arena OFF | no order permission",flush=True)
+    print("ALZOOL LIVE ADVISERS | "+", ".join(DIRECTION_TREES+PRETRAINED)+" | no order permission",flush=True)
     while True:
         if time.monotonic()>renew:
             try:

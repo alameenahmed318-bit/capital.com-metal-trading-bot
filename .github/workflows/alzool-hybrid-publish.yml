@@ -28,7 +28,7 @@ jobs:
           source=Path('master-ai.html').read_text()
           scripts=re.findall(r'<script>(.*?)</script>',source,re.S)
           Path('/tmp/master-ui.js').write_text('\n'.join(scripts))
-          assert 'const names=["XGBoost","CatBoost","TiRex-2","Chronos-Bolt Tiny","TCN","LSTM Multi","Patch Transformer"]' in source
+          assert 'const names=["Extra Trees","CatBoost","TiRex-2","Chronos-Bolt Tiny","TCN","GRU","Patch Transformer"]' in source
           assert 'if(!token||busy||document.hidden)' in source
           PY
           node --check /tmp/master-ui.js

@@ -69,6 +69,18 @@ class ArenaMasterTest(unittest.TestCase):
         self.assertEqual(set(a.evidence("owner",self.item["strategy_decision"])["models"]),set(LIVE_MODELS))
         self.assertEqual(len(LIVE_MODELS),7)
 
+    def test_extra_trees_demo_only_no_legacy_vote(self):
+        import master_ai as m
+        body={"symbol":"XAUUSD","bar_time":self.bar,"models":{"Extra Trees":.5}}
+        self.assertFalse(a.accept("owner",self.item,body)["accepted"])
+        demo={**self.item,"client_id":"owner","master_direct_demo_capable":True,"account":{"trade_mode":"DEMO"}}
+        with patch.dict("os.environ",{"ALZOOL_HYBRID_DEMO":"1"}):
+            self.assertTrue(a.accept("owner",demo,body)["accepted"])
+            evidence=a.evidence("owner",self.item["strategy_decision"])
+            self.assertEqual(evidence["models"],{"Extra Trees":.5})
+            self.assertEqual(m.arena_votes(self.item["strategy_decision"],evidence),{})
+            self.assertFalse(a.accept("other",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
+
     def test_master_uses_fresh_local_advice_without_permission(self):
         import master_ai as m
         from model_arena_api import LIVE_MODELS
