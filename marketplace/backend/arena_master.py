@@ -38,6 +38,10 @@ def accept(cid,item,body):
     for name,v in (body.get("models") or {}).items():
         if name in accepted_names and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
             models[name]=round(max(-6,min(6,v)),5)
+    monitor={}
+    if hybrid_allowed(item):
+        for name,v in (body.get('monitor_models') or {}).items():
+            if name in ('Extra Trees','CatBoost') and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):monitor[name]=round(max(-6,min(6,v)),5)
     actions={}
     for action in ACTIONS:
         sides=(body.get("actions") or {}).get(action,{})
@@ -48,17 +52,20 @@ def accept(cid,item,body):
             if isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
                 valid[side]=round(max(-6,min(6,v)),5)
         if valid:actions[action]=valid
-    if not models and not any(actions.values()):return {"accepted":False,"reason":"NO_PREDICTIONS"}
+    if not models and not monitor and not any(actions.values()):return {"accepted":False,"reason":"NO_PREDICTIONS"}
     key=(cid,ctx["symbol"],ctx["bar_time"])
     with LOCK:
         previous=CACHE.get(key,{})
         merged={**previous.get("models",{}),**models}
+        merged_monitor={**previous.get("monitor_models",{}),**monitor}
+        for name in monitor:merged.pop(name,None)
+        for name in models:merged_monitor.pop(name,None)
         # Partial model reports must never erase action evidence for this bar.
         # Merge by action AND side; empty or invalid updates are no-ops.
         merged_actions={action:dict(sides) for action,sides in previous.get("actions",{}).items()}
         for action,sides in actions.items():
             merged_actions[action]={**merged_actions.get(action,{}),**sides}
-        CACHE[key]={"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
+        CACHE[key]={"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"monitor_models":merged_monitor,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
         CACHE.move_to_end(key)
         while len(CACHE)>128:CACHE.popitem(last=False)
     return {"accepted":True,"execution_authorized":False}
