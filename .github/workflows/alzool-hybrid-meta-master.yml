@@ -1,0 +1,23 @@
+name: AL-ZOOL hybrid meta-master smoke
+on:
+  push:
+    branches:
+      - research/hybrid-meta-master-20261127
+    paths:
+      - research/hybrid_meta_master.py
+      - .github/workflows/alzool-hybrid-meta-master.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==1.26.4 catboost==1.2.8 xgboost==2.1.4
+      - run: python -m py_compile research/hybrid_meta_master.py
+      - run: python research/hybrid_meta_master.py --self-test --out /tmp/meta-smoke.json
