@@ -1,9 +1,9 @@
 """Independent owner/market shadow store. No import by decision, permit, or execution modules."""
 import math,time,threading
 from collections import OrderedDict
-NAMES=("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM","Ensemble","Isolation Forest")
-DIRECTION=NAMES[:5]
-FAMILIES={"CONV":("TCN",),"RECURRENT":("LSTM Multi","LSTM"),"PATCH":("PatchTST","Patch Transformer")}
+NAMES=("TCN","PatchTST","LSTM Multi","Patch Transformer","LSTM","GRU","Ensemble","Isolation Forest")
+DIRECTION=NAMES[:6]
+FAMILIES={"CONV":("TCN",),"RECURRENT":("LSTM Multi","LSTM","GRU"),"PATCH":("PatchTST","Patch Transformer")}
 CACHE=OrderedDict();LOCK=threading.Lock()
 def number(v,lo,hi):
     if isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or not lo<=v<=hi:return None
