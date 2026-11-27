@@ -8,7 +8,7 @@ CACHE=OrderedDict();LOCK=threading.Lock()
 def number(v,lo,hi):
     if isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) or not lo<=v<=hi:return None
     return float(v)
-def accept(uid,market,ctx,data,now=None):
+def accept(uid,market,ctx,data,now=None,return_evidence=False):
     now=time.time() if now is None else now
     if not isinstance(data,dict) or ctx.get("status")!="READY" or data.get("client")!=ctx.get("client") or data.get("symbol")!=ctx.get("symbol") or data.get("bar_time")!=ctx.get("bar_time"):
         return {"accepted":False,"reason":"STALE_OR_WRONG_CONTEXT","execution_authorized":False}
@@ -47,7 +47,12 @@ def accept(uid,market,ctx,data,now=None):
         if old and old["bar_time"]>bar:return {"accepted":False,"reason":"OUT_OF_ORDER","execution_authorized":False}
         CACHE[key]=value;CACHE.move_to_end(key)
         while len(CACHE)>64:CACHE.popitem(last=False)
-    return {"accepted":True,"execution_authorized":False}
+    result={"accepted":True,"execution_authorized":False}
+    if return_evidence:
+        result["_archive_evidence"]={"symbol":value["symbol"],"market":market,"bar_time":bar,"received_at":now,
+            "forecasts":{n:rows[n]["forecast"] for n in DIRECTION if n in rows},
+            "status":"SHADOW_READY","execution_authorized":False}
+    return result
 def snapshot(uid,market,now=None):
     now=time.time() if now is None else now
     with LOCK:r=CACHE.get((str(uid),market))
