@@ -155,7 +155,7 @@ class RecoveryCandleChecks(unittest.TestCase):
         self.assertIn('AL-ZOOL RECOVERY WAIT CANDLE',src)
 
 
-class BidirectionalRecoveryTests(unittest.TestCase):
+class SameSideRecoveryCapabilityTests(unittest.TestCase):
     def run_plan(self, existing="SELL", candle="BUY", favored="BUY", capable=True, **overrides):
         x=snap(side=existing,candle_side=candle)
         x["recovery_bidirectional_capable"]=capable
@@ -164,13 +164,17 @@ class BidirectionalRecoveryTests(unittest.TestCase):
            "master":{"mode":"MASTER","scores":{"BUY":1 if favored=="BUY" else .1,
                                                "SELL":1 if favored=="SELL" else .1}}}
         return plan_account_actions(x,d,{},{ "approved":True},settings())
-    def test_buy_recovery_against_losing_sell_basket(self):
+    def test_buy_recovery_against_losing_sell_basket_blocked(self):
         r=self.run_plan()
-        self.assertEqual(r["buy"],"RECOVERY_PROPOSAL",r)
-        self.assertEqual(r["actions"][0]["lot_cap"],.06)
-    def test_sell_recovery_against_losing_buy_basket(self):
+        self.assertEqual(r["recovery"]["direction_mode"],"SAME_SIDE")
+        self.assertTrue(all(a["lot_cap"]==0 for a in r["actions"]),r)
+    def test_sell_recovery_against_losing_buy_basket_blocked(self):
         r=self.run_plan(existing="BUY",candle="SELL",favored="SELL")
+        self.assertTrue(all(a["lot_cap"]==0 for a in r["actions"]),r)
+    def test_capable_client_same_side_still_allowed(self):
+        r=self.run_plan(existing="SELL",candle="SELL",favored="SELL")
         self.assertEqual(r["sell"],"RECOVERY_PROPOSAL",r)
+        self.assertEqual(r["actions"][0]["lot_cap"],.06)
     def test_legacy_or_netting_client_cannot_hedge(self):
         r=self.run_plan(capable=False)
         self.assertEqual(r["recovery"]["candle_confirmation"]["state"],"WAIT_DIRECTION",r)
