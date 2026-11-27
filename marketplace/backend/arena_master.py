@@ -34,7 +34,8 @@ def accept(cid,item,body):
     if ctx.get("status")!="READY" or body.get("symbol")!=ctx["symbol"] or body.get("bar_time")!=ctx["bar_time"]:
         return {"accepted":False,"reason":"STALE_OR_WRONG_BAR"}
     models={}
-    accepted_names=LIVE_MODELS+(HYBRID_ONLY_MODELS if hybrid_allowed(item) else ())
+    is_demo=hybrid_allowed(item)
+    accepted_names=() if body.get("horizon")==1 and not is_demo else LIVE_MODELS+(HYBRID_ONLY_MODELS if is_demo else ())
     for name,v in (body.get("models") or {}).items():
         if name in accepted_names and isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v):
             models[name]=round(max(-6,min(6,v)),5)
