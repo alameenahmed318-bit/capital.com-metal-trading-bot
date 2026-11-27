@@ -74,6 +74,13 @@ def _allowed(client_id,snapshot,decision,gate,council,risk,settings,now,council_
     side=action.get("side")
     if side not in ("BUY","SELL"):
         return blocked("اتجاه الإجراء غير صالح")
+    if action["action"]=="RECOVERY_PROPOSAL":
+        # Independent execution-time check, also applied when claiming a nonce.
+        symbol=snapshot.get("symbol")
+        positions=snapshot.get("positions") or []
+        expected=0 if side=="BUY" else 1
+        if not positions or any(p.get("symbol")!=symbol or _num(p.get("type"),-1)!=expected for p in positions):
+            return blocked("رفض التعافي: اتجاه الإجراء لا يطابق جميع المراكز الحالية")
     # Existing-position add-on/cooling decisions use the position's price,
     # ATR, available Hybrid votes and owner settings. New-entry direction
     # must not veto independent position management after those checks.
