@@ -227,13 +227,13 @@ def review(decision,snapshot,settings,now_unix,*,live_arena=False):
         trial=evaluate(d,item,settings,now_unix)
         selected=trial["selected"]
         detail=trial["scores"].get(selected,{})
-        base.update(policy=VERSION,route="DIRECT_DEMO",balanced_entry=trial,
+        base.update(policy=trial["version"],route="DIRECT_DEMO",balanced_entry=trial,
                     direct_timing_shadow=direct_timing_shadow(trial),
                     quality=detail.get("score"),quality_threshold=trial["threshold"],
                     collection_limit_sec=0.,legacy_pending_optional=True,
                     price_deviation_atr=detail.get("price_deviation_atr"))
         if trial["approved"] and selected==side and detail.get("strategy_id")==d.get("strategy_id"):
-            return result("REVIEWED","MASTER التجريبي 60/25/15: الاتجاه بقيادة الذكاء دون انتظار اكتمال النماذج",True)
+            return result("REVIEWED","HYBRID META DEMO: "+str(trial.get("meta_status")) if trial.get("meta_status") else "MASTER التجريبي 60/25/15: الاتجاه بقيادة الذكاء دون انتظار اكتمال النماذج",True)
         reasons={"NO_FRESH_AI_EVIDENCE":"لم يصل تحليل ذكاء حديث صالح",
                  "AI_DIRECTION_UNCLEAR":"ترجيح الذكاء غير حاسم",
                  "AI_SIDE_NOT_ELIGIBLE":"اتجاه الذكاء لا يملك استراتيجية أو سعر دخول صالح",
