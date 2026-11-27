@@ -40,7 +40,7 @@ def accept(uid,market,ctx,data,now=None):
     from parallel_learning import sanitize_report
     learning=sanitize_report(data.get("learning"))
     key=(str(uid),market)
-    value={"status":"SHADOW_READY","market":market,"symbol":ctx["symbol"],"bar_time":bar,"received_at":now,
+    value={"status":"SHADOW_READY","market":market,"symbol":ctx["symbol"],"client_id":str(ctx["client"]),"bar_time":bar,"received_at":now,
            "models":rows,"learning":learning,"direction":"BUY" if signed>.05 else "SELL" if signed<-.05 else "WAIT","execution_authorized":False}
     with LOCK:
         old=CACHE.get(key)
@@ -53,3 +53,11 @@ def snapshot(uid,market,now=None):
     with LOCK:r=CACHE.get((str(uid),market))
     if r and 60<=now-r["bar_time"]<120 and 0<=now-r["received_at"]<=60:return r
     return {"status":"NO_FRESH_SHADOW","market":market,"models":{n:{"status":"NOT_RECEIVED","weight":0.} for n in NAMES},"execution_authorized":False}
+
+
+def snapshot_for_client(cid,symbol,now):
+    """Internal exact-client lookup; no public auth or order permission changes."""
+    with LOCK:
+        matches=[r for r in CACHE.values() if r.get("client_id")==str(cid) and r.get("symbol")==symbol
+                 and 60<=now-r["bar_time"]<120 and 0<=now-r["received_at"]<=60]
+    return dict(max(matches,key=lambda r:r["received_at"])) if matches else {}

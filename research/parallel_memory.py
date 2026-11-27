@@ -1,7 +1,6 @@
 """Local research-only durable outcomes and lightweight actual-deal calibration."""
 import json,os,hashlib,time,math
 from pathlib import Path
-import numpy as np
 def state_path(owner,client,symbol):
     root=Path.home()/".alzool-parallel-learning";root.mkdir(parents=True,exist_ok=True)
     return root/(hashlib.sha256((owner.lower()+"|"+client+"|"+symbol).encode()).hexdigest()+".json")
@@ -24,6 +23,7 @@ def pause_model(samples,now):
 def trade_calibrator(b,positions,feature):
     """Model predicts whether a historical entry was positive after actual fees.
     No causal model credit. Train only on closes known before validation starts."""
+    import numpy as np
     from sklearn.linear_model import LogisticRegression
     if len(b)<48:return None,{"trade_status":"INSUFFICIENT","trade_samples":0}
     rows=[];ts=b[:,0]

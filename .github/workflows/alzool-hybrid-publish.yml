@@ -1,0 +1,34 @@
+name: Hybrid demo publication checks
+on:
+  push:
+    branches: [pilot/hybrid-meta-publish-20261127]
+  pull_request:
+    branches: [deploy/alzool-meeno-btc-demo-20261121]
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile marketplace/backend/hybrid_demo_pilot.py marketplace/backend/master_balanced.py marketplace/backend/master_entry_review.py marketplace/backend/parallel_shadow.py marketplace/backend/app.py
+      - run: python tests/test_hybrid_demo_pilot.py
+      - run: python -m unittest discover -s tests -p 'test_parallel_shadow.py'
+      - run: python -m unittest discover -s tests -p 'test_master_entry_review.py'
+      - run: python -m unittest discover -s tests -p 'test_connection_resilience.py'
+      - run: python -m unittest discover -s tests -p 'test_report_cache.py'
+      - run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source=Path('master-ai.html').read_text()
+          scripts=re.findall(r'<script>(.*?)</script>',source,re.S)
+          Path('/tmp/master-ui.js').write_text('\n'.join(scripts))
+          assert 'const names=["XGBoost","CatBoost","TiRex-2","Chronos-Bolt Tiny","TCN","LSTM Multi","Patch Transformer"]' in source
+          assert 'if(!token||busy||document.hidden)' in source
+          PY
+          node --check /tmp/master-ui.js
