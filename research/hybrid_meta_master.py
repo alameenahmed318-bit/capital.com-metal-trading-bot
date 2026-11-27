@@ -12,9 +12,10 @@ import numpy as np
 from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 
-ADVISERS = ("XGBoost", "TiRex-2", "CatBoost", "TCN", "LSTM Multi",
-            "Patch Transformer", "Chronos-Bolt Tiny", "LightGBM",
-            "TimesFM-2.5", "Chronos-2", "PatchTST", "LSTM")
+CURRENT_ADVISERS = ("XGBoost","TiRex-2","CatBoost","Chronos-Bolt Tiny","LightGBM","TimesFM-2.5","Chronos-2")
+PROPOSED_ADVISERS = ("XGBoost","TiRex-2","CatBoost","Chronos-Bolt Tiny","TCN","LSTM Multi","Patch Transformer")
+ADVISERS = CURRENT_ADVISERS
+PARALLEL_REQUIRED = ("TCN","LSTM Multi","Patch Transformer")
 SIDES = ("BUY", "SELL")
 HORIZON = 60
 STRESS_ATR = 0.30
@@ -28,7 +29,7 @@ def number(v, default=0.0):
     except (TypeError, ValueError, OverflowError):
         return default
 
-def features(p):
+def features(p, advisers= CURRENT_ADVISERS):
     c=p.get("candidate") or {}
     a=c.get("adaptive") or {}
     review=c.get("adaptive_baseline_review") or {}
@@ -47,7 +48,7 @@ def features(p):
                 forecasts={**forecasts,k:v}
                 statuses={**statuses,k:"READY"}
     x=[]
-    for name in ADVISERS:
+    for name in advisers:
         v=forecasts.get(name)
         present=statuses.get(name)=="READY" and isinstance(v,(int,float)) and math.isfinite(v)
         x.extend([max(-6.,min(6.,float(v))) if present else 0.,float(present)])
@@ -57,11 +58,13 @@ def features(p):
               number(p.get("delay_sec")),number(p.get("ask"))-number(p.get("bid")) if number(p.get("atr"))<=0 else (number(p.get("ask"))-number(p.get("bid")))/number(p.get("atr"))])
     return np.array(x,dtype=float)
 
-def rows(payloads, symbol):
+def rows(payloads, symbol, advisers=CURRENT_ADVISERS):
     selected={}
+    clients=set()
     for item in payloads:
         p=item.get("payload",item)
         if not isinstance(p,dict) or p.get("symbol")!=symbol: continue
+        if item.get('client_id') is not None:clients.add(str(item['client_id']))
         t=number(p.get("bar_time"),-1)
         obs=number(p.get("observed_at"),-1)
         outcome=(p.get("outcomes") or {}).get(str(HORIZON)) or {}
@@ -72,8 +75,9 @@ def rows(payloads, symbol):
             number(outcome.get("quote_time"),-1)<=obs):continue
         # Audit baseline is the recorded demo comparison, NOT a broker fill.
         base=((p.get("candidate") or {}).get("balanced_demo_comparison") or {}).get("direction","WAIT")
-        r=(t,obs,number(outcome["quote_time"]),features(p),y,base)
+        r=(t,obs,number(outcome["quote_time"]),features(p,advisers),y,base)
         if t not in selected or obs<selected[t][1]:selected[t]=r
+    if len(clients)>1:raise ValueError('Multiple clients in one exact-symbol training export')
     return sorted(selected.values(),key=lambda r:r[0])
 
 def split(r):
@@ -169,7 +173,7 @@ def smoke():
     rng=np.random.default_rng(42)
     samples=[]
     for i in range(700):
-        x=rng.normal(size=30);y=[float(x[0]-.15),float(-x[0]-.15)]
+        x=rng.normal(size=2*len(CURRENT_ADVISERS)+6);y=[float(x[0]-.15),float(-x[0]-.15)]
         samples.append((i*60,i*60+60,i*60+120,x,y,"WAIT"))
     result=run(samples)
     assert result["execution_authorized"] is False
@@ -181,9 +185,10 @@ def smoke():
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--input",help="Owner-local export; do not commit private data")
-    p.add_argument("--symbol",choices=("XAUUSD","BTCUSD"),default="XAUUSD")
+    p.add_argument("--symbol",choices=("XAUUSD","BTCUSD","BTCUSDm","BTCUSDc","BTCUSD.conv"),default="XAUUSD")
     p.add_argument("--out",required=True,help="Local report JSON")
     p.add_argument("--self-test",action="store_true")
+    p.add_argument('--advisers',choices=('current','proposed'),default='current')
     a=p.parse_args()
     if a.self_test:report=smoke()
     else:
@@ -192,7 +197,15 @@ def main():
         try:data=json.loads(raw)
         except json.JSONDecodeError:data=[json.loads(line) for line in raw.splitlines() if line.strip()]
         if not isinstance(data,list):raise ValueError("Expected array or JSONL")
-        report=run(rows(data,a.symbol))
+        advisers=PROPOSED_ADVISERS if a.advisers=='proposed' else CURRENT_ADVISERS
+        r=rows(data,a.symbol,advisers)
+        if a.advisers=='proposed':
+            counts={name:sum(int(row[3][2*advisers.index(name)+1]) for row in r) for name in PARALLEL_REQUIRED}
+            if any(n<100 for n in counts.values()):
+                raise ValueError('Insufficient original parallel forecasts: '+str(counts))
+        report=run(r)
+        report['advisers']=list(advisers)
+        report['availability_counts']={name:sum(int(row[3][2*i+1]) for row in r) for i,name in enumerate(advisers)}
         report["symbol"]=a.symbol
         report["synthetic_only"]=False
     Path(a.out).write_text(json.dumps(report,indent=2,allow_nan=False),encoding="utf-8")
