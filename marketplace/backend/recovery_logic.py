@@ -74,22 +74,21 @@ def recovery_intent(snapshot, decision, settings):
         return result
     # Reaching a currency loss limit ARMS a recovery, never OPENS it.
     # A full NEW M1 candle after arming must confirm a losing side.
-    # Only a capability-advertising hedging EA can execute an opposite recovery.
-    # Manual and legacy clients retain same-side behavior.
-    free_direction=(snapshot.get("recovery_bidirectional_capable") is True and
-                    str(pm.get("mode","AI")).upper()=="AI" and
-                    (decision.get("master") or {}).get("mode")=="MASTER")
-    confirmation=recovery_m1_confirmation(snapshot,decision,["BUY","SELL"] if free_direction else eligible)
-    result["direction_mode"]="BIDIRECTIONAL_AI" if free_direction else "SAME_SIDE"
+    # Owner requires same-side recovery for every terminal, including hedging EAs.
+    confirmation=recovery_m1_confirmation(snapshot,decision,eligible)
+    result["direction_mode"]="SAME_SIDE"
     result["losing_sides"]=eligible
     result["candle_confirmation"]=confirmation
     result["candidate_lot"]=size
-    result["eligible_sides"]=["BUY","SELL"] if free_direction else eligible
+    result["eligible_sides"]=eligible
     if not confirmation["approved"]:
         result["reason_ar"]=(f"التعافي مسلح عند صافي {net:.2f} / حد {trigger:.2f}؛ "
                              +confirmation["reason_ar"])
         return result
     selected=confirmation["side"]
+    if selected not in eligible:
+        result["reason_ar"]="رفض التعافي: الاتجاه لا يطابق الصفقات الخاسرة"
+        return result
     result.update({"action":"RECOVERY_PROPOSAL","side":selected,"lot_cap":size,
         "reason_ar":(f"صافي الحساب {net:.2f} وصل لحد الخسارة {trigger:.2f}؛ "
                      f"تأكيد شمعة M1 الجديدة: {confirmation['reason_ar']}؛ "
