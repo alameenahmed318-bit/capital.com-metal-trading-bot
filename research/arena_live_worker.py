@@ -31,12 +31,21 @@ def validated_fit(name,rows,origin,end,feature,target,minimum=600,min_signals=30
     tr,va,te=parts
     va=nonoverlap(va,origin,end);te=nonoverlap(te,origin,end)
     if len(tr)<100 or min(len(va),len(te))<min_signals:return None,{"status":"INSUFFICIENT"}
-    model=fit_regressor(name,3)
-    model.fit([feature(r) for r in tr],[max(-6,min(6,target(r))) for r in tr])
-    pv=model.predict([feature(r) for r in va])
-    threshold=select_threshold(pv,[target(r) for r in va],min_signals)
     base={"train":len(tr),"validation":len(va),"test":len(te),"signals":0,"positive":0,"net_proxy":0.}
-    if threshold is None:return None,{**base,"status":"VALIDATION_REJECTED"}
+    candidates=[]
+    # Compare a shallow and standard tree on validation only; holdout never
+    # selects the candidate. All candidates use the same temporal split.
+    for depth in ((2,3) if name=="XGBoost" else (3,)):
+        candidate=fit_regressor(name,depth)
+        candidate.fit([feature(r) for r in tr],[max(-6,min(6,target(r))) for r in tr])
+        pv=candidate.predict([feature(r) for r in va])
+        threshold=select_threshold(pv,[target(r) for r in va],min_signals)
+        if threshold is not None:
+            val=metrics(pv,[target(r) for r in va],threshold,min_signals)
+            candidates.append((val["stress_net_proxy"],candidate,threshold,depth))
+    if not candidates:return None,{**base,"status":"VALIDATION_REJECTED"}
+    _,model,threshold,depth=max(candidates,key=lambda q:q[0])
+    base["depth"]=depth
     pt=model.predict([feature(r) for r in te])
     result=metrics(pt,[target(r) for r in te],threshold,min_signals)
     report={**base,**result,"threshold":threshold,"status":"PASSED" if result["eligible"] else "HOLDOUT_REJECTED"}
