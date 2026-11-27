@@ -65,7 +65,8 @@ def accept(cid,item,body):
         merged_actions={action:dict(sides) for action,sides in previous.get("actions",{}).items()}
         for action,sides in actions.items():
             merged_actions[action]={**merged_actions.get(action,{}),**sides}
-        CACHE[key]={"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"monitor_models":merged_monitor,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
+        horizons={**previous.get("horizons",{}),**{n:1 if body.get("horizon")==1 else 3 for n in set(models)|set(monitor)}}
+        CACHE[key]={"horizons":horizons,"status":"SHADOW_READY","symbol":ctx["symbol"],"bar_time":ctx["bar_time"],"models":merged,"monitor_models":merged_monitor,"actions":merged_actions,"received_at":time.time(),"execution_authorized":False}
         CACHE.move_to_end(key)
         while len(CACHE)>128:CACHE.popitem(last=False)
     return {"accepted":True,"execution_authorized":False}
