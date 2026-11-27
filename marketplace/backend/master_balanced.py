@@ -76,6 +76,26 @@ def evaluate(d,item,settings,now,*,legacy=False):
     # full vote to a tiny prediction or renormalizing absent models.
     conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
     model_direction="BUY" if signed>1e-9 else "SELL" if signed< -1e-9 else "WAIT"
+    # Only an explicitly enabled, native MT5 DEMO M1 connection can use the new panel.
+    import hybrid_demo_pilot as meta
+    pilot=report.get("hybrid_meta_demo") or {}
+    use_pilot=not legacy and meta.allowed(item) and pilot.get("bar")==bar and 0<=now-num(pilot.get("at"),-1)<=10
+    if use_pilot:
+        excluded=set(pilot.get("excluded") or [])
+        forecasts={n:clamp(v,-1.,1.) for n,v in (pilot.get("raw") or {}).items()
+                   if n in meta.NAMES and n not in excluded and abs(v)>.05}
+        weights={n:0. if n in excluded else 1./len(meta.NAMES) for n in meta.NAMES}
+        signed=sum(weights[n]*v for n,v in forecasts.items())
+        evidence_mass=sum(weights[n]*abs(v) for n,v in forecasts.items())
+        conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
+        model_direction="BUY" if signed>1e-9 else "SELL" if signed< -1e-9 else "WAIT"
+        if pilot.get("status")=="READY":
+            # The learned blend selects direction; original strategy/quote gates still apply.
+            model_direction=pilot.get("direction","WAIT")
+            conviction=1. if model_direction=="BUY" else -1. if model_direction=="SELL" else 0.
+            if not any(n in pilot.get("advisers",[]) for n in forecasts):model_direction="WAIT";conviction=0.
+        elif pilot.get("status")=="NO_ADVICE":
+            model_direction="WAIT";conviction=0.
     ctx=d.get("context") or {};raw=d.get("directional_scores") or {}
     tick=item.get("tick") or {};bid=num(tick.get("bid"));ask=num(tick.get("ask"))
     ref=num(d.get("entry_reference_price"));atr=num(d.get("entry_atr") or ctx.get("atr"))
@@ -130,6 +150,12 @@ def evaluate(d,item,settings,now,*,legacy=False):
         "allocation":{"strategy":.4,"seven_models":.4,"market":.2} if legacy else {"strategy":.25,"seven_models":.60,"market":.15}}
 
 
+    if use_pilot:
+        result.update(version=meta.VERSION,meta_status=pilot.get("status"),meta_samples=pilot.get("samples",0),
+            excluded=pilot.get("excluded",[]),meta_predictions=pilot.get("predicted_atr"),
+            catboost_weight=pilot.get("catboost_weight"),xgboost_weight=pilot.get("xgboost_weight"),
+            weight_statuses={n:"RETIRED" if n in excluded else "ADVISER" for n in meta.NAMES},
+            allocation={"strategy":.25,"meta_master":.60,"market":.15})
     if not legacy and str(symbol or "").upper().startswith("XAUUSD"):
         result["gold_strategy_advisory_shadow"]=gold_strategy_advisory_shadow(result,age)
     return result
@@ -172,6 +198,15 @@ def select_demo(d,item,settings,now):
     frame=str(item.get("timeframe","M1")).upper().replace("PERIOD_","")
     if frame!="M1" or not direct_demo_enabled(item):return d
     report=d.get("master") or {}
+    import hybrid_demo_pilot as meta
+    if meta.allowed(item):
+        from parallel_shadow import snapshot_for_client
+        row=meta.collect(d,item,snapshot_for_client(item["client_id"],d.get("symbol"),now),now)
+        cached=meta.submit(row)
+        # An enabled pilot always uses the agreed seven, even while learning.
+        pilot={**cached,"raw":row["raw"] if row else {},"bar":num(d.get("bar_time")),"at":now}
+        d={**d,"master":{**report,"hybrid_meta_demo":pilot}}
+        report=d["master"]
     trial=evaluate(d,item,settings,now)
     # The old V1 candidate is logged separately by the research worker.
     out={**d,"master":{**report,"balanced_entry":trial}}
@@ -180,7 +215,7 @@ def select_demo(d,item,settings,now):
         c=(d.get("directional_candidates") or {})[side]
         out.update(decision=side,strategy_id=c["strategy_id"],strategy_name=c.get("strategy_name",""),
             combination_id=c.get("combination_id",0),confidence=trial["scores"][side]["score"],
-            reason_ar="MASTER AI FIRST DEMO: الذكاء يحدد الاتجاه والاستراتيجية تختار نقطة الدخول")
+            reason_ar=("HYBRID META DEMO: "+str(trial.get("meta_status")) if trial.get("version")==meta.VERSION else "MASTER AI FIRST DEMO: الذكاء يحدد الاتجاه والاستراتيجية تختار نقطة الدخول"))
     else:
         out.update(decision="WAIT",confidence=0.,strategy_id=0,combination_id=0,strategy_name="",
                    reason_ar="MASTER AI FIRST: "+trial["reason"])
