@@ -1289,6 +1289,9 @@ class Handler(SimpleHTTPRequestHandler):
                         "client_id":client_id,"event_type":"MASTER_DECISION_AUDIT",
                         "payload":{"status":audit_status,"symbol":item.get("symbol"),
                             "timeframe":item.get("timeframe"),"bar_time":bar_time,
+                            "master_protocol_reported":item.get("master_direct_demo_capable") is True,
+                            "master_owner_compatible":item.get("owner_master_compatible") is True,
+                            "master_hybrid_enabled":hybrid_demo_pilot.allowed(item),
                             "direction":signal,"signal":output_signal,"confidence":confidence,
                             "strategy_id":strategy_id,"strategy_name":full_decision["strategy_name"],
                             "combination_id":full_decision["combination_id"],
@@ -2770,6 +2773,8 @@ class Handler(SimpleHTTPRequestHandler):
                         if isinstance(data.get("mt5_central_trading_enabled"),bool) else None),
                     "positions":positions,
                     "master_direct_demo_capable":data.get("master_direct_demo_capable") is True,
+                    # Server-verified owner identity, never a client-provided flag.
+                    "owner_master_compatible":terminal_is_owner(client_id),
                     "smart_profit_capable":data.get("smart_profit_capable") is True,
                     "smart_profit_runner_version":304 if data.get("smart_profit_runner_version")==304 else None,
                     "recovery_bidirectional_capable":data.get("recovery_bidirectional_capable") is True,
