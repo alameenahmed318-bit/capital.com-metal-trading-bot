@@ -1255,7 +1255,9 @@ class Handler(SimpleHTTPRequestHandler):
                 "entry_atr":finite_number(decision.get("entry_atr",0.0)),"execution_ready":ready,"trading_enabled":trading_enabled,
                 **master_bias(decision,bar_fresh),"minimum_confidence":None,"entry_review":review_report,
                 "entry_council_mode":mode,"master":decision.get("master",{}),
-                "master_direct_demo":review_report.get("route")=="DIRECT_DEMO",
+                # Retain the old wire key for compatibility, but this route is no longer demo-only.
+                "master_direct_demo":False,
+                "master_unified_active":review_report.get("route")=="DIRECT_DEMO",
                 "authorization":gate,
                 "authorization_id":gate.get("authorization_id"),
                 "authorization_expires_at":gate.get("expires_at_unix",0),
