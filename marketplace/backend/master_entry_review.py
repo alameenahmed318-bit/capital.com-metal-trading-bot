@@ -1,5 +1,6 @@
 """Bounded, nonblocking MASTER entry review. Never places or manages orders."""
 import math
+import os
 
 MAX_COLLECTION_SECONDS=20.0
 MIN_QUALITY=.55
@@ -72,7 +73,9 @@ DIRECT_DEMO_THRESHOLD=.72
 def direct_demo_enabled(item):
     # Historical protocol flag, not an account-type restriction.
     # Owner-approved unified M1 route uses the same checks on any MT5 mode.
-    return item.get("master_direct_demo_capable") is True
+    return (item.get("master_direct_demo_capable") is True or
+            (item.get("owner_master_compatible") is True and bool(item.get("client_id"))
+             and os.getenv("ALZOOL_HYBRID_DEMO")=="1"))
 
 def direct_demo_score(d,item,side,age,arena_rows,language_rows,settings):
     """Single score for the owner-approved unified route, not a probability.

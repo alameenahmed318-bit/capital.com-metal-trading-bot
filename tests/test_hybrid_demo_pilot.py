@@ -6,6 +6,14 @@ import hybrid_demo_pilot as m
 class PilotTest(unittest.TestCase):
     def item(self,mode="DEMO"):
         return {"account":{"trade_mode":mode},"master_direct_demo_capable":True,"timeframe":"M1","client_id":"test","symbol":"XAUUSD","tick":{"bid":100,"ask":100.1}}
+    def test_verified_owner_legacy_protocol(self):
+        item={**self.item(),"master_direct_demo_capable":False,"owner_master_compatible":True}
+        with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
+            self.assertTrue(m.allowed(item))
+            self.assertFalse(m.allowed({**item,"owner_master_compatible":False}))
+            self.assertFalse(m.allowed({**item,"client_id":""}))
+            self.assertFalse(m.allowed({**item,"timeframe":"M5"}))
+        with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"0"}):self.assertFalse(m.allowed(item))
     def test_all_account_modes(self):
         with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
             self.assertTrue(m.allowed(self.item()))

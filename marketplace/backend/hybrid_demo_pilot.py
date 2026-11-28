@@ -73,7 +73,8 @@ def num(v,default=0.):
         return x if math.isfinite(x) else default
     except (TypeError,ValueError,OverflowError):return default
 def allowed(item):
-    return (os.getenv("ALZOOL_HYBRID_DEMO")=="1" and item.get("master_direct_demo_capable") is True
+    return (os.getenv("ALZOOL_HYBRID_DEMO")=="1" and
+            (item.get("master_direct_demo_capable") is True or item.get("owner_master_compatible") is True)
             and str(item.get("timeframe","")).upper().replace("PERIOD_","")=="M1"
             and bool(item.get("client_id")))
 def collect(d,item,parallel,now):
