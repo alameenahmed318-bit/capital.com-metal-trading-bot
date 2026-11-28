@@ -50,6 +50,16 @@ class SmartProfitTests(unittest.TestCase):
         self.assertIn('EvaluateSmartProfitSide(POSITION_TYPE_BUY,bias);',ea)
         self.assertIn('EvaluateSmartProfitSide(POSITION_TYPE_SELL,bias);',ea)
         self.assertIn("smart_profit_runner_version",ea)
+    def test_v307_runner_source_contract(self):
+        ea=(ROOT/"mt5_client"/"ALZOOL_Multi_Market_Client_V307.mq5").read_text(encoding="utf-8-sig")
+        prior=(ROOT/"mt5_client"/"ALZOOL_Multi_Market_Client_V305.mq5").read_text(encoding="utf-8-sig")
+        def runner(src):return src[src.index("void ResetSmartProfit()\n{"):src.index("void EvaluateAutoClose()\n{")]
+        self.assertEqual(runner(ea),runner(prior))
+        self.assertIn('#property version "3.07"',ea)
+        self.assertIn("smart_profit_mode_active",ea)
+        self.assertIn("smart_profit_runner_version",ea)
+        self.assertIn("al-zool-primary-engine.onrender.com",ea)
+        self.assertIn("compact=1",ea)
     def test_ui_opt_in(self):
         page=(ROOT/"trade-management.html").read_text()
         js=(ROOT/"trade-management.js").read_text()

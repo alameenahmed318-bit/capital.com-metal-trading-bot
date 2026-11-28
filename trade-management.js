@@ -19,6 +19,7 @@ async function loadCloseSettings(){
  const pm=s.position_management||{};
  $("profitCloseMode").value=pm.profit_close_mode==="SMART"?"SMART":"FIXED";
  $("profitCloseMode").dataset.capable=d.smart_profit_capable===true?"yes":"no";
+ if(pm.profit_close_mode==="SMART") $("closeEngineState").textContent=d.smart_profit_runner_version===307&&d.smart_profit_mode_active===true?"V3.07 — جني الربح الذكي يعمل فعلياً حسب إفادة MT5":d.smart_profit_runner_version===307?"V3.07 متصل — بانتظار تأكيد تفعيل الذكي":d.smart_profit_runner_version===304?"V3.04/3.05 — الجني المتحرك المتوافق":"الذكي محفوظ — إصدار القفلة الجديدة غير مؤكد";
  updateSmartProfitHelp();
  $("profitCloseMode").onchange=updateSmartProfitHelp;
  if($("ownerEntryMode")){
@@ -91,7 +92,7 @@ async function saveProtectionSettings(){
 function updateSmartProfitHelp(){
  const smart=$("profitCloseMode").value==="SMART";
  $("smartProfitHelp").textContent=smart
- ? "الذكاء يراقب صافي ربح كل اتجاه فور أن يصبح موجباً، ويختار الإغلاق أو الاستمرار وفق وضع الذكاء المختار (MASTER أو Hybrid) والسعر. القيم الثابتة محفوظة لكنها لا تُستخدم في الوضع الذكي. يلزم EA متوافق مع الجني الذكي؛ لا ضمان للربح عند التنفيذ."
+ ? "الذكاء يراقب صافي ربح كل اتجاه فور أن يصبح موجباً، ويختار الإغلاق أو الاستمرار وفق وضع الذكاء المختار (MASTER أو Hybrid) والسعر. نسخة V3.07 لا تغلق عند أول ربح موجب: تتابع حركة كافية وتراجعاً فعلياً من القمة. القيم الثابتة محفوظة لكنها لا تُستخدم في الوضع الذكي. يلزم EA متوافق مع الجني الذكي؛ لا ضمان للربح عند التنفيذ."
  : "الإغلاق الثابت يعمل بنفس طريقة الحساب الحالية، عند تحقق مبلغ الهدف.";
  $("singleTarget").disabled=smart;
  $("groupTarget").disabled=smart;
