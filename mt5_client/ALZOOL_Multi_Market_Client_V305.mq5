@@ -569,7 +569,7 @@ bool PollCentralDecision()
    string response_headers;
    ResetLastError();
    ulong startedMs=GetTickCount64();
-   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId()+"?symbol="+_Symbol,
+   int code=WebRequest("GET",BaseUrl()+"/v1/terminal-decision/"+ConnectionId()+"?symbol="+_Symbol+"&compact=1",
                        headers,1500,data,result,response_headers);
    ulong elapsedMs=GetTickCount64()-startedMs;
    if(code!=200)
