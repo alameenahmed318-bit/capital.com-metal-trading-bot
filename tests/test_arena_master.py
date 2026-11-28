@@ -82,6 +82,13 @@ class ArenaMasterTest(unittest.TestCase):
             self.assertTrue(a.accept("owner",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
             self.assertFalse(a.accept("other",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
 
+    def test_verified_owner_without_new_terminal_flag_accepts_m1(self):
+        item={**self.item,"client_id":"owner","master_direct_demo_capable":False,"owner_master_compatible":True,"account":{"trade_mode":"DEMO"}}
+        body={"symbol":"XAUUSD","bar_time":self.bar,"horizon":1,"models":{"TiRex-2":.3},"monitor_models":{"Extra Trees":.1}}
+        with patch.dict("os.environ",{"ALZOOL_HYBRID_DEMO":"1"}):
+            self.assertTrue(a.accept("owner",item,body)["accepted"])
+            self.assertFalse(a.accept("other",item,body)["accepted"])
+            self.assertFalse(a.accept("owner",{**item,"owner_master_compatible":False},body)["accepted"])
     def test_monitor_only_not_legacy_evidence(self):
         import master_ai as m
         body={"symbol":"XAUUSD","bar_time":self.bar,"monitor_models":{"Extra Trees":.9,"CatBoost":-.8}}
