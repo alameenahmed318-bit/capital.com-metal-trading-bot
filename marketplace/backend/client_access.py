@@ -47,6 +47,13 @@ def minimal_terminal_decision(full):
     return result
 
 
+def compact_owner_terminal_decision(full):
+    # Explicit opt-in only; V305 parses these scalar facts. Keep the actual
+    # reason and native demo guard, plus existing smart-profit bias fields.
+    keys=("symbol","signal","confidence","reason_ar","decision_reason_ar","strategy_id","strategy_name","combination_id","bar_time","entry_reference_price","entry_atr","execution_ready","trading_enabled","authorization_id","authorization_expires_at","master_direct_demo","smart_profit_bias_valid","smart_profit_bias","message","entry_council_mode")
+    return {k:full[k] for k in keys if k in full}
+
+
 def basic_settings(full):
     keys=("single_enabled","single_profit_target","group_enabled","group_profit_target",
           "stop_loss_enabled","stop_loss_mode","stop_loss_value")
