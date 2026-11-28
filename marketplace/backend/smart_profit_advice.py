@@ -11,9 +11,15 @@ def master_bias(decision, fresh):
     if not fresh or not isinstance(decision,dict):
         return {"smart_profit_bias":0.0,"smart_profit_bias_valid":False}
     master=decision.get("master") or {}
-    scores=master.get("scores") or {}
+    hybrid=decision.get("hybrid") or {}
+    if hybrid.get("mode")=="HYBRID_SOFT_EVIDENCE" and hybrid.get("bar_time")==decision.get("bar_time") and number(decision.get("bar_time")) not in (None,0):
+        scores=hybrid.get("combined_scores") or {}
+    elif master.get("mode")=="MASTER":
+        scores=master.get("scores") or {}
+    else:
+        scores={}
     buy,sell=number(scores.get("BUY")),number(scores.get("SELL"))
-    if master.get("mode")!="MASTER" or buy is None or sell is None:
+    if buy is None or sell is None:
         return {"smart_profit_bias":0.0,"smart_profit_bias_valid":False}
     bias=max(-1.,min(1.,(buy-sell)/max(1.,abs(buy)+abs(sell))))
     return {"smart_profit_bias":round(bias,6),"smart_profit_bias_valid":True}

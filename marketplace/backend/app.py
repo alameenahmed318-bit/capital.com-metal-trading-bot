@@ -2212,8 +2212,8 @@ class Handler(SimpleHTTPRequestHandler):
                     if (not item or item.get("smart_profit_capable") is not True or
                         not 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30):
                         return self.send_json(409,{"error":"جني الربح الذكي يحتاج EA V3.03 متصلاً الآن"})
-                    if prior_pm.get("entry_council_mode")!="MASTER":
-                        return self.send_json(400,{"error":"اختر MASTER AI أولاً لتفعيل جني الربح الذكي"})
+                    if prior_pm.get("entry_council_mode") not in ("MASTER","ADVISORY"):
+                        return self.send_json(400,{"error":"جني الربح الذكي متوافق مع MASTER AI وHybrid AI"})
                     if data.get("confirm_smart_profit") is not True:
                         return self.send_json(400,{"error":"أكد اختيار جني الربح الذكي"})
                 clean_pm["profit_close_mode"]=profit_mode

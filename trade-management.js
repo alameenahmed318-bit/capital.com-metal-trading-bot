@@ -91,7 +91,7 @@ async function saveProtectionSettings(){
 function updateSmartProfitHelp(){
  const smart=$("profitCloseMode").value==="SMART";
  $("smartProfitHelp").textContent=smart
- ? "الذكاء يراقب صافي ربح كل اتجاه فور أن يصبح موجباً، ويختار الإغلاق أو الاستمرار وفق MASTER والسعر. القيم الثابتة محفوظة لكنها لا تُستخدم في الوضع الذكي. يلزم EA V3.03 وMASTER AI؛ لا ضمان للربح عند التنفيذ."
+ ? "الذكاء يراقب صافي ربح كل اتجاه فور أن يصبح موجباً، ويختار الإغلاق أو الاستمرار وفق وضع الذكاء المختار (MASTER أو Hybrid) والسعر. القيم الثابتة محفوظة لكنها لا تُستخدم في الوضع الذكي. يلزم EA متوافق مع الجني الذكي؛ لا ضمان للربح عند التنفيذ."
  : "الإغلاق الثابت يعمل بنفس طريقة الحساب الحالية، عند تحقق مبلغ الهدف.";
  $("singleTarget").disabled=smart;
  $("groupTarget").disabled=smart;
@@ -99,7 +99,7 @@ function updateSmartProfitHelp(){
 async function saveCloseSettings(){
  const profitMode=$("profitCloseMode").value;
  if(profitMode==="SMART"){
-  if($("profitCloseMode").dataset.capable!=="yes"){$("closeSettingsMessage").textContent="اربط EA V3.03 ثم حدّث الصفحة قبل اختيار الذكي.";return;}
+  if($("profitCloseMode").dataset.capable!=="yes"){$("closeSettingsMessage").textContent="اربط EA يدعم جني الربح الذكي ثم حدّث الصفحة.";return;}
   if(!window.confirm("جني الربح الذكي يغيّر توقيت الإغلاق وقد يعيد جزءاً من الربح للسوق. لا يضمن ربحاً عند التنفيذ. هل تريد تفعيله؟"))return;
  }
  const single=Number($("singleTarget").value),group=Number($("groupTarget").value);

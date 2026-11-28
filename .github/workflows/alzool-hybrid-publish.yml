@@ -18,6 +18,8 @@ jobs:
       - run: python -m py_compile marketplace/backend/hybrid_demo_pilot.py marketplace/backend/master_balanced.py marketplace/backend/master_entry_review.py marketplace/backend/parallel_shadow.py marketplace/backend/app.py
       - run: python -m py_compile marketplace/backend/bandwidth_payload.py marketplace/backend/dual_market_server.py research/model_arena_worker.py research/arena_live_worker.py research/parallel_shadow_worker.py
       - run: python tests/test_bandwidth_payload.py
+      - run: python tests/test_smart_profit_advice.py
+      - run: node --check trade-management.js
       - run: python tests/test_hybrid_demo_pilot.py
       - run: python tests/test_recovery_same_side.py
       - run: python -m unittest discover -s tests -p 'test_parallel_shadow.py'
