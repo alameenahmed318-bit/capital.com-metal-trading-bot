@@ -9,6 +9,13 @@ class SmartProfitTests(unittest.TestCase):
     def test_master_bias_independent_of_entry_gate(self):
         d={"decision":"WAIT","master":{"mode":"MASTER","scores":{"BUY":.9,"SELL":.1}}}
         self.assertEqual(master_bias(d,True),{"smart_profit_bias":.8,"smart_profit_bias_valid":True})
+    def test_hybrid_fresh_same_bar_bias(self):
+        d={"bar_time":1000,"decision":"WAIT","hybrid":{"mode":"HYBRID_SOFT_EVIDENCE","bar_time":1000,"combined_scores":{"BUY":.2,"SELL":.8}}}
+        self.assertEqual(master_bias(d,True),{"smart_profit_bias":-.6,"smart_profit_bias_valid":True})
+        self.assertFalse(master_bias(d,False)["smart_profit_bias_valid"])
+        self.assertFalse(master_bias({**d,"bar_time":1060},True)["smart_profit_bias_valid"])
+        app=(ROOT/"marketplace"/"backend"/"app.py").read_text()
+        self.assertIn('prior_pm.get("entry_council_mode") not in ("MASTER","ADVISORY")',app)
     def test_invalid_and_stale_bias(self):
         self.assertFalse(master_bias({"master":{"mode":"ADVISORY","scores":{"BUY":1,"SELL":0}}},True)["smart_profit_bias_valid"])
         self.assertFalse(master_bias({"master":{"mode":"MASTER","scores":{"BUY":1,"SELL":0}}},False)["smart_profit_bias_valid"])
