@@ -2,7 +2,7 @@
 Run on a separate computer/process; only the owner's candle history and
 research scores are transferred. Password is prompted, never persisted.
 """
-import argparse, getpass, hashlib, json, math, os, time, urllib.parse, urllib.request
+import argparse, getpass, gzip, hashlib, json, math, os, time, urllib.parse, urllib.request
 from datetime import datetime,timezone
 from pathlib import Path
 import sys
@@ -14,19 +14,28 @@ from specialist_market import samples,features,score,LOOKBACK
 from strategy_research import _candle
 from model_arena_api import MODELS,REPORT_MODELS
 from challenger_forecasts import LOCAL,CLOUD,forecast_local,cloud_forecast
-SERVER="https://al-zool-meeno-engine.onrender.com"
+SERVER=os.getenv("ALZOOL_SERVER_URL","https://al-zool-meeno-engine.onrender.com").rstrip("/")
 MARKETS=("BTCUSD","XAUUSD")
 def request(url,body=None,headers=None,timeout=45):
-    h={"Accept":"application/json",**(headers or {})}
+    h={"Accept":"application/json","Accept-Encoding":"gzip",**(headers or {})}
     if body is not None:h["Content-Type"]="application/json"
-    req=urllib.request.Request(url,data=json.dumps(body,allow_nan=False).encode() if body is not None else None,headers=h)
-    with urllib.request.urlopen(req,timeout=timeout) as r:return json.load(r)
+    req=urllib.request.Request(url,data=json.dumps(body,allow_nan=False,separators=(",",":")).encode() if body is not None else None,headers=h)
+    with urllib.request.urlopen(req,timeout=timeout) as r:
+        raw=r.read()
+        if r.headers.get("Content-Encoding","").lower()=="gzip":raw=gzip.decompress(raw)
+        return json.loads(raw)
 def login(email,password):
     cfg=request(SERVER+"/api/config")
     return request(cfg["supabase_url"]+"/auth/v1/token?grant_type=password",{"email":email,"password":password},{"apikey":cfg["supabase_anon_key"]})["access_token"]
 def api(market,path,token,body=None,timeout=45):
     prefix="/market/XAUUSD" if market=="XAUUSD" else ""
     return request(SERVER+prefix+"/api/ai/arena/"+path,body,{"Authorization":"Bearer "+token},timeout=timeout)
+def live_context(market,token,seen=None,symbol=None,timeout=6):
+    params={}
+    if seen and symbol:
+        params={"seen_client":seen[0],"seen_bar":seen[1],"seen_symbol":symbol}
+    return api(market,"live-context"+("?"+urllib.parse.urlencode(params) if params else ""),token,timeout=timeout)
+
 def archive(market,token):
     params={};bars=[];cid=None;symbol=None
     for _ in range(12):
