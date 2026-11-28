@@ -978,7 +978,8 @@ class Handler(SimpleHTTPRequestHandler):
                 settings["position_management"]=pm
                 return self.send_json(200,{"client_id":client_id,"settings":settings,
                     "smart_profit_capable":bool(item and item.get("smart_profit_capable") is True and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30),
-                    "smart_profit_runner_version":(item or {}).get("smart_profit_runner_version") if item and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30 else None})
+                    "smart_profit_runner_version":(item or {}).get("smart_profit_runner_version") if item and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30 else None,
+                    "smart_profit_mode_active":bool(item and item.get("smart_profit_mode_active") is True and 0<=(datetime.now(timezone.utc)-item["received_at"]).total_seconds()<=30)})
             except PermissionError as e: return self.send_json(403,{"error":str(e)})
             except Exception as e: return self.send_json(502,{"error":str(e)[:220]})
         if path in ("/health","/api/health"):
@@ -2776,7 +2777,8 @@ class Handler(SimpleHTTPRequestHandler):
                     # Server-verified owner identity, never a client-provided flag.
                     "owner_master_compatible":terminal_is_owner(client_id),
                     "smart_profit_capable":data.get("smart_profit_capable") is True,
-                    "smart_profit_runner_version":304 if data.get("smart_profit_runner_version")==304 else None,
+                    "smart_profit_runner_version":data.get("smart_profit_runner_version") if data.get("smart_profit_runner_version") in (304,307) else None,
+                    "smart_profit_mode_active":data.get("smart_profit_mode_active") is True,
                     "recovery_bidirectional_capable":data.get("recovery_bidirectional_capable") is True,
                     "recovery_cycle_active":data.get("recovery_cycle_active") is True,
                     "recovery_group_net":(finite_number(data["recovery_group_net"]) if
