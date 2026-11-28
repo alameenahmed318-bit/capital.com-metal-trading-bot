@@ -121,7 +121,7 @@ def sb(method,path,payload=None,bearer=None,admin=False,prefer=None):
     headers={"apikey":key,"Accept":"application/json","Authorization":"Bearer "+(SUPABASE_SERVICE_ROLE_KEY if admin else (bearer or key))}
     data=None
     if payload is not None:
-        headers["Content-Type"]="application/json"; data=json.dumps(payload).encode()
+        headers["Content-Type"]="application/json"; data=json.dumps(payload,separators=(',',':')).encode()
     if prefer: headers["Prefer"]=prefer
     req=urllib.request.Request(SUPABASE_URL+path,data=data,headers=headers,method=method)
     def send(timeout):
@@ -667,8 +667,12 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*args,**kwargs): super().__init__(*args,directory=str(ROOT),**kwargs)
     def log_message(self,fmt,*args): print("WEB:",fmt%args)
     def send_json(self,status,data):
-        body=json.dumps(data,ensure_ascii=False).encode()
+        body=json.dumps(data,ensure_ascii=False,separators=(",",":")).encode()
+        from bandwidth_payload import negotiate_payload
+        body,compressed=negotiate_payload(body,self.path,self.headers.get("Accept-Encoding",""),"application/json")
         self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8")
+        self.send_header("Vary","Accept-Encoding")
+        if compressed:self.send_header("Content-Encoding","gzip")
         self.send_header("Cache-Control","no-store"); self.send_header("X-Content-Type-Options","nosniff")
         self.send_header("Content-Length",str(len(body))); self.end_headers()
         try: self.wfile.write(body)
@@ -1296,8 +1300,13 @@ class Handler(SimpleHTTPRequestHandler):
                             "decision_at":datetime.now(timezone.utc).isoformat()}})
                 except Exception as audit_error:
                     print("MASTER_AUDIT_WARNING:",type(audit_error).__name__,flush=True)
-            return self.send_json(200,full_decision if terminal_is_owner(client_id)
-                                  else minimal_terminal_decision(full_decision))
+            if not terminal_is_owner(client_id):
+                return self.send_json(200,minimal_terminal_decision(full_decision))
+            params=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            if params.get("compact")==["1"]:
+                from client_access import compact_owner_terminal_decision
+                return self.send_json(200,compact_owner_terminal_decision(full_decision))
+            return self.send_json(200,full_decision)
         if path=="/api/market/context":
             try:
                 import time
@@ -1689,7 +1698,10 @@ class Handler(SimpleHTTPRequestHandler):
                 for cid in ids(sb,u["id"],ENGINE_MARKET):
                     item=CONNECTIONS.get(cid) or {}
                     ctx=arena_master.context(cid,item)
-                    if ctx.get("status")=="READY":return self.send_json(200,ctx)
+                    if ctx.get("status")=="READY":
+                        params=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                        from bandwidth_payload import unchanged_context
+                        return self.send_json(200,unchanged_context(ctx,params))
                 return self.send_json(200,{"status":"NO_CURRENT_M1"})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception:return self.send_json(502,{"error":"arena_context_unavailable"})

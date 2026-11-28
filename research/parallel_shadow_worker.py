@@ -195,7 +195,8 @@ def main(email=None,password=None,argv=None):
                     print(market,"TRAIN_BACKGROUND_ERROR",type(exc).__name__,getattr(exc,"code",""),str(exc)[:160],flush=True)
             if time.monotonic()<retry.get(market,0):continue
             try:
-                ctx=arena.api(market,"live-context",token,timeout=6)
+                ctx=arena.live_context(market,token,last.get(market),scopes.get(market,("",None))[1],timeout=6)
+                if ctx.get("status")=="UNCHANGED":continue
                 if ctx.get("status")!="READY":
                     note(market,"context","CONTEXT",ctx.get("status","UNKNOWN"));continue
                 cid=ctx["client"];symbol=ctx["symbol"];d=bind(market,cid,symbol)

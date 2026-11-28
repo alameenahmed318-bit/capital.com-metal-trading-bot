@@ -55,7 +55,7 @@ def decode(data):
     except (ValueError,TypeError,UnicodeError):return {}
 
 def json_response(status,data):
-    return status,"application/json; charset=utf-8",json.dumps(data,ensure_ascii=False).encode()
+    return status,"application/json; charset=utf-8",json.dumps(data,ensure_ascii=False,separators=(',',':')).encode()
 
 def terminal_id(path):
     return urllib.parse.urlsplit(path).path.rsplit("/",1)[-1]
@@ -129,8 +129,14 @@ class Gateway(BaseHTTPRequestHandler):
     def log_message(self,fmt,*args):print("MARKET_GATEWAY:",fmt%args,flush=True)
     def _send(self,res):
         status,kind,raw=res
+        # Compress only the final HTTP response, never the permit parser's
+        # internal worker response or a native MT5 JSON response.
+        from bandwidth_payload import negotiate_payload
+        raw,compressed=negotiate_payload(raw,self.path,self.headers.get("Accept-Encoding",""),kind)
         self.send_response(status)
         self.send_header("Content-Type",kind)
+        self.send_header("Vary","Accept-Encoding")
+        if compressed:self.send_header("Content-Encoding","gzip")
         self.send_header("Content-Length",str(len(raw)))
         self.send_header("Cache-Control","no-store")
         self.send_header("X-Content-Type-Options","nosniff")

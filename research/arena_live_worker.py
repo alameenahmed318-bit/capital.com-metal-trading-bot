@@ -170,7 +170,7 @@ def fresh(bar):
 def live(email,password):
     token=arena.login(email,password);renew=time.monotonic()+1800
     state={"token":token};lock=threading.Lock()
-    jobs={};cache={};seen={};next_fit={};retry_poll={}
+    jobs={};cache={};seen={};seen_symbols={};next_fit={};retry_poll={}
     markets=tuple(sorted(arena.MARKETS,key=lambda m:0 if m=="XAUUSD" else 1))
     # One bounded slow lane with latest-only slots (one per market). Never
     # waits on the MT5/server path, and cannot delay the fast prediction lane.
@@ -239,7 +239,7 @@ def live(email,password):
         for market in markets:
             try:
                 if time.monotonic()<retry_poll.get(market,0):continue
-                ctx=arena.api(market,"live-context",token,timeout=6)
+                ctx=arena.live_context(market,token,seen.get(market),seen_symbols.get(market),timeout=6)
                 if ctx.get("status")!="READY":continue
                 cid=ctx["client"];bar=ctx["bar_time"]
                 if not fresh(bar):continue
@@ -272,7 +272,7 @@ def live(email,password):
                 if not fresh(bar):continue
                 body={"client":cid,"symbol":ctx["symbol"],"bar_time":bar,"horizon":ENTRY_HORIZON,"models":scores,"actions":action_scores,"monitor_models":monitor_scores}
                 response=arena.api(market,"live-forecast",token,body,timeout=6)
-                if response.get("accepted"):seen[market]=(cid,bar)
+                if response.get("accepted"):seen[market]=(cid,bar);seen_symbols[market]=ctx["symbol"]
                 print(market,bar,"FAST",list(scores),"MONITOR",list(monitor_scores),"ACCEPTED" if response.get("accepted") else response.get("reason","REJECTED"),flush=True)
             except Exception as exc:
                 code=getattr(exc,"code",None)
