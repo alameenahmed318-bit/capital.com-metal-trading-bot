@@ -229,8 +229,8 @@ class DirectDemoReviewTests(unittest.TestCase):
                 self.assertEqual(r["collection_limit_sec"],0)
                 for mode in ("REAL","CONTEST","UNKNOWN"):
                     old=review(d,{**snap,"account":{"trade_mode":mode}},{},BAR+61,live_arena=True)
-                    self.assertFalse(old["approved"])
-                    self.assertNotEqual(old["policy"],DIRECT_DEMO_VERSION)
+                    self.assertTrue(old["approved"])
+                    self.assertEqual(old["policy"],DIRECT_DEMO_VERSION)
                 self.assertFalse(review(d,{**snap,"master_direct_demo_capable":False},{},BAR+61,live_arena=True)["approved"])
                 self.assertFalse(review(d,{**snap,"symbol":"OTHER"},{},BAR+61,live_arena=True)["approved"])
                 self.assertFalse(review(d,snap,{},BAR+120,live_arena=True)["approved"])
@@ -352,11 +352,11 @@ class BalancedDemoTests(unittest.TestCase):
         self.assertEqual(good["factors"]["XGBoost"],1.)
         self.assertEqual(weight_profile(profile,"BTCUSDm",now)["factors"]["LightGBM"],1.)
         self.assertEqual(weight_profile(profile,"XAUUSD",now+1201)["factors"]["LightGBM"],1.)
-    def test_real_or_old_client_and_existing_gate_preserved(self):
+    def test_all_modes_and_existing_gate_preserved(self):
         from master_balanced import select_demo,MODELS
         d,snap=self.fixture(forecasts={n:1. for n in MODELS})
         for mode in ("REAL","UNKNOWN","CONTEST"):
-            self.assertIs(select_demo(d,{**snap,"account":{"trade_mode":mode}},{},BAR+62),d)
+            self.assertEqual(select_demo(d,{**snap,"account":{"trade_mode":mode}},{},BAR+62)["master"]["balanced_entry"]["mode"],"ALL_ACCOUNT_MODES")
         self.assertIs(select_demo(d,{**snap,"master_direct_demo_capable":False},{},BAR+62),d)
         trial=select_demo(d,snap,{},BAR+62)
         self.assertFalse(apply_gate({"approved":False,"reason_ar":"owner"},review(trial,snap,{},BAR+62,live_arena=True))["approved"])
