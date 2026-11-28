@@ -1,5 +1,5 @@
 """AL-ZOOL: licensed MT5 telemetry, central strategy analysis and account controls."""
-import gzip, hashlib, hmac, json, math, os, re, secrets, threading, time, urllib.parse, urllib.request, urllib.error
+import hashlib, hmac, json, math, os, re, secrets, threading, time, urllib.parse, urllib.request, urllib.error
 from datetime import datetime, timezone, timedelta
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -668,14 +668,8 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self,fmt,*args): print("WEB:",fmt%args)
     def send_json(self,status,data):
         body=json.dumps(data,ensure_ascii=False,separators=(",",":")).encode()
-        # Only negotiated clients receive gzip. MT5 keeps its existing JSON protocol.
-        accept=self.headers.get("Accept-Encoding","")
-        path=urllib.parse.urlsplit(self.path).path
-        gzip_ok=any(part.strip().split(";")[0].strip().lower()=="gzip" and not re.search(r";\s*q\s*=\s*0(?:\.0*)?\s*$",part) for part in accept.split(","))
-        compressed=False
-        if gzip_ok and "/v1/" not in path and len(body)>=1024:
-            candidate=gzip.compress(body,compresslevel=3)
-            if len(candidate)<len(body):body=candidate;compressed=True
+        from bandwidth_payload import negotiate_payload
+        body,compressed=negotiate_payload(body,self.path,self.headers.get("Accept-Encoding",""),"application/json")
         self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8")
         self.send_header("Vary","Accept-Encoding")
         if compressed:self.send_header("Content-Encoding","gzip")
@@ -1706,9 +1700,8 @@ class Handler(SimpleHTTPRequestHandler):
                     ctx=arena_master.context(cid,item)
                     if ctx.get("status")=="READY":
                         params=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
-                        if params.get("seen_client")==[str(cid)] and params.get("seen_symbol")==[ctx["symbol"]] and params.get("seen_bar")==[str(ctx["bar_time"])]:
-                            return self.send_json(200,{"status":"UNCHANGED","client":cid,"symbol":ctx["symbol"],"bar_time":ctx["bar_time"]})
-                        return self.send_json(200,ctx)
+                        from bandwidth_payload import unchanged_context
+                        return self.send_json(200,unchanged_context(ctx,params))
                 return self.send_json(200,{"status":"NO_CURRENT_M1"})
             except PermissionError as e:return self.send_json(403,{"error":str(e)})
             except Exception:return self.send_json(502,{"error":"arena_context_unavailable"})
