@@ -69,7 +69,7 @@ class ArenaMasterTest(unittest.TestCase):
         self.assertEqual(set(a.evidence("owner",self.item["strategy_decision"])["models"]),set(LIVE_MODELS))
         self.assertEqual(len(LIVE_MODELS),7)
 
-    def test_extra_trees_demo_only_no_legacy_vote(self):
+    def test_extra_trees_all_modes_no_legacy_vote(self):
         import master_ai as m
         body={"symbol":"XAUUSD","bar_time":self.bar,"models":{"Extra Trees":.5}}
         self.assertFalse(a.accept("owner",self.item,body)["accepted"])
@@ -79,6 +79,7 @@ class ArenaMasterTest(unittest.TestCase):
             evidence=a.evidence("owner",self.item["strategy_decision"])
             self.assertEqual(evidence["models"],{"Extra Trees":.5})
             self.assertEqual(m.arena_votes(self.item["strategy_decision"],evidence),{})
+            self.assertTrue(a.accept("owner",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
             self.assertFalse(a.accept("other",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
 
     def test_monitor_only_not_legacy_evidence(self):
@@ -91,6 +92,7 @@ class ArenaMasterTest(unittest.TestCase):
             self.assertEqual(r["models"],{})
             self.assertEqual(r["monitor_models"],body["monitor_models"])
             self.assertEqual(m.arena_votes(self.item["strategy_decision"],r),{})
+            self.assertTrue(a.accept("owner",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
             self.assertFalse(a.accept("other",{**demo,"account":{"trade_mode":"REAL"}},body)["accepted"])
             self.assertTrue(a.accept("owner",demo,{"symbol":"XAUUSD","bar_time":self.bar,"models":{"CatBoost":.4}})["accepted"])
             self.assertEqual(a.evidence("owner",self.item["strategy_decision"])["monitor_models"],{"Extra Trees":.9})
