@@ -1,4 +1,4 @@
-"""Demo-only streaming entry learner; broker execution remains in existing gates.
+"""Unified streaming entry learner; broker execution remains in existing gates.
 Labels are observed quote counterfactuals, not attributed broker-trade profits.
 No network, training, disk I/O or waits on the request/decision thread.
 """
@@ -74,7 +74,6 @@ def num(v,default=0.):
     except (TypeError,ValueError,OverflowError):return default
 def allowed(item):
     return (os.getenv("ALZOOL_HYBRID_DEMO")=="1" and item.get("master_direct_demo_capable") is True
-            and (item.get("account") or {}).get("trade_mode")=="DEMO"
             and str(item.get("timeframe","")).upper().replace("PERIOD_","")=="M1"
             and bool(item.get("client_id")))
 def collect(d,item,parallel,now):

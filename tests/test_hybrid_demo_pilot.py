@@ -6,10 +6,10 @@ import hybrid_demo_pilot as m
 class PilotTest(unittest.TestCase):
     def item(self,mode="DEMO"):
         return {"account":{"trade_mode":mode},"master_direct_demo_capable":True,"timeframe":"M1","client_id":"test","symbol":"XAUUSD","tick":{"bid":100,"ask":100.1}}
-    def test_demo_only(self):
+    def test_all_account_modes(self):
         with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
             self.assertTrue(m.allowed(self.item()))
-            for mode in ("REAL","CONTEST","UNKNOWN",None):self.assertFalse(m.allowed(self.item(mode)))
+            for mode in ("REAL","CONTEST","UNKNOWN",None):self.assertTrue(m.allowed(self.item(mode)))
             self.assertFalse(m.allowed({**self.item(),"master_direct_demo_capable":False}))
         with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"0"}):self.assertFalse(m.allowed(self.item()))
     def test_seven_exact_and_stale(self):
@@ -18,7 +18,7 @@ class PilotTest(unittest.TestCase):
             p={"status":"SHADOW_READY","client_id":"test","symbol":"XAUUSD","bar_time":1000,"received_at":1066,"models":{"TCN":{"forecast":.3},"GRU":{"forecast":.6},"LSTM Multi":{"forecast":.9},"Isolation Forest":{"forecast":.5}}}
             self.assertEqual(m.collect(d,self.item(),p,1070)["raw"],{"CatBoost":.2,"Extra Trees":.4,"TCN":.3,"GRU":.6})
             self.assertEqual(m.collect(d,self.item(),{**p,"client_id":"other"},1070)["raw"],{"CatBoost":.2,"Extra Trees":.4})
-            self.assertIsNone(m.collect(d,self.item("REAL"),p,1070))
+            self.assertEqual(m.collect(d,self.item("REAL"),p,1070)["raw"],m.collect(d,self.item("DEMO"),p,1070)["raw"])
     def test_master_evaluates_all_local_analyses(self):
         with patch.dict(os.environ,{"ALZOOL_HYBRID_DEMO":"1"}):
             d={"symbol":"XAUUSD","bar_time":1000,"entry_atr":1,"master":{"arena_shadow":{"status":"SHADOW_READY","symbol":"XAUUSD","bar_time":1000,"received_at":1065,"models":{"TiRex-2":.2},"monitor_models":{"Extra Trees":.8,"CatBoost":-.7}}}}
@@ -99,7 +99,8 @@ class PilotTest(unittest.TestCase):
             self.assertFalse(evaluate({**d,"context":{**d["context"],"buy_trap":True}},item,{},now)["approved"])
             self.assertFalse(evaluate({**d,"directional_candidates":{}},item,{},now)["approved"])
             self.assertFalse(evaluate(d,item,{},1120)["approved"])
-            self.assertEqual(evaluate(d,self.item("REAL"),{},now)["threshold"],THRESHOLD)
+            self.assertEqual(evaluate(d,self.item("REAL"),{},now)["threshold"],.68)
+            self.assertTrue(evaluate(d,self.item("REAL"),{},now)["approved"])
             self.assertEqual(evaluate(d,item,{},now,legacy=True)["threshold"],THRESHOLD)
     def test_resource_guard(self):
         with patch.dict(os.environ,{"ALZOOL_META_RESOURCE_GUARD":"1"}):

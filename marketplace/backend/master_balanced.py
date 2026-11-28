@@ -1,4 +1,4 @@
-"""AI-first entry-only demo pilot; retain balanced V2 for research comparison."""
+"""AI-first entry-only unified master; retain balanced V2 for research comparison."""
 import math
 from market_symbols import same_market_symbol
 
@@ -77,7 +77,7 @@ def evaluate(d,item,settings,now,*,legacy=False):
     # full vote to a tiny prediction or renormalizing absent models.
     conviction=clamp(signed/max(.10,evidence_mass),-1.,1.)
     model_direction="BUY" if signed>1e-9 else "SELL" if signed< -1e-9 else "WAIT"
-    # Only an explicitly enabled, native MT5 DEMO M1 connection can use the new panel.
+    # Only an explicitly enabled, protocol-capable MT5 M1 connection can use the new panel.
     import hybrid_demo_pilot as meta
     pilot=report.get("hybrid_meta_demo") or {}
     use_pilot=not legacy and meta.allowed(item) and pilot.get("bar")==bar and 0<=now-num(pilot.get("at"),-1)<=10
@@ -154,7 +154,7 @@ def evaluate(d,item,settings,now,*,legacy=False):
     if not legacy and not forecasts:reason="NO_FRESH_AI_EVIDENCE"
     elif not legacy and model_direction=="WAIT":reason="AI_DIRECTION_UNCLEAR"
     elif not legacy and not ranking:reason="AI_SIDE_NOT_ELIGIBLE"
-    result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"DEMO_ONLY","selected":selected,
+    result={"version":LEGACY_VERSION if legacy else VERSION,"mode":"SHADOW_ONLY" if legacy else "ALL_ACCOUNT_MODES","selected":selected,
         "direction":selected if approved else "WAIT","approved":approved,"threshold":threshold,
         "scores":sides,"weights":weights,"weight_statuses":profile["statuses"],
         "used_models":list(forecasts),"signed_forecast":signed,"profile_fresh":profile["profile_fresh"],
@@ -230,7 +230,7 @@ def select_demo(d,item,settings,now):
         c=(d.get("directional_candidates") or {})[side]
         out.update(decision=side,strategy_id=c["strategy_id"],strategy_name=c.get("strategy_name",""),
             combination_id=c.get("combination_id",0),confidence=trial["scores"][side]["score"],
-            reason_ar=("HYBRID META DEMO: "+str(trial.get("meta_status")) if trial.get("version")==meta.VERSION else "MASTER AI FIRST DEMO: الذكاء يحدد الاتجاه والاستراتيجية تختار نقطة الدخول"))
+            reason_ar=("HYBRID META: "+str(trial.get("meta_status")) if trial.get("version")==meta.VERSION else "MASTER AI FIRST: الذكاء يحدد الاتجاه والاستراتيجية تختار نقطة الدخول"))
     else:
         out.update(decision="WAIT",confidence=0.,strategy_id=0,combination_id=0,strategy_name="",
                    reason_ar="MASTER AI FIRST: "+trial["reason"])

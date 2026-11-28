@@ -70,13 +70,12 @@ DIRECT_DEMO_VERSION="MASTER_DIRECT_DEMO_V1"
 DIRECT_DEMO_THRESHOLD=.72
 
 def direct_demo_enabled(item):
-    # Only an explicitly versioned terminal reporting the native MT5 demo
-    # account enumeration can use the pilot. Unknown/contest/real keep V2.
-    return (item.get("master_direct_demo_capable") is True
-            and (item.get("account") or {}).get("trade_mode")=="DEMO")
+    # Historical protocol flag, not an account-type restriction.
+    # Owner-approved unified M1 route uses the same checks on any MT5 mode.
+    return item.get("master_direct_demo_capable") is True
 
 def direct_demo_score(d,item,side,age,arena_rows,language_rows,settings):
-    """Single score for the explicitly demo-only pilot, not a probability.
+    """Single score for the owner-approved unified route, not a probability.
     No count, unanimity, or model collection wait. Missing votes are neutral.
     Keep the same closed-bar, real strategy and owner price requirements.
     """
@@ -107,14 +106,14 @@ def direct_demo_score(d,item,side,age,arena_rows,language_rows,settings):
     pm=(settings or {}).get("position_management") or {}
     deviation=abs((ask if side=="BUY" else bid)-ref)/atr if valid_price else None
     cap=number(pm.get("entry_max_deviation_atr"),.5)
-    checks={"demo":direct_demo_enabled(item),"fresh":0<=age<60,
+    checks={"protocol":direct_demo_enabled(item),"fresh":0<=age<60,
         "symbol":bool(d.get("symbol")) and d.get("symbol")==item.get("symbol"),
         "strategy":isinstance(candidate,dict) and 1<=number(candidate.get("strategy_id"))<=200 and number(candidate.get("strategy_id"))==number(d.get("strategy_id")),
         "no_trap":ctx.get(side.lower()+"_trap") is False,
         "price":valid_price and (pm.get("entry_guard_enabled",True) is not True or 0<cap and deviation<=cap)}
     failed=[k for k,v in checks.items() if not v]
     if score<DIRECT_DEMO_THRESHOLD:failed.append("weighted_score")
-    return {"version":DIRECT_DEMO_VERSION,"mode":"DEMO_ONLY","score":round(score,6),
+    return {"version":DIRECT_DEMO_VERSION,"mode":"ALL_ACCOUNT_MODES","score":round(score,6),
         "threshold":DIRECT_DEMO_THRESHOLD,"approved":not failed,"failed_checks":failed,
         "components":{"strategy_strength":strength,"direction_margin":margin,"market_quality":quality,
             "live_momentum":momentum,"live_move_atr":move,"forecast_family_strength":mass,"advice":advice},
